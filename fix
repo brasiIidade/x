@@ -913,8 +913,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
---// SERVICES
-
+--// CONFIG
 local HitboxEnabled = true
 local HitboxSize = Vector3.new(5, 5, 5)
 local HitboxTransparency = 0.5
@@ -925,9 +924,10 @@ local CharacterConns = {}
 local ActivePlayers = {}
 
 --// UTILS
-local function hasShield(character)
+local function hasEquippedShield(character)
 	for _, v in ipairs(character:GetChildren()) do
 		if v:IsA("Tool") and string.find(v.Name, "Escudo") then
+			-- SÓ SE ESTIVER EQUIPADO (Parent == Character)
 			return true
 		end
 	end
@@ -941,6 +941,7 @@ end
 --// RESET
 local function ResetHitbox(plr)
 	if not plr or plr == LocalPlayer then return end
+
 	local char = plr.Character
 	if not char then return end
 
@@ -967,7 +968,9 @@ local function ApplyHitbox(plr)
 
 	local char = plr.Character
 	if not char then return end
-	if hasShield(char) then
+
+	-- 🔴 AGORA SÓ BLOQUEIA SE O ESCUDO ESTIVER EQUIPADO
+	if hasEquippedShield(char) then
 		ResetHitbox(plr)
 		return
 	end
@@ -990,6 +993,19 @@ local function ApplyHitbox(plr)
 	hl.OutlineColor = plr.TeamColor.Color
 	hl.FillTransparency = 1 - HitboxTransparency
 	hl.OutlineTransparency = HitboxTransparency
+end
+
+--// REFRESH GLOBAL
+local function RefreshAll()
+	for plr in pairs(ActivePlayers) do
+		if plr and plr.Character then
+			if HitboxEnabled then
+				ApplyHitbox(plr)
+			else
+				ResetHitbox(plr)
+			end
+		end
+	end
 end
 
 --// CHARACTER HANDLER
@@ -1078,52 +1094,52 @@ end
 Players.PlayerAdded:Connect(HandlePlayer)
 Players.PlayerRemoving:Connect(RemovePlayer)
 
+--// UI
 SectionHitbox:Paragraph({
-    Title = "Modificar hitbox",
-    Desc = "Altera o tamanho e visual da hitbox dos inimigos.",
+	Title = "Modificar hitbox",
+	Desc = "Altera o tamanho e visual da hitbox dos inimigos.",
 })
 
 SectionHitbox:Toggle({
-    Title = "Hitbox",
-    Callback = function(v)
-        HitboxEnabled = v
-        RefreshAll()
-    end
+	Title = "Hitbox",
+	Callback = function(v)
+		HitboxEnabled = v
+		RefreshAll()
+	end
 })
 
 SectionHitbox:Input({
-    Title = "Tamanho da hitbox",
-    Desc = "Valor usado para mudar a hitbox dos inimigos.",
-    Placeholder = "Ex: 10",
-    Callback = function(v)
-        if v == "" then return end
-        local n = tonumber(v)
-        if not n then return end
+	Title = "Tamanho da hitbox",
+	Desc = "Valor usado para mudar a hitbox dos inimigos.",
+	Placeholder = "Ex: 10",
+	Callback = function(v)
+		if v == "" then return end
+		local n = tonumber(v)
+		if not n then return end
 
-        HitboxSize = Vector3.new(n,n,n)
-        RefreshAll()
-    end
+		HitboxSize = Vector3.new(n, n, n)
+		RefreshAll()
+	end
 })
 
 SectionHitbox:Space()
 
 SectionHitbox:Paragraph({
-    Title = "Transparência",
-    Desc = "Determina o quão visível a hitbox ficará. 0 = visível; 1 = invisível.",
+	Title = "Transparência",
+	Desc = "Determina o quão visível a hitbox ficará. 0 = visível; 1 = invisível.",
 })
 
 SectionHitbox:Slider({
-    Title = "Transparência",
-    Step = 0.02,
-    Value = {
-        Min = 0,
-        Max = 1,
-        Default = 0.5,
-    },
-    Callback = function(val)
-        HitboxTransparency = val
-        RefreshAll()
-    end
+	Title = "Transparência",
+	Value = {
+		Min = 0,
+		Max = 1,
+		Default = 0.5,
+	},
+	Callback = function(val)
+		HitboxTransparency = val
+		RefreshAll()
+	end
 })
 
 
