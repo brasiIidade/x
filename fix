@@ -913,109 +913,170 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- HB expander
+--// SERVICES
 
-local HitboxEnabled = false
-local HitboxSize = Vector3.new(5,5,5)
+local HitboxEnabled = true
+local HitboxSize = Vector3.new(5, 5, 5)
 local HitboxTransparency = 0.5
 
+--// CONTROLE
+local HeartbeatConn
+local CharacterConns = {}
+local ActivePlayers = {}
+
+--// UTILS
 local function hasShield(character)
-    for _, v in ipairs(character:GetChildren()) do
-        if v:IsA("Tool") and string.find(v.Name, "Escudo") then
-            return true
-        end
-    end
-    return false
+	for _, v in ipairs(character:GetChildren()) do
+		if v:IsA("Tool") and string.find(v.Name, "Escudo") then
+			return true
+		end
+	end
+	return false
 end
 
+local function getHRP(character)
+	return character and character:FindFirstChild("HumanoidRootPart")
+end
+
+--// RESET
 local function ResetHitbox(plr)
-    if plr == LocalPlayer then return end
-    local char = plr.Character
-    if not char then return end
+	if not plr or plr == LocalPlayer then return end
+	local char = plr.Character
+	if not char then return end
 
-    local HRP = char:FindFirstChild("HumanoidRootPart")
-    if not HRP then return end
+	local hrp = getHRP(char)
+	if not hrp then return end
 
-    HRP.Size = Vector3.new(2,2,1)
-    HRP.Transparency = 0
-    HRP.CanCollide = true
-    HRP.Massless = false
+	hrp.Size = Vector3.new(2, 2, 1)
+	hrp.Transparency = 0
+	hrp.CanCollide = true
+	hrp.Massless = false
 
-    local hl = HRP:FindFirstChild("a")
-    if hl then hl:Destroy() end
+	local hl = char:FindFirstChild("HB_HL")
+	if hl then hl:Destroy() end
 end
 
+--// APPLY
 local function ApplyHitbox(plr)
-    if not HitboxEnabled then return end
-    if plr == LocalPlayer then return end
-    if plr.Team == LocalPlayer.Team then return end
-    if not plr.Character then return end
-    if hasShield(plr.Character) then
-        ResetHitbox(plr)
-        return
-    end
+	if not HitboxEnabled then return end
+	if not plr or plr == LocalPlayer then return end
+	if plr.Team and LocalPlayer.Team and plr.Team == LocalPlayer.Team then
+		ResetHitbox(plr)
+		return
+	end
 
-    local HRP = plr.Character:FindFirstChild("HumanoidRootPart")
-    if not HRP then return end
+	local char = plr.Character
+	if not char then return end
+	if hasShield(char) then
+		ResetHitbox(plr)
+		return
+	end
 
-    HRP.Size = HitboxSize
-    HRP.Transparency = HitboxTransparency
-    HRP.CanCollide = false
-    HRP.Massless = false
+	local hrp = getHRP(char)
+	if not hrp then return end
 
-    local old = HRP:FindFirstChild("a")
-    if old then old:Destroy() end
+	hrp.Size = HitboxSize
+	hrp.Transparency = HitboxTransparency
+	hrp.CanCollide = false
+	hrp.Massless = false
 
-    local hl = Instance.new("Highlight")
-    hl.Name = "a"
-    hl.Parent = HRP
-    hl.FillColor = plr.TeamColor.Color
-    hl.OutlineColor = plr.TeamColor.Color
-    hl.FillTransparency = 1 - HitboxTransparency
-    hl.OutlineTransparency = HitboxTransparency
+	local old = char:FindFirstChild("HB_HL")
+	if old then old:Destroy() end
+
+	local hl = Instance.new("Highlight")
+	hl.Name = "HB_HL"
+	hl.Parent = char
+	hl.FillColor = plr.TeamColor.Color
+	hl.OutlineColor = plr.TeamColor.Color
+	hl.FillTransparency = 1 - HitboxTransparency
+	hl.OutlineTransparency = HitboxTransparency
 end
 
+--// CHARACTER HANDLER
 local function HandleCharacter(plr, character)
-    local function refresh()
-        if HitboxEnabled then
-            ApplyHitbox(plr)
-        else
-            ResetHitbox(plr)
-        end
-    end
+	if CharacterConns[plr] then
+		for _, c in ipairs(CharacterConns[plr]) do
+			c:Disconnect()
+		end
+	end
+	CharacterConns[plr] = {}
 
-    character.ChildAdded:Connect(function(obj)
-        if obj:IsA("Tool") then
-            refresh()
-        end
-    end)
+	local function refresh()
+		if HitboxEnabled then
+			ApplyHitbox(plr)
+		else
+			ResetHitbox(plr)
+		end
+	end
 
-    character.ChildRemoved:Connect(function(obj)
-        if obj:IsA("Tool") then
-            task.wait()
-            refresh()
-        end
-    end)
+	table.insert(CharacterConns[plr],
+		character.ChildAdded:Connect(function(obj)
+			if obj:IsA("Tool") then
+				task.wait()
+				refresh()
+			end
+		end)
+	)
 
-    refresh()
+	table.insert(CharacterConns[plr],
+		character.ChildRemoved:Connect(function(obj)
+			if obj:IsA("Tool") then
+				task.wait()
+				refresh()
+			end
+		end)
+	)
+
+	refresh()
 end
 
-Players.PlayerAdded:Connect(function(plr)
-    plr.CharacterAdded:Connect(function(character)
-        task.wait(1)
-        HandleCharacter(plr, character)
-    end)
+--// PLAYER ADDED
+local function HandlePlayer(plr)
+	if plr == LocalPlayer then return end
+	ActivePlayers[plr] = true
+
+	plr.CharacterAdded:Connect(function(char)
+		task.wait(1)
+		HandleCharacter(plr, char)
+	end)
+
+	if plr.Character then
+		task.wait(1)
+		HandleCharacter(plr, plr.Character)
+	end
+end
+
+--// PLAYER REMOVED
+local function RemovePlayer(plr)
+	ActivePlayers[plr] = nil
+	ResetHitbox(plr)
+
+	if CharacterConns[plr] then
+		for _, c in ipairs(CharacterConns[plr]) do
+			c:Disconnect()
+		end
+		CharacterConns[plr] = nil
+	end
+end
+
+--// LOOP CONTÍNUO (SEM LAG)
+HeartbeatConn = RunService.Heartbeat:Connect(function()
+	if not HitboxEnabled then return end
+
+	for plr in pairs(ActivePlayers) do
+		if plr and plr.Character then
+			ApplyHitbox(plr)
+		end
+	end
 end)
 
+--// INIT
 for _, plr in ipairs(Players:GetPlayers()) do
-    if plr.Character then
-        HandleCharacter(plr, plr.Character)
-    end
-    plr.CharacterAdded:Connect(function(character)
-        task.wait(1)
-        HandleCharacter(plr, character)
-    end)
+	HandlePlayer(plr)
 end
+
+Players.PlayerAdded:Connect(HandlePlayer)
+Players.PlayerRemoving:Connect(RemovePlayer)
 
 SectionHitbox:Paragraph({
     Title = "Modificar hitbox",
