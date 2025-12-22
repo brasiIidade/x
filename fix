@@ -919,18 +919,6 @@ local HitboxEnabled = false
 local HitboxSize = Vector3.new(5,5,5)
 local HitboxTransparency = 0.5
  
--- 🔧 Shield = SOMENTE escudo EQUIPADO
-local function hasShield(character)
-    for _, v in ipairs(character:GetChildren()) do
-        if v:IsA("Tool")
-        and v.Parent == character
-        and string.find(string.lower(v.Name), "escudo") then
-            return true
-        end
-    end
-    return false
-end
- 
 local function ResetHitbox(plr)
     if plr == LocalPlayer then return end
     local char = plr.Character
@@ -953,12 +941,6 @@ local function ApplyHitbox(plr)
     if plr == LocalPlayer then return end
     if plr.Team == LocalPlayer.Team then return end
     if not plr.Character then return end
-
-    -- 🔑 Regra central
-    if hasShield(plr.Character) then
-        ResetHitbox(plr)
-        return
-    end
 
     local HRP = plr.Character:FindFirstChild("HumanoidRootPart")
     if not HRP then return end
@@ -989,21 +971,16 @@ local function HandleCharacter(plr, character)
         end
     end
 
-    -- 🔑 Escudo entra ou sai → refresh
-    character.ChildAdded:Connect(function(obj)
-        if obj:IsA("Tool") then
-            refresh()
-        end
+    character.ChildAdded:Connect(function()
+        refresh()
     end)
 
-    character.ChildRemoved:Connect(function(obj)
-        if obj:IsA("Tool") then
-            task.wait()
-            refresh()
-        end
+    character.ChildRemoved:Connect(function()
+        task.wait()
+        refresh()
     end)
 
-    -- 🔑 APLICA IMEDIATAMENTE (sem precisar equipar nada)
+    -- aplica imediatamente
     refresh()
 end
  
@@ -1023,7 +1000,7 @@ for _, plr in ipairs(Players:GetPlayers()) do
         HandleCharacter(plr, character)
     end)
 end
-
+ 
 SectionHitbox:Paragraph({
     Title = "Modificar hitbox",
     Desc = "Altera o tamanho e visual da hitbox dos inimigos.",
