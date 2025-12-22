@@ -914,23 +914,23 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- HB expander
-
+ 
 local HitboxEnabled = false
 local HitboxSize = Vector3.new(5,5,5)
 local HitboxTransparency = 0.5
-
--- APENAS Tool EQUIPADO
-local function hasShieldEquipped(character)
+ 
+-- 🔧 ÚNICA ALTERAÇÃO: shield APENAS se estiver EQUIPADO
+local function hasShield(character)
     for _, v in ipairs(character:GetChildren()) do
-        if v:IsA("Tool") and v.Parent == character then
-            if string.find(string.lower(v.Name), "escudo") then
-                return true
-            end
+        if v:IsA("Tool")
+        and v.Parent == character
+        and string.find(string.lower(v.Name), "escudo") then
+            return true
         end
     end
     return false
 end
-
+ 
 local function ResetHitbox(plr)
     if plr == LocalPlayer then return end
     local char = plr.Character
@@ -947,14 +947,13 @@ local function ResetHitbox(plr)
     local hl = HRP:FindFirstChild("a")
     if hl then hl:Destroy() end
 end
-
+ 
 local function ApplyHitbox(plr)
     if not HitboxEnabled then return end
     if plr == LocalPlayer then return end
     if plr.Team == LocalPlayer.Team then return end
     if not plr.Character then return end
-
-    if hasShieldEquipped(plr.Character) then
+    if hasShield(plr.Character) then
         ResetHitbox(plr)
         return
     end
@@ -978,69 +977,54 @@ local function ApplyHitbox(plr)
     hl.FillTransparency = 1 - HitboxTransparency
     hl.OutlineTransparency = HitboxTransparency
 end
-
--- 🔹 FUNÇÃO QUE ESTAVA FALTANDO
-local function RefreshAll()
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer and plr.Character then
-            if HitboxEnabled then
-                ApplyHitbox(plr)
-            else
-                ResetHitbox(plr)
-            end
+ 
+local function HandleCharacter(plr, character)
+    local function refresh()
+        if HitboxEnabled then
+            ApplyHitbox(plr)
+        else
+            ResetHitbox(plr)
         end
     end
-end
 
-local function HandleCharacter(plr, character)
-    task.wait(0.5)
-    if HitboxEnabled then
-        ApplyHitbox(plr)
-    else
-        ResetHitbox(plr)
-    end
-end
+    character.ChildAdded:Connect(function(obj)
+        if obj:IsA("Tool") then
+            refresh()
+        end
+    end)
 
+    character.ChildRemoved:Connect(function(obj)
+        if obj:IsA("Tool") then
+            task.wait()
+            refresh()
+        end
+    end)
+
+    refresh()
+end
+ 
 Players.PlayerAdded:Connect(function(plr)
     plr.CharacterAdded:Connect(function(character)
+        task.wait(1)
         HandleCharacter(plr, character)
     end)
 end)
-
+ 
 for _, plr in ipairs(Players:GetPlayers()) do
     if plr.Character then
         HandleCharacter(plr, plr.Character)
     end
     plr.CharacterAdded:Connect(function(character)
+        task.wait(1)
         HandleCharacter(plr, character)
     end)
 end
-
--- CHECK CONTÍNUO (leve e seguro)
-RunService.Heartbeat:Connect(function()
-    if not HitboxEnabled then return end
-
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer
-        and plr.Team ~= LocalPlayer.Team
-        and plr.Character then
-
-            if hasShieldEquipped(plr.Character) then
-                ResetHitbox(plr)
-            else
-                ApplyHitbox(plr)
-            end
-        end
-    end
-end)
-
--- UI
-
+ 
 SectionHitbox:Paragraph({
     Title = "Modificar hitbox",
     Desc = "Altera o tamanho e visual da hitbox dos inimigos.",
 })
-
+ 
 SectionHitbox:Toggle({
     Title = "Hitbox",
     Callback = function(v)
@@ -1048,26 +1032,28 @@ SectionHitbox:Toggle({
         RefreshAll()
     end
 })
-
+ 
 SectionHitbox:Input({
     Title = "Tamanho da hitbox",
     Desc = "Valor usado para mudar a hitbox dos inimigos.",
     Placeholder = "Ex: 10",
     Callback = function(v)
+        if v == "" then return end
         local n = tonumber(v)
         if not n then return end
+
         HitboxSize = Vector3.new(n,n,n)
         RefreshAll()
     end
 })
-
+ 
 SectionHitbox:Space()
-
+ 
 SectionHitbox:Paragraph({
     Title = "Transparência",
     Desc = "Determina o quão visível a hitbox ficará. 0 = visível; 1 = invisível.",
 })
-
+ 
 SectionHitbox:Slider({
     Title = "Transparência",
     Step = 0.02,
@@ -1097,6 +1083,7 @@ local SectionESP = TabB:Section({
         ESPEnabled = v
     end
 })
+
 SectionESP:Space()
 
 SectionESP:Paragraph({
