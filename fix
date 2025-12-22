@@ -919,10 +919,13 @@ local HitboxEnabled = false
 local HitboxSize = Vector3.new(5,5,5)
 local HitboxTransparency = 0.5
 
-local function hasShield(character)
+-- Detecta APENAS Tool EQUIPADO
+local function hasShieldEquipped(character)
     for _, v in ipairs(character:GetChildren()) do
-        if v:IsA("Tool") and string.find(v.Name, "Escudo") then
-            return true
+        if v:IsA("Tool") and v.Parent == character then
+            if string.find(string.lower(v.Name), "escudo") then
+                return true
+            end
         end
     end
     return false
@@ -950,7 +953,9 @@ local function ApplyHitbox(plr)
     if plr == LocalPlayer then return end
     if plr.Team == LocalPlayer.Team then return end
     if not plr.Character then return end
-    if hasShield(plr.Character) then
+
+    -- Se estiver com escudo EQUIPADO, remove hitbox
+    if hasShieldEquipped(plr.Character) then
         ResetHitbox(plr)
         return
     end
@@ -976,28 +981,11 @@ local function ApplyHitbox(plr)
 end
 
 local function HandleCharacter(plr, character)
-    local function refresh()
-        if HitboxEnabled then
-            ApplyHitbox(plr)
-        else
-            ResetHitbox(plr)
-        end
+    if HitboxEnabled then
+        ApplyHitbox(plr)
+    else
+        ResetHitbox(plr)
     end
-
-    character.ChildAdded:Connect(function(obj)
-        if obj:IsA("Tool") then
-            refresh()
-        end
-    end)
-
-    character.ChildRemoved:Connect(function(obj)
-        if obj:IsA("Tool") then
-            task.wait()
-            refresh()
-        end
-    end)
-
-    refresh()
 end
 
 Players.PlayerAdded:Connect(function(plr)
@@ -1016,6 +1004,26 @@ for _, plr in ipairs(Players:GetPlayers()) do
         HandleCharacter(plr, character)
     end)
 end
+
+-- CHECK CONTÍNUO (equipou = sai / desequipou = volta)
+RunService.Heartbeat:Connect(function()
+    if not HitboxEnabled then return end
+
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer
+        and plr.Team ~= LocalPlayer.Team
+        and plr.Character then
+
+            if hasShieldEquipped(plr.Character) then
+                ResetHitbox(plr)
+            else
+                ApplyHitbox(plr)
+            end
+        end
+    end
+end)
+
+-- UI
 
 SectionHitbox:Paragraph({
     Title = "Modificar hitbox",
@@ -1064,7 +1072,6 @@ SectionHitbox:Slider({
         RefreshAll()
     end
 })
-
 
 local SectionESP = TabB:Section({
         Title = "ESP"
