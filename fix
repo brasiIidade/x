@@ -919,7 +919,7 @@ local HitboxEnabled = false
 local HitboxSize = Vector3.new(5,5,5)
 local HitboxTransparency = 0.5
 
--- Detecta APENAS Tool EQUIPADO
+-- APENAS Tool EQUIPADO
 local function hasShieldEquipped(character)
     for _, v in ipairs(character:GetChildren()) do
         if v:IsA("Tool") and v.Parent == character then
@@ -954,7 +954,6 @@ local function ApplyHitbox(plr)
     if plr.Team == LocalPlayer.Team then return end
     if not plr.Character then return end
 
-    -- Se estiver com escudo EQUIPADO, remove hitbox
     if hasShieldEquipped(plr.Character) then
         ResetHitbox(plr)
         return
@@ -980,7 +979,21 @@ local function ApplyHitbox(plr)
     hl.OutlineTransparency = HitboxTransparency
 end
 
+-- 🔹 FUNÇÃO QUE ESTAVA FALTANDO
+local function RefreshAll()
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character then
+            if HitboxEnabled then
+                ApplyHitbox(plr)
+            else
+                ResetHitbox(plr)
+            end
+        end
+    end
+end
+
 local function HandleCharacter(plr, character)
+    task.wait(0.5)
     if HitboxEnabled then
         ApplyHitbox(plr)
     else
@@ -990,7 +1003,6 @@ end
 
 Players.PlayerAdded:Connect(function(plr)
     plr.CharacterAdded:Connect(function(character)
-        task.wait(1)
         HandleCharacter(plr, character)
     end)
 end)
@@ -1000,12 +1012,11 @@ for _, plr in ipairs(Players:GetPlayers()) do
         HandleCharacter(plr, plr.Character)
     end
     plr.CharacterAdded:Connect(function(character)
-        task.wait(1)
         HandleCharacter(plr, character)
     end)
 end
 
--- CHECK CONTÍNUO (equipou = sai / desequipou = volta)
+-- CHECK CONTÍNUO (leve e seguro)
 RunService.Heartbeat:Connect(function()
     if not HitboxEnabled then return end
 
@@ -1043,10 +1054,8 @@ SectionHitbox:Input({
     Desc = "Valor usado para mudar a hitbox dos inimigos.",
     Placeholder = "Ex: 10",
     Callback = function(v)
-        if v == "" then return end
         local n = tonumber(v)
         if not n then return end
-
         HitboxSize = Vector3.new(n,n,n)
         RefreshAll()
     end
