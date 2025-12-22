@@ -913,99 +913,106 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
+-- HB expander
+
 local HitboxEnabled = false
-local HitboxSize = Vector3.new(5,5,5)
+local HitboxSize = Vector3.new(5,5,5) 
 local HitboxTransparency = 0.5
 
--- Função para resetar a hitbox ao padrão
 local function ResetHitbox(plr)
     if plr == LocalPlayer then return end
     local char = plr.Character
-    local HRP = char and char:FindFirstChild("HumanoidRootPart")
-    
-    if HRP then
-        HRP.Size = Vector3.new(2,2,1)
-        HRP.Transparency = 1 -- Padrão do HRP é invisível
-        HRP.CanCollide = true
-        HRP.Massless = false
-        
-        local hl = HRP:FindFirstChild("a")
-        if hl then hl:Destroy() end
-    end
+    if not char then return end
+
+    local HRP = char:FindFirstChild("HumanoidRootPart")
+    if not HRP then return end
+
+    HRP.Size = Vector3.new(2,2,1) 
+    HRP.Transparency = 0
+    HRP.CanCollide = true
+    HRP.Massless = false
+
+    local hl = HRP:FindFirstChild("a")
+    if hl then hl:Destroy() end
 end
 
--- Função para aplicar a hitbox customizada
 local function ApplyHitbox(plr)
     if not HitboxEnabled then return end
     if plr == LocalPlayer then return end
-    if plr.Team == LocalPlayer.Team and plr.Team ~= nil then return end
-    
-    local char = plr.Character
-    local HRP = char and char:FindFirstChild("HumanoidRootPart")
-    
-    if HRP then
-        HRP.Size = HitboxSize
-        HRP.Transparency = HitboxTransparency
-        HRP.CanCollide = false
-        HRP.Massless = false
+    if plr.Team == LocalPlayer.Team then return end 
+    if not plr.Character then return end
 
-        local old = HRP:FindFirstChild("a")
-        if old then old:Destroy() end
+    local HRP = plr.Character:FindFirstChild("HumanoidRootPart")
+    if not HRP then return end
 
-        local hl = Instance.new("Highlight")
-        hl.Name = "a"
-        hl.Parent = HRP
-        hl.FillColor = plr.TeamColor.Color
-        hl.OutlineColor = plr.TeamColor.Color
-        hl.FillTransparency = 1 - HitboxTransparency
-        hl.OutlineTransparency = HitboxTransparency
-    end
+    HRP.Size = HitboxSize
+    HRP.Transparency = HitboxTransparency
+    HRP.CanCollide = false
+    HRP.Massless = false
+
+    local old = HRP:FindFirstChild("a")
+    if old then old:Destroy() end 
+
+    local hl = Instance.new("Highlight")
+    hl.Name = "a"
+    hl.Parent = HRP
+    hl.FillColor = plr.TeamColor.Color
+    hl.OutlineColor = plr.TeamColor.Color
+    hl.FillTransparency = 1 - HitboxTransparency
+    hl.OutlineTransparency = HitboxTransparency
 end
 
--- Função que faz a mágica de aplicar/remover na hora
 local function RefreshAll()
     for _, plr in ipairs(Players:GetPlayers()) do
-        if HitboxEnabled then
-            ApplyHitbox(plr)
-        else
-            ResetHitbox(plr)
-        end
+        if HitboxEnabled then ApplyHitbox(plr) else ResetHitbox(plr) end 
     end
 end
 
--- Gerenciamento de personagens
-local function HandleCharacter(plr)
-    plr.CharacterAdded:Connect(function()
-        task.wait(0.5)
-        if HitboxEnabled then ApplyHitbox(plr) else ResetHitbox(plr) end
+local function HandleCharacter(character)
+    local plr = Players:GetPlayerFromCharacter(character)
+    if not plr then return end
+    
+    if HitboxEnabled then
+        ApplyHitbox(plr)
+    else
+        ResetHitbox(plr)
+    end
+end
+
+Players.PlayerAdded:Connect(function(plr)
+    plr.CharacterAdded:Connect(function(character)
+        task.wait(1)
+        HandleCharacter(character)
+    end) 
+    if plr.Character then
+        HandleCharacter(plr.Character)
+    end
+end)
+
+for _, plr in ipairs(Players:GetPlayers()) do
+    if plr.Character then
+        HandleCharacter(plr.Character)
+    end
+    plr.CharacterAdded:Connect(function(character)
+        task.wait(1)
+        HandleCharacter(character)
     end)
 end
 
--- Inicialização para quem já está no servidor
-for _, plr in ipairs(Players:GetPlayers()) do
-    HandleCharacter(plr)
-    if plr.Character then
-        if HitboxEnabled then ApplyHitbox(plr) else ResetHitbox(plr) end
-    end
-end
-
-Players.PlayerAdded:Connect(HandleCharacter)
-
---- SEÇÃO DA UI (Original Restaurada) ---
 
 SectionHitbox:Paragraph({
     Title = "Modificar hitbox",
     Desc = "Altera o tamanho e visual da hitbox dos inimigos.",
 })
- 
+
 SectionHitbox:Toggle({
     Title = "Hitbox",
     Callback = function(v)
         HitboxEnabled = v
-        RefreshAll() -- Aplica ou reseta na hora
+        RefreshAll()
     end
 })
- 
+
 SectionHitbox:Input({
     Title = "Tamanho da hitbox",
     Desc = "Valor usado para mudar a hitbox dos inimigos.",
@@ -1016,17 +1023,17 @@ SectionHitbox:Input({
         if not n then return end
 
         HitboxSize = Vector3.new(n,n,n)
-        if HitboxEnabled then RefreshAll() end
+        RefreshAll()
     end
 })
- 
+
 SectionHitbox:Space()
- 
+
 SectionHitbox:Paragraph({
     Title = "Transparência",
     Desc = "Determina o quão visível a hitbox ficará. 0 = visível; 1 = invisível.",
 })
- 
+
 SectionHitbox:Slider({
     Title = "Transparência",
     Step = 0.02,
@@ -1037,7 +1044,7 @@ SectionHitbox:Slider({
     },
     Callback = function(val)
         HitboxTransparency = val
-        if HitboxEnabled then RefreshAll() end
+        RefreshAll()
     end
 })
 
