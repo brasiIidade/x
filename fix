@@ -913,30 +913,29 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- HB expander
-
 local HitboxEnabled = false
 local HitboxSize = Vector3.new(5,5,5) 
 local HitboxTransparency = 0.5
 
--- Função de Reset: Garante que volte ao padrão INVISÍVEL
+-- Função de Reset: Volta para Bloco, Invisível e Plástico
 local function ResetHitbox(plr)
     if plr == LocalPlayer then return end
     local char = plr.Character
     local HRP = char and char:FindFirstChild("HumanoidRootPart")
 
     if HRP then
+        HRP.Shape = Enum.PartType.Block -- Volta para quadrado
         HRP.Size = Vector3.new(2,2,1) 
-        HRP.Transparency = 1 -- 1 é TOTALMENTE INVISÍVEL (Padrão do Roblox)
+        HRP.Transparency = 1 
+        HRP.Material = Enum.Material.Plastic
         HRP.CanCollide = true
-        HRP.Massless = false
 
         local hl = HRP:FindFirstChild("a")
         if hl then hl:Destroy() end
     end
 end
 
--- Função de Aplicar: Só roda se o Toggle estiver ON
+-- Função de Aplicar: Transforma em Esfera e muda Material
 local function ApplyHitbox(plr)
     if not HitboxEnabled then 
         ResetHitbox(plr)
@@ -952,6 +951,10 @@ local function ApplyHitbox(plr)
     local HRP = char and char:FindFirstChild("HumanoidRootPart")
 
     if HRP then
+        -- MUDANÇAS AQUI:
+        HRP.Shape = Enum.PartType.Ball -- Transforma em BOLA
+        HRP.Material = Enum.Material.Neon -- Muda o MATERIAL (Pode usar ForceField também)
+        
         HRP.Size = HitboxSize
         HRP.Transparency = HitboxTransparency
         HRP.CanCollide = false
@@ -975,19 +978,16 @@ local function RefreshAll()
     end
 end
 
--- Gerenciador de Personagem (Unificado para evitar duplicatas)
 local function MonitorCharacter(plr)
     plr.CharacterAdded:Connect(function(char)
-        -- Espera o personagem carregar fisicamente para não bugar a transparência
         local hrp = char:WaitForChild("HumanoidRootPart", 5)
         if hrp then
-            task.wait(0.1)
+            task.wait(0.2)
             if HitboxEnabled then ApplyHitbox(plr) else ResetHitbox(plr) end
         end
     end)
 end
 
--- Iniciar para quem já está no jogo
 for _, plr in ipairs(Players:GetPlayers()) do
     MonitorCharacter(plr)
     if plr.Character then
@@ -995,7 +995,6 @@ for _, plr in ipairs(Players:GetPlayers()) do
     end
 end
 
--- Iniciar para quem entrar depois
 Players.PlayerAdded:Connect(MonitorCharacter)
 
 ---------------------------------------------------------
@@ -1017,7 +1016,7 @@ SectionHitbox:Toggle({
 
 SectionHitbox:Input({
     Title = "Tamanho da hitbox",
-    Desc = "Valor usado para mudar a hitbox dos inimigos.",
+    Desc = "Valor usado para mudar a hitbox (bola) dos inimigos.",
     Placeholder = "Ex: 10",
     Callback = function(v)
         local n = tonumber(v)
@@ -1032,7 +1031,7 @@ SectionHitbox:Space()
 
 SectionHitbox:Paragraph({
     Title = "Transparência",
-    Desc = "Determina o quão visível a hitbox ficará. 0 = visível; 1 = invisível.",
+    Desc = "Determina o quão visível a bola ficará.",
 })
 
 SectionHitbox:Slider({
