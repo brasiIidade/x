@@ -376,54 +376,116 @@ humanoidsection:Paragraph({
 
 
   humanoidsection:Button({
-    Title = "Anti-lag",
-    Desc = "Remove texturas do jogo para melhorar o FPS em dispositivos low-end. Essa ação é irreversivel.", 
+    Title = "Anti-lag (Performance Mode)",
+    Desc = "Executa uma otimização profunda no motor gráfico e limpa o mapa. Irreversível.",
     Callback = function()
+        -- Notificação de início
+        if Notify then Notify("Performance", "Iniciando otimização profunda...") end
+
+        local Players = game:GetService("Players")
         local Lighting = game:GetService("Lighting")
+        local Workspace = game:GetService("Workspace")
+        local RunService = game:GetService("RunService")
+        local Terrain = Workspace:FindFirstChildOfClass("Terrain")
+        local LocalPlayer = Players.LocalPlayer
+
+        -- 1. Configurações Globais do Motor (Core)
+        local settings = settings()
+        settings.Rendering.QualityLevel = 1
+        settings.Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level01
+        settings.Physics.PhysicsEnvironmentalThrottle = Enum.EnviromentalPhysicsThrottle.Disabled
+        if setfpscap then setfpscap(1000) end
+
+        -- 2. Iluminação e Clima (Gray Sky + Full Bright)
         Lighting.Brightness = 2
         Lighting.GlobalShadows = false
         Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
-        
-        for _, obj in pairs(Lighting:GetChildren()) do
-            if obj:IsA("PostEffect") or obj:IsA("BlurEffect") or obj:IsA("SunRaysEffect") then
+        Lighting.Ambient = Color3.new(1, 1, 1)
+
+        for _, obj in ipairs(Lighting:GetChildren()) do
+            if obj:IsA("PostEffect") or obj:IsA("Sky") or obj:IsA("Atmosphere") or obj:IsA("Clouds") then
                 obj:Destroy()
             end
         end
 
-        local terrain = workspace:FindFirstChildOfClass("Terrain")
-        if terrain then
-            terrain.Decoration = false
-            terrain.WaterWaveSize = 0
-            terrain.WaterWaveSpeed = 0
-            terrain.WaterReflectance = 0
-            pcall(function()
-                if sethiddenproperty then
-                    sethiddenproperty(terrain, "Decoration", false)
-                end
-            end)
+        local sky = Instance.new("Sky")
+        sky.SkyboxBk = "rbxassetid://114666145996289"
+        sky.SkyboxDn = "rbxassetid://114666145996289"
+        sky.SkyboxFt = "rbxassetid://114666145996289"
+        sky.SkyboxLf = "rbxassetid://114666145996289"
+        sky.SkyboxRt = "rbxassetid://114666145996289"
+        sky.SkyboxUp = "rbxassetid://114666145996289"
+        sky.SunAngularSize, sky.MoonAngularSize, sky.StarCount = 0, 0, 0
+        sky.Parent = Lighting
+
+        -- 3. Terreno
+        if Terrain then
+            Terrain.Decoration = false
+            Terrain.WaterWaveSize = 0
+            Terrain.WaterWaveSpeed = 0
+            Terrain.WaterReflectance = 0
+            pcall(function() sethiddenproperty(Terrain, "Decoration", false) end)
         end
 
-        for _, obj in ipairs(workspace:GetDescendants()) do
-            if not (LocalPlayer.Character and obj:IsDescendantOf(LocalPlayer.Character)) then
-                if obj:IsA("BasePart") then
-                    obj.Material = Enum.Material.SmoothPlastic
-                    obj.Reflectance = 0
-                    obj.CastShadow = false
-                elseif obj:IsA("Decal") or obj:IsA("Texture") then
+        -- 4. Função de Limpeza de Objetos (Materiais, Texturas, Emitters)
+        local function OptimizeObject(obj)
+            if LocalPlayer.Character and obj:IsDescendantOf(LocalPlayer.Character) then return end
+            
+            if obj:IsA("BasePart") then
+                obj.Material = Enum.Material.SmoothPlastic
+                obj.Reflectance = 0
+                obj.CastShadow = false
+            elseif obj:IsA("Decal") or obj:IsA("Texture") then
+                obj:Destroy()
+            elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Fire") or obj:IsA("Smoke") or obj:IsA("Sparkles") then
+                obj:Destroy()
+            elseif obj:IsA("MeshPart") then
+                pcall(function()
+                    local replacement = Instance.new("Part")
+                    replacement.Size = obj.Size
+                    replacement.CFrame = obj.CFrame
+                    replacement.Color = obj.Color
+                    replacement.Material = Enum.Material.SmoothPlastic
+                    replacement.Anchored = obj.Anchored
+                    replacement.CanCollide = obj.CanCollide
+                    replacement.Parent = obj.Parent
                     obj:Destroy()
-                elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Fire") or obj:IsA("Smoke") or obj:IsA("Sparkles") then
-                    obj:Destroy()
-                elseif obj:IsA("MeshPart") then
-                    obj.Material = Enum.Material.SmoothPlastic
+                end)
+            end
+        end
+
+        -- Varredura Inicial do Workspace
+        for _, obj in ipairs(Workspace:GetDescendants()) do
+            OptimizeObject(obj)
+        end
+
+        -- 5. Remover Animações de outros players
+        local function RemoveAnims()
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer and player.Character then
+                    local hum = player.Character:FindFirstChildOfClass("Humanoid")
+                    if hum then
+                        for _, track in pairs(hum:GetPlayingAnimationTracks()) do track:Stop() end
+                        local animator = hum:FindFirstChildOfClass("Animator")
+                        if animator then animator.Parent = nil end
+                    end
                 end
             end
         end
 
+        -- 6. Loop de Manutenção em Background (Loop a cada 10 segundos)
+        task.spawn(function()
+            while task.wait(10) do
+                RemoveAnims()
+                collectgarbage("collect")
+            end
+        end)
+
+        -- Monitorar novos itens adicionados ao mapa
+        Workspace.DescendantAdded:Connect(OptimizeObject)
+
         collectgarbage("collect")
-        
-        if Notify then
-            Notify("Anti-lag", "Sucesso.")
-        end
+        if Notify then Notify("Performance", "Otimização profunda concluída!") end
     end
 })
 
