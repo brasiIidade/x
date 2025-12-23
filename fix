@@ -375,57 +375,109 @@ humanoidsection:Paragraph({
     humanoidsection:Space()
 
 
-  humanoidsection:Button({
+  Tab:Button({
     Title = "Anti-lag",
-    Desc = "Remove texturas do jogo para melhorar o FPS em dispositivos low-end. Essa ação é irreversivel.", 
+    Desc = "Remove texturas e mesh's do jogo para melhorar o FPS em dispositivos low-end. Essa ação é irreversivel.", 
     Callback = function()
         local Lighting = game:GetService("Lighting")
+        local Terrain = Workspace:FindFirstChildOfClass("Terrain")
+
+        local settings = settings()
+        settings.Rendering.QualityLevel = 1
+        settings.Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level01
+        settings.Physics.PhysicsEnvironmentalThrottle = Enum.EnviromentalPhysicsThrottle.Disabled
+        if setfpscap then setfpscap(1000) end
+
         Lighting.Brightness = 2
         Lighting.GlobalShadows = false
         Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
-        
-        for _, obj in pairs(Lighting:GetChildren()) do
-            if obj:IsA("PostEffect") or obj:IsA("BlurEffect") or obj:IsA("SunRaysEffect") then
+        Lighting.Ambient = Color3.new(1, 1, 1)
+
+        for _, obj in ipairs(Lighting:GetChildren()) do
+            if obj:IsA("PostEffect") or obj:IsA("Sky") or obj:IsA("Atmosphere") or obj:IsA("Clouds") then
                 obj:Destroy()
             end
         end
 
-        local terrain = workspace:FindFirstChildOfClass("Terrain")
-        if terrain then
-            terrain.Decoration = false
-            terrain.WaterWaveSize = 0
-            terrain.WaterWaveSpeed = 0
-            terrain.WaterReflectance = 0
-            pcall(function()
-                if sethiddenproperty then
-                    sethiddenproperty(terrain, "Decoration", false)
-                end
+        local sky = Instance.new("Sky")
+        sky.SkyboxBk = "rbxassetid://114666145996289"
+        sky.SkyboxDn = "rbxassetid://114666145996289"
+        sky.SkyboxFt = "rbxassetid://114666145996289"
+        sky.SkyboxLf = "rbxassetid://114666145996289"
+        sky.SkyboxRt = "rbxassetid://114666145996289"
+        sky.SkyboxUp = "rbxassetid://114666145996289"
+        sky.SunAngularSize, sky.MoonAngularSize, sky.StarCount = 0, 0, 0
+        sky.Parent = Lighting
+
+        if Terrain then
+            Terrain.Decoration = false
+            Terrain.WaterWaveSize = 0
+            Terrain.WaterWaveSpeed = 0
+            Terrain.WaterReflectance = 0
+            pcall(function() 
+                if sethiddenproperty then 
+                    sethiddenproperty(Terrain, "Decoration", false) 
+                end 
             end)
         end
 
-        for _, obj in ipairs(workspace:GetDescendants()) do
-            if not (LocalPlayer.Character and obj:IsDescendantOf(LocalPlayer.Character)) then
-                if obj:IsA("BasePart") then
-                    obj.Material = Enum.Material.SmoothPlastic
-                    obj.Reflectance = 0
-                    obj.CastShadow = false
-                elseif obj:IsA("Decal") or obj:IsA("Texture") then
+        local function OptimizeObject(obj)
+            if LocalPlayer.Character and obj:IsDescendantOf(LocalPlayer.Character) then return end
+            
+            if obj:IsA("BasePart") then
+                obj.Material = Enum.Material.SmoothPlastic
+                obj.Reflectance = 0
+                obj.CastShadow = false
+            elseif obj:IsA("Decal") or obj:IsA("Texture") then
+                obj:Destroy()
+            elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Fire") or obj:IsA("Smoke") or obj:IsA("Sparkles") then
+                obj:Destroy()
+            elseif obj:IsA("MeshPart") then
+                pcall(function()
+                    local replacement = Instance.new("Part")
+                    replacement.Name = "no" .. obj.Name
+                    replacement.Size = obj.Size
+                    replacement.CFrame = obj.CFrame
+                    replacement.Color = obj.Color
+                    replacement.Material = Enum.Material.SmoothPlastic
+                    replacement.Anchored = obj.Anchored
+                    replacement.CanCollide = obj.CanCollide
+                    replacement.Parent = obj.Parent
                     obj:Destroy()
-                elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Fire") or obj:IsA("Smoke") or obj:IsA("Sparkles") then
-                    obj:Destroy()
-                elseif obj:IsA("MeshPart") then
-                    obj.Material = Enum.Material.SmoothPlastic
-                end
+                end)
             end
         end
 
+        for _, obj in ipairs(Workspace:GetDescendants()) do
+            OptimizeObject(obj)
+        end
+
+        Workspace.DescendantAdded:Connect(OptimizeObject)
+
+        task.spawn(function()
+            while task.wait(10) do
+                for _, player in ipairs(Players:GetPlayers()) do
+                    if player ~= LocalPlayer and player.Character then
+                        local hum = player.Character:FindFirstChildOfClass("Humanoid")
+                        if hum then
+                            for _, track in pairs(hum:GetPlayingAnimationTracks()) do track:Stop() end
+                            local animator = hum:FindFirstChildOfClass("Animator")
+                            if animator then animator.Parent = nil end
+                        end
+                    end
+                end
+                collectgarbage("collect")
+            end
+        end)
+
         collectgarbage("collect")
         
-        if Notify then
-            Notify("Anti-lag", "Sucesso.")
+        if Notify then 
+            Notify("Anti-lag", "Sucesso.") 
         end
     end
 })
+
 
 
 local playersection = TabA:Section({ 
