@@ -928,7 +928,7 @@ local function ResetHitbox(plr)
     if not HRP then return end
 
     HRP.Size = Vector3.new(2,2,1) 
-    HRP.Transparency = 0
+    HRP.Transparency = 1
     HRP.CanCollide = true
     HRP.Massless = false
 
