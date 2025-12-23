@@ -953,7 +953,7 @@ local function ApplyHitbox(plr)
     if HRP then
         -- MUDANÇAS AQUI:
         HRP.Shape = Enum.PartType.Ball -- Transforma em BOLA
-        HRP.Material = Enum.Material.Neon -- Muda o MATERIAL (Pode usar ForceField também)
+        HRP.Material = Enum.Material.ForceField -- Muda o MATERIAL (Pode usar ForceField também)
         
         HRP.Size = HitboxSize
         HRP.Transparency = HitboxTransparency
