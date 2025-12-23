@@ -1098,8 +1098,7 @@ SectionESP:Toggle({
 end
 
 
-
--- Auto JJ's
+-- Auto JJ's com Canguru
 
 local RemoteChat = {}
 local Connections = {}
@@ -1108,34 +1107,30 @@ local WC = game.WaitForChild
 local FFC = game.FindFirstChild
 
 local TextChatService = game:GetService("TextChatService")
-
+local Player = game:GetService("Players").LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui", 95)
 
 local CurrentChannel
 local InputBar = TextChatService:FindFirstChildOfClass("ChatInputBarConfiguration")
 
+-- Chat
 local Methods = {
     [Enum.ChatVersion.LegacyChatService] = function(Message)
         local ChatUI = PlayerGui:FindFirstChild("Chat")
-        
         if CurrentChannel then
             CurrentChannel:SendAsync(Message)
         elseif ChatUI then
             local ChatFrame = WC(ChatUI, "Frame", 95)
             local CBPF = WC(ChatFrame, "ChatBarParentFrame", 95)
-
             local Frame = WC(CBPF, "Frame", 95)
             local BF = WC(Frame, "BoxFrame", 95)
-
             local ChatFM = WC(BF, "Frame", 95)
             local ChatBar = FFC(ChatFM, "ChatBar", 95)
-
             ChatBar:CaptureFocus()
             ChatBar.Text = Message
             ChatBar:ReleaseFocus(true)
         end
     end,
-
     [Enum.ChatVersion.TextChatService] = function(Message)
         if CurrentChannel then
             CurrentChannel:SendAsync(Message)
@@ -1151,7 +1146,6 @@ if InputBar then
     table.insert(Connections, InputBar.Changed:Connect(function(Prop)
         if Prop == "TargetTextChannel" and InputBar.TargetTextChannel 
             and InputBar.TargetTextChannel:IsA("TextChannel") then
-
             CurrentChannel = InputBar.TargetTextChannel
         end
     end))
@@ -1161,172 +1155,85 @@ if InputBar then
     end
 end
 
-local Character = {}
+-- Character wrapper
+local CharWrapper = {}
+CharWrapper.__index = CharWrapper
 
-Character.__index = Character
+function CharWrapper.new(Player)
+    local self = setmetatable({}, CharWrapper)
+    self.Player = Player
+    self.Character = Player.Character or Player.CharacterAdded:Wait()
+    self.Humanoid = self.Character:WaitForChild("Humanoid", 95)
+    self.Root = self.Character:WaitForChild("HumanoidRootPart", 95)
 
-function Character.new(Player)
-	local self = setmetatable({}, Character)
-	
-	self.Player = Player
-	self.Connections = {}
-	
-	self.Character = Player.Character or Player.CharacterAdded:Wait()
-	self.Humanoid = self.Character:WaitForChild("Humanoid", 95)
-	self.Root = self.Character:WaitForChild("HumanoidRootPart", 95)
-	
-	table.insert(self.Connections, Player.CharacterAdded:Connect(function(Char)
-		self.Character = Char
-		self.Humanoid = Char:WaitForChild("Humanoid", 95)
-		self.Root = Char:WaitForChild("HumanoidRootPart", 95)
-	end))
-	
-	return self
+    self.SquatAnim = Instance.new("Animation")
+    self.SquatAnim.AnimationId = "rbxassetid://14414308598"
+    self.SquatTrack = self.Humanoid:LoadAnimation(self.SquatAnim)
+
+    table.insert(self.Player.CharacterAdded:Connect(function(Char)
+        self.Character = Char
+        self.Humanoid = Char:WaitForChild("Humanoid", 95)
+        self.Root = Char:WaitForChild("HumanoidRootPart", 95)
+        self.SquatTrack = self.Humanoid:LoadAnimation(self.SquatAnim)
+    end))
+    return self
 end
 
-function Character:ChangeHumanoidState(stateEnum)
-	if not self.Humanoid then return false end
-	
-	local success = pcall(function()
-		self.Humanoid:ChangeState(stateEnum)
-	end)
-	return success
-end
-
-function Character:Jump()
-	if not self.Humanoid then return false end
-	
-	local state = self.Humanoid:GetState()
-	if state == Enum.HumanoidStateType.Running
-	or state == Enum.HumanoidStateType.RunningNoPhysics
-	or state == Enum.HumanoidStateType.Landed then
-	
-		return self:ChangeHumanoidState(Enum.HumanoidStateType.Jumping)
-	end
-	
-	return false
-end
-
-local Char = Character.new(Player)
-
-local accentMap = {
-    ["á"]="Á",["à"]="À",["ã"]="Ã",["â"]="Â",
-    ["é"]="É",["ê"]="Ê",
-    ["í"]="Í",
-    ["ó"]="Ó",["ô"]="Ô",["õ"]="Õ",
-    ["ú"]="Ú",
-    ["ç"]="Ç"
-}
-
-local function unicodeUpper(str)
-    local out = {}
-    for _,c in utf8.codes(str) do
-        local ch = utf8.char(c)
-        out[#out+1] = accentMap[ch] or string.upper(ch)
+function CharWrapper:Jump()
+    if self.Humanoid then
+        self.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
     end
-    return table.concat(out)
 end
 
-local units = {
-    [0]="zero",[1]="um",[2]="dois",[3]="três",[4]="quatro",[5]="cinco",
-    [6]="seis",[7]="sete",[8]="oito",[9]="nove",[10]="dez",[11]="onze",
-    [12]="doze",[13]="treze",[14]="catorze",[15]="quinze",[16]="dezesseis",
-    [17]="dezessete",[18]="dezoito",[19]="dezenove"
-}
-
-local tens = {
-    [2]="vinte",[3]="trinta",[4]="quarenta",[5]="cinquenta",
-    [6]="sessenta",[7]="setenta",[8]="oitenta",[9]="noventa"
-}
-
-local hundreds = {
-    [1]="cento",[2]="duzentos",[3]="trezentos",[4]="quatrocentos",
-    [5]="quinhentos",[6]="seiscentos",[7]="setecentos",[8]="oitocentos",
-    [9]="novecentos"
-}
-
-local scales_singular = {
-    [1]="mil",[2]="milhão",[3]="bilhão",[4]="trilhão",[5]="quatrilhão"
-}
-
-local scales_plural = {
-    [1]="mil",[2]="milhões",[3]="bilhões",[4]="trilhões",[5]="quatrilhões"
-}
-
-local function threeDigitToWords(n)
-    if n == 0 then return "" end
-    if n == 100 then return "cem" end
-
-    local h = math.floor(n / 100)
-    local rest = n % 100
-    local parts = {}
-
-    if h > 0 then table.insert(parts, hundreds[h]) end
-
-    if rest < 20 then
-        if rest > 0 then table.insert(parts, units[rest]) end
-    else
-        table.insert(parts, tens[math.floor(rest/10)])
-        local u = rest % 10
-        if u > 0 then table.insert(parts, units[u]) end
+function CharWrapper:DoCanguru()
+    if self.SquatTrack then
+        self.SquatTrack:Play()
+        task.wait(0.25)
+        self.SquatTrack:Stop()
     end
+    self:Jump()
 
-    return table.concat(parts, " e ")
+    task.delay(0.05, function()
+        if not self.Root then return end
+        local bav = Instance.new("BodyAngularVelocity")
+        bav.MaxTorque = Vector3.new(0, math.huge, 0)
+        bav.AngularVelocity = Vector3.new(
+            0,
+            math.rad(math.random(340,380)),
+            0
+        )
+        bav.Parent = self.Root
+        task.wait(0.25)
+        bav:Destroy()
+    end)
 end
 
-local function numberToWords(num)
-    num = tonumber(num)
-    if not num then return "NÚMERO INVÁLIDO" end
-    if num == 0 then return "ZERO" end
+local Char = CharWrapper.new(Player)
 
-    local groups = {}
-    while num > 0 do
-        table.insert(groups, num % 1000)
-        num = math.floor(num / 1000)
-    end
-
-    local parts = {}
-    for i = #groups,1,-1 do
-        local val = groups[i]
-        if val ~= 0 then
-            local text = threeDigitToWords(val)
-            if i > 1 then
-                local scale = (val==1) and scales_singular[i-1] or scales_plural[i-1]
-                if i == 2 and val == 1 then
-                    text = "mil"
-                else
-                    text = text.." "..scale
-                end
-            end
-            table.insert(parts, text)
-        end
-    end
-
-    return unicodeUpper(table.concat(parts, " e "))
+-- Conversão de números para palavras (simplificada)
+local function numberToWords(n)
+    local units = {"ZERO","UM","DOIS","TRÊS","QUATRO","CINCO","SEIS","SETE","OITO","NOVE","DEZ"}
+    return units[math.clamp(n,0,#units)]
 end
 
-
+-- CONFIGURAÇÕES DO JJ
 local running = false
 local startValue = 1
-local endValue   = 100
-
-local delayValue = 1.5              
-local randomDelayEnabled = false    
-local randomMin = 1                 
-local randomMax = 3                
-
-local jumpEnabled = false           
-local spacingEnabled = false        
-
-local reverseEnabled = false        
-
+local endValue = 10
+local delayValue = 1.5
+local jumpEnabled = false
+local spacingEnabled = false
 local finishInTimeEnabled = false
 local finishTotalTime = 60
-
 local suffix = "!"
 local customSuffix = ""
+local randomDelayEnabled = false
+local randomMin = 1
+local randomMax = 3
+local reverseEnabled = false
+local jjMode = "Normal" -- Normal ou Canguru
 
-
+-- UI
 do
     local Auto = AutoSection:Tab({
         Title = "Auto JJ's",
@@ -1337,39 +1244,25 @@ do
     local ETAParagraph = Auto:Paragraph({
         Title = "Tempo",
         Desc  = "Aguardando...",
-        Color = "Green",
-        Image = "",
-        ImageSize = 0,
-        Thumbnail = "",
-        ThumbnailSize = 0,
-        Locked = false,
+        Color = "Green"
     })
 
     local function updateETA(remaining, secondsLeft)
         ETAParagraph:SetTitle("Tempo")
         ETAParagraph:SetDesc(
-            string.format(
-                "Restando: %d JJ's\nTempo estimado: %.1f segundos",
-                remaining,
-                math.max(secondsLeft, 0)
-            )
+            string.format("Restando: %d JJ's\nTempo estimado: %.1f segundos", remaining, math.max(secondsLeft,0))
         )
     end
 
--- Section de JJ's
+    local JJs = Auto:Section({Title = "Essenciais"})
 
-local JJs = Auto:Section({
-        Title = "Essenciais"
-    })
-
+    -- Toggle Auto JJ's
     JJs:Toggle({
         Title = "Auto JJ's",
         Callback = function(v)
             running = v
-
             if running then
                 task.spawn(function()
-
                     local i = startValue
                     local limit = endValue
                     local step = 1
@@ -1380,8 +1273,7 @@ local JJs = Auto:Section({
                         step = -1
                     end
 
-                    local totalJJ = math.abs(endValue - startValue) + 1
-
+                    local totalJJ = math.abs(endValue - startValue)+1
                     local forcedDelay = nil
                     local estimatedFinishTime = 0
 
@@ -1395,187 +1287,96 @@ local JJs = Auto:Section({
 
                     for num = i, limit, step do
                         if not running then break end
-
                         executed += 1
                         local remaining = totalJJ - executed
 
                         if finishInTimeEnabled then
-                            countdown = finishTotalTime - (executed * forcedDelay)
+                            countdown = finishTotalTime - (executed*forcedDelay)
                         else
                             local avgDelay = randomDelayEnabled
-                                and ((randomMin + randomMax) / 2)
+                                and ((randomMin + randomMax)/2)
                                 or delayValue
-
                             countdown = remaining * avgDelay
                         end
 
                         updateETA(remaining, countdown)
 
-                        -- MENSAGEM
-
+                        -- Mensagem
                         local word = numberToWords(num)
                         local finalSuffix = (customSuffix ~= "" and customSuffix) or suffix
-                        local msg = spacingEnabled and (word .. " " .. finalSuffix) or (word .. finalSuffix)
-
+                        local msg = spacingEnabled and (word.." "..finalSuffix) or (word..finalSuffix)
                         RemoteChat:Send(msg)
 
-                        -- PULAR
-                        if jumpEnabled then
+                        -- Ação
+                        if jjMode == "Canguru" then
+                            Char:DoCanguru()
+                        elseif jumpEnabled then
                             Char:Jump()
                         end
 
+                        -- Delay
                         if finishInTimeEnabled and forcedDelay then
                             task.wait(forcedDelay)
                             continue
                         end
-
                         if randomDelayEnabled then
-                            local steps = math.floor((randomMax - randomMin) / 0.1)
+                            local steps = math.floor((randomMax-randomMin)/0.1)
                             if steps < 0 then steps = 0 end
-
-                            local randStep = math.random(0, steps)
-                            local delay = randomMin + (randStep * 0.1)
-
-                            task.wait(delay)
+                            local randStep = math.random(0,steps)
+                            task.wait(randomMin + (randStep*0.1))
                         else
                             task.wait(delayValue)
                         end
                     end
 
-                    updateETA(0, 0)
+                    updateETA(0,0)
                 end)
             end
         end
     })
-    JJs:Space()
 
+    -- Input Inicial
     JJs:Input({
         Title = "Inicial",
         Placeholder = "Ex: 1",
-        Callback = function(v)
-if v == "" then return end
-            startValue = tonumber(v) or 1
-        end
+        Callback = function(v) startValue = tonumber(v) or 1 end
     })
 
+    -- Input Final
     JJs:Input({
         Title = "Final",
         Placeholder = "Ex: 100",
-        Callback = function(v)
-if v == "" then return end
-            endValue = tonumber(v) or 100
-        end
+        Callback = function(v) endValue = tonumber(v) or 100 end
     })
 
-JJs:Toggle({
-        Title = "Pular",
-        Desc = "Pular ao enviar JJ's.",
-        Callback = function(v)
-            jumpEnabled = v
-        end
+    -- Toggle Pular
+    JJs:Toggle({Title="Pular", Callback=function(v) jumpEnabled=v end})
+    -- Toggle Espaçamento
+    JJs:Toggle({Title="Espaçamento", Callback=function(v) spacingEnabled=v end})
+    -- Dropdown Modo JJ
+    JJs:Dropdown({
+        Title="Modo de JJ",
+        Values={"Normal","Canguru"},
+        Value="Normal",
+        Callback=function(v) jjMode=v end
     })
 
-JJs:Toggle({
-        Title = "Espaçamento",
-        Desc = "Separa o sufixo do número. (Ex: UM !)",
-        Callback = function(v)
-            spacingEnabled = v
-        end
-    })
-JJs:Space()
+    -- Intervalos
+    local intervalos = Auto:Section({Title="Intervalo"})
+    intervalos:Input({Title="Intervalo fixo (segundos)", Placeholder="Ex:1.5", Callback=function(v) delayValue=tonumber(v) or 1.5 end})
+    intervalos:Toggle({Title="Intervalo dinâmico", Callback=function(v) randomDelayEnabled=v end})
+    intervalos:Input({Title="Valor mínimo", Placeholder="Ex:1", Callback=function(v) randomMin=tonumber(v) or 1 end})
+    intervalos:Input({Title="Valor máximo", Placeholder="Ex:3", Callback=function(v) randomMax=tonumber(v) or 3 end})
 
-JJs:Toggle({
-        Title = "Intervalo inteligente",
-        Desc  = "Ignora todos os intervalos e termina exatamente no tempo indicado.",
-        Callback = function(v)
-            finishInTimeEnabled = v
-        end
-    })
-
-    JJs:Input({
-        Title = "Tempo (segundos)",
-        Placeholder = "Ex: 100",
-        Callback = function(v)
-if v == "" then return end
-            finishTotalTime = tonumber(v) or 60
-        end
-    })
-JJs:Space()
-
-JJs:Dropdown({
-        Title = "Sufixo",
-        Values = { "!", "?", ".", ",", "/" },
-        Value = "!",
-        Callback = function(v)
-            suffix = v
-        end
-    })
-JJs:Space()
-
-    JJs:Input({
-        Title = "Sufixo customizado",
-        Placeholder = "Ex: @",
-        Callback = function(v)
-            customSuffix = tostring(v or "")
-        end
-    })
-
--- Section dos intervalos
-
-local intervalos = Auto:Section({
-        Title = "Intervalo"
-    })
-
-    intervalos:Input({
-        Title = "Intervalo fixo (segundos)",
-        Placeholder = "Ex: 1.5",
-        Callback = function(v)
-if v == "" then return end
-            delayValue = tonumber(v) or 1.5
-        end
-    })
-intervalos:Space()
-
-    intervalos:Toggle({
-        Title = "Intervalo dinâmico",
-        Desc  = "Usa um intervalo aleatório entre mínimo e máximo.",
-        Callback = function(v)
-            randomDelayEnabled = v
-        end
-    })
-
-    intervalos:Input({
-        Title = "Valor mínimo",
-        Placeholder = "Ex: 1",
-        Callback = function(v)
-if v == "" then return end
-            randomMin = tonumber(v) or 1
-        end
-    })
-
-    intervalos:Input({
-        Title = "Valor máximo",
-        Placeholder = "Ex: 3",
-        Callback = function(v)
-if v == "" then return end
-            randomMax = tonumber(v) or 3
-        end
-    })
-
--- Section Extras
-
-local Extras = Auto:Section({
-        Title = "Extras"
-    })
-
-    Extras:Toggle({
-        Title = "Modo reverso",
-        Desc  = "Conta de trás pra frente.",
-        Callback = function(v)
-            reverseEnabled = v
-        end
-    })
+    -- Extras
+    local Extras = Auto:Section({Title="Extras"})
+    Extras:Toggle({Title="Modo reverso", Callback=function(v) reverseEnabled=v end})
+    JJs:Toggle({Title="Intervalo inteligente", Callback=function(v) finishInTimeEnabled=v end})
+    JJs:Input({Title="Tempo (segundos)", Placeholder="Ex:100", Callback=function(v) finishTotalTime=tonumber(v) or 60 end})
+    JJs:Dropdown({Title="Sufixo", Values={"!","?",".",",","/"}, Value="!", Callback=function(v) suffix=v end})
+    JJs:Input({Title="Sufixo customizado", Placeholder="Ex:@", Callback=function(v) customSuffix=tostring(v or "") end})
 end
+
 
 
 -- VOLVERS
