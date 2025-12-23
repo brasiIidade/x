@@ -375,7 +375,7 @@ humanoidsection:Paragraph({
     humanoidsection:Space()
 
 
-  Tab:Button({
+  humanoidsection:Button({
     Title = "Anti-lag",
     Desc = "Remove texturas e mesh's do jogo para melhorar o FPS em dispositivos low-end. Essa ação é irreversivel.", 
     Callback = function()
