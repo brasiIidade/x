@@ -1322,22 +1322,21 @@ end
 
 -- Função Canguru
 local function CanguruJJ(num)
-    -- 1️⃣ Mensagem
+    -- Mensagem
     local word = numberToWords(num)
     local finalSuffix = (customSuffix ~= "" and customSuffix) or suffix
     local msg = spacingEnabled and (word .. " " .. finalSuffix) or (word .. finalSuffix)
     RemoteChat:Send(msg)
 
-    -- 2️⃣ Animação de agachar
+    -- Animação de agachar
     if Char.SquatTrack then
         Char.SquatTrack:Play()
         task.wait(0.3)
         Char.SquatTrack:Stop()
     end
 
-    -- 3️⃣ Pulo
+    -- Pulo e giro
     if Char:Jump() then
-        -- 4️⃣ Giro no ar
         local bodyGyro = Instance.new("BodyGyro")
         bodyGyro.MaxTorque = Vector3.new(400000,400000,400000)
         bodyGyro.P = 10000
@@ -1379,7 +1378,7 @@ local finishTotalTime = 60
 
 local suffix = "!"
 local customSuffix = ""
-local sufixoSelecionado = "!"
+local tipoJJSelecionado = "JJ padrão"
 
 do
     local Auto = AutoSection:Tab({
@@ -1429,7 +1428,6 @@ do
                     end
 
                     local totalJJ = math.abs(endValue - startValue) + 1
-
                     local forcedDelay = nil
                     local estimatedFinishTime = 0
 
@@ -1458,9 +1456,10 @@ do
                         updateETA(remaining, countdown)
 
                         -- Executa o JJ selecionado
-                        if sufixoSelecionado == "Canguru" then
+                        if tipoJJSelecionado == "Canguru" then
                             CanguruJJ(num)
                         else
+                            -- JJ padrão
                             local word = numberToWords(num)
                             local finalSuffix = (customSuffix ~= "" and customSuffix) or suffix
                             local msg = spacingEnabled and (word .. " " .. finalSuffix) or (word .. finalSuffix)
@@ -1530,6 +1529,17 @@ do
 
     JJs:Space()
 
+    JJs:Dropdown({
+        Title = "Tipo de JJ",
+        Values = { "JJ padrão", "Canguru" },
+        Value = "JJ padrão",
+        Callback = function(v)
+            tipoJJSelecionado = v
+        end
+    })
+
+    JJs:Space()
+
     JJs:Toggle({
         Title = "Intervalo inteligente",
         Desc  = "Ignora todos os intervalos e termina exatamente no tempo indicado.",
@@ -1551,10 +1561,10 @@ do
 
     JJs:Dropdown({
         Title = "Sufixo",
-        Values = { "!", "?", ".", ",", "/", "Canguru" },
+        Values = { "!", "?", ".", ",", "/" },
         Value = "!",
         Callback = function(v)
-            sufixoSelecionado = v
+            suffix = v
         end
     })
 
@@ -1568,7 +1578,7 @@ do
         end
     })
 
-    -- Section dos intervalos
+    -- Intervalos
     local intervalos = Auto:Section({ Title = "Intervalo" })
 
     intervalos:Input({
@@ -1608,7 +1618,7 @@ do
         end
     })
 
-    -- Section Extras
+    -- Extras
     local Extras = Auto:Section({ Title = "Extras" })
 
     Extras:Toggle({
