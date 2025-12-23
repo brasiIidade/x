@@ -361,173 +361,17 @@ humanoidsection:Paragraph({
                     pcall(function() NoClipConn:Disconnect() end)
                 end
                 NoClipConn = RunService.Stepped:Connect(NoClip)
-                Notify("Noclip", "Ativado.")
+                Notify("Noclip", "[NOCLIP] Ativado")
             else
                 CanCollide = true
                 if NoClipConn then
                     pcall(function() NoClipConn:Disconnect() end)
                     NoClipConn = nil
                 end
-                Notify("Noclip", "Desativado.")
+                Notify("Noclip", "[NOCLIP] Desativado")
             end
         end
     })
-    humanoidsection:Space()
-
-    humanoidsection:Button({
-    Title = "Anti-lag",
-    Desc = "Realiza uma otimização profunda para melhorar o jogo em dispositivos low-end. Essa ação é irreversivel.",
-    Callback = function()
-        -- Notificação de início
-        if Notify then Notify("Anti-lag", "Seu jogo pode travar por um momento.") end
-
-        local Lighting = game:GetService("Lighting")
-        local StarterGui = game:GetService("StarterGui")
-        local PhysicsService = game:GetService("PhysicsService")
-        local Terrain = Workspace:FindFirstChildOfClass("Terrain")
-
-        -- Configuração Interna
-        local Config = {
-            MAX_DISTANCE = 50,
-            FPS_THRESHOLD = 30,
-            GRAY_SKY_ID = "rbxassetid://114666145996289",
-            FPS_CAP = 1000,
-            MEMORY_CLEANUP_THRESHOLD = 500,
-            REDUCE_PLAYER_REPLICATION_DISTANCE = 100
-        }
-
-        -- [ Imagem ilustrativa da hierarquia de renderização do Roblox para otimização ]
-
-        -- Funções de Suporte
-        local function shouldSkip(instance)
-            if instance:IsDescendantOf(LocalPlayer.Character) then return true end
-            local parent = instance.Parent
-            while parent do
-                if parent:IsA("Model") and Players:GetPlayerFromCharacter(parent) then return true end
-                parent = parent.Parent
-            end
-            return false
-        end
-
-        -- 1. Otimização de Materiais e Texturas
-        local function globalOptimize()
-            for _, obj in ipairs(Workspace:GetDescendants()) do
-                if not shouldSkip(obj) then
-                    if obj:IsA("BasePart") then
-                        obj.Material = Enum.Material.SmoothPlastic
-                        obj.Reflectance = 0
-                        obj.CastShadow = false
-                    elseif obj:IsA("Decal") or obj:IsA("Texture") or obj:IsA("SurfaceAppearance") then
-                        obj:Destroy()
-                    elseif obj:IsA("MeshPart") then
-                        obj.Material = Enum.Material.SmoothPlastic
-                    elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Fire") or obj:IsA("Smoke") or obj:IsA("Sparkles") then
-                        obj.Enabled = false
-                    end
-                end
-            end
-        end
-
-        -- 2. Clima e Iluminação (Full Bright + Gray Sky)
-        local function optimizeLighting()
-            Lighting.Brightness = 2
-            Lighting.GlobalShadows = false
-            Lighting.ExposureCompensation = 0
-            Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
-            Lighting.Ambient = Color3.new(1, 1, 1)
-
-            for _, effect in pairs(Lighting:GetChildren()) do
-                if effect:IsA("PostEffect") or effect:IsA("Sky") or effect:IsA("Atmosphere") or effect:IsA("Clouds") then
-                    effect:Destroy()
-                end
-            end
-
-            local sky = Instance.new("Sky")
-            sky.SkyboxBk = Config.GRAY_SKY_ID
-            sky.SkyboxDn = Config.GRAY_SKY_ID
-            sky.SkyboxFt = Config.GRAY_SKY_ID
-            sky.SkyboxLf = Config.GRAY_SKY_ID
-            sky.SkyboxRt = Config.GRAY_SKY_ID
-            sky.SkyboxUp = Config.GRAY_SKY_ID
-            sky.SunAngularSize, sky.MoonAngularSize, sky.StarCount = 0, 0, 0
-            sky.Parent = Lighting
-        end
-
-        -- 3. Otimização de Física e Motor (Core)
-        local function optimizeEngine()
-            local set = settings()
-            set.Rendering.QualityLevel = 1
-            set.Physics.PhysicsEnvironmentalThrottle = Enum.EnviromentalPhysicsThrottle.Enabled
-            set.Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level01
-            set.Rendering.TextureQuality = Enum.TextureQuality.Low
-            if setfpscap then setfpscap(Config.FPS_CAP) end
-
-            if Terrain then
-                Terrain.Decoration = false
-                Terrain.WaterWaveSize = 0
-                Terrain.WaterWaveSpeed = 0
-                Terrain.WaterReflectance = 0
-                pcall(function() sethiddenproperty(Terrain, "Decoration", false) end)
-            end
-        end
-
-        -- 4. Rede e Replicação
-        local function optimizeNetwork()
-            settings().Network.StreamingEnabled = true
-            for _, obj in ipairs(Workspace:GetDescendants()) do
-                if obj:IsA("BasePart") and obj.Anchored and not shouldSkip(obj) then
-                    pcall(function() obj:SetNetworkOwner(nil) end)
-                end
-            end
-        end
-
-        -- 5. Remover Animações de Outros Players
-        local function cleanAnimations()
-            for _, player in ipairs(Players:GetPlayers()) do
-                if player ~= LocalPlayer and player.Character then
-                    local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-                    if humanoid then
-                        for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do track:Stop() end
-                        local animator = humanoid:FindFirstChildOfClass("Animator")
-                        if animator then animator.Parent = nil end
-                    end
-                end
-            end
-        end
-
-        -- Execução em Massa
-        globalOptimize()
-        optimizeLighting()
-        optimizeEngine()
-        optimizeNetwork()
-        cleanAnimations()
-        collectgarbage("collect")
-
-        -- Loop de Manutenção (Background)
-        task.spawn(function()
-            while true do
-                cleanAnimations()
-                if collectgarbage("count") > Config.MEMORY_CLEANUP_THRESHOLD then
-                    collectgarbage("collect")
-                end
-                task.wait(15)
-            end
-        end)
-
-        -- Monitorar novos objetos
-        Workspace.DescendantAdded:Connect(function(obj)
-            task.wait(0.1)
-            if not shouldSkip(obj) then
-                if obj:IsA("BasePart") then
-                    obj.Material = Enum.Material.SmoothPlastic
-                elseif obj:IsA("Decal") or obj:IsA("Texture") then
-                    obj:Destroy()
-                end
-            end
-        end)
-})
-
-
 
 local playersection = TabA:Section({ 
     Title = "Players"
