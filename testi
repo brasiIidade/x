@@ -3371,7 +3371,6 @@ end -- Tab do tevez
 
 if DELTA_MAPA then
 do
-
 	local DeltaApenas = Window:Section({
 		Title = "[EB] Delta",
 		Desc = "Exclusivos do jogo",
@@ -3379,16 +3378,16 @@ do
 		IconColor = Color3.fromHex("#1C3811")
 	})
 
-	local DeltaDinheiroInfinito = DeltaApenas:Tab({
+	local DeltaInfinito = DeltaApenas:Tab({
 		Title = "Dinheiro infinito",
 		Icon = "lucide:infinity",
 		IconColor = Color3.fromHex("#12E038"),
 		Locked = false,
 	})
 
-	DeltaDinheiroInfinito:Button({
+	local Button = DeltaInfinito:Button({
 		Title = "Receber",
-		Desc = "Obs: o jogo irá reiniciar.",
+		Desc = "Aplica e reconecta",
 		Locked = false,
 		Callback = function()
 			ReplicatedStorage
@@ -3398,7 +3397,7 @@ do
 				:WaitForChild("DecrementMoney")
 				:FireServer(-1000000, "BuyMilitaryPass")
 
-			task.spawn(function()
+			task.defer(function()
 				TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
 			end)
 		end
