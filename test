@@ -3369,47 +3369,54 @@ end -- Tab do tevez
 
 
 if DELTA_MAPA then
-	do
-		local DeltaApenas = Window:Section({
-			Title = "[EB] Delta",
-			Desc = "Exclusivos do jogo",
-			Icon = "lucide:gamepad-2",
-			IconColor = Color3.fromHex("#1C3811")
-		})
+do
+local DeltaApenas = Window:Section({
+Title = "[EB] Delta",
+Desc = "Exclusivos do jogo",
+Icon = "lucide:gamepad-2",
+IconColor = Color3.fromHex("#1C3811")
+})
 
-		DeltaApenas:Button({
-			Title = "Receber",
-			Desc = "Ao clicar, você estará com 1 milhão de dinheiro (o máximo)",
-			Locked = false,
-			Callback = function()
-				local dinheiroObj = player:WaitForChild("leaderstats"):WaitForChild("Dinheiro")
-				local valorAtual
+local DeltaDinheiroInfinito = DeltaApenas:Tab({
+    Title = "Dinheiro infinito",
+    Icon = "lucide:infinity",
+    IconColor = Color3.fromHex("#12E038"),
+    Locked = false,
+})
 
-				if typeof(dinheiroObj.Value) == "number" then
-					valorAtual = dinheiroObj.Value
-				else
-					local str = tostring(dinheiroObj.Value):upper()
-					if str:find("K") then
-						valorAtual = tonumber(str:gsub("K", "")) * 1000
-					elseif str:find("M") then
-						valorAtual = tonumber(str:gsub("M", "")) * 1000000
-					else
-						valorAtual = tonumber(str) or 0
-					end
-				end
+DeltaDinheiroInfinito:Button({  
+		Title = "Receber",  
+		Desc = "Ao clicar, você estará com 1 milhão de dinheiro (o máximo)",  
+		Locked = false,  
+		Callback = function()  
+			local dinheiroObj = player:WaitForChild("leaderstats"):WaitForChild("Dinheiro")  
+			local valorAtual  
 
-				local falta = 1000000 - valorAtual
-				if falta <= 0 then return end
+			if typeof(dinheiroObj.Value) == "number" then  
+				valorAtual = dinheiroObj.Value  
+			else  
+				local str = tostring(dinheiroObj.Value):upper()  
+				if str:find("K") then  
+					valorAtual = tonumber(str:gsub("K", "")) * 1000  
+				elseif str:find("M") then  
+					valorAtual = tonumber(str:gsub("M", "")) * 1000000  
+				else  
+					valorAtual = tonumber(str) or 0  
+				end  
+			end  
 
-				ReplicatedStorage
-					:WaitForChild("Remotes")
-					:WaitForChild("Events")
-					:WaitForChild("Economy")
-					:WaitForChild("DecrementMoney")
-					:FireServer(-falta, "BuyMilitaryPass")
-			end
-		})
-	end
+			local falta = 1000000 - valorAtual  
+			if falta <= 0 then return end  
+
+			ReplicatedStorage  
+				:WaitForChild("Remotes")  
+				:WaitForChild("Events")  
+				:WaitForChild("Economy")  
+				:WaitForChild("DecrementMoney")  
+				:FireServer(-falta, "BuyMilitaryPass")  
+		end  
+	})  
+end
 end
 
 
