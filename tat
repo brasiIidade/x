@@ -3390,12 +3390,12 @@ do
 		Desc = "Aplica e reconecta",
 		Locked = false,
 		Callback = function()
-			ReplicatedStorage
-				:WaitForChild("Remotes")
-				:WaitForChild("Events")
-				:WaitForChild("Economy")
-				:WaitForChild("DecrementMoney")
-				:FireServer(-1000000, "BuyMilitaryPass")
+			local args = {
+	-1000000,
+	"BuyMilitaryPass"
+}
+game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("Events"):WaitForChild("Economy"):WaitForChild("DecrementMoney"):FireServer(unpack(args))
+
 
 			task.defer(function()
 				TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
