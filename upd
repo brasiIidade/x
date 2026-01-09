@@ -3714,7 +3714,7 @@ local function setupChatToggle()
 end
 
 configuracoes:Toggle({
-    Title = "Ativar Botão Abrir",
+    Title = "Botão de abrir",
     Desc = "Se desativado, o botão flutuante nunca aparecerá.",
     Value = true,
     Callback = function(state)
@@ -3791,7 +3791,7 @@ configuracoes:Input({
 })
 
 setupKeybind()
-
+end
 
 do
     local TestSection = Window:Section({
