@@ -93,18 +93,6 @@ local Window = WindUI:CreateWindow({
         Height = 30,
         ButtonsType = "Mac",
     },
- OpenButton = {
-        Title = "Abrir",
-        CornerRadius = UDim.new(1,0),
-        StrokeThickness = 3,
-        Enabled = true,
-        Draggable = true,
-        OnlyMobile = false,
-        Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(170, 90, 255)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(120, 60, 255))
-        })
-    }
 })
 
 local SecretWord = "/e" 
@@ -3673,71 +3661,23 @@ end
 
 local configuracoes = Window:Tab({ Title = "Configurações", Icon = "geist:settings-gear", IconColor = Grey })
 
-local MasterVisible = true
-local WindowVisible = true
-local OpenButtonEnabled = true
-
-local function UpdateUI()
-    if not MasterVisible then
-        Window:Toggle(false)
-        Window:EditOpenButton({ Enabled = false })
-        return
-    end
-
-    if WindowVisible then
-        Window:Toggle(true)
-        Window:EditOpenButton({ Enabled = false })
-    else
-        Window:Toggle(false)
-        Window:EditOpenButton({ Enabled = OpenButtonEnabled })
-    end
-end
-
-local function ToggleMaster()
-    MasterVisible = not MasterVisible
-    UpdateUI()
-end
-
-local function ToggleKeybind()
-    if not MasterVisible then return end
-    WindowVisible = not WindowVisible
-    UpdateUI()
-end
-
-local function setupChatToggle()
-    if _G.ChatConnection then _G.ChatConnection:Disconnect() end
-    _G.ChatConnection = Players.LocalPlayer.Chatted:Connect(function(msg)
-        if msg == SecretWord then
-            ToggleMaster()
-        end
-    end)
-end
-
-configuracoes:Toggle({
-    Title = "Botão de abrir",
-    Desc = "Se desativado, o botão flutuante nunca aparecerá.",
-    Value = true,
-    Callback = function(state)
-        OpenButtonEnabled = state
-        UpdateUI()
-    end
-})
-
 configuracoes:Input({
     Title = "Palavra secreta",
     Desc = "Palavra ou frase que será digitada no chat para abrir / fechar a UI. Padrão: /e",
     Placeholder = "Ex: /e",
     Callback = function(v)
-        if v == "" then return end
+if v == "" then return end
         local has_space = string.find(v or "", "%s")
         local is_empty = string.len(v or "") == 0
         
         if not is_empty and not has_space then
             SecretWord = v
             setupChatToggle()
-            Notify("Palavra Secreta", "Definida para: " .. v)
+            Notify("Palavra Secreta", "Definida para: " .. v .. " para abrir a UI.")
         else
+            -- Notificação de erro
             Notify("Erro", "A palavra secreta não pode ser vazia nem conter espaços.")
+            
             SecretWord = "/e"
             setupChatToggle()
             Notify("Palavra Secreta", "Resetada para: /e")
@@ -3745,9 +3685,10 @@ configuracoes:Input({
     end
 })
 
+
 local KeybindKey = Enum.KeyCode.Z 
 local KeybindConnection = nil 
-local KeybindInitialized = false 
+local KeybindInitialized = false -- Novo controle de inicialização
 
 local function setupKeybind()
     if KeybindConnection then
@@ -3757,8 +3698,10 @@ local function setupKeybind()
 
     KeybindConnection = UIS.InputBegan:Connect(function(input, gameProcessed)
         if gameProcessed then return end
+
         if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == KeybindKey then
-            ToggleKeybind()
+            
+            Window:Toggle()
         end
     end)
     
@@ -3767,6 +3710,7 @@ local function setupKeybind()
     end
 end
 
+
 configuracoes:Input({
     Title = "Keybind",
     Desc = "Tecla para abrir e fechar a UI (Apenas letras).",
@@ -3774,7 +3718,11 @@ configuracoes:Input({
     Placeholder = tostring(KeybindKey),
     Callback = function(v)
         local keyName = string.upper(string.gsub(v or "", "%s+", ""))
-        if string.len(keyName) == 0 then return end
+        
+        if string.len(keyName) == 0 then
+            Notify("Erro", "A Keybind não pode ser vazia.")
+            return
+        end
 
         local success, newKeybind = pcall(function()
             return Enum.KeyCode[keyName]
@@ -3785,13 +3733,10 @@ configuracoes:Input({
             setupKeybind()
             KeybindInitialized = true
         else
-            Notify("Erro", "Tecla inválida.")
+            Notify("Erro", "Tecla '" .. keyName .. "' inválida. Use apenas letras (A-Z).")
         end
     end
 })
-
-setupKeybind()
-end
 
 
 do
