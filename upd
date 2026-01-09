@@ -3673,14 +3673,13 @@ end
 
 local configuracoes = Window:Tab({ Title = "Configurações", Icon = "geist:settings-gear", IconColor = Grey })
 
-
 local WindowVisible = true
 
 local function ToggleUI()
     WindowVisible = not WindowVisible
     
     Window:Toggle()
-    
+
     Window:EditOpenButton({
         Enabled = not WindowVisible
     })
