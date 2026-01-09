@@ -3671,6 +3671,8 @@ end
 
 -- Configurações
 
+Local configuracoes = Window:Tab({ Title = "Configurações", Icon = "geist:settings-gear", IconColor = Grey })
+
 local MasterVisible = true
 local WindowVisible = true
 local OpenButtonEnabled = true
