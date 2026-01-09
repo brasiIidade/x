@@ -3671,7 +3671,7 @@ end
 
 -- Configurações
 
-Local configuracoes = Window:Tab({ Title = "Configurações", Icon = "geist:settings-gear", IconColor = Grey })
+local configuracoes = Window:Tab({ Title = "Configurações", Icon = "geist:settings-gear", IconColor = Grey })
 
 local MasterVisible = true
 local WindowVisible = true
@@ -3792,6 +3792,7 @@ configuracoes:Input({
 
 setupKeybind()
 end
+
 
 do
     local TestSection = Window:Section({
