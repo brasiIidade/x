@@ -93,20 +93,18 @@ local Window = WindUI:CreateWindow({
         Height = 30,
         ButtonsType = "Mac",
     },
-})
-
-Window:EditOpenButton({
-    Title = "Abrir",
-    Icon = "monitor",
-    CornerRadius = UDim.new(0,16),
-    StrokeThickness = 2,
-    Color = ColorSequence.new( -- gradient
-        Color3.fromHex("FF0F7B"), 
-        Color3.fromHex("F89B29")
-    ),
-    OnlyMobile = false,
-    Enabled = true,
-    Draggable = true,
+OpenButton = {
+        Title = "Abrir",
+        CornerRadius = UDim.new(1,0),
+        StrokeThickness = 3,
+        Enabled = true,
+        Draggable = true,
+        OnlyMobile = false,
+        Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(170, 90, 255)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(120, 60, 255))
+        })
+    }
 })
 
 local SecretWord = "/e" 
