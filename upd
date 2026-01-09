@@ -93,7 +93,7 @@ local Window = WindUI:CreateWindow({
         Height = 30,
         ButtonsType = "Mac",
     },
-OpenButton = {
+ OpenButton = {
         Title = "Abrir",
         CornerRadius = UDim.new(1,0),
         StrokeThickness = 3,
@@ -3671,42 +3671,55 @@ end
 
 -- Configurações
 
-local configuracoes = Window:Tab({ Title = "Configurações", Icon = "geist:settings-gear", IconColor = Grey })
-
 local MasterVisible = true
 local WindowVisible = true
+local OpenButtonEnabled = true
 
-local function ToggleMaster()
-    MasterVisible = not MasterVisible
-    
-    if MasterVisible then
-        WindowVisible = true
+local function UpdateUI()
+    if not MasterVisible then
+        Window:Toggle(false)
+        Window:EditOpenButton({ Enabled = false })
+        return
+    end
+
+    if WindowVisible then
         Window:Toggle(true)
         Window:EditOpenButton({ Enabled = false })
     else
-        WindowVisible = false
         Window:Toggle(false)
-        Window:EditOpenButton({ Enabled = false })
+        Window:EditOpenButton({ Enabled = OpenButtonEnabled })
     end
+end
+
+local function ToggleMaster()
+    MasterVisible = not MasterVisible
+    UpdateUI()
 end
 
 local function ToggleKeybind()
     if not MasterVisible then return end
-    
     WindowVisible = not WindowVisible
-    Window:Toggle()
-    Window:EditOpenButton({
-        Enabled = not WindowVisible
-    })
+    UpdateUI()
 end
 
 local function setupChatToggle()
-    Players.LocalPlayer.Chatted:Connect(function(msg)
+    if _G.ChatConnection then _G.ChatConnection:Disconnect() end
+    _G.ChatConnection = Players.LocalPlayer.Chatted:Connect(function(msg)
         if msg == SecretWord then
             ToggleMaster()
         end
     end)
 end
+
+configuracoes:Toggle({
+    Title = "Ativar Botão Abrir",
+    Desc = "Se desativado, o botão flutuante nunca aparecerá.",
+    Value = true,
+    Callback = function(state)
+        OpenButtonEnabled = state
+        UpdateUI()
+    end
+})
 
 configuracoes:Input({
     Title = "Palavra secreta",
@@ -3720,12 +3733,12 @@ configuracoes:Input({
         if not is_empty and not has_space then
             SecretWord = v
             setupChatToggle()
-            Notify("Palavra secreta", "Definida para: " .. v)
+            Notify("Palavra Secreta", "Definida para: " .. v)
         else
             Notify("Erro", "A palavra secreta não pode ser vazia nem conter espaços.")
             SecretWord = "/e"
             setupChatToggle()
-            Notify("Palavra secreta", "Resetada para: /e")
+            Notify("Palavra Secreta", "Resetada para: /e")
         end
     end
 })
@@ -3742,7 +3755,6 @@ local function setupKeybind()
 
     KeybindConnection = UIS.InputBegan:Connect(function(input, gameProcessed)
         if gameProcessed then return end
-
         if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == KeybindKey then
             ToggleKeybind()
         end
@@ -3760,11 +3772,7 @@ configuracoes:Input({
     Placeholder = tostring(KeybindKey),
     Callback = function(v)
         local keyName = string.upper(string.gsub(v or "", "%s+", ""))
-        
-        if string.len(keyName) == 0 then
-            Notify("Erro", "A Keybind não pode ser vazia.")
-            return
-        end
+        if string.len(keyName) == 0 then return end
 
         local success, newKeybind = pcall(function()
             return Enum.KeyCode[keyName]
@@ -3775,7 +3783,7 @@ configuracoes:Input({
             setupKeybind()
             KeybindInitialized = true
         else
-            Notify("Erro", "Tecla '" .. keyName .. "' inválida. Use apenas letras (A-Z).")
+            Notify("Erro", "Tecla inválida.")
         end
     end
 })
