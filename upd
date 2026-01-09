@@ -3673,16 +3673,39 @@ end
 
 local configuracoes = Window:Tab({ Title = "Configurações", Icon = "geist:settings-gear", IconColor = Grey })
 
+local MasterVisible = true
 local WindowVisible = true
 
-local function ToggleUI()
-    WindowVisible = not WindowVisible
+local function ToggleMaster()
+    MasterVisible = not MasterVisible
     
-    Window:Toggle()
+    if MasterVisible then
+        WindowVisible = true
+        Window:Toggle(true)
+        Window:EditOpenButton({ Enabled = false })
+    else
+        WindowVisible = false
+        Window:Toggle(false)
+        Window:EditOpenButton({ Enabled = false })
+    end
+end
 
+local function ToggleKeybind()
+    if not MasterVisible then return end
+    
+    WindowVisible = not WindowVisible
+    Window:Toggle()
     Window:EditOpenButton({
         Enabled = not WindowVisible
     })
+end
+
+local function setupChatToggle()
+    Players.LocalPlayer.Chatted:Connect(function(msg)
+        if msg == SecretWord then
+            ToggleMaster()
+        end
+    end)
 end
 
 configuracoes:Input({
@@ -3697,7 +3720,7 @@ configuracoes:Input({
         if not is_empty and not has_space then
             SecretWord = v
             setupChatToggle()
-            Notify("Palavra secreta", "Definida para: " .. v .. " para abrir a UI.")
+            Notify("Palavra secreta", "Definida para: " .. v)
         else
             Notify("Erro", "A palavra secreta não pode ser vazia nem conter espaços.")
             SecretWord = "/e"
@@ -3721,7 +3744,7 @@ local function setupKeybind()
         if gameProcessed then return end
 
         if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == KeybindKey then
-            ToggleUI()
+            ToggleKeybind()
         end
     end)
     
