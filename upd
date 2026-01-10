@@ -719,19 +719,13 @@ end
 
 
 -- hitbox esp
-do
-    local TabB = CombateSection:Tab({
-        Title = "Combate",
-        Icon = "lucide:heart-minus",
-        IconColor = Green
-    })
-
 local Players = game:GetService("Players")
 local Teams = game:GetService("Teams")
 local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
+-- Configurações Globais
 _G.SilentAim = false
 _G.HitChance = 70
 _G.TargetMode = "Inimigos"
@@ -743,6 +737,7 @@ _G.HighlightTarget = false
 _G.AimPart = "Head"
 _G.WallCheck = false
 
+-- FOV Drawing
 local Circle = Drawing.new("Circle")
 Circle.Color = Color3.fromRGB(255, 255, 255)
 Circle.Thickness = 1
@@ -751,6 +746,7 @@ Circle.Radius = _G.FOV
 Circle.Transparency = 1
 Circle.Filled = false
 
+-- Highlight
 local TargetHighlight = Instance.new("Highlight")
 TargetHighlight.FillColor = Color3.fromRGB(255, 0, 0)
 TargetHighlight.OutlineColor = Color3.fromRGB(255, 255, 255)
@@ -771,7 +767,7 @@ local function IsValidTarget(targetPlayer)
     elseif _G.TargetMode == "Todos" then
         return true
     elseif _G.TargetMode == "Personalizado" then
-        return _G.SelectedTeams[targetPlayer.Team.Name] == true
+        return targetPlayer.Team and _G.SelectedTeams[targetPlayer.Team.Name] == true
     end
     return false
 end
@@ -804,6 +800,7 @@ local function GetTarget()
     return closestPart
 end
 
+-- Hook Namecall
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     local method = getnamecallmethod()
@@ -825,6 +822,7 @@ oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     return oldNamecall(self, ...)
 end)
 
+-- Render Loop
 RunService.RenderStepped:Connect(function()
     Circle.Visible = _G.ShowFOV
     Circle.Radius = _G.FOV
@@ -843,110 +841,119 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
-local SectionSilent = TabB:Section({
-    Title = "Silent aim"
-})
+-- UI Integration
+do
+    local TabB = CombateSection:Tab({
+        Title = "Combate",
+        Icon = "lucide:heart-minus",
+        IconColor = Green
+    })
 
-SectionSilent:Toggle({
-    Title = "Silent aim",
-    Desc = "Ativa o silent aim.",
-    Icon = "bird",
-    Type = "Checkbox",
-    Value = false,
-    Callback = function(state) 
-        _G.SilentAim = state
-    end
-})
+    local SectionSilent = TabB:Section({
+        Title = "Silent aim"
+    })
 
-SectionSilent:Slider({
-    Title = "Hit chance",
-    Desc = "A probabilidade do tiro ir ao alvo",
-    Step = 1,
-    Value = {
-        Min = 0,
-        Max = 100,
-        Default = 70,
-    },
-    Callback = function(value)
-        _G.HitChance = value
-    end
-})
+    SectionSilent:Toggle({
+        Title = "Silent aim",
+        Desc = "Ativa o silent aim.",
+        Icon = "bird",
+        Type = "Checkbox",
+        Value = false,
+        Callback = function(state) 
+            _G.SilentAim = state
+        end
+    })
 
-SectionSilent:Dropdown({
-    Title = "Parte do corpo",
-    Desc = "Define onde o silent aim vai mirar",
-    Values = { "Head", "HumanoidRootPart" },
-    Value = "Head",
-    Callback = function(option)
-        _G.AimPart = option
-    end
-})
+    SectionSilent:Slider({
+        Title = "Hit chance",
+        Desc = "A probabilidade do tiro ir ao alvo",
+        Step = 1,
+        Value = {
+            Min = 0,
+            Max = 100,
+            Default = 70,
+        },
+        Callback = function(value)
+            _G.HitChance = value
+        end
+    })
 
-SectionSilent:Toggle({
-    Title = "Wall Check",
-    Desc = "Verifica se o alvo está visível atrás de paredes",
-    Value = false,
-    Callback = function(state)
-        _G.WallCheck = state
-    end
-})
+    SectionSilent:Dropdown({
+        Title = "Parte do corpo",
+        Desc = "Define onde o silent aim vai mirar",
+        Values = { "Head", "HumanoidRootPart" },
+        Value = "Head",
+        Callback = function(option)
+            _G.AimPart = option
+        end
+    })
 
-SectionSilent:Dropdown({
-    Title = "Alvos",
-    Desc = "Escolhe em quais pessoas o silent aim funciona",
-    Values = { "Inimigos", "Todos", "Personalizado" },
-    Value = "Inimigos",
-    Callback = function(option) 
-        _G.TargetMode = option
-    end
-})
+    SectionSilent:Toggle({
+        Title = "Wall Check",
+        Desc = "Verifica se o alvo está visível",
+        Value = false,
+        Callback = function(state)
+            _G.WallCheck = state
+        end
+    })
 
-local teamNames = {}
-for _, team in pairs(Teams:GetTeams()) do table.insert(teamNames, team.Name) end
+    SectionSilent:Dropdown({
+        Title = "Alvos",
+        Desc = "Filtro de alvos do silent aim",
+        Values = { "Inimigos", "Todos", "Personalizado" },
+        Value = "Inimigos",
+        Callback = function(option) 
+            _G.TargetMode = option
+        end
+    })
 
-SectionSilent:Dropdown({
-    Title = "Alvos personalizado",
-    Desc = "Em quais equipes o silent aim funcionará.",
-    Values = teamNames,
-    Value = {},
-    Multi = true,
-    AllowNone = true,
-    Callback = function(option) 
-        _G.SelectedTeams = option
-    end
-})
+    local teamNames = {}
+    for _, team in pairs(Teams:GetTeams()) do table.insert(teamNames, team.Name) end
 
-SectionSilent:Toggle({
-    Title = "Ativar FOV",
-    Desc = "Mostra o círculo de alcance",
-    Value = false,
-    Callback = function(state)
-        _G.ShowFOV = state
-    end
-})
+    SectionSilent:Dropdown({
+        Title = "Alvos personalizado",
+        Desc = "Equipes selecionadas.",
+        Values = teamNames,
+        Value = {},
+        Multi = true,
+        AllowNone = true,
+        Callback = function(option) 
+            _G.SelectedTeams = option
+        end
+    })
 
-SectionSilent:Slider({
-    Title = "Tamanho FOV",
-    Desc = "Ajusta o raio da mira",
-    Step = 1,
-    Value = {
-        Min = 50,
-        Max = 600,
-        Default = 150,
-    },
-    Callback = function(value)
-        _G.FOV = value
-    end
-})
+    SectionSilent:Toggle({
+        Title = "Ativar FOV",
+        Desc = "Mostra o círculo de alcance",
+        Value = false,
+        Callback = function(state)
+            _G.ShowFOV = state
+        end
+    })
 
-SectionSilent:Toggle({
-    Title = "Highlight no Alvo",
-    Desc = "Destaca o jogador que está na mira",
-    Value = false,
-    Callback = function(state)
-        _G.HighlightTarget = state
-    end
-})
+    SectionSilent:Slider({
+        Title = "Tamanho FOV",
+        Desc = "Ajusta o raio da mira",
+        Step = 1,
+        Value = {
+            Min = 50,
+            Max = 600,
+            Default = 150,
+        },
+        Callback = function(value)
+            _G.FOV = value
+        end
+    })
+
+    SectionSilent:Toggle({
+        Title = "Highlight no Alvo",
+        Desc = "Destaca o jogador mirado",
+        Value = false,
+        Callback = function(state)
+            _G.HighlightTarget = state
+        end
+    })
+end
 
 
     local SectionHitbox = TabB:Section({
