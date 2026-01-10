@@ -772,7 +772,7 @@ local function IsVisible(targetPart)
 end
 
 local function GetRandomPart(char)
-    local parts = {"Head", "HumanoidRootPart", "LeftArm", "RightArm", "LeftLeg", "RightLeg", "LeftUpperArm", "RightUpperArm", "LeftUpperLeg", "RightUpperLeg"}
+    local parts = {"Head", "HumanoidRootPart", "LeftArm", "RightArm", "LeftLeg", "RightLeg"}
     local available = {}
     for _, name in pairs(parts) do
         local p = char:FindFirstChild(name)
@@ -816,10 +816,9 @@ local function GetTarget()
                 if onScreen then
                     local dist = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
                     if dist < shortestDist then
-                        -- Lógica de Prioridade
                         if _G.Priority[player.Name] then
                             prioritizedTarget = player
-                            shortestDist = dist -- Foca imediatamente
+                            shortestDist = dist
                         end
                         
                         if not prioritizedTarget or _G.Priority[player.Name] then
@@ -897,12 +896,13 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
---// INTERFACE
+--// INTERFACE INTEGRADA
 do
+    -- Certifique-se que 'CombateSection' foi criado anteriormente no seu script principal
     local TabB = CombateSection:Tab({
         Title = "Combate",
         Icon = "lucide:heart-minus",
-        IconColor = Green
+        IconColor = Color3.fromRGB(0, 255, 0)
     })
 
     local SectionSilent = TabB:Section({
@@ -930,13 +930,22 @@ do
         Title = "Tamanho",
         Desc = "Ajusta o raio do FOV.",
         Step = 1,
-        Value = { Min = 10, Max = 500, Default = 100 },
+        Value = { Min = 10, Max = 500, Default = 50 },
         Callback = function(value) _G.FOV = value end
+    })
+
+    SectionSilent:Space()
+
+    SectionSilent:Toggle({
+        Title = "Highlight",
+        Desc = "Mostra o jogador mirado.",
+        Value = false,
+        Callback = function(state) _G.HighlightTarget = state end
     })
 
     SectionSilent:Slider({
         Title = "Hit chance",
-        Desc = "Precisão do redirecionamento.",
+        Desc = "A probabilidade do tiro ir ao alvo",
         Step = 1,
         Value = { Min = 0, Max = 100, Default = 70 },
         Callback = function(value) _G.HitChance = value end
@@ -944,40 +953,34 @@ do
 
     SectionSilent:Dropdown({
         Title = "Parte do corpo",
-        Desc = "Local do corpo focado.",
-        Values = { "Head", "HumanoidRootPart", "LeftArm", "RightArm", "Aleatório" },
+        Desc = "Define onde o silent aim vai mirar",
+        Values = { "Head", "HumanoidRootPart", "Aleatório" },
         Value = "Head",
         Callback = function(option) _G.AimPart = option end
     })
 
     SectionSilent:Toggle({
-        Title = "Mostrar alvo",
-        Desc = "Highlight colorido e Info (Nome/HP).",
-        Value = false,
-        Callback = function(state) _G.HighlightTarget = state end
-    })
-
-    SectionSilent:Toggle({
-        Title = "Wall check",
-        Desc = "Não mira atrás de paredes.",
+        Title = "Wall Check",
+        Desc = "Verifica se o alvo está visível",
         Value = false,
         Callback = function(state) _G.WallCheck = state end
     })
 
     SectionSilent:Dropdown({
         Title = "Alvos",
-        Desc = "Filtro de equipes.",
-        Values = { "Todos", "Inimigos", "Personalizado" },
+        Desc = "Filtro de alvos do silent aim",
+        Values = { "Inimigos", "Todos", "Personalizado" },
         Value = "Inimigos",
         Callback = function(option) _G.TargetMode = option end
     })
 
+    -- Lista de Equipes
     local teamNames = {}
     for _, team in pairs(Teams:GetTeams()) do table.insert(teamNames, team.Name) end
 
     SectionSilent:Dropdown({
-        Title = "Alvos (personalizado)",
-        Desc = "Equipes focadas.",
+        Title = "Alvos personalizado",
+        Desc = "Equipes selecionadas.",
         Values = teamNames,
         Value = {},
         Multi = true,
@@ -985,17 +988,19 @@ do
         Callback = function(option) _G.SelectedTeams = option end
     })
 
-    local playerNames = {}
-    local function updatePlayerList()
-        table.clear(playerNames)
-        for _, p in pairs(Players:GetPlayers()) do if p ~= LocalPlayer then table.insert(playerNames, p.Name) end end
+    -- Lista de Players
+    local function getPlayers()
+        local tbl = {}
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer then table.insert(tbl, p.Name) end
+        end
+        return tbl
     end
-    updatePlayerList()
 
     SectionSilent:Dropdown({
         Title = "Whitelist",
         Desc = "Pessoas que o script irá ignorar.",
-        Values = playerNames,
+        Values = getPlayers(),
         Value = {},
         Multi = true,
         Callback = function(option) _G.Whitelist = option end
@@ -1004,7 +1009,7 @@ do
     SectionSilent:Dropdown({
         Title = "Prioridade",
         Desc = "Foca nessas pessoas antes de outras no FOV.",
-        Values = playerNames,
+        Values = getPlayers(),
         Value = {},
         Multi = true,
         Callback = function(option) _G.Priority = option end
