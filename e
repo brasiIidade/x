@@ -726,12 +726,6 @@ do
         IconColor = Color3.fromRGB(0, 255, 0)
     })
 
-    local SectionSilent = TabB:Section({
-        Title = "Silent aim"
-    })
-end
-
-
     local SectionHitbox = TabB:Section({
         Title = "Hitbox expander"
     })
