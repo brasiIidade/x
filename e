@@ -726,6 +726,289 @@ do
         IconColor = Color3.fromRGB(0, 255, 0)
     })
 
+	local SectionSilent = TabB:Section({
+        Title = "Silent aim"
+    })
+
+local Teams = game:GetService("Teams")
+
+--// CONFIGURAÇÕES GLOBAIS
+_G.SilentAim = false
+_G.HitChance = 70
+_G.TargetMode = "Inimigos"
+_G.SelectedTeams = {}
+_G.ShowFOV = false
+_G.FOV = 150
+_G.Prediction = 0.165
+_G.HighlightTarget = false
+_G.AimPart = "Head"
+_G.WallCheck = false
+_G.Whitelist = {}
+_G.Priority = {}
+
+--// FOV DRAWING
+local Circle = Drawing.new("Circle")
+Circle.Color = Color3.fromRGB(255, 255, 255)
+Circle.Thickness = 1.5
+Circle.Visible = false
+Circle.Radius = _G.FOV
+Circle.Transparency = 0.8
+Circle.Filled = false
+
+--// INFO DRAWING (Nome/Vida)
+local TargetInfo = Drawing.new("Text")
+TargetInfo.Visible = false
+TargetInfo.Color = Color3.fromRGB(255, 255, 255)
+TargetInfo.Size = 18
+TargetInfo.Center = true
+TargetInfo.Outline = true
+TargetInfo.Font = 2
+
+--// HIGHLIGHT
+local TargetHighlight = Instance.new("Highlight")
+TargetHighlight.FillTransparency = 0.5
+TargetHighlight.OutlineTransparency = 0
+TargetHighlight.Enabled = false
+TargetHighlight.Parent = game:GetService("CoreGui")
+
+--// FUNÇÕES AUXILIARES
+local function IsVisible(targetPart)
+    local obsParts = Camera:GetPartsObscuringTarget({Camera.CFrame.Position, targetPart.Position}, {LocalPlayer.Character, targetPart.Parent})
+    return #obsParts == 0
+end
+
+local function GetRandomPart(char)
+    local parts = {"Head", "HumanoidRootPart", "LeftArm", "RightArm", "LeftLeg", "RightLeg"}
+    local available = {}
+    for _, name in pairs(parts) do
+        local p = char:FindFirstChild(name)
+        if p then table.insert(available, p) end
+    end
+    return available[math.random(1, #available)]
+end
+
+local function IsValidTarget(targetPlayer)
+    if not targetPlayer or targetPlayer == LocalPlayer then return false end
+    if _G.Whitelist[targetPlayer.Name] then return false end
+    
+    if _G.TargetMode == "Inimigos" then
+        return targetPlayer.Team ~= LocalPlayer.Team
+    elseif _G.TargetMode == "Todos" then
+        return true
+    elseif _G.TargetMode == "Personalizado" then
+        return targetPlayer.Team and _G.SelectedTeams[targetPlayer.Team.Name] == true
+    end
+    return false
+end
+
+local function GetTarget()
+    local shortestDist = _G.FOV
+    local closestPart = nil
+    local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    local prioritizedTarget = nil
+
+    for _, player in pairs(Players:GetPlayers()) do
+        if IsValidTarget(player) and player.Character then
+            local char = player.Character
+            local humanoid = char:FindFirstChildOfClass("Humanoid")
+            
+            if humanoid and humanoid.Health > 0 then
+                local part = char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
+                if not part then continue end
+                
+                if _G.WallCheck and not IsVisible(part) then continue end
+                
+                local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
+                if onScreen then
+                    local dist = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
+                    if dist < shortestDist then
+                        if _G.Priority[player.Name] then
+                            prioritizedTarget = player
+                            shortestDist = dist
+                        end
+                        
+                        if not prioritizedTarget or _G.Priority[player.Name] then
+                            shortestDist = dist
+                            if _G.AimPart == "Aleatório" then
+                                closestPart = GetRandomPart(char)
+                            else
+                                closestPart = char:FindFirstChild(_G.AimPart) or part
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return closestPart
+end
+
+--// HOOKS
+local oldNamecall
+oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+    local method = getnamecallmethod()
+    local args = {...}
+    if _G.SilentAim and (method == "FireServer" or method == "InvokeServer") then
+        local target = GetTarget()
+        if target and math.random(1, 100) <= _G.HitChance then
+            local predictedPos = target.Position + (target.Velocity * _G.Prediction)
+            for i, arg in pairs(args) do
+                if typeof(arg) == "Vector3" then
+                    args[i] = predictedPos
+                elseif typeof(arg) == "CFrame" then
+                    args[i] = CFrame.new(predictedPos)
+                end
+            end
+            return oldNamecall(self, unpack(args))
+        end
+    end
+    return oldNamecall(self, ...)
+end)
+
+--// RENDER LOOP
+RunService.RenderStepped:Connect(function()
+    Circle.Visible = _G.ShowFOV
+    Circle.Radius = _G.FOV
+    Circle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    
+    local targetPart = GetTarget()
+    if _G.SilentAim and targetPart and targetPart.Parent then
+        local char = targetPart.Parent
+        local ply = Players:GetPlayerFromCharacter(char)
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        
+        if _G.HighlightTarget then
+            TargetHighlight.Adornee = char
+            TargetHighlight.Enabled = true
+            TargetHighlight.FillColor = (ply and ply.TeamColor.Color) or Color3.fromRGB(255, 255, 255)
+            
+            local head = char:FindFirstChild("Head")
+            if head then
+                local vector, onScreen = Camera:WorldToScreenPoint(head.Position + Vector3.new(0, 3, 0))
+                if onScreen then
+                    TargetInfo.Visible = true
+                    TargetInfo.Position = Vector2.new(vector.X, vector.Y)
+                    TargetInfo.Text = string.format("%s\nHP: %d", ply and ply.Name or char.Name, hum.Health)
+                    TargetInfo.Color = (ply and ply.TeamColor.Color) or Color3.fromRGB(255, 255, 255)
+                else TargetInfo.Visible = false end
+            end
+        else
+            TargetHighlight.Enabled = false
+            TargetInfo.Visible = false
+        end
+    else
+        TargetHighlight.Enabled = false
+        TargetInfo.Visible = false
+    end
+end)
+
+    SectionSilent:Toggle({
+        Title = "Silent aim",
+        Desc = "Ativa o redirecionamento de tiros.",
+        Type = "Checkbox",
+        Value = false,
+        Callback = function(state) _G.SilentAim = state end
+    })
+
+    SectionSilent:Space()
+
+    SectionSilent:Toggle({
+        Title = "FOV",
+        Desc = "Ativa o círculo de visualização.",
+        Value = false,
+        Callback = function(state) _G.ShowFOV = state end
+    })
+
+    SectionSilent:Slider({
+        Title = "Tamanho",
+        Desc = "Ajusta o raio do FOV.",
+        Step = 1,
+        Value = { Min = 10, Max = 500, Default = 50 },
+        Callback = function(value) _G.FOV = value end
+    })
+
+    SectionSilent:Space()
+
+    SectionSilent:Toggle({
+        Title = "Highlight",
+        Desc = "Mostra o jogador mirado.",
+        Value = false,
+        Callback = function(state) _G.HighlightTarget = state end
+    })
+
+    SectionSilent:Slider({
+        Title = "Hit chance",
+        Desc = "A probabilidade do tiro ir ao alvo",
+        Step = 1,
+        Value = { Min = 0, Max = 100, Default = 70 },
+        Callback = function(value) _G.HitChance = value end
+    })
+
+    SectionSilent:Dropdown({
+        Title = "Parte do corpo",
+        Desc = "Define onde o silent aim vai mirar",
+        Values = { "Head", "HumanoidRootPart", "Aleatório" },
+        Value = "Head",
+        Callback = function(option) _G.AimPart = option end
+    })
+
+    SectionSilent:Toggle({
+        Title = "Wall Check",
+        Desc = "Verifica se o alvo está visível",
+        Value = false,
+        Callback = function(state) _G.WallCheck = state end
+    })
+
+    SectionSilent:Dropdown({
+        Title = "Alvos",
+        Desc = "Filtro de alvos do silent aim",
+        Values = { "Inimigos", "Todos", "Personalizado" },
+        Value = "Inimigos",
+        Callback = function(option) _G.TargetMode = option end
+    })
+
+    -- Lista de Equipes
+    local teamNames = {}
+    for _, team in pairs(Teams:GetTeams()) do table.insert(teamNames, team.Name) end
+
+    SectionSilent:Dropdown({
+        Title = "Alvos personalizado",
+        Desc = "Equipes selecionadas.",
+        Values = teamNames,
+        Value = {},
+        Multi = true,
+        AllowNone = true,
+        Callback = function(option) _G.SelectedTeams = option end
+    })
+
+    -- Lista de Players
+    local function getPlayers()
+        local tbl = {}
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer then table.insert(tbl, p.Name) end
+        end
+        return tbl
+    end
+
+    SectionSilent:Dropdown({
+        Title = "Whitelist",
+        Desc = "Pessoas que o script irá ignorar.",
+        Values = getPlayers(),
+        Value = {},
+        Multi = true,
+        Callback = function(option) _G.Whitelist = option end
+    })
+
+    SectionSilent:Dropdown({
+        Title = "Prioridade",
+        Desc = "Foca nessas pessoas antes de outras no FOV.",
+        Values = getPlayers(),
+        Value = {},
+        Multi = true,
+        Callback = function(option) _G.Priority = option end
+    })
+end
+
     local SectionHitbox = TabB:Section({
         Title = "Hitbox expander"
     })
