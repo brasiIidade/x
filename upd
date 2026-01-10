@@ -943,7 +943,7 @@ SectionSilent:Toggle({
         _G.HighlightTarget = state
     end
 })
-end
+
 
     local SectionHitbox = TabB:Section({
         Title = "Hitbox expander"
