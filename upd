@@ -726,7 +726,11 @@ do
         IconColor = Green
     })
 
+local Players = game:GetService("Players")
 local Teams = game:GetService("Teams")
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
 
 _G.SilentAim = false
 _G.HitChance = 70
