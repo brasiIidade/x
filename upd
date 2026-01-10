@@ -726,11 +726,7 @@ do
         IconColor = Green
     })
 
-    local Players = game:GetService("Players")
 local Teams = game:GetService("Teams")
-local RunService = game:GetService("RunService")
-local Camera = workspace.CurrentCamera
-local LocalPlayer = Players.LocalPlayer
 
 _G.SilentAim = false
 _G.HitChance = 70
@@ -947,6 +943,7 @@ SectionSilent:Toggle({
         _G.HighlightTarget = state
     end
 })
+end
 
     local SectionHitbox = TabB:Section({
         Title = "Hitbox expander"
