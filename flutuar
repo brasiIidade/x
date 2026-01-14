@@ -87,12 +87,18 @@ local Window = WindUI:CreateWindow({
     Resizable = true,
     HideSearchBar = false,
     OpenButton = {
-        Title = "Abrir o menu",
-        CornerRadius = UDim.new(1,0),
-        StrokeThickness = 2,
-        Enabled = true,
-        Draggable = true
-    },
+        Title = "michigun.xyz",
+        CornerRadius = UDim.new(1,0), -- fully rounded
+        StrokeThickness = 3, -- removing outline
+        Enabled = true, -- enable or disable openbutton
+        Draggable = true,
+        OnlyMobile = false,
+        Scale = 0.5,
+        
+        Color = ColorSequence.new( -- gradient
+            Color3.fromHex("#30FF6A"), 
+            Color3.fromHex("#e7ff2f")
+        ),
     Topbar = {
         Height = 30,
         ButtonsType = "Mac",
@@ -821,8 +827,7 @@ avatarchanger:Input({
 
 avatarchanger:Button({
     Title = "Aplicar",
-    Desc = "Aplica a skin do nome ou ID colocado",
-    Color = Color3.fromHex("#a2ff30"),
+    Desc = "Aplica a skin do nome ou ID colocado"
     Callback = function()
         local fakename = targetInput
         if fakename == "" then return end
@@ -844,8 +849,7 @@ avatarchanger:Button({
 
 avatarchanger:Button({
     Title = "Restaurar",
-    Desc = "Restaura sua skin padrão",
-    Color = Color3.fromHex("#FF0000"),
+    Desc = "Restaura sua skin padrão"
     Callback = function()
         local desc = svc.Players:GetHumanoidDescriptionFromUserId(lp.UserId)
         if lp.Character then
