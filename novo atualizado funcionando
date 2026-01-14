@@ -164,7 +164,7 @@ do
     AboutTab:Section({
         Title = [[
 - Adicionado: Avatar changer (permite mudar seu avatar localmente)
-- Adicionado: Silent aim
+- Hitbox pode ter o formato alterado
 - Otimizações e misc fixes no geral
 
 Desenvolvido e mantido por @fp3, em LuaU. Isso é apenas um hobby.]],
@@ -723,16 +723,17 @@ end
 
 -- avatar
 
-
-
-local svc = setmetatable({}, {__index = function(s, n) 
-    s[n] = game:GetService(n) 
-    return s[n] 
+local svc = setmetatable({}, {__index = function(s, n)
+    s[n] = game:GetService(n)
+    return s[n]
 end})
 
 local lp = svc.Players.LocalPlayer
 local targetInput = ""
 local currentAppliedId = lp.UserId
+local selectedFavorite = nil
+local confirmDelete = false
+local confirmTask = nil
 
 if not isfolder("fp3_Skins") then
     makefolder("fp3_Skins")
@@ -742,36 +743,33 @@ local function getSavedSkinsList()
     local files = listfiles("fp3_Skins")
     local options = {}
     for _, file in ipairs(files) do
-        local name = file:match("([^\\/]+)%.txt$") or file
-        table.insert(options, {Title = name, Icon = "lucide:user"})
+        local name = file:match("([^\\/]+)%.txt$")
+        if name then
+            table.insert(options, {Title = name, Icon = "lucide:user"})
+        end
     end
-    
-    if #options == 0 then 
-        table.insert(options, {Title = "Nenhuma salva", Icon = "lucide:frown"}) 
+    if #options == 0 then
+        table.insert(options, {Title = "Nenhuma salva", Icon = "lucide:frown"})
     end
     return options
 end
 
-local morphchar = function(char, faken, fakeid, desc)
+local function morphchar(char, faken, fakeid, desc)
     currentAppliedId = fakeid
     task.spawn(function()
         xpcall(function()
             task.wait(0.3)
             local hum = char:WaitForChild("Humanoid", 10)
             if not hum then return end
-            
             for _, v in char:GetDescendants() do
                 if v:IsA("Accessory") or v:IsA("Hat") then v:Destroy() end
             end
-            
             for _, v in char:GetChildren() do
                 if v:IsA("Shirt") or v:IsA("Pants") or v:IsA("ShirtGraphic") or v:IsA("CharacterMesh") then v:Destroy() end
             end
-            
             local bc = hum:FindFirstChildOfClass("BodyColors")
             if bc then bc:Destroy() end
-            
-            for _, n in {"Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"} do
+            for _, n in {"Torso","Left Arm","Right Arm","Left Leg","Right Leg"} do
                 local pt = char:FindFirstChild(n)
                 if pt then
                     for _, v in pt:GetChildren() do
@@ -779,7 +777,6 @@ local morphchar = function(char, faken, fakeid, desc)
                     end
                 end
             end
-            
             local hd = char:FindFirstChild("Head")
             if hd then
                 local ms = hd:FindFirstChildOfClass("SpecialMesh")
@@ -788,9 +785,8 @@ local morphchar = function(char, faken, fakeid, desc)
                     ms.TextureId = ""
                 end
             end
-            
             task.wait(0.1)
-            hum:ApplyDescriptionClientServer(desc) 
+            hum:ApplyDescriptionClientServer(desc)
         end, warn)
     end)
 end
@@ -806,8 +802,6 @@ avatarchanger:Paragraph({
     Color = "Blue",
     Image = "lucide:octagon-alert",
     ImageSize = 30,
-    Thumbnail = "",
-    ThumbnailSize = 80,
     Locked = false
 })
 
@@ -818,9 +812,8 @@ avatarchanger:Input({
     Desc = "Digite o nome ou ID do usuário para copiar a skin.",
     Value = "",
     InputIcon = "lucide:search-check",
-    Type = "Input",
     Placeholder = "Digite aqui",
-    Callback = function(input) 
+    Callback = function(input)
         targetInput = input
     end
 })
@@ -833,7 +826,7 @@ avatarchanger:Button({
         local fakename = targetInput
         if fakename == "" then return end
         local fakeid = tonumber(fakename)
-        local success = pcall(function()
+        local ok = pcall(function()
             if fakeid then
                 fakename = svc.Players:GetNameFromUserIdAsync(fakeid)
             else
@@ -841,7 +834,7 @@ avatarchanger:Button({
                 fakename = svc.Players:GetNameFromUserIdAsync(fakeid)
             end
         end)
-        if success and lp.Character then
+        if ok and lp.Character then
             local desc = svc.Players:GetHumanoidDescriptionFromUserId(fakeid)
             morphchar(lp.Character, fakename, fakeid, desc)
         end
@@ -851,7 +844,7 @@ avatarchanger:Button({
 avatarchanger:Button({
     Title = "Restaurar",
     Desc = "Restaura sua skin padrão",
-    Color = Color3.fromHex("FF0000"),
+    Color = Color3.fromHex("#FF0000"),
     Callback = function()
         local desc = svc.Players:GetHumanoidDescriptionFromUserId(lp.UserId)
         if lp.Character then
@@ -868,10 +861,10 @@ avatarchanger:Paragraph({
     Color = "Blue",
     Image = "lucide:octagon-alert",
     ImageSize = 30,
-    Thumbnail = "",
-    ThumbnailSize = 80,
     Locked = false
 })
+
+local DeleteButton
 
 local SkinDropdown = avatarchanger:Dropdown({
     Title = "Favoritos",
@@ -879,15 +872,23 @@ local SkinDropdown = avatarchanger:Dropdown({
     Values = getSavedSkinsList(),
     Value = "",
     Callback = function(option)
-        if option.Title == "Nenhuma salva" then return end
-        
+        confirmDelete = false
+        if confirmTask then task.cancel(confirmTask) confirmTask = nil end
+        DeleteButton:SetTitle("Deletar favorito")
+        DeleteButton:SetDesc("Remove a skin favoritada selecionada")
+        DeleteButton.Icon = "lucide:trash-2"
+        DeleteButton.Color = Color3.fromHex("#FF5555")
+        if option.Title == "Nenhuma salva" then
+            selectedFavorite = nil
+            return
+        end
+        selectedFavorite = option.Title
         local success, savedId = pcall(function()
             return readfile("fp3_Skins/" .. option.Title .. ".txt")
         end)
-        
         if success then
-            local s, desc = pcall(function() 
-                return svc.Players:GetHumanoidDescriptionFromUserId(tonumber(savedId)) 
+            local s, desc = pcall(function()
+                return svc.Players:GetHumanoidDescriptionFromUserId(tonumber(savedId))
             end)
             if s and lp.Character then
                 morphchar(lp.Character, option.Title, tonumber(savedId), desc)
@@ -903,6 +904,43 @@ avatarchanger:Button({
     Callback = function()
         local fileName = (targetInput ~= "" and targetInput:gsub("[^%w%s]", "")) or "Skin_" .. currentAppliedId
         writefile("fp3_Skins/" .. fileName .. ".txt", tostring(currentAppliedId))
+        SkinDropdown:Refresh(getSavedSkinsList())
+    end
+})
+
+DeleteButton = avatarchanger:Button({
+    Title = "Deletar favorito",
+    Desc = "Remove a skin favoritada selecionada",
+    Icon = "lucide:trash-2",
+    Color = Color3.fromHex("#FF5555"),
+    Callback = function()
+        if not selectedFavorite then return end
+        if not confirmDelete then
+            confirmDelete = true
+            DeleteButton:SetTitle("Confirmar exclusão?")
+            DeleteButton:SetDesc("Você tem 3 segundos para confirmar")
+            DeleteButton.Icon = "lucide:triangle-alert"
+            DeleteButton.Color = Color3.fromHex("#FF0000")
+            confirmTask = task.delay(3, function()
+                confirmDelete = false
+                DeleteButton:SetTitle("Deletar favorito")
+                DeleteButton:SetDesc("Remove a skin favoritada selecionada")
+                DeleteButton.Icon = "lucide:trash-2"
+                DeleteButton.Color = Color3.fromHex("#FF5555")
+            end)
+            return
+        end
+        if confirmTask then task.cancel(confirmTask) confirmTask = nil end
+        local path = "fp3_Skins/" .. selectedFavorite .. ".txt"
+        if isfile(path) then
+            delfile(path)
+        end
+        confirmDelete = false
+        selectedFavorite = nil
+        DeleteButton:SetTitle("Deletar favorito")
+        DeleteButton:SetDesc("Remove a skin favoritada selecionada")
+        DeleteButton.Icon = "lucide:trash-2"
+        DeleteButton.Color = Color3.fromHex("#FF5555")
         SkinDropdown:Refresh(getSavedSkinsList())
     end
 })
