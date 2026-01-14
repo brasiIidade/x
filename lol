@@ -80,7 +80,7 @@ local Window = WindUI:CreateWindow({
     Folder = "michigun.xyz",
     Icon = "rbxassetid://88026679106109",
     IconSize = 15*2,
-    Size = UDim2.fromOffset(400, 300),
+    Size = UDim2.fromOffset(450, 300),
     Transparent = true,
     NewElements = true,
     Resizable = true,
@@ -171,7 +171,6 @@ Desenvolvido e mantido por @fp3, em LuaU. Isso é apenas um hobby.]],
     AboutTab:Space({ Columns = 4 })
 end
 
-AboutTab:Select()
 
 -- sections
 
