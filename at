@@ -793,7 +793,8 @@ end
 
 local avatarchanger = ElementsSection:Tab({
     Title = "Avatar",
-    Icon = "lucide:user-round-pen"
+    Icon = "lucide:user-round-pen",
+    Color = Color3.fromHex("#F0FFFF")
 })
 
 avatarchanger:Paragraph({
