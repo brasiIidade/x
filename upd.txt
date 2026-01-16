@@ -2148,18 +2148,33 @@ SectionHitbox:Dropdown({
     SectionESP:Toggle({ Title = "Item", Callback = function(v) ESPSettings.WeaponN = v end })
 
 
---- silent
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local CoreGui = game:GetService("CoreGui")
+local Camera = Workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+
+local find = table.find
+local insert = table.insert
+local remove = table.remove
+local lower = string.lower
+local random = math.random
+local floor = math.floor
+local newVector3 = Vector3.new
+local newCFrame = CFrame.new
+local ipairs = ipairs
+local pairs = pairs
 
 _G.AimbotConfig = {
     Enabled = false,
     TeamCheck = "Team",         
     TargetPart = "Random",      
     MaxDistance = 1000,         
-    SwitchThreshold = 35,       
     WhitelistedUsers = {}, 
     WhitelistedTeams = {}, 
     UseLegitOffset = true,
-    HitChance = 60,
+    HitChance = 100, -- Mantido 100 para teste
     WallCheck = true,
     FOVSize = 150,
     ShowFOV = true,
@@ -2177,45 +2192,47 @@ _G.AimbotConfig = {
     }
 }
 
+if _G.AimbotGui then _G.AimbotGui:Destroy() end
+if _G.AimHighlight then _G.AimHighlight:Destroy() end
+if _G.TargetInfoPanel then _G.TargetInfoPanel:Destroy() end
+if _G.AimbotLoop then _G.AimbotLoop:Disconnect() end
+
+local RemoteCache = setmetatable({}, {__mode = "k"})
 local bulletFunctions = {
     "fire", "shoot", "bullet", "ammo", "projectile", 
     "missile", "rocket", "hit", "damage", "attack", "cast", "ray"
 }
 
-if _G.AimbotGui then _G.AimbotGui:Destroy() end
-if _G.AimHighlight then _G.AimHighlight:Destroy() end
-if _G.TargetInfoPanel then _G.TargetInfoPanel:Destroy() end
-
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
-local CoreGui = game:GetService("CoreGui")
-local Camera = Workspace.CurrentCamera
-local LocalPlayer = Players.LocalPlayer
-
 local function getLegitOffset()
-    if not _G.AimbotConfig.UseLegitOffset then return Vector3.new(0,0,0) end
-    local spreadX = math.random(1, 12) / 10 
-    local spreadY = math.random(1, 10) / 10
-    local spreadZ = math.random(1, 12) / 10
-    return Vector3.new(
-        (math.random() - 0.5) * spreadX,
-        (math.random() - 0.5) * spreadY,
-        (math.random() - 0.5) * spreadZ
+    if not _G.AimbotConfig.UseLegitOffset then return newVector3(0,0,0) end
+    local s = 0.1
+    return newVector3(
+        (random() - 0.5) * (random(1, 12) * s),
+        (random() - 0.5) * (random(1, 10) * s),
+        (random() - 0.5) * (random(1, 12) * s)
     )
 end
 
-local function isBulletRemote(name)
-    name = name:lower()
-    for _, keyword in ipairs(bulletFunctions) do
-        if string.find(name, keyword) then return true end
+local function isBulletRemote(name, instance)
+    local cached = RemoteCache[instance]
+    if cached ~= nil then return cached end
+    
+    local lname = lower(name)
+    local isBullet = false
+    for _, k in ipairs(bulletFunctions) do
+        if string.find(lname, k) then 
+            isBullet = true 
+            break 
+        end
     end
-    return false
+    
+    RemoteCache[instance] = isBullet
+    return isBullet
 end
 
 local function isWhitelisted(player)
-    if table.find(_G.AimbotConfig.WhitelistedUsers, player.Name) then return true end
-    if player.Team and table.find(_G.AimbotConfig.WhitelistedTeams, player.Team.Name) then return true end
+    if find(_G.AimbotConfig.WhitelistedUsers, player.Name) then return true end
+    if player.Team and find(_G.AimbotConfig.WhitelistedTeams, player.Team.Name) then return true end
     return false
 end
 
@@ -2247,23 +2264,34 @@ TargetHighlight.FillTransparency = 0.5; TargetHighlight.OutlineTransparency = 0
 TargetHighlight.Parent = ScreenGui
 _G.AimHighlight = TargetHighlight
 
-local InfoPanelTop = Instance.new("BillboardGui", ScreenGui); InfoPanelTop.Name = "t"; InfoPanelTop.Size = UDim2.new(0, 200, 0, 50); InfoPanelTop.StudsOffset = Vector3.new(0, 4, 0); InfoPanelTop.AlwaysOnTop = true; InfoPanelTop.Enabled = false 
+local InfoPanelTop = Instance.new("BillboardGui", ScreenGui); InfoPanelTop.Name = "t"; InfoPanelTop.Size = UDim2.new(0, 200, 0, 50); InfoPanelTop.StudsOffset = newVector3(0, 4, 0); InfoPanelTop.AlwaysOnTop = true; InfoPanelTop.Enabled = false 
 local LabelTop = Instance.new("TextLabel", InfoPanelTop); LabelTop.BackgroundTransparency = 1; LabelTop.Size = UDim2.new(1, 0, 1, 0); LabelTop.Font = Enum.Font.GothamBold; LabelTop.TextYAlignment = Enum.TextYAlignment.Bottom; LabelTop.TextSize = 14
-local InfoPanelBot = Instance.new("BillboardGui", ScreenGui); InfoPanelBot.Name = "b"; InfoPanelBot.Size = UDim2.new(0, 200, 0, 50); InfoPanelBot.StudsOffset = Vector3.new(0, -3.5, 0); InfoPanelBot.AlwaysOnTop = true; InfoPanelBot.Enabled = false
+local InfoPanelBot = Instance.new("BillboardGui", ScreenGui); InfoPanelBot.Name = "b"; InfoPanelBot.Size = UDim2.new(0, 200, 0, 50); InfoPanelBot.StudsOffset = newVector3(0, -3.5, 0); InfoPanelBot.AlwaysOnTop = true; InfoPanelBot.Enabled = false
 local LabelBot = Instance.new("TextLabel", InfoPanelBot); LabelBot.BackgroundTransparency = 1; LabelBot.Size = UDim2.new(1, 0, 1, 0); LabelBot.Font = Enum.Font.GothamBold; LabelBot.TextYAlignment = Enum.TextYAlignment.Top; LabelBot.TextSize = 13
 
-local function UpdateVisuals(targetChar)
-    FOVRing.Visible = _G.AimbotConfig.ShowFOV and _G.AimbotConfig.Enabled
-    local diameter = _G.AimbotConfig.FOVSize * 2
-    FOVRing.Size = UDim2.new(0, diameter, 0, diameter)
-    FOVRing.Position = UDim2.new(0, Camera.ViewportSize.X/2, 0, Camera.ViewportSize.Y/2)
-    
-    if FOVRing.Visible then
+local LastC1, LastC2
+local function UpdateGradient()
+    if LastC1 ~= _G.AimbotConfig.FOVColor1 or LastC2 ~= _G.AimbotConfig.FOVColor2 then
+        LastC1 = _G.AimbotConfig.FOVColor1
+        LastC2 = _G.AimbotConfig.FOVColor2
         UIGradient.Color = ColorSequence.new{
-            ColorSequenceKeypoint.new(0.00, _G.AimbotConfig.FOVColor1),
-            ColorSequenceKeypoint.new(0.50, _G.AimbotConfig.FOVColor2),
-            ColorSequenceKeypoint.new(1.00, _G.AimbotConfig.FOVColor1)
+            ColorSequenceKeypoint.new(0.00, LastC1),
+            ColorSequenceKeypoint.new(0.50, LastC2),
+            ColorSequenceKeypoint.new(1.00, LastC1)
         }
+    end
+end
+
+local function UpdateVisuals(targetChar)
+    local showFOV = _G.AimbotConfig.ShowFOV and _G.AimbotConfig.Enabled
+    FOVRing.Visible = showFOV
+    
+    if showFOV then
+        local diameter = _G.AimbotConfig.FOVSize * 2
+        FOVRing.Size = UDim2.new(0, diameter, 0, diameter)
+        local vp = Camera.ViewportSize
+        FOVRing.Position = UDim2.new(0, vp.X/2, 0, vp.Y/2)
+        UpdateGradient()
         UIGradient.Rotation = (UIGradient.Rotation + 2) % 360
     end
     
@@ -2289,7 +2317,7 @@ local function UpdateVisuals(targetChar)
             InfoPanelBot.Adornee = root; InfoPanelBot.Enabled = true
             
             local nameStr = _G.AimbotConfig.ESP.ShowName and "[" .. player.Name .. "]" or ""
-            local hpStr = _G.AimbotConfig.ESP.ShowHealth and "[" .. math.floor(hum.Health) .. "]" or ""
+            local hpStr = _G.AimbotConfig.ESP.ShowHealth and "[" .. floor(hum.Health) .. "]" or ""
             
             LabelTop.Text = nameStr .. "\n" .. hpStr
             LabelTop.TextColor3 = _G.AimbotConfig.ESP.ShowHealth and Color3.new(1 - (hum.Health/100), (hum.Health/100), 0) or _G.AimbotConfig.ESP.TextColor
@@ -2307,16 +2335,18 @@ end
 
 local ClosestHitPart = nil
 local CurrentTargetCharacter = nil
-local LockedPlayer = nil 
+local RayParams = RaycastParams.new()
+RayParams.FilterType = Enum.RaycastFilterType.Blacklist
 
 local function IsPartVisible(part, ignoredList)
     if not _G.AimbotConfig.WallCheck then return true end
-    local origin = Camera.CFrame.Position
-    local direction = (part.Position - origin)
-    local rayParams = RaycastParams.new()
-    rayParams.FilterDescendantsInstances = ignoredList
-    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
-    local rayResult = Workspace:Raycast(origin, direction, rayParams)
+    
+    local camPos = Camera.CFrame.Position
+    local direction = part.Position - camPos
+    
+    RayParams.FilterDescendantsInstances = ignoredList
+    local rayResult = Workspace:Raycast(camPos, direction, RayParams)
+    
     return rayResult == nil
 end
 
@@ -2325,13 +2355,15 @@ local function GetBestPart(character)
     local ignoredList = {LocalPlayer.Character, character, Camera, ScreenGui}
     
     if TargetPartName == "Random" then
-        local priorityParts = {"Head", "HumanoidRootPart", "UpperTorso", "LowerTorso"}
-        for _, name in ipairs(priorityParts) do
-            local part = character:FindFirstChild(name)
-            if part and IsPartVisible(part, ignoredList) then
-                return part
-            end
-        end
+        local head = character:FindFirstChild("Head")
+        if head and IsPartVisible(head, ignoredList) then return head end
+        
+        local root = character:FindFirstChild("HumanoidRootPart")
+        if root and IsPartVisible(root, ignoredList) then return root end
+        
+        local torso = character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
+        if torso and IsPartVisible(torso, ignoredList) then return torso end
+        
         return nil
     else
         local part = character:FindFirstChild(TargetPartName) or character:FindFirstChild("Head")
@@ -2344,58 +2376,43 @@ local function getClosestPlayer()
     local FinalPart = nil
     local FinalChar = nil
     local ShortestDistance = _G.AimbotConfig.FOVSize
-    local centerScreen = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    local Center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    local CamPos = Camera.CFrame.Position
 
-    if LockedPlayer and isWhitelisted(LockedPlayer) then
-        LockedPlayer = nil
-    end
-
-    if LockedPlayer and LockedPlayer.Character and LockedPlayer.Character:FindFirstChild("Humanoid") and LockedPlayer.Character.Humanoid.Health > 0 then
-        local targetPart = GetBestPart(LockedPlayer.Character)
-        if targetPart then
-            local ScreenPosition, OnScreen = Camera:WorldToScreenPoint(targetPart.Position)
-            if OnScreen then
-                local Distance = (centerScreen - Vector2.new(ScreenPosition.X, ScreenPosition.Y)).Magnitude
-                if Distance <= _G.AimbotConfig.FOVSize then
-                    ShortestDistance = Distance - _G.AimbotConfig.SwitchThreshold
-                    FinalPart = targetPart
-                    FinalChar = LockedPlayer.Character
-                else LockedPlayer = nil end
-            else LockedPlayer = nil end
-        else LockedPlayer = nil end
-    else LockedPlayer = nil end
-
-    for _, Player in pairs(Players:GetPlayers()) do
-        if Player == LocalPlayer or Player == LockedPlayer then continue end
+    for _, Player in ipairs(Players:GetPlayers()) do
+        if Player == LocalPlayer then continue end
         if isWhitelisted(Player) then continue end
         if _G.AimbotConfig.TeamCheck == "Team" and Player.Team == LocalPlayer.Team then continue end
 
         local Character = Player.Character
         if not Character then continue end
-        local Humanoid = Character:FindFirstChild("Humanoid")
-        if not Humanoid or Humanoid.Health <= 0 then continue end
         
         local RootPart = Character:FindFirstChild("HumanoidRootPart")
-        if RootPart and (RootPart.Position - Camera.CFrame.Position).Magnitude > _G.AimbotConfig.MaxDistance then continue end
+        if not RootPart then continue end
+        
+        if (RootPart.Position - CamPos).Magnitude > _G.AimbotConfig.MaxDistance then continue end
+        
+        local Humanoid = Character:FindFirstChild("Humanoid")
+        if not Humanoid or Humanoid.Health <= 0 then continue end
 
-        local TargetPart = GetBestPart(Character)
-        if TargetPart then
-            local ScreenPosition, OnScreen = Camera:WorldToScreenPoint(TargetPart.Position)
-            if OnScreen then
-                local Distance = (centerScreen - Vector2.new(ScreenPosition.X, ScreenPosition.Y)).Magnitude
-                if Distance < ShortestDistance then
-                    ShortestDistance = Distance
-                    FinalPart = TargetPart
-                    FinalChar = Character
-                    LockedPlayer = Player 
-                end
+        local ScreenPosition, OnScreen = Camera:WorldToScreenPoint(RootPart.Position)
+        if not OnScreen then continue end
+
+        local Distance = (Center - Vector2.new(ScreenPosition.X, ScreenPosition.Y)).Magnitude
+        
+        if Distance < ShortestDistance then
+            local TargetPart = GetBestPart(Character)
+            if TargetPart then
+                ShortestDistance = Distance
+                FinalPart = TargetPart
+                FinalChar = Character
             end
         end
     end
     return FinalPart, FinalChar
 end
 
-RunService.RenderStepped:Connect(function()
+_G.AimbotLoop = RunService.RenderStepped:Connect(function()
     if _G.AimbotConfig.Enabled then
         local Part, Character = getClosestPlayer()
         ClosestHitPart = Part
@@ -2403,37 +2420,81 @@ RunService.RenderStepped:Connect(function()
     else
         ClosestHitPart = nil
         CurrentTargetCharacter = nil
-        LockedPlayer = nil
     end
     UpdateVisuals(CurrentTargetCharacter)
 end)
 
+-- HOOK CORRIGIDO PARA DAR DANO
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+    if not _G.AimbotConfig.Enabled or not ClosestHitPart or checkcaller() then 
+        return oldNamecall(self, ...) 
+    end
+
     local Method = getnamecallmethod()
-    local Arguments = {...}
+    local CamPos = Camera.CFrame.Position
+    
+    if Method == "FireServer" or Method == "InvokeServer" then
+        if isBulletRemote(self.Name, self) then
+            if random(1, 100) > _G.AimbotConfig.HitChance then
+                return oldNamecall(self, ...)
+            end
 
-    if _G.AimbotConfig.Enabled and ClosestHitPart and not checkcaller() then
-        if math.random(1, 100) <= _G.AimbotConfig.HitChance then
-            local finalPosition = ClosestHitPart.Position + getLegitOffset()
-
-            if Method == "Raycast" and self == Workspace then
-                local origin = Arguments[1] 
-                local direction = (finalPosition - origin).Unit * 1000
-                Arguments[2] = direction 
-                return oldNamecall(self, unpack(Arguments))
+            local Arguments = {...}
+            local hitPos = ClosestHitPart.Position + getLegitOffset()
             
-            elseif (Method == "FireServer" or Method == "InvokeServer") then
-                if isBulletRemote(self.Name) then
-                    for i, v in pairs(Arguments) do
-                        if typeof(v) == "Vector3" then Arguments[i] = finalPosition end
+            -- Lógica Melhorada de Substituição
+            for i, v in ipairs(Arguments) do
+                if typeof(v) == "Vector3" then
+                    -- Se a posição estiver longe da câmera (>10 studs), assume que é o destino e substitui
+                    if (v - CamPos).Magnitude > 10 then
+                        Arguments[i] = hitPos
                     end
-                    return oldNamecall(self, unpack(Arguments))
+                elseif typeof(v) == "CFrame" then
+                    -- Se o CFrame estiver longe, substitui olhando pro alvo
+                    if (v.Position - CamPos).Magnitude > 10 then
+                        Arguments[i] = newCFrame(hitPos)
+                    end
+                elseif typeof(v) == "Instance" and v:IsA("BasePart") then
+                    -- CRÍTICO PARA DANO: Substitui a parte atingida pela parte do aimbot
+                    -- Se o script não mudar isso, o servidor rejeita o dano.
+                    Arguments[i] = ClosestHitPart
+                end
+            end
+            return oldNamecall(self, unpack(Arguments))
+        end
+    elseif Method == "Raycast" and self == Workspace then
+        if random(1, 100) > _G.AimbotConfig.HitChance then
+            return oldNamecall(self, ...)
+        end
+        local Arguments = {...}
+        local hitPos = ClosestHitPart.Position + getLegitOffset()
+        
+        -- Raycast: Arg[1] = Origin, Arg[2] = Direction
+        if Arguments[1] and typeof(Arguments[1]) == "Vector3" then
+             Arguments[2] = (hitPos - Arguments[1]).Unit * 1000
+        end
+        return oldNamecall(self, unpack(Arguments))
+    end
+
+    return oldNamecall(self, ...)
+end))
+
+-- HOOK MOUSE (Necessário para muitas armas)
+local oldIndex
+oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, Key)
+    if _G.AimbotConfig.Enabled and ClosestHitPart and not checkcaller() then
+        if self:IsA("Mouse") and (Key == "Hit" or Key == "Target") then
+            if random(1, 100) <= _G.AimbotConfig.HitChance then
+                if Key == "Hit" then
+                    return newCFrame(ClosestHitPart.Position + getLegitOffset())
+                elseif Key == "Target" then
+                    return ClosestHitPart
                 end
             end
         end
     end
-    return oldNamecall(self, ...)
+    return oldIndex(self, Key)
 end))
 
 do
@@ -2467,46 +2528,68 @@ do
             _G.AimbotConfig.HitChance = value
         end
     })
-    local function GetPlayerNames()
-        local names = {}
-        for _, p in pairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer then
-                table.insert(names, p.Name)
+
+    local InputWhitelistAdd = SilentTab:Input({
+        Title = "Add Whitelist (Nick)",
+        Desc = "Digita parte do nome para adicionar",
+        Value = "",
+        InputIcon = "lucide:plus",
+        Type = "Input",
+        Placeholder = "Ex: roblox",
+        Callback = function(text)
+            if text == "" then return end
+            
+            local found = nil
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p ~= LocalPlayer then
+                    if string.find(string.lower(p.Name), string.lower(text)) or (p.DisplayName and string.find(string.lower(p.DisplayName), string.lower(text))) then
+                        found = p
+                        break
+                    end
+                end
+            end
+            
+            if found then
+                if not table.find(_G.AimbotConfig.WhitelistedUsers, found.Name) then
+                    table.insert(_G.AimbotConfig.WhitelistedUsers, found.Name)
+                end
             end
         end
-        return names
-    end
+    })
+
+    local InputWhitelistRemove = SilentTab:Input({
+        Title = "Remover Whitelist (Nick)",
+        Desc = "Digita parte do nome para remover",
+        Value = "",
+        InputIcon = "lucide:minus",
+        Type = "Input",
+        Placeholder = "Ex: roblox",
+        Callback = function(text)
+            if text == "" then return end
+            local nameToRemove = nil
+            for _, name in ipairs(_G.AimbotConfig.WhitelistedUsers) do
+                if string.find(string.lower(name), string.lower(text)) then
+                    nameToRemove = name
+                    break
+                end
+            end
+            if nameToRemove then
+                local index = table.find(_G.AimbotConfig.WhitelistedUsers, nameToRemove)
+                if index then table.remove(_G.AimbotConfig.WhitelistedUsers, index) end
+            end
+        end
+    })
 
     local function GetTeamNames()
         local names = {}
         local Teams = game:GetService("Teams")
         if Teams then
-            for _, t in pairs(Teams:GetTeams()) do
-                table.insert(names, t.Name)
+            for _, t in ipairs(Teams:GetTeams()) do
+                insert(names, t.Name)
             end
         end
         return names
     end
-
-    local PlayerWhitelist = SilentTab:Dropdown({
-        Title = "Players [WHITELIST]",
-        Color = Color3.fromHex("#FCFFFD"),
-        Desc = "As pessoas selecionadas não serão focadas",
-        Values = GetPlayerNames(),
-        Value = {}, 
-        Multi = true,
-        AllowNone = true,
-        Callback = function(options) 
-            _G.AimbotConfig.WhitelistedUsers = options
-        end
-    })
-
-    Players.PlayerAdded:Connect(function()
-        PlayerWhitelist:Refresh(GetPlayerNames())
-    end)
-    Players.PlayerRemoving:Connect(function()
-        PlayerWhitelist:Refresh(GetPlayerNames())
-    end)
 
     local TeamWhitelist = SilentTab:Dropdown({
         Title = "Times [WHITELIST]",
@@ -2531,7 +2614,6 @@ do
         end
     })
 
-    
     local DropdownTeam = SilentTab:Dropdown({
         Title = "Alvos",
         Desc = "Selecione quem será focado",
@@ -2545,6 +2627,7 @@ do
             end
         end
     })
+
     local ToggleOffset = SilentTab:Toggle({
         Title = "Legit",
         Desc = "Imita um tiro legit",
@@ -2569,17 +2652,14 @@ do
 
     SilentTab:Space()
 
-    
     SilentTab:Paragraph({
-    Title = "Visuais",
-    Desc = "Aqui você mudará os visuais do silent aim",
-    Color = "Blue",
-    Image = "lucide:info",
-    ImageSize = 30,
-    Thumbnail = "",
-    ThumbnailSize = 80,
-    Locked = false
-})
+        Title = "Visuais",
+        Desc = "Aqui você mudará os visuais do silent aim",
+        Color = "Blue",
+        Image = "lucide:info",
+        ImageSize = 30,
+        Locked = false
+    })
 
     local ToggleFOV = SilentTab:Toggle({
         Title = "FOV",
@@ -2730,6 +2810,7 @@ do
         ToggleWeapon:Lock()
     end
 end
+
 
 end
 
