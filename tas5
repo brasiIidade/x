@@ -3372,7 +3372,7 @@ DeleteButton = TAS:Button({
             DeleteButton:SetDesc("Deleta todas as gravações selecionadas")
         else
             IsConfirmingDelete = true
-            DeleteButton:SetTitle("CONFIRMAR DELEÇÃO?")
+            DeleteButton:SetTitle("Confirmação")
             DeleteButton:SetDesc("Clique novamente para apagar permanentemente.")
             task.delay(3, function()
                 if IsConfirmingDelete then
