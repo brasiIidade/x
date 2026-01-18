@@ -1,6 +1,6 @@
 --DETAILED DOCS https://github.com/AsuraXowner/Sentinel-Open-Source/blob/main/SentinelKeySystem/README.md
 local Junkie = loadstring(game:HttpGet("https://jnkie.com/sdk/library.lua"))()
-Junkie.service = "ok"
+Junkie.service = "Teste"
 Junkie.identifier = "1000381"
 Junkie.provider = "Keysystem"
 
@@ -8,7 +8,7 @@ local SentinelUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/As
 local AuthorizeToken = crypt.hash(tick()..tostring(math.random()), "sha256")-- This generates a unique key to prevent key bypassing. Do not modify.
 
 -- Configuration
-SentinelUI.Keys.MainTitle    = "JUNKIE"-- The title
+SentinelUI.Keys.MainTitle    = "Digite qualquer coisa"-- The title
 SentinelUI.Keys.MainDesc     = "Digite sua chave"-- The subtitle
 SentinelUI.Keys.Directory    = "michigun_chave" -- file name where the key saves (Change this)
 SentinelUI.Keys.Assets.Logo  = {ID='rbxassetid://124613057828354', Size=UDim2.new(0, 95, 0, 95)}-- Your logo Image ID and Image Size
