@@ -12,7 +12,7 @@ SentinelUI.Keys.MainTitle    = "JUNKIE"-- The title
 SentinelUI.Keys.MainDesc     = "Digite sua chave"-- The subtitle
 SentinelUI.Keys.Directory    = "michigun_chave" -- file name where the key saves (Change this)
 SentinelUI.Keys.Assets.Logo  = {ID='rbxassetid://124613057828354', Size=UDim2.new(0, 95, 0, 95)}-- Your logo Image ID and Image Size
---SentinelUI.Keys.DiscordLink    = "michigun" -- discord server link only works if premium is true
+SentinelUI.Keys.DiscordLink    = "michigun" -- discord server link only works if premium is true
 
 local function OnKeyVerified()
     return
@@ -23,7 +23,7 @@ SentinelUI.Initialize({
     Token = AuthorizeToken,
     MainLoader = OnKeyVerified,
     --Keyless true, --keyless mode
-    --Premium false, --remvoes get key button and puts discord link
+    --Premium true, --remvoes get key button and puts discord link
     Function = function(userInput)
         getgenv().SCRIPT_KEY = userInput
         local result = Junkie.check_key(userInput)
