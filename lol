@@ -85,7 +85,7 @@ local Window = WindUI:CreateWindow({
     NewElements = true,
     Resizable = true,
     HideSearchBar = false, 
-	  Background = "rbxassetid://88026679106109",
+	Background = "rbxassetid://88026679106109",
     BackgroundImageTransparency = 0.8,
     Topbar = {
         Height = 33,
@@ -121,6 +121,8 @@ local function Notify(title, content, dur)
         })
     end)
 end
+
+Notify("michigun.xyz", "Script sem key, por enquanto. Aproveite.")
 
 Window:Tag({
     Title = "sanctuaryangels",
