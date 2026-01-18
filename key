@@ -1194,7 +1194,7 @@ local result = (function()
                             while loadingOverlay and loadingOverlay.Parent do
                                 dots = (dots % 3) + 1
                                 if loadingText and loadingText.Parent then
-                                    loadingText.Text = (message or "Loading information") .. string.rep(".", dots)
+                                    loadingText.Text = (message or "Carregando informações") .. string.rep(".", dots)
                                 end
                                 task.wait(0.5)
                             end
