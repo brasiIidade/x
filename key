@@ -1,10 +1,3 @@
-game:GetService("StarterGui"):SetCore("SendNotification", {
-	Title = "Aviso",
-	Text = "Chave copiada no teclado. Apenas cole.",
-	Duration = 5
-})
-
-setclipboard("c24726ea-8728-49e7-a842-90a5c211aa82")
 
 --DETAILED DOCS https://github.com/AsuraXowner/Sentinel-Open-Source/blob/main/SentinelKeySystem/README.md
 local Junkie = loadstring(game:HttpGet("https://jnkie.com/sdk/library.lua"))()
