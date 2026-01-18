@@ -268,7 +268,7 @@ local Window = WindUI:CreateWindow({
     Transparent = true,
     NewElements = true,
     Resizable = true,
-    HideSearchBar = false
+    HideSearchBar = false,
     Topbar = {
         Height = 40,
         ButtonsType = "Mac",
@@ -304,7 +304,7 @@ local function Notify(title, content, dur)
     end)
 end
 
-Notify("michigun.xyz", "Script sem key, por enquanto. Aproveite.", 5)
+Notify("michigun.xyz", "Script sem key, por enquanto. Aproveite.")
 
 Window:Tag({
     Title = "sanctuaryangels",
