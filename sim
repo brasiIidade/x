@@ -6074,7 +6074,7 @@ do
 
     local function EnviarPayload(isSug, texto, nota, anonimo)
         local hook = isSug and WEBHOOK_SUGESTAO or WEBHOOK_AVALIACAO
-        local nome = anonimo and "Anônimo" or game:GetService("Players").LocalPlayer.Name
+        local nome = anonimo and "Anônimo" or LocalPlayer.Name
 
         local fields = {
             {
@@ -6093,7 +6093,7 @@ do
         end
 
         local embed = {
-            title = isSug and "Nova Sugestão Recebida" or "Nova Avaliação Recebida",
+            title = isSug and "Sugestão" or "Avaliação",
             description = isSug and ("```\n" .. texto .. "\n```") or ("**Mensagem:**\n```\n" .. texto .. "\n```"),
             color = 16776960,
             fields = fields,
