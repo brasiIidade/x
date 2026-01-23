@@ -659,6 +659,83 @@ HitboxExpander:Dropdown({
 })
 
 
+-- esp [lógica]
+_G.ESPConfig = {
+    Enabled = false,
+    TeamCheck = false,
+    Chams = false,
+    Name = false,
+    Studs = false,
+    Health = false,
+    WeaponN = false
+}
+
+task.spawn(function()
+    ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/esp2.lua")
+end)
+
+ESP:Paragraph({
+    Title = "ESP",
+    Image = "lucide:info",
+    Desc = "Permite ver jogadores através das paredes"
+})
+
+local FirstRunESP = true
+ESP:Toggle({
+    Title = "Ativar",
+    Desc = "Liga/Desliga o sistema visual",
+    Value = false,
+    Flag = "ESPEnabled",
+    Callback = function(v)
+        if FirstRunESP then
+            FirstRunESP = false
+            if v then
+                if _G.StartESP then _G.StartESP() end
+            else
+                if _G.StopESP then _G.StopESP() end
+            end
+            return
+        end
+
+        if v then
+            if _G.StartESP then 
+                _G.StartESP() 
+                notificar("ESP Ativado", 2, "lucide:eye")
+            end
+        else
+            if _G.StopESP then 
+                _G.StopESP() 
+                notificar("ESP Desativado", 2, "lucide:eye-off")
+            end
+        end
+    end
+})
+
+ESP:Toggle({
+    Title = "Team check",
+    Desc = "Não mostra o ESP se o jogador for do seu time",
+    Value = _G.ESPConfig.TeamCheck,
+    Flag = "ESPTeamCheck",
+    Callback = function(v)
+        _G.ESPConfig.TeamCheck = v
+    end
+})
+
+ESP:Space()
+
+ESP:Paragraph({
+    Title = "Customizar",
+    Image = "lucide:eye",
+    Desc = "Escolha o que você deseja ver"
+})
+
+ESP:Toggle({ Title = "Highlight", Value = _G.ESPConfig.Chams, Flag = "ESPChams", Callback = function(v) _G.ESPConfig.Chams = v end })
+ESP:Toggle({ Title = "Nome", Value = _G.ESPConfig.Name, Flag = "ESPName", Callback = function(v) _G.ESPConfig.Name = v end })
+ESP:Toggle({ Title = "Distância", Value = _G.ESPConfig.Studs, Flag = "ESPStuds", Callback = function(v) _G.ESPConfig.Studs = v end })
+ESP:Toggle({ Title = "Vida", Value = _G.ESPConfig.Health, Flag = "ESPHealth", Callback = function(v) _G.ESPConfig.Health = v end })
+ESP:Toggle({ Title = "Item", Value = _G.ESPConfig.WeaponN, Flag = "ESPWeapon", Callback = function(v) _G.ESPConfig.WeaponN = v end })
+
+
 -- configurações
 local GerenciadorConfig = main.ConfigManager
 local NomeConfig = ""
