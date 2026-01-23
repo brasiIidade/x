@@ -735,6 +735,180 @@ ESP:Toggle({ Title = "Distância", Value = _G.ESPConfig.Studs, Flag = "ESPStuds"
 ESP:Toggle({ Title = "Vida", Value = _G.ESPConfig.Health, Flag = "ESPHealth", Callback = function(v) _G.ESPConfig.Health = v end })
 ESP:Toggle({ Title = "Item", Value = _G.ESPConfig.WeaponN, Flag = "ESPWeapon", Callback = function(v) _G.ESPConfig.WeaponN = v end })
 
+-- tas [lógica]
+task.spawn(function()
+    ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/tas2.lua")
+end)
+
+local TASDropdown
+local StopButton
+local DeleteButton
+local IsConfirmingDelete = false
+
+local function RefreshTASList(list)
+    if TASDropdown then
+        TASDropdown:Refresh(list)
+    end
+end
+
+TAS:Toggle({
+    Title = "Iniciar",
+    Value = false,
+    Flag = "TASStart",
+    Callback = function(v)
+        if _G.TAS and _G.TAS.ToggleAll then
+            _G.TAS.ToggleAll(v)
+        end
+    end
+})
+
+StopButton = TAS:Button({
+    Title = "Parar Playback",
+    Desc = "Interrompe a reprodução atual",
+    Locked = true, -- Começa travado
+    Flag = "TASStopPlayback",
+    Callback = function()
+        if _G.TAS and _G.TAS.ManualStopPlayback then
+            _G.TAS.ManualStopPlayback()
+        end
+    end
+})
+
+TAS:Paragraph({
+    Title = "Observação",
+    Color = Color3.fromHex("#800080"),
+    Image = "lucide:info",
+    ImageSize = 30,
+    Desc = "Todos os TAS são salvos na pasta 'fp3_Parkours' que fica dentro da pasta 'michigun.xyz', que por sua vez fica na pasta 'Workspace' do seu executor."
+})
+TAS:Space()
+
+TASDropdown = TAS:Dropdown({
+    Title = "Selecionar gravações",
+    Values = {},
+    Value = {},
+    Multi = true,
+    AllowNone = true,
+    Flag = "TASSelection",
+    Callback = function(v)
+        if _G.TAS and _G.TAS.UpdateSelection then
+            _G.TAS.UpdateSelection(v)
+        end
+    end
+})
+
+task.spawn(function()
+    -- Espera a lógica carregar
+    repeat task.wait(0.5) until _G.TAS and _G.TAS.IsReady
+    
+    -- Configura o sistema de notificação
+    _G.TAS.NotifyFunc = notificar 
+    
+    -- Configura a ponte do botão Parar
+    _G.TAS.UpdateButtonState = function(isPlaying)
+        if StopButton then
+            if isPlaying then
+                StopButton:Unlock()
+            else
+                StopButton:Lock()
+            end
+        end
+    end
+    
+    -- Atualiza a lista inicial
+    if _G.TAS.GetSaved then
+        RefreshTASList(_G.TAS.GetSaved())
+    end
+end)
+
+DeleteButton = TAS:Button({
+    Title = "Deletar selecionados",
+    Desc = "Deleta todas as gravações selecionadas",
+    Flag = "TASDelete",
+    Callback = function()
+        if IsConfirmingDelete then
+            if _G.TAS and _G.TAS.DeleteSelected then
+                local newList = _G.TAS.DeleteSelected()
+                RefreshTASList(newList)
+                TASDropdown:Select({})
+            end
+            IsConfirmingDelete = false
+            DeleteButton:SetTitle("Deletar selecionados")
+            DeleteButton:SetDesc("Deleta todas as gravações selecionadas")
+        else
+            IsConfirmingDelete = true
+            DeleteButton:SetTitle("Confirmação")
+            DeleteButton:SetDesc("Clique novamente para apagar permanentemente.")
+            task.delay(3, function()
+                if IsConfirmingDelete then
+                    IsConfirmingDelete = false
+                    DeleteButton:SetTitle("Deletar selecionados")
+                    DeleteButton:SetDesc("Deleta todas as gravações selecionadas")
+                end
+            end)
+        end
+    end
+})
+
+TAS:Space()
+
+TAS:Paragraph({
+    Title = "Observação",
+    Color = Color3.fromHex("#800080"),
+    Image = "lucide:info",
+    ImageSize = 30,
+    Desc = "Também é possível gravar e parar digitando /e gravar e /e parar no chat, respectivamente."
+})
+TAS:Space()
+
+TAS:Input({
+    Title = "Nome",
+    Desc = "Nome que será dado ao TAS",
+    Value = "",
+    Flag = "TASName",
+    Callback = function(v)
+        if _G.TAS then _G.TAS.CurrentName = v end
+    end
+})
+TAS:Space()
+
+local g = TAS:Group()
+g:Button({ 
+    Title = "Gravar", 
+    Flag = "TASRecord",
+    Callback = function()
+        if _G.TAS and _G.TAS.StartRecording then _G.TAS.StartRecording() end
+    end 
+})
+g:Space()
+g:Button({ 
+    Title = "Parar", 
+    Flag = "TASStop",
+    Callback = function()
+        if _G.TAS and _G.TAS.StopRecording then _G.TAS.StopRecording() end
+    end 
+})
+TAS:Space()
+
+TAS:Paragraph({
+    Title = "Observação",
+    Color = Color3.fromHex("#800080"),
+    Image = "lucide:info",
+    ImageSize = 30,
+    Desc = "Ao salvar, o arquivo ficará na pasta 'fp3_Parkours' que fica na pasta 'michigun.xyz', que por sua vez fica na pasta 'Workspace' do seu executor."
+})
+TAS:Button({ 
+    Title = "Salvar", 
+    Flag = "TASSave",
+    Callback = function()
+        if _G.TAS and _G.TAS.SaveCurrent then
+            local newList = _G.TAS.SaveCurrent()
+            RefreshTASList(newList)
+        end
+    end 
+})
+
+
 
 -- configurações
 local GerenciadorConfig = main.ConfigManager
