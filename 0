@@ -39,21 +39,21 @@ end
 
 -- combate
 criarsection("Combate", nil, true)
-local SilentAim = criartab("Silent aim", nil, false)
-local HitboxExpander = criartab("Hitbox expander", nil, false)
-local ESP = criartab("ESP", nil, false)
+local SilentAim = criartab("Silent aim", "lucide:crosshair", false)
+local HitboxExpander = criartab("Hitbox expander", "lucide:codesandbox", false)
+local ESP = criartab("ESP", "lucide:view", false)
 
 -- parkour
 criarsection("Parkour", nil, true)
-local TAS = criartab("TAS", nil, false)
-local JJs = criartab("JJ's", nil, false)
-local ChatGPT = criartab("ChatGPT", nil, false)
-local Volvers = criartab("Volver's", nil, false)
-local F3X = criartab("F3X", nil, false)
+local TAS = criartab("TAS", "solar:running-outline", false)
+local JJs = criartab("JJ's", "lucide:space", false)
+local ChatGPT = criartab("ChatGPT", "geist:logo-open-ai", false)
+local Volvers = criartab("Volver's", "lucide:refresh-ccw", false)
+local F3X = criartab("F3X", "lucide:pencil-ruler", false)
 
 -- local
 criarsection("Local", nil, true)
-local Char = criartab("Char", nil, false)
-local AntiLag = criartab("Anti-lag", nil, false)
-local Player = criartab("Player", nil, false)
+local Char = criartab("Char", "solar:user-hands-bold", false)
+local AntiLag = criartab("Anti-lag", "solar:spedometer-max-line-duotone", false)
+local Player = criartab("Player", "solar:user-bold", false)
 
