@@ -504,6 +504,132 @@ do
 end
 
 
+-- hitbox expander [lógica]
+_G.HitboxConfig = {
+    Size = Vector3.new(5,5,5),
+    Transparency = 0.5,
+    Shape = Enum.PartType.Ball,
+    HideOnShield = false,
+    TeamFilterEnabled = false,
+    SelectedTeams = {}
+}
+
+-- Carrega a lógica (mas não inicia ela ainda!)
+task.spawn(function()
+    ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/hitbox2.lua")
+end)
+
+local function AtualizarValores()
+    if _G.UpdateHitboxValues then
+        _G.UpdateHitboxValues()
+    end
+end
+
+HitboxExpander:Paragraph({
+    Title = "Modificar hitbox",
+    Image = "lucide:info",
+    Desc = "Altera o tamanho e visual da hitbox dos inimigos."
+})
+
+HitboxExpander:Toggle({
+    Title = "Ativar Hitbox",
+    Desc = "Liga/Desliga a lógica de expansão",
+    Value = false,
+    Callback = function(v)
+        if v then
+            if _G.StartHitboxLogic then
+                _G.StartHitboxLogic()
+                notificar("Hitbox", "Sistema iniciado", 2, "lucide:play")
+            end
+        else
+            if _G.StopHitboxLogic then
+                _G.StopHitboxLogic()
+                notificar("Hitbox", "Sistema desligado", 2, "lucide:pause")
+            end
+        end
+    end
+})
+
+HitboxExpander:Toggle({
+    Title = "Escudo check",
+    Desc = "A hitbox volta ao normal se equiparem o escudo",
+    Value = _G.HitboxConfig.HideOnShield,
+    Callback = function(v)
+        _G.HitboxConfig.HideOnShield = v
+        AtualizarValores()
+    end
+})
+
+HitboxExpander:Dropdown({
+    Title = "Formato",
+    Desc = "Formato usado para a hitbox.",
+    Values = { "Sphere", "Block", "Cylinder", "Wedge" },
+    Value = "Sphere",
+    Callback = function(option)
+        local map = {
+            Sphere = Enum.PartType.Ball,
+            Block = Enum.PartType.Block,
+            Cylinder = Enum.PartType.Cylinder,
+            Wedge = Enum.PartType.Wedge
+        }
+        _G.HitboxConfig.Shape = map[option]
+        AtualizarValores()
+    end
+})
+
+HitboxExpander:Input({
+    Title = "Tamanho da hitbox",
+    Desc = "Valor numérico (Studs)",
+    Placeholder = "Ex: 10",
+    Callback = function(v)
+        local n = tonumber(v)
+        if n then
+            _G.HitboxConfig.Size = Vector3.new(n,n,n)
+            AtualizarValores()
+        end
+    end
+})
+
+HitboxExpander:Slider({
+    Title = "Transparência",
+    Desc = "0 = visível; 1 = invisível",
+    Step = 0.02,
+    Value = { Min = 0, Max = 1, Default = _G.HitboxConfig.Transparency },
+    Callback = function(val)
+        _G.HitboxConfig.Transparency = val
+        AtualizarValores()
+    end
+})
+
+HitboxExpander:Space()
+
+HitboxExpander:Toggle({
+    Title = "Filtrar por time",
+    Desc = "Aplica apenas aos times selecionados",
+    Value = _G.HitboxConfig.TeamFilterEnabled,
+    Callback = function(v)
+        _G.HitboxConfig.TeamFilterEnabled = v
+        AtualizarValores()
+    end
+})
+
+HitboxExpander:Dropdown({
+    Title = "Times",
+    Desc = "Selecione os times",
+    Values = GetTeamNames(),
+    Value = {}, 
+    Multi = true,
+    AllowNone = true,
+    Callback = function(option)
+        _G.HitboxConfig.SelectedTeams = option
+        if _G.HitboxConfig.TeamFilterEnabled then
+            AtualizarValores()
+        end
+    end
+})
+
+
+
 -- configurações
 local GerenciadorConfig = main.ConfigManager
 local NomeConfig = ""
