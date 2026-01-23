@@ -1,6 +1,9 @@
-local UI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+Local UI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
--- notificação
+local function ler(link)
+    loadstring(game:HttpGet(link))()
+end
+
 local function notificar(titulo, mensagem, tempo, icone)
     UI:Notify({
         Title = titulo,
@@ -9,6 +12,11 @@ local function notificar(titulo, mensagem, tempo, icone)
         Icon = icone,
     })
 end
+
+local Players = game:GetService("Players")
+local TeamsService = game:GetService("Teams")
+local LocalPlayer = Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
 
 local main = UI:CreateWindow({
     Title = "michigun.xyz",
@@ -41,10 +49,10 @@ main:Tag({
 
 local function criarsection(title, icon, opened)
     return main:Section({
-    Title = title,
-    Icon = icon,
-    Opened = opened or false
-})
+        Title = title,
+        Icon = icon,
+        Opened = opened or false
+    })
 end
 
 local function criartab(title, icon, locked)
@@ -74,3 +82,536 @@ criarsection("Local", nil, true)
 local Char = criartab("Char", "solar:user-hands-bold", false)
 local AntiLag = criartab("Anti-lag", "solar:wi-fi-router-minimalistic-bold", false)
 local Player = criartab("Player", "solar:user-bold", false)
+
+-- config
+local Configs = criartab("Configurações", "lucide:settings", false)
+
+
+-- silent aim [lógica]
+_G.AimbotConfig = {
+    Enabled = false,
+    TeamCheck = "Team",         
+    TargetPart = {"Random"},      
+    MaxDistance = 1000,         
+    SwitchThreshold = 5,
+    WhitelistedUsers = {}, 
+    WhitelistedTeams = {}, 
+    FocusList = {},
+    FocusMode = false,
+    UseLegitOffset = true,
+    HitChance = 60,
+    WallCheck = true,
+    FOVSize = 200,
+    ShowFOV = true,
+    FOVBehavior = "Center",
+    FOVColor1 = Color3.fromRGB(255, 255, 255), 
+    ShowHighlight = true,
+    HighlightColor = Color3.fromRGB(255, 0, 0),
+    ESP = {
+        Enabled = true,
+        ShowName = true,
+        ShowHealth = true,
+        ShowWeapon = true,
+        TextColor = Color3.fromRGB(255, 255, 255),
+        OutlineColor = Color3.fromRGB(0, 0, 0),
+    }
+}
+
+task.spawn(function()
+    ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/silent.lua")
+end)
+
+
+local function GetPlayerNames()
+    local names = {}
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then table.insert(names, p.Name) end
+    end
+    return names
+end
+
+local function GetTeamNames()
+    local names = {}
+    if TeamsService then
+        for _, t in pairs(TeamsService:GetTeams()) do table.insert(names, t.Name) end
+    end
+    return names
+end
+
+do
+    local ToggleAim = SilentAim:Toggle({
+        Title = "Ativar",
+        Desc = "Ativa o silent aim",
+        Icon = "lucide:check",
+        Type = "checkbox",
+        Value = _G.AimbotConfig.Enabled,
+        Flag = "SilentAimEnabled",
+        Callback = function(state) 
+            _G.AimbotConfig.Enabled = state
+        end
+    })
+    
+    local CurrentKey = Enum.KeyCode.Q
+
+    SilentAim:Keybind({
+        Title = "Keybind",
+        Desc = "Tecla para ativar/desativar",
+        Value = "Q",
+        Flag = "SilentAimKeybind",
+        Callback = function(v)
+            if v and Enum.KeyCode[v] then
+                CurrentKey = Enum.KeyCode[v]
+            end
+        end
+    })
+
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if not gameProcessed and input.KeyCode == CurrentKey then
+            local newState = not _G.AimbotConfig.Enabled
+            if ToggleAim and ToggleAim.SetValue then
+                ToggleAim:SetValue(newState)
+            else
+                _G.AimbotConfig.Enabled = newState
+            end
+        end
+    end)
+
+    SilentAim:Slider({
+        Title = "Chance de acerto",
+        Desc = "Porcentagem de tiros redirecionados",
+        Step = 1,
+        Value = { Min = 0, Max = 100, Default = _G.AimbotConfig.HitChance },
+        Flag = "SilentAimHitChance",
+        Callback = function(value) _G.AimbotConfig.HitChance = value end
+    })
+    
+    SilentAim:Space()
+    
+    SilentAim:Paragraph({
+        Title = "Whitelist",
+        Desc = "Ignorar jogadores ou times",
+        Color = Color3.fromHex("#F2F3F5"),
+        Image = "lucide:id-card-lanyard",
+        ImageSize = 30
+    })
+
+    local PlayerWhitelist
+    
+    SilentAim:Button({
+        Title = "Atualizar Listas",
+        Desc = "Recarrega lista de players",
+        Callback = function()
+            if PlayerWhitelist then PlayerWhitelist:Refresh(GetPlayerNames()) end
+        end
+    })
+
+    PlayerWhitelist = SilentAim:Dropdown({
+        Title = "Players",
+        Desc = "Ignora jogadores específicos",
+        Values = GetPlayerNames(),
+        Value = {}, 
+        Multi = true,
+        AllowNone = true,
+        Flag = "SilentAimWhitelistUsers",
+        Callback = function(options) _G.AimbotConfig.WhitelistedUsers = options end
+    })
+
+    SilentAim:Dropdown({
+        Title = "Times",
+        Desc = "Ignora times específicos",
+        Values = GetTeamNames(),
+        Value = {},
+        Multi = true,
+        AllowNone = true,
+        Flag = "SilentAimWhitelistTeams",
+        Callback = function(options) _G.AimbotConfig.WhitelistedTeams = options end
+    })
+
+    SilentAim:Space()
+    
+    SilentAim:Paragraph({
+        Title = "Focar",
+        Desc = "Ative para focar SOMENTE nos jogadores abaixo",
+        Color = "Red",
+        Image = "lucide:crosshair",
+        ImageSize = 30
+    })
+
+    SilentAim:Toggle({
+        Title = "Modo Foco",
+        Desc = "Mira somente nos alvos listados",
+        Icon = "lucide:check",
+        Type = "Checkbox",
+        Value = _G.AimbotConfig.FocusMode,
+        Flag = "SilentAimFocusMode",
+        Callback = function(state)
+            _G.AimbotConfig.FocusMode = state
+        end
+    })
+
+    local FocusListParagraph = nil
+    local RemoveDropdown = nil
+
+    local function UpdateFocusUI()
+        if FocusListParagraph then
+            local listStr = table.concat(_G.AimbotConfig.FocusList, ", ")
+            if listStr == "" then listStr = "Nenhum alvo." end
+            FocusListParagraph:SetDesc(listStr)
+        end
+        if RemoveDropdown then
+            RemoveDropdown:Refresh(_G.AimbotConfig.FocusList)
+        end
+    end
+
+    SilentAim:Input({
+        Title = "Adicionar Alvo",
+        Desc = "Nome parcial ou completo",
+        Placeholder = "Digite aqui",
+        InputIcon = "lucide:user-plus",
+        Flag = "SilentAimAddTarget",
+        Callback = function(text)
+            if not text or text == "" then return end
+            local foundName = nil
+            for _, p in ipairs(Players:GetPlayers()) do
+                if string.sub(p.Name:lower(), 1, #text) == text:lower() then
+                    foundName = p.Name
+                    break
+                end
+            end
+            if foundName then
+                if not table.find(_G.AimbotConfig.FocusList, foundName) then
+                    table.insert(_G.AimbotConfig.FocusList, foundName)
+                    UpdateFocusUI()
+                end
+            end
+        end
+    })
+
+    RemoveDropdown = SilentAim:Dropdown({
+        Title = "Remover Alvo",
+        Desc = "Selecione para remover",
+        Values = {},
+        Value = nil,
+        Multi = false,
+        AllowNone = true,
+        Flag = "SilentAimRemoveTarget",
+        Callback = function(val)
+            if val then
+                local idx = table.find(_G.AimbotConfig.FocusList, val)
+                if idx then
+                    table.remove(_G.AimbotConfig.FocusList, idx)
+                    UpdateFocusUI()
+                    RemoveDropdown:Select(nil)
+                end
+            end
+        end
+    })
+
+    FocusListParagraph = SilentAim:Paragraph({
+        Title = "Lista Atual",
+        Desc = "Nenhum alvo",
+        Buttons = {
+            {
+                Icon = "lucide:trash-2",
+                Title = "Limpar",
+                Callback = function()
+                    _G.AimbotConfig.FocusList = {}
+                    UpdateFocusUI()
+                end
+            }
+        }
+    })
+
+    SilentAim:Space()
+
+    SilentAim:Dropdown({
+        Title = "Parte do corpo",
+        Desc = "Alvo do tiro",
+        Values = { "Random", "Head", "HumanoidRootPart", "UpperTorso", "LowerTorso", "Torso", "LeftUpperArm", "RightUpperArm", "LeftUpperLeg", "RightUpperLeg" },
+        Value = {"Random"},
+        Multi = true,
+        AllowNone = true,
+        Flag = "SilentAimTargetPart",
+        Callback = function(option) _G.AimbotConfig.TargetPart = option end
+    })
+
+    SilentAim:Dropdown({
+        Title = "Filtro de Equipe",
+        Desc = "Quem atacar",
+        Values = { "Todos", "Inimigos" },
+        Value = "Inimigos",
+        Flag = "SilentAimTeamCheck",
+        Callback = function(option) _G.AimbotConfig.TeamCheck = (option == "Todos") and "All" or "Team" end
+    })
+
+    SilentAim:Toggle({
+        Title = "Legit Offset",
+        Desc = "Espalha levemente o tiro",
+        Icon = "lucide:check",
+        Type = "Checkbox",
+        Value = _G.AimbotConfig.UseLegitOffset,
+        Flag = "SilentAimLegitOffset",
+        Callback = function(state) _G.AimbotConfig.UseLegitOffset = state end
+    })
+
+    SilentAim:Toggle({
+        Title = "Wall Check",
+        Desc = "Ignora alvos escondidos",
+        Icon = "lucide:check",
+        Type = "Checkbox",
+        Value = _G.AimbotConfig.WallCheck,
+        Flag = "SilentAimWallCheck",
+        Callback = function(state) _G.AimbotConfig.WallCheck = state end
+    })
+
+    SilentAim:Space()
+
+    SilentAim:Paragraph({
+        Title = "Visuais",
+        Desc = "FOV e Highlight",
+        Color = "Blue",
+        Image = "lucide:eye",
+        ImageSize = 30
+    })
+
+    SilentAim:Toggle({
+        Title = "Mostrar FOV",
+        Desc = "Desenha o círculo",
+        Icon = "lucide:circle",
+        Type = "Checkbox",
+        Value = _G.AimbotConfig.ShowFOV,
+        Flag = "SilentAimShowFOV",
+        Callback = function(state) _G.AimbotConfig.ShowFOV = state end
+    })
+
+    SilentAim:Dropdown({
+        Title = "Posição FOV",
+        Desc = "Mouse ou Centro da tela",
+        Values = { "Mouse", "Center" },
+        Value = "Center",
+        Flag = "SilentAimFOVBehavior",
+        Callback = function(option) _G.AimbotConfig.FOVBehavior = option end
+    })
+
+    SilentAim:Slider({
+        Title = "Tamanho FOV",
+        Desc = "Raio do círculo",
+        Step = 5,
+        Value = { Min = 40, Max = 1000, Default = _G.AimbotConfig.FOVSize },
+        Flag = "SilentAimFOVSize",
+        Callback = function(value) _G.AimbotConfig.FOVSize = value end
+    })
+
+    SilentAim:Colorpicker({
+        Title = "Cor do FOV",
+        Desc = "Escolha a cor",
+        Default = _G.AimbotConfig.FOVColor1,
+        Transparency = 0,
+        Locked = false,
+        Flag = "SilentAimFOVColor",
+        Callback = function(color) _G.AimbotConfig.FOVColor1 = color end
+    })
+
+    SilentAim:Slider({
+        Title = "Alcance Máximo",
+        Desc = "Distância máxima em studs",
+        Step = 10,
+        Value = { Min = 50, Max = 5000, Default = _G.AimbotConfig.MaxDistance },
+        Flag = "SilentAimMaxDistance",
+        Callback = function(value) _G.AimbotConfig.MaxDistance = value end
+    })
+
+    SilentAim:Space()
+
+    SilentAim:Toggle({
+        Title = "Highlight",
+        Desc = "Destaca o alvo atual",
+        Icon = "lucide:check",
+        Type = "Checkbox",
+        Value = _G.AimbotConfig.ShowHighlight,
+        Flag = "SilentAimShowHighlight",
+        Callback = function(state) _G.AimbotConfig.ShowHighlight = state end
+    })
+
+    SilentAim:Colorpicker({
+        Title = "Cor Highlight",
+        Desc = "Escolha a cor",
+        Default = _G.AimbotConfig.HighlightColor,
+        Transparency = 0,
+        Locked = false,
+        Flag = "SilentAimHighlightColor",
+        Callback = function(color) _G.AimbotConfig.HighlightColor = color end
+    })
+
+    SilentAim:Space()
+    SilentAim:Paragraph({
+        Title = "Info ESP",
+        Desc = "Infos flutuantes sobre o alvo focado",
+        Color = "Blue",
+        Image = "lucide:info",
+        ImageSize = 30
+    })
+
+    local ToggleName, ToggleHP, ToggleWeapon
+
+    local ToggleESP = SilentAim:Toggle({
+        Title = "Ativar Info",
+        Desc = "Mostra infos no alvo",
+        Icon = "lucide:check",
+        Type = "Checkbox",
+        Value = _G.AimbotConfig.ESP.Enabled,
+        Flag = "SilentAimESPEnabled",
+        Callback = function(state) 
+            _G.AimbotConfig.ESP.Enabled = state
+            if state then
+                if ToggleName then ToggleName:Unlock() end
+                if ToggleHP then ToggleHP:Unlock() end
+                if ToggleWeapon then ToggleWeapon:Unlock() end
+            else
+                if ToggleName then ToggleName:Lock() end
+                if ToggleHP then ToggleHP:Lock() end
+                if ToggleWeapon then ToggleWeapon:Lock() end
+            end
+        end
+    })
+
+    ToggleName = SilentAim:Toggle({
+        Title = "Mostrar Nome",
+        Desc = "Nome do jogador",
+        Icon = "lucide:user",
+        Type = "Checkbox",
+        Value = _G.AimbotConfig.ESP.ShowName,
+        Flag = "SilentAimESPShowName",
+        Callback = function(state) _G.AimbotConfig.ESP.ShowName = state end
+    })
+
+    ToggleHP = SilentAim:Toggle({
+        Title = "Mostrar Vida",
+        Desc = "HP atual",
+        Icon = "lucide:heart",
+        Type = "Checkbox",
+        Value = _G.AimbotConfig.ESP.ShowHealth,
+        Flag = "SilentAimESPShowHealth",
+        Callback = function(state) _G.AimbotConfig.ESP.ShowHealth = state end
+    })
+
+    ToggleWeapon = SilentAim:Toggle({
+        Title = "Mostrar Item",
+        Desc = "Ferramenta equipada",
+        Icon = "lucide:sword",
+        Type = "Checkbox",
+        Value = _G.AimbotConfig.ESP.ShowWeapon,
+        Flag = "SilentAimESPShowWeapon",
+        Callback = function(state) _G.AimbotConfig.ESP.ShowWeapon = state end
+    })
+    
+    if not _G.AimbotConfig.ESP.Enabled then
+        ToggleName:Lock(); ToggleHP:Lock(); ToggleWeapon:Lock()
+    end
+end
+
+
+
+-- configs
+local ConfigManager = main.ConfigManager
+local ConfigName = ""
+local SelectedConfig = nil
+local ConfigListDropdown = nil
+
+local function UpdateConfigList()
+    local configs = ConfigManager:AllConfigs()
+    if ConfigListDropdown then
+        ConfigListDropdown:Refresh(configs)
+    end
+end
+
+Configs:Input({
+    Title = "Nome da Configuração",
+    Desc = "Digite o nome para criar",
+    Placeholder = "Nome...",
+    InputIcon = "lucide:type",
+    Callback = function(text)
+        ConfigName = text
+    end
+})
+
+Configs:Button({
+    Title = "Criar Config",
+    Desc = "Salva com o nome digitado acima",
+    Callback = function()
+        if ConfigName ~= "" then
+            local cfg = ConfigManager:CreateConfig(ConfigName)
+            cfg:Save()
+            notificar("Config", "Salvo como " .. ConfigName, 3, "lucide:check")
+            UpdateConfigList()
+        else
+            notificar("Erro", "Digite um nome válido", 3, "lucide:x")
+        end
+    end
+})
+
+Configs:Space()
+
+ConfigListDropdown = Configs:Dropdown({
+    Title = "Arquivos Salvos",
+    Desc = "Selecione uma configuração",
+    Values = ConfigManager:AllConfigs(),
+    Value = nil,
+    Multi = false,
+    AllowNone = true,
+    Callback = function(val)
+        SelectedConfig = val
+    end
+})
+
+Configs:Button({
+    Title = "Carregar",
+    Desc = "Carrega a config selecionada",
+    Callback = function()
+        if SelectedConfig then
+            local cfg = ConfigManager:CreateConfig(SelectedConfig)
+            cfg:Load()
+            notificar("Config", "Carregado: " .. SelectedConfig, 3, "lucide:check")
+        else
+            notificar("Erro", "Nenhuma config selecionada", 3, "lucide:x")
+        end
+    end
+})
+
+Configs:Button({
+    Title = "Sobrescrever",
+    Desc = "Salva por cima da selecionada",
+    Callback = function()
+        if SelectedConfig then
+            local cfg = ConfigManager:CreateConfig(SelectedConfig)
+            cfg:Save()
+            notificar("Config", "Sobrescrito: " .. SelectedConfig, 3, "lucide:check")
+        else
+            notificar("Erro", "Nenhuma config selecionada", 3, "lucide:x")
+        end
+    end
+})
+
+Configs:Button({
+    Title = "Deletar",
+    Desc = "Apaga o arquivo permanentemente",
+    Callback = function()
+        if SelectedConfig then
+            local cfg = ConfigManager:CreateConfig(SelectedConfig)
+            cfg:Delete()
+            notificar("Config", "Deletado: " .. SelectedConfig, 3, "lucide:trash")
+            if ConfigListDropdown then ConfigListDropdown:Select(nil) end
+            UpdateConfigList()
+        else
+            notificar("Erro", "Nenhuma config selecionada", 3, "lucide:x")
+        end
+    end
+})
+
+Configs:Button({
+    Title = "Atualizar Lista",
+    Desc = "Recarrega os arquivos da pasta",
+    Callback = function()
+        UpdateConfigList()
+    end
+})
