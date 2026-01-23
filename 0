@@ -1,5 +1,14 @@
 local UI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
-local anonimo = false
+
+-- notificação
+local function notificar(titulo, mensagem, tempo, icone)
+    UI:Notify({
+        Title = titulo,
+        Content = mensagem,
+        Duration = tempo,
+        Icon = icone,
+    })
+end
 
 local main = UI:CreateWindow({
     Title = "michigun.xyz",
@@ -19,11 +28,8 @@ local main = UI:CreateWindow({
     User = {
         Enabled = true,
         Callback = function()
-            anonimo = not anonimo
-            UI.Icon:SetAnonymous(anonimo)
-        end,
+        end
     },
-
 })
 
 main:Tag({
