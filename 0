@@ -5,20 +5,18 @@ local main = UI:CreateWindow({
     Icon = "rbxassetid://88026679106109",
     Author = "por @fp3",
     Folder = "michigun.xyz",
-    Size = UDim2.fromOffset(580, 460),
+    Size = UDim2.fromOffset(560, 350),
     MinSize = Vector2.new(560, 350),
     MaxSize = Vector2.new(850, 560),
     Transparent = true,
     Theme = "Dark",
     Resizable = true,
     SideBarWidth = 200,
-    BackgroundImageTransparency = 0.42,
     HideSearchBar = true,
-    Background = "rbxassetid://",
     User = {
         Enabled = true,
         Callback = function()
             print("clicked")
         end,
-    }
-end
+    },
+})
