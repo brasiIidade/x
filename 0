@@ -1,8 +1,9 @@
 local UI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+local anonimo = false
 
 local main = UI:CreateWindow({
     Title = "michigun.xyz",
-    Icon = "rbxassetid://121963985766806",
+    Icon = "rbxassetid://117953861226880",
     Author = "por @fp3",
     Folder = "michigun.xyz",
     Size = UDim2.fromOffset(560, 350),
@@ -14,13 +15,15 @@ local main = UI:CreateWindow({
     SideBarWidth = 200,
     HideSearchBar = true,
     Background = "rbxassetid://17067930022",
-    BackgroundImageTransparency = 0.42,
+    BackgroundImageTransparency = 0.3,
     User = {
         Enabled = true,
         Callback = function()
-            print("clicked")
+            anonimo = not anonimo
+            UI.Icon:SetAnonymous(anonimo)
         end,
     },
+
 })
 
 main:Tag({
@@ -65,4 +68,3 @@ criarsection("Local", nil, true)
 local Char = criartab("Char", "solar:user-hands-bold", false)
 local AntiLag = criartab("Anti-lag", "solar:wi-fi-router-minimalistic-bold", false)
 local Player = criartab("Player", "solar:user-bold", false)
-
