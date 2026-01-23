@@ -20,3 +20,40 @@ local main = UI:CreateWindow({
         end,
     },
 })
+
+local function criarsection(title, icon, opened)
+    return main:Section({
+    Title = title,
+    Icon = icon,
+    Opened = opened or false
+})
+end
+
+local function criartab(title, icon, locked)
+    return main:Tab({
+        Title = title,
+        Icon = icon,
+        Locked = locked or false
+    })
+end
+
+-- combate
+criarsection("Combate", nil, true)
+local SilentAim = criartab("Silent aim", nil, false)
+local HitboxExpander = criartab("Hitbox expander", nil, false)
+local ESP = criartab("ESP", nil, false)
+
+-- parkour
+criarsection("Parkour", nil, true)
+local TAS = criartab("TAS", nil, false)
+local JJs = criartab("JJ's", nil, false)
+local ChatGPT = criartab("ChatGPT", nil, false)
+local Volvers = criartab("Volver's", nil, false)
+local F3X = criartab("F3X", nil, false)
+
+-- local
+criarsection("Local", nil, true)
+local Char = criartab("Char", nil, false)
+local AntiLag = criartab("Anti-lag", nil, false)
+local Player = criartab("Player", nil, false)
+
