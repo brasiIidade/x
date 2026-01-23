@@ -1,18 +1,5 @@
 local UI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
-local function ler(link)
-    loadstring(game:HttpGet(link))()
-end
-
-local function notificar(titulo, mensagem, tempo, icone)
-    UI:Notify({
-        Title = titulo,
-        Content = mensagem,
-        Duration = tempo,
-        Icon = icone,
-    })
-end
-
 local Players = game:GetService("Players")
 local TeamsService = game:GetService("Teams")
 local LocalPlayer = Players.LocalPlayer
@@ -39,6 +26,19 @@ local main = UI:CreateWindow({
         end
     },
 })
+
+local function ler(link)
+    loadstring(game:HttpGet(link))()
+end
+
+local function notificar(mensagem, tempo, icone)
+    UI:Notify({
+        Title = "michigun.xyz",
+        Content = mensagem,
+        Duration = tempo,
+        Icon = icone,
+    })
+end
 
 main:Tag({
     Title = "fp3",
@@ -143,7 +143,6 @@ do
         Title = "Ativar",
         Desc = "Ativa o silent aim",
         Icon = "lucide:check",
-        Type = "checkbox",
         Value = _G.AimbotConfig.Enabled,
         Flag = "SilentAimEnabled",
         Callback = function(state) 
@@ -241,7 +240,6 @@ do
         Title = "Modo Foco",
         Desc = "Mira somente nos alvos listados",
         Icon = "lucide:check",
-        Type = "Checkbox",
         Value = _G.AimbotConfig.FocusMode,
         Flag = "SilentAimFocusMode",
         Callback = function(state)
@@ -348,7 +346,6 @@ do
         Title = "Legit Offset",
         Desc = "Espalha levemente o tiro",
         Icon = "lucide:check",
-        Type = "Checkbox",
         Value = _G.AimbotConfig.UseLegitOffset,
         Flag = "SilentAimLegitOffset",
         Callback = function(state) _G.AimbotConfig.UseLegitOffset = state end
@@ -358,7 +355,6 @@ do
         Title = "Wall Check",
         Desc = "Ignora alvos escondidos",
         Icon = "lucide:check",
-        Type = "Checkbox",
         Value = _G.AimbotConfig.WallCheck,
         Flag = "SilentAimWallCheck",
         Callback = function(state) _G.AimbotConfig.WallCheck = state end
@@ -378,7 +374,6 @@ do
         Title = "Mostrar FOV",
         Desc = "Desenha o círculo",
         Icon = "lucide:circle",
-        Type = "Checkbox",
         Value = _G.AimbotConfig.ShowFOV,
         Flag = "SilentAimShowFOV",
         Callback = function(state) _G.AimbotConfig.ShowFOV = state end
@@ -427,7 +422,6 @@ do
         Title = "Highlight",
         Desc = "Destaca o alvo atual",
         Icon = "lucide:check",
-        Type = "Checkbox",
         Value = _G.AimbotConfig.ShowHighlight,
         Flag = "SilentAimShowHighlight",
         Callback = function(state) _G.AimbotConfig.ShowHighlight = state end
@@ -458,7 +452,6 @@ do
         Title = "Ativar Info",
         Desc = "Mostra infos no alvo",
         Icon = "lucide:check",
-        Type = "Checkbox",
         Value = _G.AimbotConfig.ESP.Enabled,
         Flag = "SilentAimESPEnabled",
         Callback = function(state) 
@@ -511,107 +504,113 @@ do
 end
 
 
+-- configurações
+local GerenciadorConfig = main.ConfigManager
+local NomeConfig = ""
+local ConfigSelecionada = nil
+local DropdownListaConfig = nil
 
--- configs
-local ConfigManager = main.ConfigManager
-local ConfigName = ""
-local SelectedConfig = nil
-local ConfigListDropdown = nil
-
-local function UpdateConfigList()
-    local configs = ConfigManager:AllConfigs()
-    if ConfigListDropdown then
-        ConfigListDropdown:Refresh(configs)
+local function AtualizarListaConfig()
+    local configs = GerenciadorConfig:AllConfigs()
+    if DropdownListaConfig then
+        DropdownListaConfig:Refresh(configs)
     end
 end
 
 Configs:Input({
-    Title = "Nome da Configuração",
-    Desc = "Digite o nome para criar",
-    Placeholder = "Nome...",
+    Title = "Nome da configuração",
+    Desc = "Dê um nome para a configuração",
+    Value = "",
+    Placeholder = "Digite aqui...",
     InputIcon = "lucide:type",
-    Callback = function(text)
-        ConfigName = text
+    Type = "Input",
+    Callback = function(texto)
+        NomeConfig = texto
     end
 })
 
 Configs:Button({
-    Title = "Criar Config",
-    Desc = "Salva com o nome digitado acima",
+    Title = "Criar configuração",
+    Desc = "Salva a configuração atual",
+    Icon = "lucide:plus",
     Callback = function()
-        if ConfigName ~= "" then
-            local cfg = ConfigManager:CreateConfig(ConfigName)
+        if NomeConfig ~= "" then
+            local cfg = GerenciadorConfig:CreateConfig(NomeConfig)
             cfg:Save()
-            notificar("Config", "Salvo como " .. ConfigName, 3, "lucide:check")
-            UpdateConfigList()
+            notificar("Salvo como " .. NomeConfig, 3, "lucide:check")
+            AtualizarListaConfig()
         else
-            notificar("Erro", "Digite um nome válido", 3, "lucide:x")
+            notificar("Digite um nome válido", 3, "lucide:x")
         end
     end
 })
 
-Configs:Space()
+Configs:Section({ 
+    Title = "Gerenciamento", 
+    Icon = "lucide:list" 
+})
 
-ConfigListDropdown = Configs:Dropdown({
-    Title = "Arquivos Salvos",
+DropdownListaConfig = Configs:Dropdown({
+    Title = "Configurações salvas",
     Desc = "Selecione uma configuração",
-    Values = ConfigManager:AllConfigs(),
-    Value = nil,
-    Multi = false,
-    AllowNone = true,
+    Values = GerenciadorConfig:AllConfigs(),
+    Value = "Nenhuma",
     Callback = function(val)
-        SelectedConfig = val
+        ConfigSelecionada = val
     end
 })
 
 Configs:Button({
     Title = "Carregar",
-    Desc = "Carrega a config selecionada",
+    Desc = "Carrega a configuração",
+    Icon = "lucide:upload",
     Callback = function()
-        if SelectedConfig then
-            local cfg = ConfigManager:CreateConfig(SelectedConfig)
+        if ConfigSelecionada then
+            local cfg = GerenciadorConfig:CreateConfig(ConfigSelecionada)
             cfg:Load()
-            notificar("Config", "Carregado: " .. SelectedConfig, 3, "lucide:check")
+            notificar("Carregado: " .. ConfigSelecionada, 3, "lucide:check")
         else
-            notificar("Erro", "Nenhuma config selecionada", 3, "lucide:x")
+            notificar("Nenhuma configuração selecionada", 3, "lucide:x")
         end
     end
 })
 
 Configs:Button({
     Title = "Sobrescrever",
-    Desc = "Salva por cima da selecionada",
+    Desc = "Salva na configuração atual",
+    Icon = "lucide:save",
     Callback = function()
-        if SelectedConfig then
-            local cfg = ConfigManager:CreateConfig(SelectedConfig)
+        if ConfigSelecionada then
+            local cfg = GerenciadorConfig:CreateConfig(ConfigSelecionada)
             cfg:Save()
-            notificar("Config", "Sobrescrito: " .. SelectedConfig, 3, "lucide:check")
+            notificar("Alterado: " .. ConfigSelecionada, 3, "lucide:check")
         else
-            notificar("Erro", "Nenhuma config selecionada", 3, "lucide:x")
+            notificar("Nenhuma configuração selecionada", 3, "lucide:x")
         end
     end
 })
 
 Configs:Button({
     Title = "Deletar",
-    Desc = "Apaga o arquivo permanentemente",
+    Desc = "Apaga a configuração",
+    Icon = "lucide:trash",
     Callback = function()
-        if SelectedConfig then
-            local cfg = ConfigManager:CreateConfig(SelectedConfig)
+        if ConfigSelecionada then
+            local cfg = GerenciadorConfig:CreateConfig(ConfigSelecionada)
             cfg:Delete()
-            notificar("Config", "Deletado: " .. SelectedConfig, 3, "lucide:trash")
-            if ConfigListDropdown then ConfigListDropdown:Select(nil) end
-            UpdateConfigList()
+            notificar("Deletado: " .. ConfigSelecionada, 3, "lucide:trash")
+            AtualizarListaConfig()
         else
-            notificar("Erro", "Nenhuma config selecionada", 3, "lucide:x")
+            notificar("Nenhuma configuração selecionada", 3, "lucide:x")
         end
     end
 })
 
 Configs:Button({
-    Title = "Atualizar Lista",
-    Desc = "Recarrega os arquivos da pasta",
+    Title = "Atualizar lista",
+    Desc = "Recarrega as configurações",
+    Icon = "lucide:refresh-cw",
     Callback = function()
-        UpdateConfigList()
+        AtualizarListaConfig()
     end
 })
