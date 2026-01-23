@@ -5,6 +5,38 @@ local TeamsService = game:GetService("Teams")
 local LocalPlayer = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
 
+-- executor
+local Executor = identifyexecutor and string.lower(identifyexecutor()) or "unknown"
+
+if string.find(Executor, "xeno") or string.find(Executor, "solara") then
+    LocalPlayer:Kick("Seu executor não tem suporte para rodar o michigun.xyz.")
+    task.wait(0.5)
+    while true do end
+end
+
+-- hooks
+local Meta = getrawmetatable(game)
+local OldIndex = Meta.__index
+setreadonly(Meta, false)
+
+Meta.__index = newcclosure(function(Self, Key)
+    if not checkcaller() then
+        if Key == "Size" and Self.Name == "HumanoidRootPart" and Self:IsA("BasePart") then
+            return Vector3.new(2, 2, 1)
+        elseif Key == "WalkSpeed" and Self:IsA("Humanoid") then
+            return 16
+        elseif Key == "JumpPower" and Self:IsA("Humanoid") then
+            return 50
+        elseif Key == "HipHeight" and Self:IsA("Humanoid") then
+            return 0
+        end
+    end
+    return OldIndex(Self, Key)
+end)
+
+setreadonly(Meta, true)
+
+
 local main = UI:CreateWindow({
     Title = "michigun.xyz",
     Icon = "rbxassetid://117953861226880",
@@ -1529,6 +1561,226 @@ task.spawn(function()
     repeat task.wait(0.5) until _G.Avatar and _G.Avatar.GetSavedSkins
     RefreshList()
 end)
+
+
+-- otimizar [lógica]
+task.spawn(function()
+    ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/optimize.lua")
+end)
+
+local confirmStep = false
+
+AntiLag:Paragraph({
+    Title = "Observação",
+    Color = "Red",
+    Image = "lucide:info",
+    ImageSize = 30,
+    Desc = "Só é possível tirar o anti-lag dando rejoin."
+})
+AntiLag:Space()
+
+local OptButton = AntiLag:Button({
+    Title = "Anti-lag",
+    Color = Color3.fromHex("#a2ff30"),
+    Justify = "Center",
+    Icon = "lucide:zap",
+    Callback = function()
+    end
+})
+
+OptButton.Callback = function()
+    if not confirmStep then
+        confirmStep = true
+        OptButton:SetTitle("Confirmação")
+        OptButton:SetDesc("Clique novamente para aplicar.")
+        notificar("Ação irreversível", 3, "lucide:alert-triangle")
+    else
+        OptButton:Lock()
+        OptButton:SetTitle("Otimizando...")
+        notificar("Aplicando...", 2, "lucide:loader")
+
+        task.spawn(function()
+            if _G.AntiLag and _G.AntiLag.Start then
+                _G.AntiLag.Start()
+                OptButton:SetTitle("Anti-lag ativado")
+                notificar("Aplicado com sucesso", 4, "lucide:check")
+            end
+        end)
+    end
+end
+
+-- local [lógica]
+task.spawn(function()
+    ler("LINK_DO_RAW_AQUI")
+end)
+
+local speedValue = nil
+
+Player:Paragraph({
+    Title = "Speed",
+    Desc = "Modifica a velocidade do personagem. Burla a maioria dos anticheats.",
+})
+
+Player:Input({
+    Title = "Speed",
+    Placeholder = "Valor",
+    Flag = "PlayerSpeedInput",
+    Callback = function(v)
+        if v == "" then return end
+        local n = tonumber(v)
+        speedValue = n
+    end
+})
+
+Player:Space()
+
+local grupamento1 = Player:Group()
+
+grupamento1:Button({
+    Title = "Aplicar velocidade",
+    Callback = function()
+        if not speedValue then
+            notificar("Informe um valor válido", 2, "lucide:alert-circle")
+            return
+        end
+        if _G.PlayerMod and _G.PlayerMod.SetSpeed then
+            _G.PlayerMod.SetSpeed(speedValue)
+            notificar("Velocidade alterada", 2, "lucide:zap")
+        end
+    end
+})
+
+grupamento1:Space()
+
+grupamento1:Button({
+    Title = "Resetar speed",
+    Callback = function()
+        if _G.PlayerMod and _G.PlayerMod.ResetSpeed then
+            _G.PlayerMod.ResetSpeed()
+            notificar("Velocidade restaurada", 2, "lucide:rotate-ccw")
+        end
+    end
+})
+
+Player:Space()
+
+Player:Toggle({
+    Title = "Anti-spawn",
+    Desc = "O personagem automaticamente teleportará ao local onde você morreu.",
+    Callback = function(v)
+        if _G.PlayerMod and _G.PlayerMod.ToggleAntiSpawn then
+            _G.PlayerMod.ToggleAntiSpawn(v)
+            if v then
+                notificar("Anti-spawn ativado", 2, "lucide:map-pin")
+            end
+        end
+    end
+})
+
+Player:Space()
+
+Player:Paragraph({
+    Title = "Noclip",
+    Desc = "Permite atravessar paredes.",
+})
+
+Player:Toggle({
+    Title = "Noclip",
+    Callback = function(state)
+        if _G.PlayerMod and _G.PlayerMod.ToggleNoclip then
+            _G.PlayerMod.ToggleNoclip(state)
+            if state then
+                notificar("Noclip ativado", 2, "lucide:ghost")
+            else
+                notificar("Noclip desativado", 2, "lucide:ban")
+            end
+        end
+    end
+})
+
+Player:Space()
+
+Player:Toggle({
+    Title = "Habilitar chat",
+    Desc = "Permite você ver o histórico de mensagens no chat.",
+    Callback = function(v)
+        if _G.PlayerMod and _G.PlayerMod.ToggleChat then
+            _G.PlayerMod.ToggleChat(v)
+        end
+    end
+})
+
+Player:Space()
+
+local ViewTargetName = ""
+
+Player:Input({
+    Title = "View",
+    Desc = "Digite o nome do jogador",
+    Placeholder = "Nome",
+    Callback = function(text)
+        ViewTargetName = text
+    end
+})
+
+Player:Toggle({
+    Title = "View jogador",
+    Desc = "Habilita ou desativa o view no jogador especificado.",
+    Callback = function(v)
+        if _G.PlayerMod and _G.PlayerMod.ToggleView then
+            local result = _G.PlayerMod.ToggleView(v, ViewTargetName)
+            if v then
+                if result then
+                    notificar("Vendo: " .. result, 3, "lucide:eye")
+                else
+                    notificar("Jogador não encontrado", 2, "lucide:search-x")
+                end
+            end
+        end
+    end
+})
+
+Player:Space()
+
+local TPTargetName = ""
+
+Player:Input({
+    Title = "Teleport",
+    Desc = "Digite o nome do jogador",
+    Placeholder = "Nome",
+    Callback = function(text)
+        TPTargetName = text
+    end
+})
+
+Player:Button({
+    Title = "Teleportar",
+    Desc = "Teleporta ao player selecionado.",
+    Callback = function()
+        if _G.PlayerMod and _G.PlayerMod.TeleportTo then
+            local result = _G.PlayerMod.TeleportTo(TPTargetName)
+            if result then
+                notificar("Teleportado para: " .. result, 3, "lucide:plane")
+            else
+                notificar("Jogador não encontrado", 2, "lucide:search-x")
+            end
+        end
+    end
+})
+
+Player:Button({
+    Title = "Voltar",
+    Desc = "Retorna para a última posição antes do teleport.",
+    Callback = function()
+        if _G.PlayerMod and _G.PlayerMod.ReturnPos then
+            if _G.PlayerMod.ReturnPos() then
+                notificar("Retornado", 2, "lucide:undo-2")
+            else
+                notificar("Nenhuma posição salva", 2, "lucide:x")
+            end
+        end
+    end
+})
 
 
 
