@@ -1,33 +1,4 @@
-if not _G.AimbotConfig then
-    _G.AimbotConfig = {
-        Enabled = false,
-        TeamCheck = "Team",         
-        TargetPart = {"Random"},      
-        MaxDistance = 1000,         
-        SwitchThreshold = 5,
-        WhitelistedUsers = {}, 
-        WhitelistedTeams = {}, 
-        FocusList = {},
-        FocusMode = false,
-        UseLegitOffset = true,
-        HitChance = 60,
-        WallCheck = true,
-        FOVSize = 200,
-        ShowFOV = true,
-        FOVBehavior = "Center",
-        FOVColor1 = Color3.fromRGB(255, 255, 255), 
-        ShowHighlight = true,
-        HighlightColor = Color3.fromRGB(255, 0, 0),
-        ESP = {
-            Enabled = true,
-            ShowName = true,
-            ShowHealth = true,
-            ShowWeapon = true,
-            TextColor = Color3.fromRGB(255, 255, 255),
-            OutlineColor = Color3.fromRGB(0, 0, 0),
-        }
-    }
-end
+if not _G.AimbotConfig then return end -- Espera a config ser criada pelo script principal
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -47,12 +18,10 @@ local StringLower = string.lower
 local StringFind = string.find
 local MathHuge = math.huge
 
--- Limpeza de UI antiga interna da lógica (apenas visuais do aimbot)
 if _G.AimbotGui then _G.AimbotGui:Destroy() end
 if _G.AimHighlight then _G.AimHighlight:Destroy() end
 if _G.AimFOVCircle then pcall(function() _G.AimFOVCircle:Remove() end) end
 
--- Criação do Círculo FOV
 local fov_circle = Drawing.new("Circle")
 fov_circle.Visible = false
 fov_circle.Thickness = 1.5
@@ -78,7 +47,6 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Funções Auxiliares
 local bulletFunctions = {
     "fire", "shoot", "bullet", "ammo", "projectile", 
     "missile", "rocket", "hit", "damage", "attack", 
@@ -118,7 +86,6 @@ local RayParams = RaycastParams.new()
 RayParams.FilterType = Enum.RaycastFilterType.Exclude
 RayParams.IgnoreWater = true
 
--- Setup GUI Interna (Highlight e Texto)
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "InternalAimbotUI"
 ScreenGui.ResetOnSpawn = false
