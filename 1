@@ -18,8 +18,8 @@ local main = UI:CreateWindow({
     Resizable = true,
     SideBarWidth = 200,
     HideSearchBar = true,
-    Background = "rbxassetid://127494762692525",
-    BackgroundImageTransparency = 0.3,
+    Background = "rbxassetid://501321753",
+    BackgroundImageTransparency = 0.4,
     User = {
         Enabled = true,
         Callback = function()
@@ -906,6 +906,307 @@ TAS:Button({
             RefreshTASList(newList)
         end
     end 
+})
+
+
+-- JJs [lógica]
+task.spawn(function()
+    ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/JJ2.lua")
+end)
+
+local ETAParagraph = JJs:Paragraph({
+    Title = "Tempo",
+    Desc  = "Aguardando...",
+    Color = "Green",
+    Locked = false,
+})
+
+task.spawn(function()
+    repeat task.wait(0.5) until _G.JJs
+    _G.JJs.StatusFunc = function(remaining, secondsLeft)
+        if ETAParagraph then
+            ETAParagraph:SetDesc(string.format("Restando: %d JJ's\nTempo estimado: %.1f segundos", remaining, math.max(secondsLeft, 0)))
+        end
+    end
+end)
+
+local JJsMain = JJs:Section({ Title = "Essenciais" })
+
+local jjTypes = {"Padrão"}
+
+if game.PlaceId == 14511049 then
+    table.insert(jjTypes, "JJ (Delta)")
+end
+
+if game.PlaceId == 13132367906 then
+    table.insert(jjTypes, "Canguru")
+end
+
+JJsMain:Dropdown({
+    Title = "Tipo de JJ",
+    Values = jjTypes,
+    Value = "Padrão",
+    Flag = "JJsMode",
+    Callback = function(v)
+        if _G.JJs then _G.JJs.Config.Mode = v end
+    end
+})
+
+JJsMain:Toggle({
+    Title = "Auto JJ's",
+    Desc = "Créditos ao Zv_yz",
+    Value = false,
+    Flag = "JJsEnabled",
+    Callback = function(v)
+        if _G.JJs then
+            if v then
+                _G.JJs.Start()
+                notificar("JJ's Iniciado", 2, "lucide:play")
+            else
+                _G.JJs.Stop()
+                notificar("JJ's Parado", 2, "lucide:pause")
+            end
+        end
+    end
+})
+
+JJsMain:Space()
+
+JJsMain:Input({
+    Title = "Inicial",
+    Placeholder = "Ex: 1",
+    Flag = "JJsStartValue",
+    Callback = function(v)
+        if _G.JJs and v ~= "" then _G.JJs.Config.StartValue = tonumber(v) or 1 end
+    end
+})
+
+JJsMain:Input({
+    Title = "Final",
+    Placeholder = "Ex: 100",
+    Flag = "JJsEndValue",
+    Callback = function(v)
+        if _G.JJs and v ~= "" then _G.JJs.Config.EndValue = tonumber(v) or 100 end
+    end
+})
+
+JJsMain:Toggle({
+    Title = "Pular",
+    Desc = "Pular ao enviar JJ's (Apenas modo Padrão).",
+    Value = false,
+    Flag = "JJsJump",
+    Callback = function(v)
+        if _G.JJs then _G.JJs.Config.JumpEnabled = v end
+    end
+})
+
+JJsMain:Toggle({
+    Title = "Espaçamento",
+    Desc = "Separa o sufixo do número. (Ex: UM !)",
+    Value = false,
+    Flag = "JJsSpacing",
+    Callback = function(v)
+        if _G.JJs then _G.JJs.Config.SpacingEnabled = v end
+    end
+})
+
+JJsMain:Space()
+
+JJsMain:Toggle({
+    Title = "Intervalo inteligente",
+    Desc  = "Ignora intervalos e termina exatamente no tempo indicado.",
+    Value = false,
+    Flag = "JJsSmartInterval",
+    Callback = function(v)
+        if _G.JJs then _G.JJs.Config.FinishInTime = v end
+    end
+})
+
+JJsMain:Input({
+    Title = "Tempo (segundos)",
+    Placeholder = "Ex: 60",
+    Flag = "JJsTotalTime",
+    Callback = function(v)
+        if _G.JJs and v ~= "" then _G.JJs.Config.FinishTotalTime = tonumber(v) or 60 end
+    end
+})
+
+JJsMain:Space()
+
+JJsMain:Dropdown({
+    Title = "Sufixo",
+    Values = { "!", "?", ".", ",", "/" },
+    Value = "!",
+    Flag = "JJsSuffix",
+    Callback = function(v)
+        if _G.JJs then _G.JJs.Config.Suffix = v end
+    end
+})
+
+JJsMain:Input({
+    Title = "Sufixo customizado",
+    Placeholder = "Ex: @",
+    Flag = "JJsCustomSuffix",
+    Callback = function(v)
+        if _G.JJs then _G.JJs.Config.CustomSuffix = tostring(v or "") end
+    end
+})
+
+local intervalos = JJs:Section({ Title = "Intervalo" })
+
+intervalos:Input({
+    Title = "Intervalo fixo (segundos)",
+    Placeholder = "Ex: 1.5",
+    Flag = "JJsFixedDelay",
+    Callback = function(v)
+        if _G.JJs and v ~= "" then _G.JJs.Config.DelayValue = tonumber(v) or 1.5 end
+    end
+})
+
+intervalos:Space()
+
+intervalos:Toggle({
+    Title = "Intervalo dinâmico",
+    Desc  = "Usa um intervalo aleatório entre mínimo e máximo.",
+    Value = false,
+    Flag = "JJsDynamicDelay",
+    Callback = function(v)
+        if _G.JJs then _G.JJs.Config.RandomDelay = v end
+    end
+})
+
+intervalos:Input({
+    Title = "Valor mínimo",
+    Placeholder = "Ex: 1",
+    Flag = "JJsMinDelay",
+    Callback = function(v)
+        if _G.JJs and v ~= "" then _G.JJs.Config.RandomMin = tonumber(v) or 1 end
+    end
+})
+
+intervalos:Input({
+    Title = "Valor máximo",
+    Placeholder = "Ex: 3",
+    Flag = "JJsMaxDelay",
+    Callback = function(v)
+        if _G.JJs and v ~= "" then _G.JJs.Config.RandomMax = tonumber(v) or 3 end
+    end
+})
+
+local Extras = JJs:Section({ Title = "Extras" })
+
+Extras:Toggle({
+    Title = "Modo reverso",
+    Desc  = "Conta de trás pra frente.",
+    Value = false,
+    Flag = "JJsReverse",
+    Callback = function(v)
+        if _G.JJs then _G.JJs.Config.ReverseEnabled = v end
+    end
+})
+
+
+-- ChatGPT [lógica]
+task.spawn(function()
+    ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/ChatGPT2.lua")
+end)
+
+local currentPrompt = ""
+
+ChatGPT:Paragraph({
+    Title = "Observação",
+    Desc = "O prompt usado para a IA está localizado na pasta 'fp3_ChatGPT.txt' dentro da pasta 'michigun.xyz'.",
+    Color = "Blue",
+    Image = "lucide:info",
+    ImageSize = 30
+})
+
+ChatGPT:Input({
+    Title = "Prompt",
+    Placeholder = "Pergunte aqui",
+    Flag = "ChatGPTPrompt",
+    Callback = function(text)
+        currentPrompt = text
+    end
+})
+
+local SendBtn
+SendBtn = ChatGPT:Button({
+    Title = "Enviar prompt",
+    Justify = "Center",
+    Flag = "ChatGPTSend",
+    Callback = function()
+        if not _G.ChatGPT or not _G.ChatGPT.Ask then 
+            notificar("Erro: Aguarde o carregamento...", 2, "lucide:loader")
+            return 
+        end
+        if currentPrompt == "" then return end
+
+        SendBtn:Lock()
+        
+        local timestamp = os.date("%H:%M:%S")
+        
+        ChatGPT:Divider()
+        ChatGPT:Space()
+        
+        ChatGPT:Paragraph({
+            Title = timestamp .. " Você:",
+            Color = "Blue",
+            Desc = currentPrompt,
+            Image = "rbxassetid://108962687127450",
+            ImageSize = 25
+        })
+
+        task.spawn(function()
+            local cleanMsg, luaCode = _G.ChatGPT.Ask(currentPrompt)
+            
+            ChatGPT:Paragraph({
+                Title = timestamp .. " Resposta:",
+                Desc = cleanMsg,
+                Color = "Green",
+                Image = "rbxassetid://125966901198850",
+                ImageSize = 28
+            })
+
+            if luaCode then
+                ChatGPT:Code({ Code = luaCode })
+            end
+
+            SendBtn:Unlock()
+        end)
+    end
+})
+
+ChatGPT:Button({
+    Title = "Enviar resposta no chat",
+    Justify = "Center",
+    Flag = "ChatGPTSendChat",
+    Callback = function()
+        if _G.ChatGPT and _G.ChatGPT.SendToChat and _G.ChatGPT.LastMessage then
+            _G.ChatGPT.SendToChat(_G.ChatGPT.LastMessage)
+            notificar("Enviado no chat", 2, "lucide:message-square")
+        else
+            notificar("Erro: Nada para enviar", 2, "lucide:x")
+        end
+    end
+})
+
+ChatGPT:Button({
+    Title = "Copiar resposta",
+    Justify = "Center",
+    Flag = "ChatGPTCopy",
+    Callback = function()
+        if _G.ChatGPT and _G.ChatGPT.LastMessage then
+            if setclipboard then
+                setclipboard(_G.ChatGPT.LastMessage)
+                notificar("Copiado!", 2, "lucide:copy")
+            else
+                notificar("Erro: Executor sem clipboard", 2, "lucide:x")
+            end
+        else
+            notificar("Erro: Nada para copiar", 2, "lucide:x")
+        end
+    end
 })
 
 
