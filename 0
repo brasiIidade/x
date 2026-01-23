@@ -2,7 +2,7 @@ local UI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/release
 
 local main = UI:CreateWindow({
     Title = "michigun.xyz",
-    Icon = "rbxassetid://88026679106109",
+    Icon = "rbxassetid://121963985766806",
     Author = "por @fp3",
     Folder = "michigun.xyz",
     Size = UDim2.fromOffset(560, 350),
@@ -13,12 +13,21 @@ local main = UI:CreateWindow({
     Resizable = true,
     SideBarWidth = 200,
     HideSearchBar = true,
+    Background = "rbxassetid://17067930022",
+    BackgroundImageTransparency = 0.42,
     User = {
         Enabled = true,
         Callback = function()
             print("clicked")
         end,
     },
+})
+
+main:Tag({
+    Title = "fp3",
+    Icon = "geist:logo-discord",
+    Color = Color3.fromHex("#7289da"),
+    Radius = 6,
 })
 
 local function criarsection(title, icon, opened)
@@ -54,6 +63,6 @@ local F3X = criartab("F3X", "lucide:pencil-ruler", false)
 -- local
 criarsection("Local", nil, true)
 local Char = criartab("Char", "solar:user-hands-bold", false)
-local AntiLag = criartab("Anti-lag", "solar:spedometer-max-line-duotone", false)
+local AntiLag = criartab("Anti-lag", "solar:wi-fi-router-minimalistic-bold", false)
 local Player = criartab("Player", "solar:user-bold", false)
 
