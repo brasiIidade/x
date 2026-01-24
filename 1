@@ -984,9 +984,10 @@ end
 
 JJsMain:Dropdown({
     Title = "Tipo de JJ",
+    Desc = "Escolha qual JJ fazer",
     Values = jjTypes,
     Value = "Padrão",
-    Flag = "JJsMode",
+    Flag = "TipoJJ",
     Callback = function(v)
         if _G.JJs then _G.JJs.Config.Mode = v end
     end
@@ -996,15 +997,15 @@ JJsMain:Toggle({
     Title = "Auto JJ's",
     Desc = "Créditos ao Zv_yz",
     Value = false,
-    Flag = "JJsEnabled",
+    Flag = "JJsAtivo",
     Callback = function(v)
         if _G.JJs then
             if v then
                 _G.JJs.Start()
-                notificar("JJ's Iniciado", 2, "lucide:play")
+                notificar("Iniciado", 2, "lucide:play")
             else
                 _G.JJs.Stop()
-                notificar("JJ's Parado", 2, "lucide:pause")
+                notificar("Parado", 2, "lucide:pause")
             end
         end
     end
@@ -1014,8 +1015,8 @@ JJsMain:Space()
 
 JJsMain:Input({
     Title = "Inicial",
-    Placeholder = "Ex: 1",
-    Flag = "JJsStartValue",
+    Placeholder = "1",
+    Flag = "JJsInicio",
     Callback = function(v)
         if _G.JJs and v ~= "" then _G.JJs.Config.StartValue = tonumber(v) or 1 end
     end
@@ -1023,8 +1024,8 @@ JJsMain:Input({
 
 JJsMain:Input({
     Title = "Final",
-    Placeholder = "Ex: 100",
-    Flag = "JJsEndValue",
+    Placeholder = "100",
+    Flag = "JJsFim",
     Callback = function(v)
         if _G.JJs and v ~= "" then _G.JJs.Config.EndValue = tonumber(v) or 100 end
     end
@@ -1032,9 +1033,9 @@ JJsMain:Input({
 
 JJsMain:Toggle({
     Title = "Pular",
-    Desc = "Pular ao enviar JJ's (Apenas modo Padrão).",
+    Desc = "Pular ao enviar JJ's",
     Value = false,
-    Flag = "JJsJump",
+    Flag = "JJsPular",
     Callback = function(v)
         if _G.JJs then _G.JJs.Config.JumpEnabled = v end
     end
@@ -1044,7 +1045,7 @@ JJsMain:Toggle({
     Title = "Espaçamento",
     Desc = "Separa o sufixo do número. (Ex: UM !)",
     Value = false,
-    Flag = "JJsSpacing",
+    Flag = "JJsEspacar",
     Callback = function(v)
         if _G.JJs then _G.JJs.Config.SpacingEnabled = v end
     end
@@ -1054,9 +1055,9 @@ JJsMain:Space()
 
 JJsMain:Toggle({
     Title = "Intervalo inteligente",
-    Desc  = "Ignora intervalos e termina exatamente no tempo indicado.",
+    Desc  = "Ignora intervalos e termina exatamente no tempo indicado",
     Value = false,
-    Flag = "JJsSmartInterval",
+    Flag = "JJsInteligente",
     Callback = function(v)
         if _G.JJs then _G.JJs.Config.FinishInTime = v end
     end
@@ -1064,8 +1065,8 @@ JJsMain:Toggle({
 
 JJsMain:Input({
     Title = "Tempo (segundos)",
-    Placeholder = "Ex: 60",
-    Flag = "JJsTotalTime",
+    Placeholder = "60",
+    Flag = "JJsTempo",
     Callback = function(v)
         if _G.JJs and v ~= "" then _G.JJs.Config.FinishTotalTime = tonumber(v) or 60 end
     end
@@ -1077,7 +1078,7 @@ JJsMain:Dropdown({
     Title = "Sufixo",
     Values = { "!", "?", ".", ",", "/" },
     Value = "!",
-    Flag = "JJsSuffix",
+    Flag = "JJsSufixo",
     Callback = function(v)
         if _G.JJs then _G.JJs.Config.Suffix = v end
     end
@@ -1085,8 +1086,8 @@ JJsMain:Dropdown({
 
 JJsMain:Input({
     Title = "Sufixo customizado",
-    Placeholder = "Ex: @",
-    Flag = "JJsCustomSuffix",
+    Placeholder = "@",
+    Flag = "JJsSufixoCustomizado",
     Callback = function(v)
         if _G.JJs then _G.JJs.Config.CustomSuffix = tostring(v or "") end
     end
@@ -1096,8 +1097,8 @@ local intervalos = JJs:Section({ Title = "Intervalo" })
 
 intervalos:Input({
     Title = "Intervalo fixo (segundos)",
-    Placeholder = "Ex: 1.5",
-    Flag = "JJsFixedDelay",
+    Placeholder = "1.5",
+    Flag = "JJsIntervaloFixo",
     Callback = function(v)
         if _G.JJs and v ~= "" then _G.JJs.Config.DelayValue = tonumber(v) or 1.5 end
     end
@@ -1107,9 +1108,9 @@ intervalos:Space()
 
 intervalos:Toggle({
     Title = "Intervalo dinâmico",
-    Desc  = "Usa um intervalo aleatório entre mínimo e máximo.",
+    Desc  = "Usa um intervalo aleatório entre mínimo e máximo",
     Value = false,
-    Flag = "JJsDynamicDelay",
+    Flag = "JJsIntervaloDinamico",
     Callback = function(v)
         if _G.JJs then _G.JJs.Config.RandomDelay = v end
     end
@@ -1117,8 +1118,8 @@ intervalos:Toggle({
 
 intervalos:Input({
     Title = "Valor mínimo",
-    Placeholder = "Ex: 1",
-    Flag = "JJsMinDelay",
+    Placeholder = "1",
+    Flag = "JJsDinamicoMinimo",
     Callback = function(v)
         if _G.JJs and v ~= "" then _G.JJs.Config.RandomMin = tonumber(v) or 1 end
     end
@@ -1126,8 +1127,8 @@ intervalos:Input({
 
 intervalos:Input({
     Title = "Valor máximo",
-    Placeholder = "Ex: 3",
-    Flag = "JJsMaxDelay",
+    Placeholder = "3",
+    Flag = "JJsDinamicoMaximo",
     Callback = function(v)
         if _G.JJs and v ~= "" then _G.JJs.Config.RandomMax = tonumber(v) or 3 end
     end
@@ -1137,16 +1138,16 @@ local Extras = JJs:Section({ Title = "Extras" })
 
 Extras:Toggle({
     Title = "Modo reverso",
-    Desc  = "Conta de trás pra frente.",
+    Desc  = "Conta de trás pra frente",
     Value = false,
-    Flag = "JJsReverse",
+    Flag = "JJsReverso",
     Callback = function(v)
         if _G.JJs then _G.JJs.Config.ReverseEnabled = v end
     end
 })
 
 
--- ChatGPT [lógica]
+--// tab ChatGPT
 task.spawn(function()
     ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/ChatGPT2.lua")
 end)
@@ -1155,7 +1156,7 @@ local currentPrompt = ""
 
 ChatGPT:Paragraph({
     Title = "Observação",
-    Desc = "O prompt usado para a IA está localizado na pasta 'fp3_ChatGPT.txt' dentro da pasta 'michigun.xyz'.",
+    Desc = "O prompt usado para a IA está localizado na pasta 'fp3_ChatGPT.txt' dentro da pasta 'michigun.xyz'",
     Color = "Blue",
     Image = "lucide:info",
     ImageSize = 30
@@ -1164,7 +1165,7 @@ ChatGPT:Paragraph({
 ChatGPT:Input({
     Title = "Prompt",
     Placeholder = "Pergunte aqui",
-    Flag = "ChatGPTPrompt",
+    Flag = "PromptChatGPT",
     Callback = function(text)
         currentPrompt = text
     end
@@ -1174,7 +1175,7 @@ local SendBtn
 SendBtn = ChatGPT:Button({
     Title = "Enviar prompt",
     Justify = "Center",
-    Flag = "ChatGPTSend",
+    Flag = "EnviarChatGPT",
     Callback = function()
         if not _G.ChatGPT or not _G.ChatGPT.Ask then 
             notificar("Erro: Aguarde o carregamento...", 2, "lucide:loader")
@@ -1220,7 +1221,7 @@ SendBtn = ChatGPT:Button({
 ChatGPT:Button({
     Title = "Enviar resposta no chat",
     Justify = "Center",
-    Flag = "ChatGPTSendChat",
+    Flag = "EnviarChatGPT",
     Callback = function()
         if _G.ChatGPT and _G.ChatGPT.SendToChat and _G.ChatGPT.LastMessage then
             _G.ChatGPT.SendToChat(_G.ChatGPT.LastMessage)
@@ -1234,7 +1235,7 @@ ChatGPT:Button({
 ChatGPT:Button({
     Title = "Copiar resposta",
     Justify = "Center",
-    Flag = "ChatGPTCopy",
+    Flag = "CopiarChatGPT",
     Callback = function()
         if _G.ChatGPT and _G.ChatGPT.LastMessage then
             if setclipboard then
@@ -1249,7 +1250,7 @@ ChatGPT:Button({
     end
 })
 
--- F3X [lógica]
+--// tab F3X
 task.spawn(function()
     ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/F3X.lua")
 end)
@@ -1297,6 +1298,7 @@ F3X:Toggle({
 })
 
 InfoParagraph = F3X:Paragraph({ Title = "Nenhuma parte selecionada.", Desc = "" })
+F3X:Space()
 F3X:Space()
 
 InputX = F3X:Input({ Title = "X (largura)" })
@@ -1416,7 +1418,7 @@ task.spawn(function()
     end
 end)
 
--- char [lógica]
+--// tab char
 task.spawn(function()
     ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/Char.lua")
 end)
@@ -1436,7 +1438,7 @@ end
 
 Char:Paragraph({
     Title = "Observação",
-    Desc = "A skin aplicada é VISUAL. Ou seja, NÃO mostra aos outros jogadores, somente a você.",
+    Desc = "A skin aplicada é VISUAL. Ou seja, NÃO mostra aos outros jogadores, somente a você",
     Color = "Blue",
     Image = "lucide:octagon-alert",
     ImageSize = 30,
@@ -1447,7 +1449,7 @@ Char:Space()
 
 Char:Input({
     Title = "Nome / ID",
-    Desc = "Digite o nome ou ID do usuário para copiar a skin.",
+    Desc = "Digite o nome ou ID do usuário para copiar a skin",
     Value = "",
     InputIcon = "lucide:search-check",
     Placeholder = "Digite aqui",
@@ -1480,7 +1482,7 @@ Char:Space()
 
 Char:Paragraph({
     Title = "Observação",
-    Desc = "As skins são salvas na pasta 'fp3_Skins' no Workspace do seu executor.",
+    Desc = "As skins são salvas na pasta 'fp3_Skins' no Workspace do seu executor",
     Color = "Blue",
     Image = "lucide:octagon-alert",
     ImageSize = 30,
@@ -1571,7 +1573,7 @@ task.spawn(function()
 end)
 
 
--- otimizar [lógica]
+--// tab anti-lag
 task.spawn(function()
     ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/optimize.lua")
 end)
@@ -1617,22 +1619,18 @@ OptButton.Callback = function()
     end
 end
 
--- local [lógica]
+--// tab local
 task.spawn(function()
     ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/Local2.lua")
 end)
 
 local speedValue = nil
 
-Player:Paragraph({
-    Title = "Speed",
-    Desc = "Modifica a velocidade do personagem. Burla a maioria dos anticheats.",
-})
-
 Player:Input({
     Title = "Speed",
+    Desc = "Muda sua velocidade",
     Placeholder = "Valor",
-    Flag = "PlayerSpeedInput",
+    Flag = "Speed",
     Callback = function(v)
         if v == "" then return end
         local n = tonumber(v)
@@ -1674,7 +1672,7 @@ Player:Space()
 
 Player:Toggle({
     Title = "Anti-spawn",
-    Desc = "O personagem automaticamente teleportará ao local onde você morreu.",
+    Desc = "O personagem automaticamente teleportará ao local onde você morreu",
     Callback = function(v)
         if _G.PlayerMod and _G.PlayerMod.ToggleAntiSpawn then
             _G.PlayerMod.ToggleAntiSpawn(v)
@@ -1687,20 +1685,16 @@ Player:Toggle({
 
 Player:Space()
 
-Player:Paragraph({
-    Title = "Noclip",
-    Desc = "Permite atravessar paredes.",
-})
-
 Player:Toggle({
     Title = "Noclip",
+    Desc = "Permite atravessar paredes",
     Callback = function(state)
         if _G.PlayerMod and _G.PlayerMod.ToggleNoclip then
             _G.PlayerMod.ToggleNoclip(state)
             if state then
-                notificar("Noclip ativado", 2, "lucide:ghost")
+                notificar("Ativado", 2, "lucide:ghost")
             else
-                notificar("Noclip desativado", 2, "lucide:ban")
+                notificar("Desativado", 2, "lucide:ban")
             end
         end
     end
@@ -1710,7 +1704,7 @@ Player:Space()
 
 Player:Toggle({
     Title = "Habilitar chat",
-    Desc = "Permite você ver o histórico de mensagens no chat.",
+    Desc = "Permite você ver o histórico de mensagens no chat",
     Callback = function(v)
         if _G.PlayerMod and _G.PlayerMod.ToggleChat then
             _G.PlayerMod.ToggleChat(v)
