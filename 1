@@ -1638,8 +1638,6 @@ Player:Input({
     end
 })
 
-Player:Space()
-
 local grupamento1 = Player:Group()
 
 grupamento1:Button({
@@ -1714,26 +1712,26 @@ Player:Toggle({
 
 Player:Space()
 
-local ViewTargetName = ""
+local TargetName = ""
 
 Player:Input({
-    Title = "View",
+    Title = "Jogador",
     Desc = "Digite o nome do jogador",
     Placeholder = "Nome",
     Callback = function(text)
-        ViewTargetName = text
+        TargetName = text
     end
 })
 
 Player:Toggle({
-    Title = "View jogador",
-    Desc = "Habilita ou desativa o view no jogador especificado.",
+    Title = "Espectar jogador",
+    Desc = "Especta o jogador",
     Callback = function(v)
         if _G.PlayerMod and _G.PlayerMod.ToggleView then
-            local result = _G.PlayerMod.ToggleView(v, ViewTargetName)
+            local result = _G.PlayerMod.ToggleView(v, TargetName)
             if v then
                 if result then
-                    notificar("Vendo: " .. result, 3, "lucide:eye")
+                    notificar("Espectando: " .. result, 3, "lucide:eye")
                 else
                     notificar("Jogador não encontrado", 2, "lucide:search-x")
                 end
@@ -1742,25 +1740,12 @@ Player:Toggle({
     end
 })
 
-Player:Space()
-
-local TPTargetName = ""
-
-Player:Input({
-    Title = "Teleport",
-    Desc = "Digite o nome do jogador",
-    Placeholder = "Nome",
-    Callback = function(text)
-        TPTargetName = text
-    end
-})
-
 Player:Button({
     Title = "Teleportar",
-    Desc = "Teleporta ao player selecionado.",
+    Desc = "Teleporta ao jogador",
     Callback = function()
         if _G.PlayerMod and _G.PlayerMod.TeleportTo then
-            local result = _G.PlayerMod.TeleportTo(TPTargetName)
+            local result = _G.PlayerMod.TeleportTo(TargetName)
             if result then
                 notificar("Teleportado para: " .. result, 3, "lucide:plane")
             else
@@ -1772,7 +1757,7 @@ Player:Button({
 
 Player:Button({
     Title = "Voltar",
-    Desc = "Retorna para a última posição antes do teleport.",
+    Desc = "Retorna para a última posição antes do teleport",
     Callback = function()
         if _G.PlayerMod and _G.PlayerMod.ReturnPos then
             if _G.PlayerMod.ReturnPos() then
