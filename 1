@@ -92,6 +92,8 @@ main:Tag({
 
 local fps = main:Tag({
     Title = "0 FPS",
+	Radius = 6,
+	Icon = "lucide:gauge",
     Color = Color3.fromRGB(100, 150, 255),
 })
 
@@ -118,6 +120,8 @@ end)
 
 local ping2 = main:Tag({
     Title = "0 ms",
+	Radius = 6,
+	Icon = "lucide:signal",
     Color = Color3.fromRGB(100, 200, 255),
 })
  
@@ -164,6 +168,26 @@ local function criartab(title, icon, locked)
         Icon = icon,
         Locked = locked or false
     })
+end
+
+--// mapas 
+
+local tevez = game.PlaceId == 13132367906
+local delta = game.PlaceId == 14511049
+local soucre = game.PlaceId == 129890257340707
+
+--// tabs mapas
+criarsection(main, "Mapa", "Exclusivos do mapa", "solar:gamepad-charge-outline", true)
+if tevez then
+    local TevezTab = criartab("Tevez", "https://tr.rbxcdn.com/180DAY-84c7c1edcc63c7dfab5712b1ad377133/768/432/Image/Webp/noFilter")
+end
+
+if delta then
+    local DeltaTab = criartab("Delta", "https://tr.rbxcdn.com/180DAY-8952e9d8abbff8104b22356f8b66f962/768/432/Image/Webp/noFilter")
+end
+
+if soucre then
+    local SoucreTab = criartab("Soucre", "https://tr.rbxcdn.com/180DAY-9b65f927dea36f98c1a720694fd00fd3/768/432/Image/Webp/noFilter")
 end
 
 
@@ -339,7 +363,7 @@ do
     local FocusSection = criarsection(SilentAim, "Foco", "Prioridade de alvos", "lucide:target", false)
 
     FocusSection:Toggle({
-        Title = "Modo Focar",
+        Title = "Focar",
         Desc = "Foca somente nos alvos listados abaixo",
         Icon = "lucide:check",
         Type = "Checkbox",
@@ -475,8 +499,8 @@ do
     local VisualsSection = criarsection(SilentAim, "Visuais", "FOV e destaques", "lucide:eye", false)
 
     VisualsSection:Toggle({
-        Title = "Desenhar FOV",
-        Desc = "Círculo indicando a área de ação",
+        Title = "FOV",
+        Desc = "Mostra o FOV",
         Icon = "lucide:check",
         Type = "Checkbox",
         Value = _G.AimbotConfig.ShowFOV,
@@ -523,8 +547,8 @@ do
     })
 
     VisualsSection:Colorpicker({
-        Title = "Cor do Highlight",
-        Desc = "Cor do destaque no personagem",
+        Title = "Cor",
+        Desc = "Cor do highlight",
         Default = _G.AimbotConfig.HighlightColor,
         Transparency = 0,
         Locked = false,
@@ -712,7 +736,7 @@ local TeamSection = criarsection(HitboxExpander, "Filtros", "Configuração de t
 
 TeamSection:Toggle({
     Title = "Filtrar por time",
-    Desc = "Aplica a hitbox apenas aos times selecionados",
+    Desc = "Aplica a hitbox apenas nos times selecionados",
     Value = _G.HitboxConfig.TeamFilterEnabled,
     Flag = "FiltrarTimeHitbox",
     Callback = function(v)
