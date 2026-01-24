@@ -2073,6 +2073,7 @@ local soucre = game.PlaceId == 129890257340707
 
 criarsection(main, "Mapa", "Exclusivos do mapa", "solar:gamepad-charge-outline", true)
 
+
 --// tab tevez
 if tevez then
     TevezTab = criartab("Tevez", "https://tr.rbxcdn.com/180DAY-84c7c1edcc63c7dfab5712b1ad377133/768/432/Image/Webp/noFilter")
@@ -2088,7 +2089,6 @@ if tevez then
         Value = "",
         InputIcon = "lucide:pencil",
         Placeholder = "Digite aqui...",
-        Flag = "TevezMsg",
         Callback = function(Value) 
             if _G.TevezMods then _G.TevezMods.ChatMessage = Value end
         end
@@ -2098,7 +2098,6 @@ if tevez then
         Desc = "Envia a mensagem várias vezes",
         Icon = "lucide:check",
         Value = false,
-        Flag = "TevezSpam",
         Callback = function(state) 
             if _G.TevezMods and _G.TevezMods.ToggleSpam then _G.TevezMods.ToggleSpam(state) end
         end
@@ -2111,17 +2110,7 @@ if tevez then
             if _G.TevezMods and _G.TevezMods.SendMessage then _G.TevezMods.SendMessage() end
         end
     })
-    LocalSection:Dropdown({
-        Title = "AFK",
-        Desc = "Modo AFK",
-        Values = { "Ativar", "Desativar" },
-        Value = "Desativar",
-        Flag = "TevezAFK",
-        Callback = function(option)
-            if _G.TevezMods and _G.TevezMods.SetAFK then _G.TevezMods.SetAFK(option == "Ativar") end
-        end
-    })
-
+	
     local SpooferSection = criarsection(TevezTab, "Spoofer", "Alterar dispositivo", "lucide:smartphone", false)
     SpooferSection:Paragraph({
         Title = "Spoofer",
@@ -2129,23 +2118,32 @@ if tevez then
     })
     SpooferSection:Dropdown({
         Title = "Dispositivo",
-        Desc = "Selecione o dispositivo.",
+        Desc = "Selecione o dispositivo",
         Values = { "Mobile", "Computer" },
         Value = "Computer",
-        Flag = "TevezDevice",
         Callback = function(option)
             if _G.TevezMods then _G.TevezMods.SelectedDevice = option end
         end
     })
     SpooferSection:Toggle({
         Title = "Ativar",
-        Desc = "Quando ativo, altera o dispositivo. Reseta o personagem.",
+        Desc = "Quando ativo, altera o dispositivo. Reseta o personagem",
         Value = false,
-        Flag = "TevezSpoofCheck",
         Callback = function(v)
             if _G.TevezMods and _G.TevezMods.ToggleSpoof then _G.TevezMods.ToggleSpoof(v) end
         end
     })
+
+	SpooferSection:Dropdown({
+        Title = "AFK",
+        Desc = "Modo AFK",
+        Values = { "Ativar", "Desativar" },
+        Value = "Desativar",
+        Callback = function(option)
+            if _G.TevezMods and _G.TevezMods.SetAFK then _G.TevezMods.SetAFK(option == "Ativar") end
+        end
+    })
+	
 
     local FarmSection = criarsection(TevezTab, "Autofarm", "Farm de Banco", "lucide:bank-note", false)
     
@@ -2166,29 +2164,28 @@ if tevez then
     end)
 
     FarmSection:Toggle({
-        Title = "Ativar Autofarm",
-        Desc = "Inicia o ciclo de roubo ao banco",
+        Title = "Ativar",
+        Desc = "Inicia o autofarm",
         Value = false,
-        Flag = "TevezFarmToggle",
         Callback = function(v)
             if _G.TevezAutoFarm then _G.TevezAutoFarm.Toggle(v) end
         end
     })
     
     FarmSection:Toggle({
-        Title = "Modo Seguro",
+        Title = "Modo seguro",
         Desc = "Pausa se houver jogadores por perto",
         Value = false,
-        Flag = "TevezSafeMode",
+        Flag = "ModoSeguroAutofarmTevez",
         Callback = function(v)
             if _G.TevezAutoFarm then _G.TevezAutoFarm.SafeMode = v end
         end
     })
     
     FarmSection:Input({
-        Title = "Raio de Segurança",
+        Title = "Raio de segurança",
         Placeholder = "60",
-        Flag = "TevezSafeRadius",
+        Flag = "RaioDeSegurancaAutofarmTevez",
         Callback = function(v)
             local n = tonumber(v)
             if n and _G.TevezAutoFarm then _G.TevezAutoFarm.SafeRadius = n end
@@ -2206,7 +2203,6 @@ if tevez then
         Title = "Permitir",
         Desc = "Libera o uso do kill aura",
         Value = false,
-        Flag = "TevezAllowAura",
         Callback = function(state)
             if state then
                 if KillAuraToggle then KillAuraToggle:Unlock() end
@@ -2223,7 +2219,6 @@ if tevez then
     KillAuraToggle = CombatSection:Toggle({
         Title = "Kill-aura",
         Value = false,
-        Flag = "TevezKillAura",
         Callback = function(state)
             if _G.TevezMods and _G.TevezMods.ToggleAura then
                 _G.TevezMods.ToggleAura(state, KillAuraToggle)
@@ -2246,7 +2241,6 @@ if tevez then
         Desc = "Compra um item na loja de civil",
         Values = DropdownValues,
         Value = "GLOCK 18 - $4300",
-        Flag = "TevezShopList",
         Callback = function(option)
             if _G.TevezMods then _G.TevezMods.SelectedShopItem = DisplayToItem[option] end
         end
@@ -2261,8 +2255,9 @@ if tevez then
     local ModsSection = criarsection(TevezTab, "Mods de Arma", "Alterar status", "lucide:wrench", false)
     ModsSection:Input({
         Title = "Bullets",
+		Desc = "Quantidade de balas por disparo",
         Placeholder = "Valor",
-        Flag = "TevezBullets",
+        Flag = "BalasTevez",
         Callback = function(v)
             if v == "" then return end
             if _G.TevezMods then _G.TevezMods.GunConfig.Bullets = tonumber(v) end
@@ -2270,8 +2265,9 @@ if tevez then
     })
     ModsSection:Input({
         Title = "Spread",
+		Desc = "Espalhamento das balas",
         Placeholder = "Valor",
-        Flag = "TevezSpread",
+        Flag = "SpreadTevez",
         Callback = function(v)
             if v == "" then return end
             if _G.TevezMods then _G.TevezMods.GunConfig.Spread = tonumber(v) end
@@ -2279,8 +2275,9 @@ if tevez then
     })
     ModsSection:Input({
         Title = "Range",
+		Desc = "O quão longe as balas vão",
         Placeholder = "Valor",
-        Flag = "TevezRange",
+        Flag = "RangeTevez",
         Callback = function(v)
             if v == "" then return end
             if _G.TevezMods then _G.TevezMods.GunConfig.Range = tonumber(v) end
@@ -2306,9 +2303,8 @@ if delta then
     
     JJSection:Input({
         Title = "Quantidade",
-        Desc = "Valor para adicionar/remover",
-        Placeholder = "Ex: 10",
-        Flag = "DeltaJJInput",
+        Desc = "Valor para adicionar ou remover",
+        Placeholder = "10",
         Callback = function(v)
             if _G.DeltaLogic then _G.DeltaLogic.JJValue = v end
         end
@@ -2316,7 +2312,6 @@ if delta then
 
     JJSection:Button({
         Title = "Modificar",
-        Desc = "Aplica o valor inserido",
         Callback = function()
             if _G.DeltaLogic and _G.DeltaLogic.SetJJ then _G.DeltaLogic.SetJJ() end
         end
@@ -2325,8 +2320,8 @@ if delta then
     local EcoSection = criarsection(DeltaTab, "Economia", "Dinheiro e transferências", "lucide:bank-note", false)
 
     EcoSection:Button({
-        Title = "Ficar rico (Rejoin)",
-        Desc = "Pega 1M e reinicia o servidor",
+        Title = "Ficar rico",
+        Desc = "Pega 1M de dinheiro",
         Callback = function()
             if _G.DeltaLogic and _G.DeltaLogic.GetRich then _G.DeltaLogic.GetRich() end
         end
@@ -2334,16 +2329,15 @@ if delta then
 
     EcoSection:Paragraph({
         Title = "Observação",
-        Desc = "Money All faz uma transferência a cada 16s",
+        Desc = "Money all faz uma transferência a cada 15 segundos",
         Color = "Blue",
         Image = "lucide:info"
     })
 
     EcoSection:Toggle({
-        Title = "Money All",
+        Title = "Money all",
         Desc = "Envia dinheiro infinito para todos",
         Value = false,
-        Flag = "DeltaMoneyAll",
         Callback = function(v)
             if _G.DeltaLogic and _G.DeltaLogic.ToggleMoneyAll then _G.DeltaLogic.ToggleMoneyAll(v) end
         end
@@ -2378,7 +2372,6 @@ if soucre then
         Title = "Autofarm",
         Desc = "Inicia o farm de entregador",
         Value = false,
-        Flag = "SoucreFarm",
         Callback = function(v)
             if _G.SoucreLogic then _G.SoucreLogic.Toggle(v) end
         end
