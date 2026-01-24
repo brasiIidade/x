@@ -57,6 +57,18 @@ local main = UI:CreateWindow({
     HideSearchBar = true,
     Background = "rbxassetid://12455008733",
     BackgroundImageTransparency = 0.4,
+	OpenButton = {
+        Title = "michigun.xyz",
+        CornerRadius = UDim.new(1,0),
+        StrokeThickness = 3,
+        Enabled = true,
+        Draggable = true,
+        OnlyMobile = false,
+        Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(170, 90, 255)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(120, 60, 255))
+        })
+		},
     User = {
         Enabled = true,
         Callback = function()
