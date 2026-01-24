@@ -21,20 +21,25 @@ setreadonly(Meta, false)
 
 Meta.__index = newcclosure(function(Self, Key)
     if not checkcaller() then
-        if Key == "Size" and Self.Name == "HumanoidRootPart" and Self:IsA("BasePart") then
-            return Vector3.new(2, 2, 1)
-        elseif Key == "WalkSpeed" and Self:IsA("Humanoid") then
-            return 16
-        elseif Key == "JumpPower" and Self:IsA("Humanoid") then
-            return 50
-        elseif Key == "HipHeight" and Self:IsA("Humanoid") then
-            return 0
+        if Key == "WalkSpeed" then
+            if Self:IsA("Humanoid") then 
+                return 16 
+            end
+        elseif Key == "JumpPower" then
+            if Self:IsA("Humanoid") then 
+                return 50 
+            end
+        elseif Key == "Size" then
+            if Self.Name == "HumanoidRootPart" and Self:IsA("BasePart") then
+                return Vector3.new(2, 2, 1)
+            end
         end
     end
     return OldIndex(Self, Key)
 end)
 
 setreadonly(Meta, true)
+
 
 
 local main = UI:CreateWindow({
@@ -1611,7 +1616,7 @@ end
 
 -- local [lógica]
 task.spawn(function()
-    ler("LINK_DO_RAW_AQUI")
+    ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/Local2.lua")
 end)
 
 local speedValue = nil
@@ -1781,6 +1786,10 @@ Player:Button({
         end
     end
 })
+
+task.spawn(function()
+    repeat task.wait(0.5) until _G.PlayerMod and _G.PlayerMod.IsReady
+end)
 
 
 
