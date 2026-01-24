@@ -1528,7 +1528,7 @@ MainSection:Input({
 local g1 = MainSection:Group()
 g1:Button({
     Title = "Aplicar",
-    Desc = "Aplica a skin do nome ou ID colocado",
+    Desc = "Aplica a skin",
     Callback = function()
         if _G.Avatar and _G.Avatar.ApplySkin then
             _G.Avatar.ApplySkin(targetInput)
@@ -1564,7 +1564,6 @@ SkinDropdown = FavSection:Dropdown({
     Desc = "Aqui serão listados seus ID's favoritos",
     Values = {}, 
     Value = "",
-    Flag = "CharFavorites",
     Callback = function(option)
         confirmDelete = false
         if confirmTask then task.cancel(confirmTask) confirmTask = nil end
@@ -1611,7 +1610,7 @@ DeleteButton = FavSection:Button({
         if not selectedFavorite then return end
         if not confirmDelete then
             confirmDelete = true
-            DeleteButton:SetTitle("Confirmar exclusão?")
+            DeleteButton:SetTitle("Certeza?")
             DeleteButton:SetDesc("Você tem 3 segundos para confirmar")
             DeleteButton.Icon = "lucide:triangle-alert"
             DeleteButton.Color = Color3.fromHex("#FF0000")
