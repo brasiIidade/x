@@ -4,6 +4,7 @@ local Players = game:GetService("Players")
 local TeamsService = game:GetService("Teams")
 local LocalPlayer = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 
 --// executor
 local Executor = identifyexecutor and string.lower(identifyexecutor()) or "unknown"
@@ -78,13 +79,69 @@ local function notificar(mensagem, tempo, icone)
     })
 end
 
---// tag
+--// tags
 main:Tag({
     Title = "fp3",
     Icon = "geist:logo-discord",
     Color = Color3.fromHex("#7289da"),
     Radius = 6
 })
+
+local fps = main:Tag({
+    Title = "0 FPS",
+    Color = Color3.fromRGB(100, 150, 255),
+})
+
+local lastUpdate = tick()
+local frameCount = 0
+ 
+RunService.RenderStepped:Connect(function()
+    frameCount = frameCount + 1
+    local now = tick()
+    if now - lastUpdate >= 1 then
+        local currentFps = math.floor(frameCount / (now - lastUpdate))
+        fps:SetTitle(tostring(currentFps) .. " FPS")
+        if currentFps >= 50 then
+            fps:SetColor(Color3.fromRGB(0, 255, 0)) -- Verde
+        elseif currentFps >= 30 then
+            fps:SetColor(Color3.fromRGB(255, 200, 0)) -- Amarelo
+        else
+            fps:SetColor(Color3.fromRGB(255, 0, 0)) -- Vermelho
+        end
+        frameCount = 0
+        lastUpdate = now
+    end
+end)
+
+local ping2 = main:Tag({
+    Title = "0 ms",
+    Color = Color3.fromRGB(100, 200, 255),
+})
+ 
+task.spawn(function()
+    while true do
+        local success, ping = pcall(function()
+            local Stats = game:GetService("Stats")
+            local pingValue = Stats.Network.ServerStatsItem["Data Ping"]:GetValue()
+            return math.floor(pingValue)
+        end)
+        
+        if success and ping then
+            ping2:SetTitle(tostring(ping) .. " ms")
+            if ping <= 50 then
+                ping2:SetColor(Color3.fromRGB(0, 255, 0))
+            elseif ping <= 100 then
+                ping2:SetColor(Color3.fromRGB(255, 200, 0))
+            elseif ping <= 200 then
+                ping2:SetColor(Color3.fromRGB(255, 150, 0))
+            else
+                ping2:SetColor(Color3.fromRGB(255, 0, 0))
+            end
+        end
+        task.wait(2)
+    end
+end)
+
 
 --// criar seção
 local function criarsection(title, icon, opened)
@@ -1774,8 +1831,9 @@ task.spawn(function()
 end)
 
 
+--// tab configs
 
--- configurações
+--// manager das config
 local GerenciadorConfig = main.ConfigManager
 local NomeConfig = ""
 local ConfigSelecionada = nil
@@ -1883,5 +1941,126 @@ Configs:Button({
     Icon = "lucide:refresh-cw",
     Callback = function()
         AtualizarListaConfig()
+    end
+})
+Configs:Space()
+
+local SecretWord = "/e" 
+local KeybindKey = Enum.KeyCode.Z 
+local ChatConnection = nil
+local KeybindConnection = nil 
+
+local function UpdateOpenButton(state)
+    main:EditOpenButton({
+        Title = "michigun.xyz",
+        Icon = "lucide:code-xml",
+        CornerRadius = UDim.new(0, 5),
+        StrokeThickness = 1,
+        Color = ColorSequence.new(
+            Color3.fromHex("#282828"), 
+            Color3.fromHex("#FFFFFF")
+        ),
+        OnlyMobile = false,
+        Enabled = state,
+        Draggable = true,
+    })
+end
+
+UpdateOpenButton(true)
+
+local function setupChatToggle()
+    if ChatConnection then
+        ChatConnection:Disconnect()
+        ChatConnection = nil
+    end
+
+    ChatConnection = LocalPlayer.Chatted:Connect(function(msg)
+        if msg == SecretWord then
+            main:Toggle()
+        end
+    end)
+end
+
+setupChatToggle()
+
+local function setupKeybind(isUpdate)
+    if KeybindConnection then
+        KeybindConnection:Disconnect()
+        KeybindConnection = nil
+    end
+
+    KeybindConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+
+        if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == KeybindKey then
+            main:Toggle()
+        end
+    end)
+    
+    if isUpdate then
+        notificar("Keybind definida: " .. tostring(KeybindKey), 3, "lucide:keyboard")
+    end
+end
+
+setupKeybind(false)
+
+local Toggle = Configs:Toggle({
+    Title = "Botão flutuante",
+    Desc = "Ativa o botão flutuante ao minimizar a UI",
+    Icon = "lucide:check",
+    IconColor = "Green",
+    Value = true,
+    Flag = "BotaoUI",
+    Callback = function(state)
+        UpdateOpenButton(state)
+    end
+})
+	
+Configs:Input({
+    Title = "Palavra secreta",
+    Desc = "Palavra para abrir/fechar a UI. Padrão: /e",
+    Placeholder = "/e",
+    Flag = "PalavraSecreta",
+    Callback = function(v)
+        if v == "" then return end
+        local has_space = string.find(v or "", "%s")
+        local is_empty = string.len(v or "") == 0
+        
+        if not is_empty and not has_space then
+            SecretWord = v
+            setupChatToggle()
+            notificar("Definida para: " .. v, 3, "lucide:check")
+        else
+            notificar("Texto inválido", 3, "lucide:alert-circle")
+            
+            SecretWord = "/e"
+            setupChatToggle()
+            notificar("Resetada para: /e", 3, "lucide:rotate-ccw")
+        end
+    end
+})
+
+Configs:Input({
+    Title = "Keybind",
+    Desc = "Tecla para abrir e fechar a UI (Padrão: Z)",
+    Flag = "KeybindUI",
+    Placeholder = "Z",
+    Callback = function(v)
+        local keyName = string.upper(string.gsub(v or "", "%s+", ""))
+
+        if string.len(keyName) == 0 then
+            return
+        end
+
+        local success, newKeybind = pcall(function()
+            return Enum.KeyCode[keyName]
+        end)
+
+        if success and newKeybind then
+            KeybindKey = newKeybind
+            setupKeybind(true)
+        else
+            notificar("Tecla inválida", 3, "lucide:x")
+        end
     end
 })
