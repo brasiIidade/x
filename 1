@@ -563,8 +563,7 @@ do
     end
 end
 
-
--- hitbox expander [lógica]
+--// tab hitbox
 _G.HitboxConfig = {
     Size = Vector3.new(5,5,5),
     Transparency = 0.5,
@@ -587,14 +586,15 @@ end
 HitboxExpander:Paragraph({
     Title = "Modificar hitbox",
     Image = "lucide:info",
-    Desc = "Altera o tamanho e visual da hitbox dos inimigos."
+    Desc = "Altera o tamanho da hitbox dos inimigos"
 })
 
 local FirstRun = true
 HitboxExpander:Toggle({
-    Title = "Ativar Hitbox",
-    Desc = "Liga/Desliga a lógica de expansão",
+    Title = "Hitbox",
+    Desc = "Liga o hitbox expander",
     Value = false,
+    Flag = "Hitbox",
     Callback = function(v)
         if FirstRun then
             FirstRun = false
@@ -609,12 +609,12 @@ HitboxExpander:Toggle({
         if v then
             if _G.StartHitboxLogic then
                 _G.StartHitboxLogic()
-                notificar("Hitbox Iniciada", 2, "lucide:play")
+                notificar("Ligado", 2, "lucide:play")
             end
         else
             if _G.StopHitboxLogic then
                 _G.StopHitboxLogic()
-                notificar("Hitbox Desligada", 2, "lucide:pause")
+                notificar("Desligado", 2, "lucide:pause")
             end
         end
     end
@@ -624,6 +624,7 @@ HitboxExpander:Toggle({
     Title = "Escudo check",
     Desc = "A hitbox volta ao normal se equiparem o escudo",
     Value = _G.HitboxConfig.HideOnShield,
+    Flag = "EscudoHitbox",
     Callback = function(v)
         _G.HitboxConfig.HideOnShield = v
         AtualizarValores()
@@ -632,9 +633,10 @@ HitboxExpander:Toggle({
 
 HitboxExpander:Dropdown({
     Title = "Formato",
-    Desc = "Formato usado para a hitbox.",
+    Desc = "Formato usado para a hitbox",
     Values = { "Sphere", "Block", "Cylinder", "Wedge" },
     Value = "Sphere",
+    Flag = "FormatoHitbox",
     Callback = function(option)
         local map = {
             Sphere = Enum.PartType.Ball,
@@ -649,8 +651,8 @@ HitboxExpander:Dropdown({
 
 HitboxExpander:Input({
     Title = "Tamanho da hitbox",
-    Desc = "Valor numérico (Studs)",
-    Placeholder = "Ex: 10",
+    Placeholder = "20",
+    Flag = "TamanhoHitbox",
     Callback = function(v)
         local n = tonumber(v)
         if n then
@@ -665,6 +667,7 @@ HitboxExpander:Slider({
     Desc = "0 = visível; 1 = invisível",
     Step = 0.02,
     Value = { Min = 0, Max = 1, Default = _G.HitboxConfig.Transparency },
+    Flag = "VisibilidadeHitbox",
     Callback = function(val)
         _G.HitboxConfig.Transparency = val
         AtualizarValores()
@@ -675,8 +678,9 @@ HitboxExpander:Space()
 
 HitboxExpander:Toggle({
     Title = "Filtrar por time",
-    Desc = "Aplica apenas aos times selecionados",
+    Desc = "Aplica a hitbox apenas aos times selecionados",
     Value = _G.HitboxConfig.TeamFilterEnabled,
+    Flag = "FiltrarTimeHitbox",
     Callback = function(v)
         _G.HitboxConfig.TeamFilterEnabled = v
         AtualizarValores()
@@ -690,6 +694,7 @@ HitboxExpander:Dropdown({
     Value = {}, 
     Multi = true,
     AllowNone = true,
+    Flag = "TimesFiltradosHitbox",
     Callback = function(option)
         _G.HitboxConfig.SelectedTeams = option
         if _G.HitboxConfig.TeamFilterEnabled then
@@ -699,7 +704,7 @@ HitboxExpander:Dropdown({
 })
 
 
--- esp [lógica]
+--// tab esp
 _G.ESPConfig = {
     Enabled = false,
     TeamCheck = false,
@@ -722,10 +727,10 @@ ESP:Paragraph({
 
 local FirstRunESP = true
 ESP:Toggle({
-    Title = "Ativar",
-    Desc = "Liga/Desliga o sistema visual",
+    Title = "ESP",
+    Desc = "Liga o ESP",
     Value = false,
-    Flag = "ESPEnabled",
+    Flag = "ESP",
     Callback = function(v)
         if FirstRunESP then
             FirstRunESP = false
@@ -740,12 +745,12 @@ ESP:Toggle({
         if v then
             if _G.StartESP then 
                 _G.StartESP() 
-                notificar("ESP Ativado", 2, "lucide:eye")
+                notificar("Ativado", 2, "lucide:eye")
             end
         else
             if _G.StopESP then 
                 _G.StopESP() 
-                notificar("ESP Desativado", 2, "lucide:eye-off")
+                notificar("Desativado", 2, "lucide:eye-off")
             end
         end
     end
@@ -755,7 +760,7 @@ ESP:Toggle({
     Title = "Team check",
     Desc = "Não mostra o ESP se o jogador for do seu time",
     Value = _G.ESPConfig.TeamCheck,
-    Flag = "ESPTeamCheck",
+    Flag = "TimeESP",
     Callback = function(v)
         _G.ESPConfig.TeamCheck = v
     end
@@ -769,13 +774,14 @@ ESP:Paragraph({
     Desc = "Escolha o que você deseja ver"
 })
 
-ESP:Toggle({ Title = "Highlight", Value = _G.ESPConfig.Chams, Flag = "ESPChams", Callback = function(v) _G.ESPConfig.Chams = v end })
-ESP:Toggle({ Title = "Nome", Value = _G.ESPConfig.Name, Flag = "ESPName", Callback = function(v) _G.ESPConfig.Name = v end })
-ESP:Toggle({ Title = "Distância", Value = _G.ESPConfig.Studs, Flag = "ESPStuds", Callback = function(v) _G.ESPConfig.Studs = v end })
-ESP:Toggle({ Title = "Vida", Value = _G.ESPConfig.Health, Flag = "ESPHealth", Callback = function(v) _G.ESPConfig.Health = v end })
-ESP:Toggle({ Title = "Item", Value = _G.ESPConfig.WeaponN, Flag = "ESPWeapon", Callback = function(v) _G.ESPConfig.WeaponN = v end })
+ESP:Toggle({ Title = "Highlight", Value = _G.ESPConfig.Chams, Flag = "ChamsESP", Callback = function(v) _G.ESPConfig.Chams = v end })
+ESP:Toggle({ Title = "Nome", Value = _G.ESPConfig.Name, Flag = "NomeESP", Callback = function(v) _G.ESPConfig.Name = v end })
+ESP:Toggle({ Title = "Distância", Value = _G.ESPConfig.Studs, Flag = "DistanciaESP", Callback = function(v) _G.ESPConfig.Studs = v end })
+ESP:Toggle({ Title = "Vida", Value = _G.ESPConfig.Health, Flag = "VidaESP", Callback = function(v) _G.ESPConfig.Health = v end })
+ESP:Toggle({ Title = "Item", Value = _G.ESPConfig.WeaponN, Flag = "ItemESP", Callback = function(v) _G.ESPConfig.WeaponN = v end })
 
--- tas [lógica]
+
+--// tab tas
 task.spawn(function()
     ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/tas2.lua")
 end)
@@ -794,7 +800,7 @@ end
 TAS:Toggle({
     Title = "Iniciar",
     Value = false,
-    Flag = "TASStart",
+    Flag = "TAS",
     Callback = function(v)
         if _G.TAS and _G.TAS.ToggleAll then
             _G.TAS.ToggleAll(v)
@@ -803,10 +809,10 @@ TAS:Toggle({
 })
 
 StopButton = TAS:Button({
-    Title = "Parar Playback",
-    Desc = "Interrompe a reprodução atual",
-    Locked = true, -- Começa travado
-    Flag = "TASStopPlayback",
+    Title = "Parar",
+    Desc = "Interrompe o TAS",
+    Locked = true,
+    Flag = "PararTAS",
     Callback = function()
         if _G.TAS and _G.TAS.ManualStopPlayback then
             _G.TAS.ManualStopPlayback()
@@ -819,17 +825,16 @@ TAS:Paragraph({
     Color = Color3.fromHex("#800080"),
     Image = "lucide:info",
     ImageSize = 30,
-    Desc = "Todos os TAS são salvos na pasta 'fp3_Parkours' que fica dentro da pasta 'michigun.xyz', que por sua vez fica na pasta 'Workspace' do seu executor."
+    Desc = "Todos os TAS são salvos na pasta 'fp3_Parkours' que fica dentro da pasta 'michigun.xyz', que por sua vez fica na pasta 'Workspace' do seu executor"
 })
-TAS:Space()
 
 TASDropdown = TAS:Dropdown({
-    Title = "Selecionar gravações",
+    Title = "Selecionar TAS",
     Values = {},
     Value = {},
     Multi = true,
     AllowNone = true,
-    Flag = "TASSelection",
+    Flag = "SelecaoTAS",
     Callback = function(v)
         if _G.TAS and _G.TAS.UpdateSelection then
             _G.TAS.UpdateSelection(v)
@@ -838,13 +843,10 @@ TASDropdown = TAS:Dropdown({
 })
 
 task.spawn(function()
-    -- Espera a lógica carregar
     repeat task.wait(0.5) until _G.TAS and _G.TAS.IsReady
-    
-    -- Configura o sistema de notificação
     _G.TAS.NotifyFunc = notificar 
-    
-    -- Configura a ponte do botão Parar
+
+    --// botão "parar"
     _G.TAS.UpdateButtonState = function(isPlaying)
         if StopButton then
             if isPlaying then
@@ -855,16 +857,15 @@ task.spawn(function()
         end
     end
     
-    -- Atualiza a lista inicial
     if _G.TAS.GetSaved then
         RefreshTASList(_G.TAS.GetSaved())
     end
 end)
 
 DeleteButton = TAS:Button({
-    Title = "Deletar selecionados",
-    Desc = "Deleta todas as gravações selecionadas",
-    Flag = "TASDelete",
+    Title = "Deletar",
+    Desc = "Deleta todos os TAS selecionados",
+    Flag = "DeletarTAS",
     Callback = function()
         if IsConfirmingDelete then
             if _G.TAS and _G.TAS.DeleteSelected then
@@ -873,17 +874,17 @@ DeleteButton = TAS:Button({
                 TASDropdown:Select({})
             end
             IsConfirmingDelete = false
-            DeleteButton:SetTitle("Deletar selecionados")
-            DeleteButton:SetDesc("Deleta todas as gravações selecionadas")
+            DeleteButton:SetTitle("Deletar")
+            DeleteButton:SetDesc("Deleta todos os TAS selecionados")
         else
             IsConfirmingDelete = true
-            DeleteButton:SetTitle("Confirmação")
-            DeleteButton:SetDesc("Clique novamente para apagar permanentemente.")
+            DeleteButton:SetTitle("Certeza?")
+            DeleteButton:SetDesc("Clique novamente para apagar permanentemente")
             task.delay(3, function()
                 if IsConfirmingDelete then
                     IsConfirmingDelete = false
-                    DeleteButton:SetTitle("Deletar selecionados")
-                    DeleteButton:SetDesc("Deleta todas as gravações selecionadas")
+                    DeleteButton:SetTitle("Deletar")
+                    DeleteButton:SetDesc("Deleta todos os TAS selecionados")
                 end
             end)
         end
@@ -897,15 +898,14 @@ TAS:Paragraph({
     Color = Color3.fromHex("#800080"),
     Image = "lucide:info",
     ImageSize = 30,
-    Desc = "Também é possível gravar e parar digitando /e gravar e /e parar no chat, respectivamente."
+    Desc = "Também é possível gravar e parar digitando /e gravar e /e parar no chat, respectivamente"
 })
-TAS:Space()
 
 TAS:Input({
     Title = "Nome",
     Desc = "Nome que será dado ao TAS",
     Value = "",
-    Flag = "TASName",
+    Flag = "NomeTAS",
     Callback = function(v)
         if _G.TAS then _G.TAS.CurrentName = v end
     end
@@ -915,7 +915,7 @@ TAS:Space()
 local g = TAS:Group()
 g:Button({ 
     Title = "Gravar", 
-    Flag = "TASRecord",
+    Flag = "GravarTAS",
     Callback = function()
         if _G.TAS and _G.TAS.StartRecording then _G.TAS.StartRecording() end
     end 
@@ -923,7 +923,7 @@ g:Button({
 g:Space()
 g:Button({ 
     Title = "Parar", 
-    Flag = "TASStop",
+    Flag = "PararDeGravarTAS",
     Callback = function()
         if _G.TAS and _G.TAS.StopRecording then _G.TAS.StopRecording() end
     end 
@@ -935,11 +935,11 @@ TAS:Paragraph({
     Color = Color3.fromHex("#800080"),
     Image = "lucide:info",
     ImageSize = 30,
-    Desc = "Ao salvar, o arquivo ficará na pasta 'fp3_Parkours' que fica na pasta 'michigun.xyz', que por sua vez fica na pasta 'Workspace' do seu executor."
+    Desc = "Ao salvar, o arquivo ficará na pasta 'fp3_Parkours' que fica na pasta 'michigun.xyz', que por sua vez fica na pasta 'Workspace' do seu executor"
 })
 TAS:Button({ 
     Title = "Salvar", 
-    Flag = "TASSave",
+    Flag = "SalvarTAS",
     Callback = function()
         if _G.TAS and _G.TAS.SaveCurrent then
             local newList = _G.TAS.SaveCurrent()
@@ -949,7 +949,7 @@ TAS:Button({
 })
 
 
--- JJs [lógica]
+--// tab JJs
 task.spawn(function()
     ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/JJ2.lua")
 end)
