@@ -1,4 +1,5 @@
 local UI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+UI:SetFont("rbxassetid://16658237174")
 
 local Players = game:GetService("Players")
 local TeamsService = game:GetService("Teams")
@@ -50,26 +51,16 @@ local main = UI:CreateWindow({
     Size = UDim2.fromOffset(560, 350),
     MinSize = Vector2.new(560, 350),
     MaxSize = Vector2.new(850, 560),
+	Radius = 20,
     Transparent = true,
     Theme = "Dark",
     Resizable = true,
-    SideBarWidth = 200,
+    SideBarWidth = 150,
+	ShadowTransparency = 1,
     HideSearchBar = true,
-    Background = "rbxassetid://12455008733",
+   -- Background = "rbxassetid://89005590079014",
     BackgroundImageTransparency = 0.4,
-	OpenButton = {
-        Title = "michigun.xyz",
-        CornerRadius = UDim.new(1,0),
-        StrokeThickness = 3,
-        Enabled = true,
-        Draggable = true,
-        OnlyMobile = false,
-        Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(170, 90, 255)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(120, 60, 255))
-        })
-		},
-    User = {
+	User = {
         Enabled = true,
         Callback = function()
         end
@@ -156,13 +147,15 @@ end)
 
 
 --// criar seção
-local function criarsection(title, icon, opened)
-    return main:Section({
+local function criarsection(tab, title, desc, icon, opened)
+    return tab:Section({
         Title = title,
+        Desc = desc,
         Icon = icon,
         Opened = opened or false
     })
 end
+
 
 --// criar tab
 local function criartab(title, icon, locked)
@@ -175,13 +168,13 @@ end
 
 
 --// tabs "combate"
-criarsection("Combate", nil, true)
+criarsection(main, "Combate", "Seção de combate", nil, true)
 local SilentAim = criartab("Silent aim", "lucide:crosshair", false)
 local HitboxExpander = criartab("Hitbox expander", "lucide:codesandbox", false)
 local ESP = criartab("ESP", "lucide:view", false)
 
 --// tabs "parkour"
-criarsection("Parkour", nil, true)
+criarsection(main, "Parkour", "Seção de parkour", nil, true)
 local TAS = criartab("TAS", "solar:running-outline", false)
 local JJs = criartab("JJ's", "lucide:space", false)
 local ChatGPT = criartab("ChatGPT", "geist:logo-open-ai", false)
@@ -189,14 +182,13 @@ local Volvers = criartab("Volver's", "lucide:refresh-ccw", false)
 local F3X = criartab("F3X", "lucide:pencil-ruler", false)
 
 --// tabs "locais"
-criarsection("Local", nil, true)
+criarsection(main, "Local", "Seção local", nil, true)
 local Char = criartab("Char", "solar:user-hands-bold", false)
 local AntiLag = criartab("Anti-lag", "solar:wi-fi-router-minimalistic-bold", false)
 local Player = criartab("Player", "solar:user-bold", false)
 
 --// tab "config"
 local Configs = criartab("Configurações", "lucide:settings", false)
-
 
 --// tab silent aim
 _G.AimbotConfig = {
@@ -251,7 +243,9 @@ end
 do
     local FirstRun = true
 
-    local ToggleAim = SilentAim:Toggle({
+    local MainSection = criarsection(SilentAim, "Principal", "Configurações gerais", "lucide:crosshair", true)
+
+    local ToggleAim = MainSection:Toggle({
         Title = "Ativar",
         Desc = "Ativa o silent aim",
         Icon = "lucide:check",
@@ -281,7 +275,7 @@ do
     
     local CurrentKey = Enum.KeyCode.Q
 
-    SilentAim:Keybind({
+    MainSection:Keybind({
         Title = "Keybind",
         Desc = "Tecla para ativar/desativar o silent aim",
         Value = "Q",
@@ -300,7 +294,7 @@ do
         end
     end)
 
-    SilentAim:Slider({
+    MainSection:Slider({
         Title = "Chance de acerto",
         Desc = "Porcentagem de acerto",
         Step = 1,
@@ -308,28 +302,19 @@ do
         Flag = "ChanceSilentAim",
         Callback = function(value) _G.AimbotConfig.HitChance = value end
     })
-    
-    SilentAim:Space()
-    
-    SilentAim:Paragraph({
-        Title = "Whitelist",
-        Desc = "Ignora jogadores ou times",
-        Color = Color3.fromHex("#F2F3F5"),
-        Image = "lucide:id-card-lanyard",
-        ImageSize = 30
-    })
 
+    local WhitelistSection = criarsection(SilentAim, "Whitelist", "Ignorar jogadores ou times", "lucide:id-card", false)
     local PlayerWhitelist
     
-    SilentAim:Button({
-        Title = "Atualizar",
+    WhitelistSection:Button({
+        Title = "Atualizar lista",
         Desc = "Recarrega a lista de players",
         Callback = function()
             if PlayerWhitelist then PlayerWhitelist:Refresh(GetPlayerNames()) end
         end
     })
 
-    PlayerWhitelist = SilentAim:Dropdown({
+    PlayerWhitelist = WhitelistSection:Dropdown({
         Title = "Players",
         Desc = "Ignora jogadores específicos",
         Values = GetPlayerNames(),
@@ -340,7 +325,7 @@ do
         Callback = function(options) _G.AimbotConfig.WhitelistedUsers = options end
     })
 
-    SilentAim:Dropdown({
+    WhitelistSection:Dropdown({
         Title = "Times",
         Desc = "Ignora times específicos",
         Values = GetTeamNames(),
@@ -351,19 +336,11 @@ do
         Callback = function(options) _G.AimbotConfig.WhitelistedTeams = options end
     })
 
-    SilentAim:Space()
-    
-    SilentAim:Paragraph({
-        Title = "Focar",
-        Desc = "Permite ignorar todos os jogadores e focar somente em quem você deseja",
-        Color = "Red",
-        Image = "lucide:crosshair",
-        ImageSize = 30
-    })
+    local FocusSection = criarsection(SilentAim, "Foco", "Prioridade de alvos", "lucide:target", false)
 
-    SilentAim:Toggle({
-        Title = "Focar",
-        Desc = "Foca somente nos alvos desejados",
+    FocusSection:Toggle({
+        Title = "Modo Focar",
+        Desc = "Foca somente nos alvos listados abaixo",
         Icon = "lucide:check",
         Type = "Checkbox",
         Value = _G.AimbotConfig.FocusMode,
@@ -387,7 +364,7 @@ do
         end
     end
 
-    SilentAim:Input({
+    FocusSection:Input({
         Title = "Adicionar alvo",
         Desc = "Não precisa escrever o nome todo",
         Placeholder = "Digite aqui",
@@ -410,7 +387,7 @@ do
         end
     })
 
-    RemoveDropdown = SilentAim:Dropdown({
+    RemoveDropdown = FocusSection:Dropdown({
         Title = "Remover alvo",
         Desc = "Selecione para remover",
         Values = {},
@@ -429,8 +406,8 @@ do
         end
     })
 
-    FocusListParagraph = SilentAim:Paragraph({
-        Title = "Lista",
+    FocusListParagraph = FocusSection:Paragraph({
+        Title = "Lista atual",
         Desc = "Nenhum alvo",
         Buttons = {
             {
@@ -444,9 +421,9 @@ do
         }
     })
 
-    SilentAim:Space()
+    local LogicSection = criarsection(SilentAim, "Configuração", "Parâmetros de tiro", "lucide:settings-2", false)
 
-    SilentAim:Dropdown({
+    LogicSection:Dropdown({
         Title = "Parte do corpo",
         Desc = "Em qual parte o tiro irá",
         Values = { "Random", "Head", "HumanoidRootPart", "UpperTorso", "LowerTorso", "Torso", "LeftUpperArm", "RightUpperArm", "LeftUpperLeg", "RightUpperLeg" },
@@ -457,7 +434,7 @@ do
         Callback = function(option) _G.AimbotConfig.TargetPart = option end
     })
 
-    SilentAim:Dropdown({
+    LogicSection:Dropdown({
         Title = "Alvos",
         Desc = "Em quem o silent aim mirará",
         Values = { "Todos", "Inimigos" },
@@ -466,7 +443,7 @@ do
         Callback = function(option) _G.AimbotConfig.TeamCheck = (option == "Todos") and "All" or "Team" end
     })
 
-    SilentAim:Toggle({
+    LogicSection:Toggle({
         Title = "Legit",
         Desc = "O tiro imitará uma mira real",
         Icon = "lucide:check",
@@ -476,7 +453,7 @@ do
         Callback = function(state) _G.AimbotConfig.UseLegitOffset = state end
     })
 
-    SilentAim:Toggle({
+    LogicSection:Toggle({
         Title = "Wall check",
         Desc = "Ignora alvos não visíveis",
         Icon = "lucide:check",
@@ -486,55 +463,7 @@ do
         Callback = function(state) _G.AimbotConfig.WallCheck = state end
     })
 
-    SilentAim:Space()
-
-    SilentAim:Paragraph({
-        Title = "Visuais",
-        Desc = "Visuais do silent aim",
-        Color = "Blue",
-        Image = "lucide:eye",
-        ImageSize = 30
-    })
-
-    SilentAim:Toggle({
-        Title = "FOV",
-        Desc = "Desenha o FOV",
-        Icon = "lucide:check",
-        Type = "Checkbox",
-        Value = _G.AimbotConfig.ShowFOV,
-        Flag = "FOV",
-        Callback = function(state) _G.AimbotConfig.ShowFOV = state end
-    })
-
-    SilentAim:Dropdown({
-        Title = "Posição",
-        Desc = "Onde o FOV ficará",
-        Values = { "Mouse", "Center" },
-        Value = "Center",
-        Flag = "PosicaoFOV",
-        Callback = function(option) _G.AimbotConfig.FOVBehavior = option end
-    })
-
-    SilentAim:Slider({
-        Title = "Tamanho",
-        Desc = "Tamanho do FOV",
-        Step = 5,
-        Value = { Min = 40, Max = 1000, Default = _G.AimbotConfig.FOVSize },
-        Flag = "TamanhoFOV",
-        Callback = function(value) _G.AimbotConfig.FOVSize = value end
-    })
-
-    SilentAim:Colorpicker({
-        Title = "Cor",
-        Desc = "Alterar a cor do FOV",
-        Default = _G.AimbotConfig.FOVColor1,
-        Transparency = 0,
-        Locked = false,
-        Flag = "CorFOV",
-        Callback = function(color) _G.AimbotConfig.FOVColor1 = color end
-    })
-
-    SilentAim:Slider({
+    LogicSection:Slider({
         Title = "Alcance",
         Desc = "Distância máxima do silent aim",
         Step = 10,
@@ -543,9 +472,47 @@ do
         Callback = function(value) _G.AimbotConfig.MaxDistance = value end
     })
 
-    SilentAim:Space()
+    local VisualsSection = criarsection(SilentAim, "Visuais", "FOV e destaques", "lucide:eye", false)
 
-    SilentAim:Toggle({
+    VisualsSection:Toggle({
+        Title = "Desenhar FOV",
+        Desc = "Círculo indicando a área de ação",
+        Icon = "lucide:check",
+        Type = "Checkbox",
+        Value = _G.AimbotConfig.ShowFOV,
+        Flag = "FOV",
+        Callback = function(state) _G.AimbotConfig.ShowFOV = state end
+    })
+
+    VisualsSection:Dropdown({
+        Title = "Posição",
+        Desc = "Onde o FOV ficará",
+        Values = { "Mouse", "Center" },
+        Value = "Center",
+        Flag = "PosicaoFOV",
+        Callback = function(option) _G.AimbotConfig.FOVBehavior = option end
+    })
+
+    VisualsSection:Slider({
+        Title = "Tamanho",
+        Desc = "Tamanho do FOV",
+        Step = 5,
+        Value = { Min = 40, Max = 1000, Default = _G.AimbotConfig.FOVSize },
+        Flag = "TamanhoFOV",
+        Callback = function(value) _G.AimbotConfig.FOVSize = value end
+    })
+
+    VisualsSection:Colorpicker({
+        Title = "Cor do FOV",
+        Desc = "Alterar a cor do círculo",
+        Default = _G.AimbotConfig.FOVColor1,
+        Transparency = 0,
+        Locked = false,
+        Flag = "CorFOV",
+        Callback = function(color) _G.AimbotConfig.FOVColor1 = color end
+    })
+
+    VisualsSection:Toggle({
         Title = "Highlight",
         Desc = "Faz o alvo brilhar",
         Icon = "lucide:check",
@@ -555,9 +522,9 @@ do
         Callback = function(state) _G.AimbotConfig.ShowHighlight = state end
     })
 
-    SilentAim:Colorpicker({
-        Title = "Cor",
-        Desc = "Cor do highlight",
+    VisualsSection:Colorpicker({
+        Title = "Cor do Highlight",
+        Desc = "Cor do destaque no personagem",
         Default = _G.AimbotConfig.HighlightColor,
         Transparency = 0,
         Locked = false,
@@ -565,19 +532,12 @@ do
         Callback = function(color) _G.AimbotConfig.HighlightColor = color end
     })
 
-    SilentAim:Space()
-    SilentAim:Paragraph({
-        Title = "Info",
-        Desc = "Informações do alvo quando mirado",
-        Color = "Blue",
-        Image = "lucide:info",
-        ImageSize = 30
-    })
+    local InfoSection = criarsection(SilentAim, "Informações", "Dados do alvo na tela", "lucide:info", false)
 
     local ToggleName, ToggleHP, ToggleWeapon
 
-    local ToggleESP = SilentAim:Toggle({
-        Title = "Ativar",
+    local ToggleESP = InfoSection:Toggle({
+        Title = "Ativar Info",
         Desc = "Mostra informações sobre o alvo quando mirado",
         Icon = "lucide:check",
         Type = "Checkbox",
@@ -597,7 +557,7 @@ do
         end
     })
 
-    ToggleName = SilentAim:Toggle({
+    ToggleName = InfoSection:Toggle({
         Title = "Mostrar nome",
         Desc = "Mostra o nome do alvo",
         Icon = "lucide:check",
@@ -607,7 +567,7 @@ do
         Callback = function(state) _G.AimbotConfig.ESP.ShowName = state end
     })
 
-    ToggleHP = SilentAim:Toggle({
+    ToggleHP = InfoSection:Toggle({
         Title = "Mostrar vida",
         Desc = "Mostra a vida do alvo",
         Icon = "lucide:check",
@@ -617,7 +577,7 @@ do
         Callback = function(state) _G.AimbotConfig.ESP.ShowHealth = state end
     })
 
-    ToggleWeapon = SilentAim:Toggle({
+    ToggleWeapon = InfoSection:Toggle({
         Title = "Mostrar item",
         Desc = "Mostra o item equipado do alvo",
         Icon = "lucide:check",
@@ -631,6 +591,7 @@ do
         ToggleName:Lock(); ToggleHP:Lock(); ToggleWeapon:Lock()
     end
 end
+
 
 --// tab hitbox
 _G.HitboxConfig = {
@@ -652,14 +613,16 @@ local function AtualizarValores()
     end
 end
 
-HitboxExpander:Paragraph({
+local MainSection = criarsection(HitboxExpander, "Principal", "Controles gerais", "lucide:box", true)
+
+MainSection:Paragraph({
     Title = "Modificar hitbox",
     Image = "lucide:info",
     Desc = "Altera o tamanho da hitbox dos inimigos"
 })
 
 local FirstRun = true
-HitboxExpander:Toggle({
+MainSection:Toggle({
     Title = "Hitbox",
     Desc = "Liga o hitbox expander",
     Value = false,
@@ -689,18 +652,22 @@ HitboxExpander:Toggle({
     end
 })
 
-HitboxExpander:Toggle({
-    Title = "Escudo check",
-    Desc = "A hitbox volta ao normal se equiparem o escudo",
-    Value = _G.HitboxConfig.HideOnShield,
-    Flag = "EscudoHitbox",
+local ConfigSection = criarsection(HitboxExpander, "Configuração", "Ajustes visuais e técnicos", "lucide:settings-2", false)
+
+ConfigSection:Input({
+    Title = "Tamanho da hitbox",
+    Placeholder = "20",
+    Flag = "TamanhoHitbox",
     Callback = function(v)
-        _G.HitboxConfig.HideOnShield = v
-        AtualizarValores()
+        local n = tonumber(v)
+        if n then
+            _G.HitboxConfig.Size = Vector3.new(n,n,n)
+            AtualizarValores()
+        end
     end
 })
 
-HitboxExpander:Dropdown({
+ConfigSection:Dropdown({
     Title = "Formato",
     Desc = "Formato usado para a hitbox",
     Values = { "Sphere", "Block", "Cylinder", "Wedge" },
@@ -718,20 +685,18 @@ HitboxExpander:Dropdown({
     end
 })
 
-HitboxExpander:Input({
-    Title = "Tamanho da hitbox",
-    Placeholder = "20",
-    Flag = "TamanhoHitbox",
+ConfigSection:Toggle({
+    Title = "Escudo check",
+    Desc = "A hitbox volta ao normal se equiparem o escudo",
+    Value = _G.HitboxConfig.HideOnShield,
+    Flag = "EscudoHitbox",
     Callback = function(v)
-        local n = tonumber(v)
-        if n then
-            _G.HitboxConfig.Size = Vector3.new(n,n,n)
-            AtualizarValores()
-        end
+        _G.HitboxConfig.HideOnShield = v
+        AtualizarValores()
     end
 })
 
-HitboxExpander:Slider({
+ConfigSection:Slider({
     Title = "Transparência",
     Desc = "0 = visível; 1 = invisível",
     Step = 0.02,
@@ -743,9 +708,9 @@ HitboxExpander:Slider({
     end
 })
 
-HitboxExpander:Space()
+local TeamSection = criarsection(HitboxExpander, "Filtros", "Configuração de times", "lucide:users", false)
 
-HitboxExpander:Toggle({
+TeamSection:Toggle({
     Title = "Filtrar por time",
     Desc = "Aplica a hitbox apenas aos times selecionados",
     Value = _G.HitboxConfig.TeamFilterEnabled,
@@ -756,7 +721,7 @@ HitboxExpander:Toggle({
     end
 })
 
-HitboxExpander:Dropdown({
+TeamSection:Dropdown({
     Title = "Times",
     Desc = "Selecione os times",
     Values = GetTeamNames(),
@@ -788,14 +753,16 @@ task.spawn(function()
     ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/esp2.lua")
 end)
 
-ESP:Paragraph({
+local MainSection = criarsection(ESP, "Principal", "Controles gerais", "lucide:eye", true)
+
+MainSection:Paragraph({
     Title = "ESP",
     Image = "lucide:info",
     Desc = "Permite ver jogadores através das paredes"
 })
 
 local FirstRunESP = true
-ESP:Toggle({
+MainSection:Toggle({
     Title = "ESP",
     Desc = "Liga o ESP",
     Value = false,
@@ -825,7 +792,7 @@ ESP:Toggle({
     end
 })
 
-ESP:Toggle({
+MainSection:Toggle({
     Title = "Team check",
     Desc = "Não mostra o ESP se o jogador for do seu time",
     Value = _G.ESPConfig.TeamCheck,
@@ -835,19 +802,13 @@ ESP:Toggle({
     end
 })
 
-ESP:Space()
+local VisualsSection = criarsection(ESP, "Visualização", "Elementos visuais", "lucide:monitor", true)
 
-ESP:Paragraph({
-    Title = "Customizar",
-    Image = "lucide:eye",
-    Desc = "Escolha o que você deseja ver"
-})
-
-ESP:Toggle({ Title = "Highlight", Value = _G.ESPConfig.Chams, Flag = "ChamsESP", Callback = function(v) _G.ESPConfig.Chams = v end })
-ESP:Toggle({ Title = "Nome", Value = _G.ESPConfig.Name, Flag = "NomeESP", Callback = function(v) _G.ESPConfig.Name = v end })
-ESP:Toggle({ Title = "Distância", Value = _G.ESPConfig.Studs, Flag = "DistanciaESP", Callback = function(v) _G.ESPConfig.Studs = v end })
-ESP:Toggle({ Title = "Vida", Value = _G.ESPConfig.Health, Flag = "VidaESP", Callback = function(v) _G.ESPConfig.Health = v end })
-ESP:Toggle({ Title = "Item", Value = _G.ESPConfig.WeaponN, Flag = "ItemESP", Callback = function(v) _G.ESPConfig.WeaponN = v end })
+VisualsSection:Toggle({ Title = "Highlight", Value = _G.ESPConfig.Chams, Flag = "ChamsESP", Callback = function(v) _G.ESPConfig.Chams = v end })
+VisualsSection:Toggle({ Title = "Nome", Value = _G.ESPConfig.Name, Flag = "NomeESP", Callback = function(v) _G.ESPConfig.Name = v end })
+VisualsSection:Toggle({ Title = "Distância", Value = _G.ESPConfig.Studs, Flag = "DistanciaESP", Callback = function(v) _G.ESPConfig.Studs = v end })
+VisualsSection:Toggle({ Title = "Vida", Value = _G.ESPConfig.Health, Flag = "VidaESP", Callback = function(v) _G.ESPConfig.Health = v end })
+VisualsSection:Toggle({ Title = "Item", Value = _G.ESPConfig.WeaponN, Flag = "ItemESP", Callback = function(v) _G.ESPConfig.WeaponN = v end })
 
 
 --// tab tas
@@ -866,7 +827,9 @@ local function RefreshTASList(list)
     end
 end
 
-TAS:Toggle({
+local PlaybackSection = criarsection(TAS, "Reprodução", "Controles de execução", "lucide:play", true)
+
+PlaybackSection:Toggle({
     Title = "Iniciar",
     Value = false,
     Flag = "TAS",
@@ -877,7 +840,7 @@ TAS:Toggle({
     end
 })
 
-StopButton = TAS:Button({
+StopButton = PlaybackSection:Button({
     Title = "Parar",
     Desc = "Interrompe o TAS",
     Locked = true,
@@ -889,7 +852,7 @@ StopButton = TAS:Button({
     end
 })
 
-TAS:Paragraph({
+PlaybackSection:Paragraph({
     Title = "Observação",
     Color = Color3.fromHex("#800080"),
     Image = "lucide:info",
@@ -897,7 +860,7 @@ TAS:Paragraph({
     Desc = "Todos os TAS são salvos na pasta 'fp3_Parkours' que fica dentro da pasta 'michigun.xyz', que por sua vez fica na pasta 'Workspace' do seu executor"
 })
 
-TASDropdown = TAS:Dropdown({
+TASDropdown = PlaybackSection:Dropdown({
     Title = "Selecionar TAS",
     Values = {},
     Value = {},
@@ -911,27 +874,7 @@ TASDropdown = TAS:Dropdown({
     end
 })
 
-task.spawn(function()
-    repeat task.wait(0.5) until _G.TAS and _G.TAS.IsReady
-    _G.TAS.NotifyFunc = notificar 
-
-    --// botão "parar"
-    _G.TAS.UpdateButtonState = function(isPlaying)
-        if StopButton then
-            if isPlaying then
-                StopButton:Unlock()
-            else
-                StopButton:Lock()
-            end
-        end
-    end
-    
-    if _G.TAS.GetSaved then
-        RefreshTASList(_G.TAS.GetSaved())
-    end
-end)
-
-DeleteButton = TAS:Button({
+DeleteButton = PlaybackSection:Button({
     Title = "Deletar",
     Desc = "Deleta todos os TAS selecionados",
     Flag = "DeletarTAS",
@@ -960,9 +903,28 @@ DeleteButton = TAS:Button({
     end
 })
 
-TAS:Space()
+task.spawn(function()
+    repeat task.wait(0.5) until _G.TAS and _G.TAS.IsReady
+    _G.TAS.NotifyFunc = notificar 
 
-TAS:Paragraph({
+    _G.TAS.UpdateButtonState = function(isPlaying)
+        if StopButton then
+            if isPlaying then
+                StopButton:Unlock()
+            else
+                StopButton:Lock()
+            end
+        end
+    end
+    
+    if _G.TAS.GetSaved then
+        RefreshTASList(_G.TAS.GetSaved())
+    end
+end)
+
+local RecordSection = criarsection(TAS, "Gravação", "Criar novo percurso", "lucide:video", false)
+
+RecordSection:Paragraph({
     Title = "Observação",
     Color = Color3.fromHex("#800080"),
     Image = "lucide:info",
@@ -970,7 +932,7 @@ TAS:Paragraph({
     Desc = "Também é possível gravar e parar digitando /e gravar e /e parar no chat, respectivamente"
 })
 
-TAS:Input({
+RecordSection:Input({
     Title = "Nome",
     Desc = "Nome que será dado ao TAS",
     Value = "",
@@ -979,9 +941,8 @@ TAS:Input({
         if _G.TAS then _G.TAS.CurrentName = v end
     end
 })
-TAS:Space()
 
-local g = TAS:Group()
+local g = RecordSection:Group()
 g:Button({ 
     Title = "Gravar", 
     Flag = "GravarTAS",
@@ -989,7 +950,9 @@ g:Button({
         if _G.TAS and _G.TAS.StartRecording then _G.TAS.StartRecording() end
     end 
 })
+
 g:Space()
+
 g:Button({ 
     Title = "Parar", 
     Flag = "PararDeGravarTAS",
@@ -997,16 +960,16 @@ g:Button({
         if _G.TAS and _G.TAS.StopRecording then _G.TAS.StopRecording() end
     end 
 })
-TAS:Space()
 
-TAS:Paragraph({
+RecordSection:Paragraph({
     Title = "Observação",
     Color = Color3.fromHex("#800080"),
     Image = "lucide:info",
     ImageSize = 30,
     Desc = "Ao salvar, o arquivo ficará na pasta 'fp3_Parkours' que fica na pasta 'michigun.xyz', que por sua vez fica na pasta 'Workspace' do seu executor"
 })
-TAS:Button({ 
+
+RecordSection:Button({ 
     Title = "Salvar", 
     Flag = "SalvarTAS",
     Callback = function()
@@ -1016,7 +979,6 @@ TAS:Button({
         end
     end 
 })
-
 
 --// tab JJs
 task.spawn(function()
@@ -1039,7 +1001,7 @@ task.spawn(function()
     end
 end)
 
-local JJsMain = JJs:Section({ Title = "Essenciais" })
+local JJsMain = criarsection(JJs, "Essenciais", "Configurações principais", "lucide:settings-2", true)
 
 local jjTypes = {"Padrão"}
 
@@ -1162,12 +1124,22 @@ JJsMain:Input({
     end
 })
 
-local intervalos = JJs:Section({ Title = "Intervalo" })
+local intervalos = criarsection(JJs, "Intervalo", "Configuração de tempo", "lucide:timer", false)
+
+intervalos:Toggle({
+    Title = "Intervalo fixo",
+    Desc  = "Ativa o intervalo fixo",
+    Value = false,
+    Flag = "JJsIntervaloFixo",
+    Callback = function(v)
+        if _G.JJs then _G.JJs.Config.DelayEnabled = v end
+    end
+})
 
 intervalos:Input({
     Title = "Intervalo fixo (segundos)",
     Placeholder = "1.5",
-    Flag = "JJsIntervaloFixo",
+    Flag = "JJsIntervaloFixoTempo",
     Callback = function(v)
         if _G.JJs and v ~= "" then _G.JJs.Config.DelayValue = tonumber(v) or 1.5 end
     end
@@ -1203,7 +1175,7 @@ intervalos:Input({
     end
 })
 
-local Extras = JJs:Section({ Title = "Extras" })
+local Extras = criarsection(JJs, "Extras", "Opções adicionais", "lucide:layers", false)
 
 Extras:Toggle({
     Title = "Modo reverso",
@@ -1214,6 +1186,7 @@ Extras:Toggle({
         if _G.JJs then _G.JJs.Config.ReverseEnabled = v end
     end
 })
+
 
 
 --// tab ChatGPT
@@ -1357,8 +1330,11 @@ local function UpdateUIBridge()
     InputZ:Set(tostring(round(s.Z)))
 end
 
-F3X:Toggle({
+local SelectionSection = criarsection(F3X, "Seleção", "Status e ativação", "lucide:mouse-pointer-2", true)
+
+SelectionSection:Toggle({
     Title = "Ativar seleção",
+    Flag = "F3XToggle",
     Callback = function(v)
         if _G.F3X and _G.F3X.Toggle then
             _G.F3X.Toggle(v)
@@ -1366,39 +1342,36 @@ F3X:Toggle({
     end
 })
 
-InfoParagraph = F3X:Paragraph({ Title = "Nenhuma parte selecionada.", Desc = "" })
-F3X:Space()
-F3X:Space()
+InfoParagraph = SelectionSection:Paragraph({ Title = "Nenhuma parte selecionada.", Desc = "" })
 
-InputX = F3X:Input({ Title = "X (largura)" })
-F3X:Space()
-local gx = F3X:Group()
+local EditSection = criarsection(F3X, "Edição", "Ajustes de tamanho", "lucide:ruler", true)
+
+InputX = EditSection:Input({ Title = "X (largura)", Flag = "InputX" })
+local gx = EditSection:Group()
 gx:Button({ Title = "-0.2", Callback = function() InputX:Set(tostring((tonumber(InputX.Value) or 0) - 0.2)) end })
 gx:Space()
 gx:Button({ Title = "+0.2", Callback = function() InputX:Set(tostring((tonumber(InputX.Value) or 0) + 0.2)) end })
 
-F3X:Space()
+EditSection:Space()
 
-InputY = F3X:Input({ Title = "Y (altura)" })
-F3X:Space()
-local gy = F3X:Group()
+InputY = EditSection:Input({ Title = "Y (altura)", Flag = "InputY" })
+local gy = EditSection:Group()
 gy:Button({ Title = "-0.2", Callback = function() InputY:Set(tostring((tonumber(InputY.Value) or 0) - 0.2)) end })
 gy:Space()
 gy:Button({ Title = "+0.2", Callback = function() InputY:Set(tostring((tonumber(InputY.Value) or 0) + 0.2)) end })
 
-F3X:Space()
+EditSection:Space()
 
-InputZ = F3X:Input({ Title = "Z (profundidade)" })
-F3X:Space()
-local gz = F3X:Group()
+InputZ = EditSection:Input({ Title = "Z (profundidade)", Flag = "InputZ" })
+local gz = EditSection:Group()
 gz:Button({ Title = "-0.2", Callback = function() InputZ:Set(tostring((tonumber(InputZ.Value) or 0) - 0.2)) end })
 gz:Space()
 gz:Button({ Title = "+0.2", Callback = function() InputZ:Set(tostring((tonumber(InputZ.Value) or 0) + 0.2)) end })
 
-F3X:Space()
+EditSection:Space()
 
-F3X:Button({
-    Title = "Aplicar",
+EditSection:Button({
+    Title = "Aplicar tamanho",
     Callback = function()
         if _G.F3X and _G.F3X.ApplySize then
             _G.F3X.ApplySize(Vector3.new(
@@ -1410,43 +1383,42 @@ F3X:Button({
     end
 })
 
-F3X:Space()
+EditSection:Space()
 
-local gUR = F3X:Group()
+local gUR = EditSection:Group()
 gUR:Button({ Title = "Undo", Callback = function() if _G.F3X and _G.F3X.Undo then _G.F3X.Undo() end end })
 gUR:Space()
 gUR:Button({ Title = "Redo", Callback = function() if _G.F3X and _G.F3X.Redo then _G.F3X.Redo() end end })
 
-F3X:Space()
+local ConfigSection = criarsection(F3X, "Configurações", "Salvar e carregar", "lucide:save", false)
 
-F3X:Paragraph({
+ConfigSection:Paragraph({
     Title = "Sistema de salvamento",
     Desc = "Permite salvar, deletar e aplicar as configurações."
 })
 
-ConfigDropdown = F3X:Dropdown({
+ConfigDropdown = ConfigSection:Dropdown({
     Title = "Configs",
     Values = {},
+    Flag = "F3XConfigs",
     Callback = function(v) SelectedConfig = v end
 })
 
-F3X:Paragraph({
+ConfigSection:Paragraph({
     Title = "Observação",
     Color = Color3.fromHex("#800080"),
     Image = "lucide:info",
     ImageSize = 30,
     Desc = "Todos os F3X são salvos na pasta 'fp3_F3X' que fica dentro da pasta 'michigun.xyz', que por sua vez fica na pasta 'Workspace' do seu executor."
 })
-F3X:Space()
 
-F3X:Input({
+ConfigSection:Input({
     Title = "Nome da configuração",
+    Flag = "F3XConfigName",
     Callback = function(v) CurrentConfigName = v end
 })
 
-F3X:Space()
-
-local gCFG = F3X:Group()
+local gCFG = ConfigSection:Group()
 gCFG:Button({ 
     Title = "Salvar", 
     Callback = function() 
@@ -1487,6 +1459,7 @@ task.spawn(function()
     end
 end)
 
+
 --// tab char
 task.spawn(function()
     ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/Char.lua")
@@ -1505,7 +1478,9 @@ local function RefreshList()
     end
 end
 
-Char:Paragraph({
+local MainSection = criarsection(Char, "Principal", "Alterar aparência", "lucide:shirt", true)
+
+MainSection:Paragraph({
     Title = "Observação",
     Desc = "A skin aplicada é VISUAL. Ou seja, NÃO mostra aos outros jogadores, somente a você",
     Color = "Blue",
@@ -1514,12 +1489,11 @@ Char:Paragraph({
     Locked = false
 })
 
-Char:Space()
-
-Char:Input({
+MainSection:Input({
     Title = "Nome / ID",
     Desc = "Digite o nome ou ID do usuário para copiar a skin",
     Value = "",
+    Flag = "CharInput",
     InputIcon = "lucide:search-check",
     Placeholder = "Digite aqui",
     Callback = function(input)
@@ -1527,7 +1501,8 @@ Char:Input({
     end
 })
 
-Char:Button({
+local g1 = MainSection:Group()
+g1:Button({
     Title = "Aplicar",
     Desc = "Aplica a skin do nome ou ID colocado",
     Callback = function()
@@ -1537,7 +1512,9 @@ Char:Button({
     end
 })
 
-Char:Button({
+g1:Space()
+
+g1:Button({
     Title = "Restaurar",
     Desc = "Restaura sua skin padrão",
     Callback = function()
@@ -1547,9 +1524,9 @@ Char:Button({
     end
 })
 
-Char:Space()
+local FavSection = criarsection(Char, "Favoritos", "Gerenciar skins salvas", "lucide:star", false)
 
-Char:Paragraph({
+FavSection:Paragraph({
     Title = "Observação",
     Desc = "As skins são salvas na pasta 'fp3_Skins' no Workspace do seu executor",
     Color = "Blue",
@@ -1558,11 +1535,12 @@ Char:Paragraph({
     Locked = false
 })
 
-SkinDropdown = Char:Dropdown({
+SkinDropdown = FavSection:Dropdown({
     Title = "Favoritos",
     Desc = "Aqui serão listados seus ID's favoritos",
     Values = {}, 
     Value = "",
+    Flag = "CharFavorites",
     Callback = function(option)
         confirmDelete = false
         if confirmTask then task.cancel(confirmTask) confirmTask = nil end
@@ -1574,19 +1552,21 @@ SkinDropdown = Char:Dropdown({
             DeleteButton.Color = Color3.fromHex("#FF5555")
         end
 
-        if option.Title == "Nenhuma salva" then
+        local title = (type(option) == "table" and option.Title) or option
+
+        if title == "Nenhuma salva" or title == "" then
             selectedFavorite = nil
             return
         end
         
-        selectedFavorite = option.Title
+        selectedFavorite = title
         if _G.Avatar and _G.Avatar.LoadSkin then
-            _G.Avatar.LoadSkin(option.Title)
+            _G.Avatar.LoadSkin(title)
         end
     end
 })
 
-Char:Button({
+FavSection:Button({
     Title = "Favoritar",
     Desc = "Salva o ID do usuário da skin aplicada atual",
     Color = Color3.fromHex("#FFD700"),
@@ -1598,7 +1578,7 @@ Char:Button({
     end
 })
 
-DeleteButton = Char:Button({
+DeleteButton = FavSection:Button({
     Title = "Deletar favorito",
     Desc = "Remove a skin favoritada selecionada",
     Icon = "lucide:trash-2",
@@ -1695,7 +1675,9 @@ end)
 
 local speedValue = nil
 
-Player:Input({
+local CharacterSection = criarsection(Player, "Personagem", "Atributos locais", "lucide:user", true)
+
+CharacterSection:Input({
     Title = "Speed",
     Desc = "Muda sua velocidade",
     Placeholder = "Valor",
@@ -1707,7 +1689,7 @@ Player:Input({
     end
 })
 
-local grupamento1 = Player:Group()
+local grupamento1 = CharacterSection:Group()
 
 grupamento1:Button({
     Title = "Aplicar velocidade",
@@ -1735,9 +1717,9 @@ grupamento1:Button({
     end
 })
 
-Player:Space()
+CharacterSection:Space()
 
-Player:Toggle({
+CharacterSection:Toggle({
     Title = "Anti-spawn",
     Desc = "O personagem automaticamente teleportará ao local onde você morreu",
     Callback = function(v)
@@ -1750,9 +1732,7 @@ Player:Toggle({
     end
 })
 
-Player:Space()
-
-Player:Toggle({
+CharacterSection:Toggle({
     Title = "Noclip",
     Desc = "Permite atravessar paredes",
     Callback = function(state)
@@ -1767,9 +1747,9 @@ Player:Toggle({
     end
 })
 
-Player:Space()
+local SystemSection = criarsection(Player, "Sistema", "Configurações do jogo", "lucide:monitor", false)
 
-Player:Toggle({
+SystemSection:Toggle({
     Title = "Habilitar chat",
     Desc = "Permite você ver o histórico de mensagens no chat",
     Callback = function(v)
@@ -1779,11 +1759,11 @@ Player:Toggle({
     end
 })
 
-Player:Space()
+local InteractionSection = criarsection(Player, "Interação", "Outros jogadores", "lucide:users", false)
 
 local TargetName = ""
 
-Player:Input({
+InteractionSection:Input({
     Title = "Jogador",
     Desc = "Digite o nome do jogador",
     Placeholder = "Nome",
@@ -1792,7 +1772,7 @@ Player:Input({
     end
 })
 
-Player:Toggle({
+InteractionSection:Toggle({
     Title = "Espectar jogador",
     Desc = "Especta o jogador",
     Callback = function(v)
@@ -1809,7 +1789,7 @@ Player:Toggle({
     end
 })
 
-Player:Button({
+InteractionSection:Button({
     Title = "Teleportar",
     Desc = "Teleporta ao jogador",
     Callback = function()
@@ -1824,7 +1804,7 @@ Player:Button({
     end
 })
 
-Player:Button({
+InteractionSection:Button({
     Title = "Voltar",
     Desc = "Retorna para a última posição antes do teleport",
     Callback = function()
@@ -1858,7 +1838,9 @@ local function AtualizarListaConfig()
     end
 end
 
-Configs:Input({
+local CreationSection = criarsection(Configs, "Criação", "Nova configuração", "lucide:plus", true)
+
+CreationSection:Input({
     Title = "Nome da configuração",
     Desc = "Dê um nome para a configuração",
     Value = "",
@@ -1870,7 +1852,7 @@ Configs:Input({
     end
 })
 
-Configs:Button({
+CreationSection:Button({
     Title = "Criar configuração",
     Desc = "Salva a configuração atual",
     Icon = "lucide:plus",
@@ -1886,12 +1868,9 @@ Configs:Button({
     end
 })
 
-Configs:Section({ 
-    Title = "Gerenciamento", 
-    Icon = "lucide:list" 
-})
+local ManagementSection = criarsection(Configs, "Gerenciamento", "Carregar e salvar", "lucide:list", true)
 
-DropdownListaConfig = Configs:Dropdown({
+DropdownListaConfig = ManagementSection:Dropdown({
     Title = "Configurações salvas",
     Desc = "Selecione uma configuração",
     Values = GerenciadorConfig:AllConfigs(),
@@ -1901,7 +1880,7 @@ DropdownListaConfig = Configs:Dropdown({
     end
 })
 
-Configs:Button({
+ManagementSection:Button({
     Title = "Carregar",
     Desc = "Carrega a configuração",
     Icon = "lucide:upload",
@@ -1916,7 +1895,7 @@ Configs:Button({
     end
 })
 
-Configs:Button({
+ManagementSection:Button({
     Title = "Sobrescrever",
     Desc = "Salva na configuração atual",
     Icon = "lucide:save",
@@ -1931,7 +1910,7 @@ Configs:Button({
     end
 })
 
-Configs:Button({
+ManagementSection:Button({
     Title = "Deletar",
     Desc = "Apaga a configuração",
     Icon = "lucide:trash",
@@ -1947,7 +1926,7 @@ Configs:Button({
     end
 })
 
-Configs:Button({
+ManagementSection:Button({
     Title = "Atualizar lista",
     Desc = "Recarrega as configurações",
     Icon = "lucide:refresh-cw",
@@ -1955,30 +1934,27 @@ Configs:Button({
         AtualizarListaConfig()
     end
 })
-Configs:Space()
+
+--// ativar e desativar UI
 
 local SecretWord = "/e" 
 local KeybindKey = Enum.KeyCode.Z 
 local ChatConnection = nil
 local KeybindConnection = nil 
 
-local function UpdateOpenButton(state)
-    main:EditOpenButton({
-        Title = "michigun.xyz",
-        Icon = "lucide:code-xml",
-        CornerRadius = UDim.new(0, 5),
-        StrokeThickness = 1,
-        Color = ColorSequence.new(
-            Color3.fromHex("#282828"), 
-            Color3.fromHex("#FFFFFF")
-        ),
-        OnlyMobile = false,
-        Enabled = state,
-        Draggable = true,
-    })
-end
-
-UpdateOpenButton(true)
+main:EditOpenButton({
+    Title = "michigun.xyz",
+    Icon = "lucide:code-xml",
+    CornerRadius = UDim.new(0, 5),
+    StrokeThickness = 1,
+    Color = ColorSequence.new(
+        Color3.fromHex("#282828"), 
+        Color3.fromHex("#FFFFFF")
+    ),
+    OnlyMobile = false,
+    Draggable = true,
+    Enabled = true
+})
 
 local function setupChatToggle()
     if ChatConnection then
@@ -2016,7 +1992,9 @@ end
 
 setupKeybind(false)
 
-local Toggle = Configs:Toggle({
+local InterfaceSection = criarsection(Configs, "Interface", "Opções da UI", "lucide:layout", false)
+
+local Toggle = InterfaceSection:Toggle({
     Title = "Botão flutuante",
     Desc = "Ativa o botão flutuante ao minimizar a UI",
     Icon = "lucide:check",
@@ -2024,11 +2002,13 @@ local Toggle = Configs:Toggle({
     Value = true,
     Flag = "BotaoUI",
     Callback = function(state)
-        UpdateOpenButton(state)
+        main:EditOpenButton({
+            Enabled = state,
+        })
     end
 })
 	
-Configs:Input({
+InterfaceSection:Input({
     Title = "Palavra secreta",
     Desc = "Palavra para abrir/fechar a UI. Padrão: /e",
     Placeholder = "/e",
@@ -2052,7 +2032,7 @@ Configs:Input({
     end
 })
 
-Configs:Input({
+InterfaceSection:Input({
     Title = "Keybind",
     Desc = "Tecla para abrir e fechar a UI (Padrão: Z)",
     Flag = "KeybindUI",
