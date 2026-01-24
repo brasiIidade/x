@@ -1481,11 +1481,11 @@ local function RefreshList()
     end
 end
 
-local MainSection = criarsection(Char, "Principal", "Alterar aparência", "lucide:shirt", true)
+local MainSection = criarsection(Char, "Principal", "Alterar skin", "lucide:shirt", true)
 
 MainSection:Paragraph({
     Title = "Observação",
-    Desc = "A skin aplicada é VISUAL. Ou seja, NÃO mostra aos outros jogadores, somente a você",
+    Desc = "A skin aplicada é visual. Ou seja, NÃO mostra aos outros jogadores, somente a você",
     Color = "Blue",
     Image = "lucide:octagon-alert",
     ImageSize = 30,
@@ -1527,7 +1527,7 @@ g1:Button({
     end
 })
 
-local FavSection = criarsection(Char, "Favoritos", "Gerenciar skins salvas", "lucide:star", false)
+local FavSection = criarsection(Char, "Favoritos", "Gerenciar e favoritar skins", "lucide:star", false)
 
 FavSection:Paragraph({
     Title = "Observação",
@@ -1677,7 +1677,7 @@ end)
 
 local speedValue = nil
 
-local CharacterSection = criarsection(Player, "Personagem", "Atributos locais", "lucide:user", true)
+local CharacterSection = criarsection(Player, "Personagem", "Modificar personagem", "lucide:user", true)
 
 CharacterSection:Input({
     Title = "Speed",
@@ -1749,7 +1749,7 @@ CharacterSection:Toggle({
     end
 })
 
-local SystemSection = criarsection(Player, "Sistema", "Configurações do jogo", "lucide:monitor", false)
+local SystemSection = criarsection(Player, "Sistema", "Modificar sistema", "lucide:monitor", false)
 
 SystemSection:Toggle({
     Title = "Habilitar chat",
@@ -1840,7 +1840,7 @@ local function AtualizarListaConfig()
     end
 end
 
-local CreationSection = criarsection(Configs, "Criação", "Nova configuração", "lucide:plus", true)
+local CreationSection = criarsection(Configs, "Criação", "Criar configuração", "lucide:plus", true)
 
 CreationSection:Input({
     Title = "Nome da configuração",
@@ -1870,7 +1870,7 @@ CreationSection:Button({
     end
 })
 
-local ManagementSection = criarsection(Configs, "Gerenciamento", "Carregar e salvar", "lucide:list", true)
+local ManagementSection = criarsection(Configs, "Gerenciamento", "Gerenciar configurações", "lucide:list", true)
 
 DropdownListaConfig = ManagementSection:Dropdown({
     Title = "Configurações salvas",
@@ -1994,7 +1994,7 @@ end
 
 setupKeybind(false)
 
-local InterfaceSection = criarsection(Configs, "Interface", "Opções da UI", "lucide:layout", false)
+local InterfaceSection = criarsection(Configs, "Interface", "Opções da UI", "lucide:panel-top", false)
 
 local Toggle = InterfaceSection:Toggle({
     Title = "Botão flutuante",
