@@ -2294,11 +2294,93 @@ if tevez then
     })
 end
 
-
+--// tab delta
 if delta then
     local DeltaTab = criartab("Delta", "https://tr.rbxcdn.com/180DAY-8952e9d8abbff8104b22356f8b66f962/768/432/Image/Webp/noFilter")
+
+    task.spawn(function()
+        ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/delta.lua")
+    end)
+
+    local JJSection = criarsection(DeltaTab, "Polichinelos", "Modificar status", "lucide:activity", true)
+    
+    JJSection:Input({
+        Title = "Quantidade",
+        Desc = "Valor para adicionar/remover",
+        Placeholder = "Ex: 10",
+        Flag = "DeltaJJInput",
+        Callback = function(v)
+            if _G.DeltaLogic then _G.DeltaLogic.JJValue = v end
+        end
+    })
+
+    JJSection:Button({
+        Title = "Modificar",
+        Desc = "Aplica o valor inserido",
+        Callback = function()
+            if _G.DeltaLogic and _G.DeltaLogic.SetJJ then _G.DeltaLogic.SetJJ() end
+        end
+    })
+
+    local EcoSection = criarsection(DeltaTab, "Economia", "Dinheiro e transferências", "lucide:bank-note", false)
+
+    EcoSection:Button({
+        Title = "Ficar rico (Rejoin)",
+        Desc = "Pega 1M e reinicia o servidor",
+        Callback = function()
+            if _G.DeltaLogic and _G.DeltaLogic.GetRich then _G.DeltaLogic.GetRich() end
+        end
+    })
+
+    EcoSection:Paragraph({
+        Title = "Observação",
+        Desc = "Money All faz uma transferência a cada 16s",
+        Color = "Blue",
+        Image = "lucide:info"
+    })
+
+    EcoSection:Toggle({
+        Title = "Money All",
+        Desc = "Envia dinheiro infinito para todos",
+        Value = false,
+        Flag = "DeltaMoneyAll",
+        Callback = function(v)
+            if _G.DeltaLogic and _G.DeltaLogic.ToggleMoneyAll then _G.DeltaLogic.ToggleMoneyAll(v) end
+        end
+    })
 end
 
+--// tab soucre
 if soucre then
-    local SoucreTab = criartab("Soucre", "https://tr.rbxcdn.com/180DAY-9b65f927dea36f98c1a720694fd00fd3/768/432/Image/Webp/noFilter")
+    SoucreTab = criartab("Soucre", "https://tr.rbxcdn.com/180DAY-9b65f927dea36f98c1a720694fd00fd3/768/432/Image/Webp/noFilter")
+
+    task.spawn(function()
+        ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/soucre.lua")
+    end)
+
+    local FarmSection = criarsection(SoucreTab, "Entregador", "Autofarm de dinheiro", "lucide:bike", true)
+
+    local MoneyPara = FarmSection:Paragraph({
+        Title = "Status",
+        Desc = "Dinheiro farmado: $0",
+        Color = "Green",
+        Image = "lucide:coins"
+    })
+
+    task.spawn(function()
+        repeat task.wait(0.5) until _G.SoucreLogic
+        _G.SoucreLogic.UpdateCallback = function(val)
+            if MoneyPara then MoneyPara:SetDesc("Dinheiro farmado: $" .. tostring(val)) end
+        end
+    end)
+
+    FarmSection:Toggle({
+        Title = "Autofarm",
+        Desc = "Inicia o farm de entregador",
+        Value = false,
+        Flag = "SoucreFarm",
+        Callback = function(v)
+            if _G.SoucreLogic then _G.SoucreLogic.Toggle(v) end
+        end
+    })
 end
