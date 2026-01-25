@@ -607,7 +607,7 @@ _G.HitboxConfig = {
 }
 
 task.spawn(function()
-    ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/hitbox2.lua")
+    ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/hitbox.lua")
 end)
 
 local function AtualizarValores()
@@ -753,7 +753,7 @@ _G.ESPConfig = {
 }
 
 task.spawn(function()
-    ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/esp2.lua")
+    ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/esp.lua")
 end)
 
 local MainSection = criarsection(ESP, "Principal", "Controles gerais", "lucide:eye", true)
@@ -816,7 +816,7 @@ VisualsSection:Toggle({ Title = "Item", Value = _G.ESPConfig.WeaponN, Flag = "It
 
 --// tab tas
 task.spawn(function()
-    ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/tas2.lua")
+    ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/tas.lua")
 end)
 
 local TASDropdown
@@ -985,7 +985,7 @@ RecordSection:Button({
 
 --// tab JJs
 task.spawn(function()
-    ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/JJ2.lua")
+    ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/jj.lua")
 end)
 
 local ETAParagraph = JJs:Paragraph({
@@ -1194,7 +1194,7 @@ Extras:Toggle({
 
 --// tab ChatGPT
 task.spawn(function()
-    ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/ChatGPT2.lua")
+    ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/chatgpt.lua")
 end)
 
 local currentPrompt = ""
@@ -1465,7 +1465,7 @@ end)
 
 --// tab char
 task.spawn(function()
-    ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/Char.lua")
+    ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/char.lua")
 end)
 
 local targetInput = ""
@@ -1626,7 +1626,7 @@ end)
 
 --// tab anti-lag
 task.spawn(function()
-    ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/optimize.lua")
+    ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/antilag.lua")
 end)
 
 local confirmStep = false
@@ -1672,7 +1672,7 @@ end
 
 --// tab local
 task.spawn(function()
-    ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/Local2.lua")
+    ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/local.lua")
 end)
 
 local speedValue = nil
@@ -2060,7 +2060,6 @@ InterfaceSection:Input({
 })
 
 
-
 --// mapas 
 
 local TevezTab = nil
@@ -2079,10 +2078,10 @@ if tevez then
     TevezTab = criartab("Tevez", "https://tr.rbxcdn.com/180DAY-84c7c1edcc63c7dfab5712b1ad377133/768/432/Image/Webp/noFilter")
     
     task.spawn(function()
-        ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/tevez2.lua")
+        ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/tevez3.lua")
     end)
 
-    local LocalSection = criarsection(TevezTab, "Local", "Chat e AFK", "lucide:user", true)
+    local LocalSection = criarsection(TevezTab, "Local", "Chat", "lucide:user", true)
     LocalSection:Input({
         Title = "Mensagem",
         Desc = "Digite a mensagem para enviar no chat",
@@ -2145,7 +2144,7 @@ if tevez then
     })
 	
 
-    local FarmSection = criarsection(TevezTab, "Autofarm", "Farm de Banco", "lucide:bank-note", false)
+    local FarmSection = criarsection(TevezTab, "Autofarm", "Farm do banco", "lucide:bank-note", false)
     
     local StatusParagraph = FarmSection:Paragraph({
         Title = "Status do Farm",
@@ -2317,7 +2316,7 @@ if delta then
         end
     })
 
-    local EcoSection = criarsection(DeltaTab, "Economia", "Dinheiro e transferências", "lucide:bank-note", false)
+    local EcoSection = criarsection(DeltaTab, "Economia", "Dinheiro", "lucide:bank-note", false)
 
     EcoSection:Button({
         Title = "Ficar rico",
@@ -2352,7 +2351,7 @@ if soucre then
         ler("https://raw.githubusercontent.com/brasiIidade/x/refs/heads/main/soucre.lua")
     end)
 
-    local FarmSection = criarsection(SoucreTab, "Entregador", "Autofarm de dinheiro", "lucide:bike", true)
+    local FarmSection = criarsection(SoucreTab, "Entregador", "Autofarm", "lucide:bike", true)
 
     local MoneyPara = FarmSection:Paragraph({
         Title = "Status",
