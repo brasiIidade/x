@@ -1,6 +1,8 @@
-local Replicated = game:GetService("ReplicatedStorage")
-local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
+local cloneref = cloneref or function(o) return o end
+
+local Replicated = cloneref(game:GetService("ReplicatedStorage"))
+local Players = cloneref(game:GetService("Players"))
+local Workspace = cloneref(game:GetService("Workspace"))
 local Player = Players.LocalPlayer
 
 local function Notify(msg)
@@ -86,25 +88,11 @@ local function HasGun()
     return false
 end
 
-local function GetGun()
-    local c = Player.Character
-    if not c then return nil end
-    local tool = c:FindFirstChildWhichIsA("Tool")
-    if not tool then return nil end
-    local cfgInstance = GC:FindFirstChild(tool.Name)
-    if not cfgInstance then return nil end
-    local ok, moduleTable = pcall(function() return require(cfgInstance) end)
-    if ok and type(moduleTable) == "table" then
-        return moduleTable, tool.Name
-    end
-    return nil, tool.Name
-end
-
 local function ModifyGun(prop, val)
-    local cfg, gunName = GetGun()
-    if not cfg then return end
-    if rawget(cfg, prop) ~= nil then
-        rawset(cfg, prop, val)
+    for _, v in pairs(getgc(true)) do
+        if type(v) == "table" and rawget(v, "Bullets") and rawget(v, "Spread") and rawget(v, "Range") then
+            rawset(v, prop, val)
+        end
     end
 end
 
@@ -116,7 +104,7 @@ function TevezLogic.ApplyGunMods()
     if TevezLogic.GunConfig.Bullets then ModifyGun("Bullets", TevezLogic.GunConfig.Bullets) end
     if TevezLogic.GunConfig.Spread then ModifyGun("Spread", TevezLogic.GunConfig.Spread) end
     if TevezLogic.GunConfig.Range then ModifyGun("Range", TevezLogic.GunConfig.Range) end
-    Notify("Mods Aplicados")
+    Notify("Aplicados")
 end
 
 function TevezLogic.ToggleAura(state, toggleUI)
@@ -127,10 +115,10 @@ function TevezLogic.ToggleAura(state, toggleUI)
             return
         end
         TevezLogic.Aura = true
-        Notify("Kill-aura Ativado")
+        Notify("Ativado")
     else
         TevezLogic.Aura = false
-        Notify("Kill-aura Desativado")
+        Notify("Desativado")
     end
 end
 
@@ -251,7 +239,7 @@ local function CheckSafe()
         if p ~= Player and p.Character then
             local hrp = p.Character:FindFirstChild("HumanoidRootPart")
             if hrp and (hrp.Position - root.Position).Magnitude <= FarmLogic.SafeRadius then
-                UpdateStatus("Modo Seguro: Jogador perto!")
+                UpdateStatus("Jogador perto. Aguardando...")
                 Teleport(AFK_LEFT_POS + Vector3.new(0, 4, 0))
                 return true
             end
