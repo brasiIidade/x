@@ -88,23 +88,56 @@ local function HasGun()
     return false
 end
 
-local function ModifyGun(prop, val)
+-- Função otimizada para modificação
+local function ModifyGunProp(prop, val)
+    local count = 0
+    -- Varre o Garbage Collector procurando tabelas
     for _, v in pairs(getgc(true)) do
-        if type(v) == "table" and rawget(v, "Bullets") and rawget(v, "Spread") and rawget(v, "Range") then
-            rawset(v, prop, val)
+        if type(v) == "table" then
+            -- Verifica se parece uma tabela de arma (tem Spread OU Bullets)
+            -- Isso é menos restrito e acha mais tabelas
+            if rawget(v, "Spread") or rawget(v, "Bullets") or rawget(v, "FireRate") then
+                
+                -- Tenta desbloquear a tabela caso seja Read-Only
+                if setreadonly then setreadonly(v, false) end
+                
+                -- Se a propriedade existe ou queremos forçar ela na tabela
+                -- (Usamos rawget para ver se existe, mas se quiser forçar criação, pode tirar o check)
+                if rawget(v, prop) ~= nil then
+                    rawset(v, prop, val)
+                    count = count + 1
+                end
+            end
         end
     end
+    return count
 end
 
 function TevezLogic.ApplyGunMods()
     if not HasGun() then
-        Notify("Equipe uma arma")
+        Notify("Equipe uma arma primeiro")
         return
     end
-    if TevezLogic.GunConfig.Bullets then ModifyGun("Bullets", TevezLogic.GunConfig.Bullets) end
-    if TevezLogic.GunConfig.Spread then ModifyGun("Spread", TevezLogic.GunConfig.Spread) end
-    if TevezLogic.GunConfig.Range then ModifyGun("Range", TevezLogic.GunConfig.Range) end
-    Notify("Aplicados")
+    
+    local changes = 0
+    
+    if TevezLogic.GunConfig.Bullets then 
+        changes = changes + ModifyGunProp("Bullets", TevezLogic.GunConfig.Bullets) 
+    end
+    
+    if TevezLogic.GunConfig.Spread then 
+        changes = changes + ModifyGunProp("Spread", TevezLogic.GunConfig.Spread) 
+    end
+    
+    if TevezLogic.GunConfig.Range then 
+        changes = changes + ModifyGunProp("Range", TevezLogic.GunConfig.Range) 
+    end
+    
+    -- Se quiser Forçar Infinite Ammo, descomente abaixo:
+    -- ModifyGunProp("MaxAmmo", math.huge)
+    -- ModifyGunProp("StoredAmmo", math.huge)
+
+    Notify("Alterações aplicadas em: " .. tostring(changes) .. " tabelas")
 end
 
 function TevezLogic.ToggleAura(state, toggleUI)
@@ -115,10 +148,10 @@ function TevezLogic.ToggleAura(state, toggleUI)
             return
         end
         TevezLogic.Aura = true
-        Notify("Ativado")
+        Notify("Kill-aura Ativado")
     else
         TevezLogic.Aura = false
-        Notify("Desativado")
+        Notify("Kill-aura Desativado")
     end
 end
 
@@ -239,7 +272,7 @@ local function CheckSafe()
         if p ~= Player and p.Character then
             local hrp = p.Character:FindFirstChild("HumanoidRootPart")
             if hrp and (hrp.Position - root.Position).Magnitude <= FarmLogic.SafeRadius then
-                UpdateStatus("Jogador perto. Aguardando...")
+                UpdateStatus("Modo Seguro: Jogador perto!")
                 Teleport(AFK_LEFT_POS + Vector3.new(0, 4, 0))
                 return true
             end
