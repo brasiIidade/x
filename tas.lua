@@ -51,7 +51,11 @@ _G.TAS.CurrentName = ""
 _G.TAS.RecordConn = nil
 _G.TAS.IsReady = true
 _G.TAS.NotifyFunc = nil 
-_G.TAS.UpdateButtonState = nil -- Função ponte para a UI
+_G.TAS.UpdateButtonState = nil 
+
+_G.TAS.ActivationRadius = 1
+_G.TAS.ActivationHeight = 1.5
+_G.TAS.ActivationAngle = 10
 
 local function safeNotify(title, msg)
     if _G.TAS.NotifyFunc then
@@ -182,7 +186,7 @@ local function clearSingleTAS(name)
     data.PathParts = {}
     data.Waiting = false
     data.Playing = false
-    checkPlaybackState() -- Atualiza estado do botão
+    checkPlaybackState()
 end
 
 local function buildPathLine(frames)
@@ -270,7 +274,11 @@ local function activateTAS(name)
         local flatDist = Vector3.new(delta.X,0,delta.Z).Magnitude
         local dot = hrp.CFrame.LookVector:Dot(cf.LookVector)
 
-        if flatDist <= 0.5 and math.abs(delta.Y) <= 1.5 and dot >= math.cos(math.rad(5)) then
+        local actRadius = _G.TAS.ActivationRadius or 0.5
+        local actHeight = _G.TAS.ActivationHeight or 1.5
+        local actAngle = _G.TAS.ActivationAngle or 5
+
+        if flatDist <= actRadius and math.abs(delta.Y) <= actHeight and dot >= math.cos(math.rad(actAngle)) then
             if data.MarkerConn then data.MarkerConn:Disconnect() end
             
             if data.VisualFolder then data.VisualFolder:Destroy() end
@@ -284,7 +292,7 @@ local function activateTAS(name)
 
             data.Waiting = false
             data.Playing = true
-            checkPlaybackState() -- Avisa que começou a tocar (destrava o botão)
+            checkPlaybackState()
             
             local StartTime = tick()
             
@@ -296,7 +304,7 @@ local function activateTAS(name)
                     stopMovementInput()
                     if data.PlayConn then data.PlayConn:Disconnect() end
                     data.Playing = false
-                    checkPlaybackState() -- Avisa que parou (trava o botão)
+                    checkPlaybackState()
                     return
                 end
 
@@ -331,10 +339,12 @@ _G.TAS.StopRecording = function()
     
     local duration = #_G.TAS.RecFrames * FRAME_TIME
     safeNotify("TAS", string.format("Gravação parada (%.2f segundos)", duration))
+    if main then main:Open() end
 end
 
 _G.TAS.StartRecording = function()
     if _G.TAS.Recording then return end
+    if main then main:Close() end
     _G.TAS.RecFrames = {}
     _G.TAS.Recording = true
     
