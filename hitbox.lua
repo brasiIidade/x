@@ -1,10 +1,10 @@
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
+local cloneref = cloneref or function(o) return o end
 
--- Tabela para guardar as conexões (eventos) e poder desligar depois
+local Players = cloneref(game:GetService("Players"))
+local LocalPlayer = cloneref(Players.LocalPlayer)
+
 _G.HitboxConnections = {}
 
--- Configuração padrão (será sobrescrita pela UI)
 _G.HitboxConfig = _G.HitboxConfig or {
     Size = Vector3.new(5,5,5),
     Transparency = 0.5,
