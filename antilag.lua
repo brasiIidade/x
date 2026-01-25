@@ -1,14 +1,18 @@
-local Lighting = game:GetService("Lighting")
-local PhysicsService = game:GetService("PhysicsService")
-local GuiService = game:GetService("GuiService")
-local CoreGui = game:GetService("CoreGui")
-local Stats = game:GetService("Stats")
-local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local StarterGui = game:GetService("StarterGui")
-local Terrain = Workspace:FindFirstChildOfClass("Terrain")
-local LocalPlayer = Players.LocalPlayer
-local Camera = Workspace.CurrentCamera
+local cloneref = cloneref or function(o) return o end
+
+local Lighting = cloneref(game:GetService("Lighting"))
+local PhysicsService = cloneref(game:GetService("PhysicsService"))
+local GuiService = cloneref(game:GetService("GuiService"))
+local CoreGui = cloneref(game:GetService("CoreGui"))
+local Stats = cloneref(game:GetService("Stats"))
+local Players = cloneref(game:GetService("Players"))
+local Workspace = cloneref(game:GetService("Workspace"))
+local StarterGui = cloneref(game:GetService("StarterGui"))
+
+local Terrain = cloneref(Workspace:FindFirstChildOfClass("Terrain"))
+local LocalPlayer = cloneref(Players.LocalPlayer)
+local Camera = cloneref(Workspace.CurrentCamera)
+
 
 _G.AntiLag = _G.AntiLag or {}
 _G.AntiLag.Running = false
