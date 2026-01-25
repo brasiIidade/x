@@ -1,11 +1,14 @@
-local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local RunService = game:GetService("RunService")
-local HttpService = game:GetService("HttpService")
-local TextChatService = game:GetService("TextChatService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
-local LocalPlayer = Players.LocalPlayer
-local CurrentCamera = Workspace.CurrentCamera
+local cloneref = cloneref or function(o) return o end
+
+local Players = cloneref(game:GetService("Players"))
+local Workspace = cloneref(game:GetService("Workspace"))
+local RunService = cloneref(game:GetService("RunService"))
+local HttpService = cloneref(game:GetService("HttpService"))
+local TextChatService = cloneref(game:GetService("TextChatService"))
+local VirtualInputManager = cloneref(game:GetService("VirtualInputManager"))
+
+local LocalPlayer = cloneref(Players.LocalPlayer)
+local CurrentCamera = cloneref(Workspace.CurrentCamera)
 
 local unpack = table.unpack or unpack
 
@@ -56,7 +59,6 @@ local function safeNotify(title, msg)
     end
 end
 
--- Função para verificar se existe algum TAS rodando e atualizar o botão
 local function checkPlaybackState()
     local isPlaying = false
     for _, data in pairs(_G.TAS.Loaded) do
@@ -188,7 +190,7 @@ local function buildPathLine(frames)
     if not frames or #frames < 2 then return parts end
 
     local parentFolder = Instance.new("Folder", Workspace)
-    parentFolder.Name = "TAS_Path"
+    parentFolder.Name = "2"
 
     for i = 1, #frames - 1 do
         if frames[i].cf and frames[i+1].cf then
