@@ -22,7 +22,7 @@ _G.ESPConfig = _G.ESPConfig or {
 local function GetHolder()
     if not _G.ESPHolder then
         local h = Instance.new("ScreenGui")
-        h.Name = "MichigunESP"
+        h.Name = "-"
         h.IgnoreGuiInset = true
         if pcall(function() h.Parent = CoreGui end) then
             _G.ESPHolder = h
@@ -35,7 +35,7 @@ local function GetHolder()
 end
 
 local function CreateESP(Player)
-    if Player == LocalPlayer or _G.ESPStorage[Player] then return end
+    if Player.Name == LocalPlayer.Name or _G.ESPStorage[Player] then return end
     
     local Holder = GetHolder()
     local objects = {
@@ -126,7 +126,7 @@ _G.StartESP = function()
     GetHolder() 
 
     for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer then CreateESP(plr) end
+        if plr.Name ~= LocalPlayer.Name then CreateESP(plr) end
     end
 
     local c1 = Players.PlayerAdded:Connect(CreateESP)
@@ -136,7 +136,7 @@ _G.StartESP = function()
         for Player, Objects in pairs(_G.ESPStorage) do
             local config = _G.ESPConfig
             
-            if config.TeamCheck and Player.Team == LocalPlayer.Team then
+            if config.TeamCheck and Player.TeamColor == LocalPlayer.TeamColor then
                 Objects.Highlight.Enabled = false
                 Objects.Billboard.Enabled = false
                 continue
