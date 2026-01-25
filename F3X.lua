@@ -1,10 +1,12 @@
-local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local HttpService = game:GetService("HttpService")
-local Player = Players.LocalPlayer
-local Mouse = Player:GetMouse()
+local cloneref = cloneref or function(o) return o end
 
--- Inicialização Global
+local Players = cloneref(game:GetService("Players"))
+local Workspace = cloneref(game:GetService("Workspace"))
+local HttpService = cloneref(game:GetService("HttpService"))
+
+local Player = cloneref(Players.LocalPlayer)
+local Mouse = cloneref(Player:GetMouse())
+
 _G.F3X = _G.F3X or {}
 _G.F3X.Enabled = false
 _G.F3X.SelectedParts = {}
