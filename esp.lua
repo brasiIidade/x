@@ -1,7 +1,9 @@
-local Players = game:GetService("Players")
-local CoreGui = game:GetService("CoreGui")
-local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
+local cloneref = cloneref or function(o) return o end
+
+local Players = cloneref(game:GetService("Players"))
+local CoreGui = cloneref(game:GetService("CoreGui"))
+local RunService = cloneref(game:GetService("RunService"))
+local LocalPlayer = cloneref(Players.LocalPlayer)
 
 _G.ESPConnections = {}
 _G.ESPStorage = {}
