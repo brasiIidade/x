@@ -1,8 +1,10 @@
-local Replicated = game:GetService("ReplicatedStorage")
-local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
+local cloneref = cloneref or function(o) return o end
+
+local Replicated = cloneref(game:GetService("ReplicatedStorage"))
+local Players = cloneref(game:GetService("Players"))
+local Workspace = cloneref(game:GetService("Workspace"))
+local RunService = cloneref(game:GetService("RunService"))
+local LocalPlayer = cloneref(Players.LocalPlayer)
 
 local Logic = {}
 Logic.Enabled = false
