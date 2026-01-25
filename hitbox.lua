@@ -33,7 +33,6 @@ local function ResetHitbox(plr)
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     local data = OriginalHRP[plr]
     
-    -- Restaura propriedades originais
     if hrp and data then
         hrp.Shape = data.Shape
         hrp.Size = data.Size
@@ -42,7 +41,6 @@ local function ResetHitbox(plr)
         hrp.Material = data.Material
     end
     
-    -- Remove o visual (Highlight)
     if char then
         local hl = char:FindFirstChild("HitboxHighlight")
         if hl then hl:Destroy() end
@@ -63,14 +61,14 @@ end
 local function ApplyHitbox(plr)
     local Config = _G.HitboxConfig
     
-    -- Verificações de segurança
-    if plr == LocalPlayer or (plr.Team == LocalPlayer.Team and plr.Team ~= nil) then return end
+    if plr.Name == LocalPlayer.Name then return end
+    if plr.Team ~= nil and LocalPlayer.Team ~= nil and plr.Team.Name == LocalPlayer.Team.Name then return end
+
     if Config.HideOnShield and PlayerHasShield(plr) then
         ResetHitbox(plr)
         return 
     end
 
-    -- Filtro de time
     if Config.TeamFilterEnabled then
         local isTargetTeam = false
         if plr.Team then
@@ -87,14 +85,12 @@ local function ApplyHitbox(plr)
 
     SaveOriginal(plr, hrp)
 
-    -- Aplica mudanças
     hrp.Shape = Config.Shape
     hrp.Size = Config.Size
     hrp.Transparency = Config.Transparency
     hrp.CanCollide = false
     hrp.Material = Enum.Material.ForceField
 
-    -- Visual (Highlight)
     local old = char:FindFirstChild("HitboxHighlight")
     if old then old:Destroy() end
 
@@ -110,12 +106,9 @@ local function ApplyHitbox(plr)
     end
 end
 
--- Função auxiliar para monitorar um player específico
 local function MonitorPlayer(plr)
-    -- Se o player já tiver char, aplica
     if plr.Character then 
         ApplyHitbox(plr)
-        -- Monitorar ferramentas (Escudo)
         local c1 = plr.Character.ChildAdded:Connect(function(c)
             if c:IsA("Tool") then ApplyHitbox(plr) end
         end)
@@ -126,11 +119,9 @@ local function MonitorPlayer(plr)
         table.insert(_G.HitboxConnections, c2)
     end
 
-    -- Quando o char renascer
     local c3 = plr.CharacterAdded:Connect(function(char)
         task.wait(0.2)
         ApplyHitbox(plr)
-        -- Monitorar ferramentas no novo char
         local c4 = char.ChildAdded:Connect(function(c)
             if c:IsA("Tool") then ApplyHitbox(plr) end
         end)
@@ -143,33 +134,26 @@ local function MonitorPlayer(plr)
     table.insert(_G.HitboxConnections, c3)
 end
 
--- ================= FUNÇÕES GLOBAIS DE CONTROLE ================= --
-
 _G.StopHitboxLogic = function()
-    -- 1. Desconecta todos os eventos (para de processar)
     for _, conn in pairs(_G.HitboxConnections) do
         if conn then conn:Disconnect() end
     end
-    _G.HitboxConnections = {} -- Limpa a tabela
+    _G.HitboxConnections = {}
 
-    -- 2. Reseta o hitbox de todo mundo para o normal
     for _, plr in ipairs(Players:GetPlayers()) do
         ResetHitbox(plr)
     end
 end
 
 _G.StartHitboxLogic = function()
-    -- Garante que não tem nada rodando antes
     _G.StopHitboxLogic()
 
-    -- 1. Aplica e monitora quem já está no server
     for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer then
+        if plr.Name ~= LocalPlayer.Name then
             MonitorPlayer(plr)
         end
     end
 
-    -- 2. Monitora quem entrar depois
     local c = Players.PlayerAdded:Connect(function(plr)
         MonitorPlayer(plr)
     end)
@@ -177,7 +161,6 @@ _G.StartHitboxLogic = function()
 end
 
 _G.UpdateHitboxValues = function()
-    -- Apenas reaplica se estiver ativo
     if #_G.HitboxConnections > 0 then
         for _, plr in ipairs(Players:GetPlayers()) do
             ApplyHitbox(plr)
