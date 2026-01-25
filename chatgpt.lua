@@ -1,7 +1,9 @@
-local HttpService = game:GetService("HttpService")
-local TextChatService = game:GetService("TextChatService")
-local Replicated = game:GetService("ReplicatedStorage")
-local Players = game:GetService("Players")
+local cloneref = cloneref or function(obj) return obj end
+
+local HttpService = cloneref(game:GetService("HttpService"))
+local TextChatService = cloneref(game:GetService("TextChatService"))
+local Replicated = cloneref(game:GetService("ReplicatedStorage"))
+local Players = cloneref(game:GetService("Players"))
 
 local HttpRequest = request or http and http.request or http_request or syn and syn.request
 
