@@ -1,0 +1,214 @@
+local cloneref = cloneref or function(o) return o end
+
+local Players = cloneref(game:GetService("Players"))
+local CoreGui = cloneref(game:GetService("CoreGui"))
+local RunService = cloneref(game:GetService("RunService"))
+local LocalPlayer = cloneref(Players.LocalPlayer)
+
+_G.ESPConnections = {}
+_G.ESPStorage = {}
+_G.ESPHolder = nil
+
+_G.ESPConfig = _G.ESPConfig or {
+    Enabled = false,
+    TeamCheck = false,
+    Chams = false,
+    Name = false,
+    Studs = false,
+    Health = false,
+    WeaponN = false
+}
+
+local function GetHolder()
+    if not _G.ESPHolder then
+        local h = Instance.new("ScreenGui")
+        h.Name = "MichigunESP"
+        h.IgnoreGuiInset = true
+        if pcall(function() h.Parent = CoreGui end) then
+            _G.ESPHolder = h
+        else
+            h.Parent = LocalPlayer:WaitForChild("PlayerGui")
+            _G.ESPHolder = h
+        end
+    end
+    return _G.ESPHolder
+end
+
+local function CreateESP(Player)
+    if Player == LocalPlayer or _G.ESPStorage[Player] then return end
+    
+    local Holder = GetHolder()
+    local objects = {
+        Highlight = nil,
+        Billboard = nil,
+        Labels = {}
+    }
+
+    local hl = Instance.new("Highlight")
+    hl.Name = "Chams"
+    hl.FillColor = Color3.fromRGB(255, 0, 0)
+    hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+    hl.FillTransparency = 0.5
+    hl.OutlineTransparency = 0
+    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    hl.Enabled = false
+    hl.Parent = Holder
+    objects.Highlight = hl
+
+    local bb = Instance.new("BillboardGui")
+    bb.Name = "Info"
+    bb.Adornee = nil
+    bb.Size = UDim2.new(0, 200, 0, 200)
+    bb.StudsOffset = Vector3.new(0, 4, 0) 
+    bb.AlwaysOnTop = true
+    bb.Enabled = false
+    bb.Parent = Holder
+
+    local layout = Instance.new("UIListLayout")
+    layout.Parent = bb
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    layout.Padding = UDim.new(0, 1)
+
+    local function createLabel(name, order, color, size)
+        local lab = Instance.new("TextLabel")
+        lab.Name = name
+        lab.Parent = bb
+        lab.BackgroundTransparency = 1
+        lab.Size = UDim2.new(1, 0, 0, size or 12)
+        lab.TextColor3 = color or Color3.fromRGB(255, 255, 255)
+        lab.TextStrokeTransparency = 0
+        lab.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+        lab.Font = Enum.Font.GothamBold
+        lab.TextSize = 12
+        lab.LayoutOrder = order
+        lab.Visible = false
+        return lab
+    end
+
+    objects.Labels.Name = createLabel("Name", 1, Color3.fromRGB(255, 255, 255), 14)
+    objects.Labels.Health = createLabel("Health", 2, Color3.fromRGB(0, 255, 100), 12)
+    objects.Labels.Weapon = createLabel("Weapon", 3, Color3.fromRGB(200, 200, 200), 12)
+    objects.Labels.Studs = createLabel("Studs", 4, Color3.fromRGB(255, 255, 0), 12)
+
+    objects.Billboard = bb
+    _G.ESPStorage[Player] = objects
+end
+
+local function RemoveESP(Player)
+    if _G.ESPStorage[Player] then
+        local obj = _G.ESPStorage[Player]
+        if obj.Highlight then obj.Highlight:Destroy() end
+        if obj.Billboard then obj.Billboard:Destroy() end
+        _G.ESPStorage[Player] = nil
+    end
+end
+
+_G.StopESP = function()
+    for _, conn in pairs(_G.ESPConnections) do
+        if conn then conn:Disconnect() end
+    end
+    _G.ESPConnections = {}
+
+    for plr, _ in pairs(_G.ESPStorage) do
+        RemoveESP(plr)
+    end
+    _G.ESPStorage = {}
+    
+    if _G.ESPHolder then
+        _G.ESPHolder:Destroy()
+        _G.ESPHolder = nil
+    end
+end
+
+_G.StartESP = function()
+    _G.StopESP()
+    GetHolder() 
+
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer then CreateESP(plr) end
+    end
+
+    local c1 = Players.PlayerAdded:Connect(CreateESP)
+    local c2 = Players.PlayerRemoving:Connect(RemoveESP)
+    
+    local c3 = RunService.RenderStepped:Connect(function()
+        for Player, Objects in pairs(_G.ESPStorage) do
+            local config = _G.ESPConfig
+            
+            if config.TeamCheck and Player.Team == LocalPlayer.Team then
+                Objects.Highlight.Enabled = false
+                Objects.Billboard.Enabled = false
+                continue
+            end
+
+            local char = Player.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            local hum = char and char:FindFirstChild("Humanoid")
+            local head = char and char:FindFirstChild("Head")
+
+            if char and hrp and hum and hum.Health > 0 and head then
+                if config.Chams then
+                    Objects.Highlight.Adornee = char
+                    Objects.Highlight.FillColor = Player.TeamColor.Color
+                    Objects.Highlight.Enabled = true
+                else
+                    Objects.Highlight.Enabled = false
+                end
+
+                local showText = (config.Name or config.Health or config.WeaponN or config.Studs)
+                
+                if showText then
+                    Objects.Billboard.Adornee = head
+                    Objects.Billboard.Enabled = true
+
+                    if config.Name then
+                        Objects.Labels.Name.Text = Player.Name
+                        Objects.Labels.Name.Visible = true
+                    else
+                        Objects.Labels.Name.Visible = false
+                    end
+
+                    if config.Health then
+                        local hp = math.floor(hum.Health)
+                        Objects.Labels.Health.Text = "HP: " .. hp
+                        Objects.Labels.Health.TextColor3 = Color3.fromRGB(255, 0, 0):Lerp(Color3.fromRGB(0, 255, 0), hum.Health / hum.MaxHealth)
+                        Objects.Labels.Health.Visible = true
+                    else
+                        Objects.Labels.Health.Visible = false
+                    end
+
+                    if config.WeaponN then
+                        local tool = char:FindFirstChildOfClass("Tool")
+                        if tool then
+                            Objects.Labels.Weapon.Text = string.upper(tool.Name)
+                            Objects.Labels.Weapon.Visible = true
+                        else
+                            Objects.Labels.Weapon.Visible = false
+                        end
+                    else
+                        Objects.Labels.Weapon.Visible = false
+                    end
+
+                    if config.Studs then
+                        local dist = (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")) 
+                            and (LocalPlayer.Character.HumanoidRootPart.Position - hrp.Position).Magnitude or 0
+                        Objects.Labels.Studs.Text = string.format("[%d m]", math.floor(dist))
+                        Objects.Labels.Studs.Visible = true
+                    else
+                        Objects.Labels.Studs.Visible = false
+                    end
+                else
+                    Objects.Billboard.Enabled = false
+                end
+            else
+                Objects.Highlight.Enabled = false
+                Objects.Billboard.Enabled = false
+            end
+        end
+    end)
+
+    table.insert(_G.ESPConnections, c1)
+    table.insert(_G.ESPConnections, c2)
+    table.insert(_G.ESPConnections, c3)
+end
