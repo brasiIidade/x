@@ -1,13 +1,15 @@
-local TextChatService = game:GetService("TextChatService")
-local Replicated = game:GetService("ReplicatedStorage")
-local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
-local Players = game:GetService("Players")
+local cloneref = cloneref or function(o) return o end
 
-local Player = Players.LocalPlayer
+local TextChatService = cloneref(game:GetService("TextChatService"))
+local Replicated = cloneref(game:GetService("ReplicatedStorage"))
+local TweenService = cloneref(game:GetService("TweenService"))
+local RunService = cloneref(game:GetService("RunService"))
+local VirtualInputManager = cloneref(game:GetService("VirtualInputManager"))
+local Players = cloneref(game:GetService("Players"))
 
--- Initialize Global Table
+local Player = cloneref(Players.LocalPlayer)
+
+
 _G.JJs = _G.JJs or {}
 _G.JJs.Config = {
     Running = false,
@@ -26,11 +28,10 @@ _G.JJs.Config = {
     CustomSuffix = "",
     Mode = "Padrão"
 }
-_G.JJs.StatusFunc = nil -- Function to update UI status
+_G.JJs.StatusFunc = nil
 
--- Game Specific Checks
-local DELTA_MAPA = (game.PlaceId == 1111111) -- Replace with actual ID if known, or rely on game specific object checks
-local TEVEZ_MAPA = (game.PlaceId == 2222222) -- Replace with actual ID if known
+local DELTA_MAPA = (game.PlaceId == 14511049) -- Replace with actual ID if known, or rely on game specific object checks
+local TEVEZ_MAPA = (game.PlaceId == 13132367906) -- Replace with actual ID if known
 
 -- Helper: Remote Chat
 local RemoteChat = {}
