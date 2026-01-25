@@ -1,9 +1,13 @@
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local TextChatService = game:GetService("TextChatService")
-local Workspace = game:GetService("Workspace")
-local LocalPlayer = Players.LocalPlayer
-local Camera = Workspace.CurrentCamera
+local cloneref = cloneref or function(o) return o end
+
+local Players = cloneref(game:GetService("Players"))
+local RunService = cloneref(game:GetService("RunService"))
+local TextChatService = cloneref(game:GetService("TextChatService"))
+local Workspace = cloneref(game:GetService("Workspace"))
+
+local LocalPlayer = cloneref(Players.LocalPlayer) 
+local Camera = cloneref(Workspace.CurrentCamera)
+
 
 _G.PlayerMod = _G.PlayerMod or {}
 _G.PlayerMod.NoclipConnection = nil
