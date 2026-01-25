@@ -18,13 +18,11 @@ local StringLower = string.lower
 local StringFind = string.find
 local MathHuge = math.huge
 
--- Variáveis de controle
 _G.SilentAimConnections = {}
 _G.SilentAimActive = false
 local ClosestHitPart = nil
 local CurrentTargetCharacter = nil
 
--- Funções Auxiliares
 local bulletFunctions = {
     "fire", "shoot", "bullet", "ammo", "projectile", 
     "missile", "rocket", "hit", "damage", "attack", 
@@ -137,18 +135,14 @@ local function getClosestPlayer()
     return BestPart, BestChar
 end
 
--- ================= GERENCIAMENTO (START/STOP) ================= --
-
 _G.StopSilentAim = function()
     _G.SilentAimActive = false
     
-    -- Desconecta loops
     for _, conn in pairs(_G.SilentAimConnections) do
         if conn then conn:Disconnect() end
     end
     _G.SilentAimConnections = {}
 
-    -- Limpa visuais
     if _G.AimFOVCircle then _G.AimFOVCircle:Remove(); _G.AimFOVCircle = nil end
     if _G.AimbotGui then _G.AimbotGui:Destroy(); _G.AimbotGui = nil end
     if _G.AimHighlight then _G.AimHighlight:Destroy(); _G.AimHighlight = nil end
@@ -158,11 +152,10 @@ _G.StopSilentAim = function()
 end
 
 _G.StartSilentAim = function()
-    _G.StopSilentAim() -- Garante limpeza antes de iniciar
+    _G.StopSilentAim()
     _G.SilentAimActive = true
     local config = _G.AimbotConfig
 
-    -- 1. Cria Visuais (FOV)
     local fov_circle = Drawing.new("Circle")
     fov_circle.Visible = false
     fov_circle.Thickness = 1.5
@@ -172,7 +165,6 @@ _G.StartSilentAim = function()
     fov_circle.NumSides = 64
     _G.AimFOVCircle = fov_circle
 
-    -- 2. Cria Visuais (UI/ESP)
     local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Name = "InternalAimbotUI"
     ScreenGui.ResetOnSpawn = false
@@ -196,7 +188,6 @@ _G.StartSilentAim = function()
     local InfoPanelBot = Instance.new("BillboardGui", ScreenGui); InfoPanelBot.Size = UDim2.new(0, 200, 0, 50); InfoPanelBot.StudsOffset = Vector3New(0, -3.5, 0); InfoPanelBot.AlwaysOnTop = true; InfoPanelBot.Enabled = false
     local LabelBot = Instance.new("TextLabel", InfoPanelBot); LabelBot.BackgroundTransparency = 1; LabelBot.Size = UDim2.new(1, 0, 1, 0); LabelBot.Font = Enum.Font.GothamBold; LabelBot.TextYAlignment = Enum.TextYAlignment.Top; LabelBot.TextSize = 13
 
-    -- 3. Loop do FOV
     local c1 = RunService.RenderStepped:Connect(function()
         if _G.SilentAimActive and config.ShowFOV then
             fov_circle.Visible = true
@@ -213,14 +204,12 @@ _G.StartSilentAim = function()
     end)
     table.insert(_G.SilentAimConnections, c1)
 
-    -- 4. Loop Principal (Busca de Alvo + ESP)
     local c2 = RunService.RenderStepped:Connect(function()
         if _G.SilentAimActive then
             local Part, Character = getClosestPlayer()
             ClosestHitPart = Part
             CurrentTargetCharacter = Character
-            
-            -- Atualiza Highlight/ESP
+        
             TargetHighlight.FillColor = config.HighlightColor
             if config.ShowHighlight and Character then
                 TargetHighlight.Adornee = Character
@@ -230,7 +219,6 @@ _G.StartSilentAim = function()
                 TargetHighlight.Enabled = false
             end
 
-            -- Atualiza Textos ESP
             if config.ESP.Enabled and Character then
                 local head = Character:FindFirstChild("Head")
                 local root = Character:FindFirstChild("HumanoidRootPart")
@@ -266,9 +254,6 @@ _G.StartSilentAim = function()
     end)
     table.insert(_G.SilentAimConnections, c2)
 end
-
--- ================= HOOK (GLOBAL) ================= --
--- O hook roda sempre, mas a verificação "if not _G.SilentAimActive" no topo o torna ultra-leve quando desligado.
 
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
