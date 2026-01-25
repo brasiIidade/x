@@ -5,8 +5,8 @@ local CoreGui = cloneref(game:GetService("CoreGui"))
 local RunService = cloneref(game:GetService("RunService"))
 local LocalPlayer = cloneref(Players.LocalPlayer)
 
-_G.ESPConnections = {}
-_G.ESPStorage = {}
+_G.ESPConnections = _G.ESPConnections or {}
+_G.ESPStorage = _G.ESPStorage or {}
 _G.ESPHolder = nil
 
 _G.ESPConfig = _G.ESPConfig or {
@@ -22,30 +22,51 @@ _G.ESPConfig = _G.ESPConfig or {
 local function GetHolder()
     if not _G.ESPHolder then
         local h = Instance.new("ScreenGui")
-        h.Name = "MichigunESP"
+        h.Name = "k"
         h.IgnoreGuiInset = true
-        if pcall(function() h.Parent = CoreGui end) then
-            _G.ESPHolder = h
-        else
+        h.ResetOnSpawn = false
+        
+        local success = pcall(function()
+            h.Parent = CoreGui
+        end)
+        
+        if not success then
             h.Parent = LocalPlayer:WaitForChild("PlayerGui")
-            _G.ESPHolder = h
         end
+        _G.ESPHolder = h
     end
     return _G.ESPHolder
 end
 
-local function CreateESP(Player)
-    if Player.Name == LocalPlayer.Name or _G.ESPStorage[Player] then return end
-    
+local function MakeLabel(parent, name, order, color)
+    local lab = Instance.new("TextLabel")
+    lab.Name = name
+    lab.Parent = parent
+    lab.BackgroundTransparency = 1
+    lab.Size = UDim2.new(1, 0, 0, 14)
+    lab.TextColor3 = color or Color3.fromRGB(255, 255, 255)
+    lab.TextStrokeTransparency = 0
+    lab.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    lab.Font = Enum.Font.GothamBold
+    lab.TextSize = 13
+    lab.LayoutOrder = order
+    lab.Visible = false
+    return lab
+end
+
+local function CreateESP(plr)
+    if plr.Name == LocalPlayer.Name or _G.ESPStorage[plr] then return end
+
     local Holder = GetHolder()
-    local objects = {
+    
+    local cache = {
         Highlight = nil,
         Billboard = nil,
         Labels = {}
     }
 
     local hl = Instance.new("Highlight")
-    hl.Name = "Chams"
+    hl.Name = plr.Name .. "lol"
     hl.FillColor = Color3.fromRGB(255, 0, 0)
     hl.OutlineColor = Color3.fromRGB(255, 255, 255)
     hl.FillTransparency = 0.5
@@ -53,13 +74,13 @@ local function CreateESP(Player)
     hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     hl.Enabled = false
     hl.Parent = Holder
-    objects.Highlight = hl
+    cache.Highlight = hl
 
     local bb = Instance.new("BillboardGui")
-    bb.Name = "Info"
+    bb.Name = plr.Name .. "xd"
     bb.Adornee = nil
     bb.Size = UDim2.new(0, 200, 0, 200)
-    bb.StudsOffset = Vector3.new(0, 4, 0) 
+    bb.StudsOffset = Vector3.new(0, 1.5, 0)
     bb.AlwaysOnTop = true
     bb.Enabled = false
     bb.Parent = Holder
@@ -68,45 +89,113 @@ local function CreateESP(Player)
     layout.Parent = bb
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    layout.Padding = UDim.new(0, 1)
+    layout.Padding = UDim.new(0, 0)
 
-    local function createLabel(name, order, color, size)
-        local lab = Instance.new("TextLabel")
-        lab.Name = name
-        lab.Parent = bb
-        lab.BackgroundTransparency = 1
-        lab.Size = UDim2.new(1, 0, 0, size or 12)
-        lab.TextColor3 = color or Color3.fromRGB(255, 255, 255)
-        lab.TextStrokeTransparency = 0
-        lab.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-        lab.Font = Enum.Font.GothamBold
-        lab.TextSize = 12
-        lab.LayoutOrder = order
-        lab.Visible = false
-        return lab
-    end
+    cache.Labels.Name = MakeLabel(bb, "Name", 1)
+    cache.Labels.Health = MakeLabel(bb, "Health", 2, Color3.fromRGB(0, 255, 100))
+    cache.Labels.Weapon = MakeLabel(bb, "Weapon", 3, Color3.fromRGB(200, 200, 200))
+    cache.Labels.Studs = MakeLabel(bb, "Studs", 4, Color3.fromRGB(255, 255, 0))
 
-    objects.Labels.Name = createLabel("Name", 1, Color3.fromRGB(255, 255, 255), 14)
-    objects.Labels.Health = createLabel("Health", 2, Color3.fromRGB(0, 255, 100), 12)
-    objects.Labels.Weapon = createLabel("Weapon", 3, Color3.fromRGB(200, 200, 200), 12)
-    objects.Labels.Studs = createLabel("Studs", 4, Color3.fromRGB(255, 255, 0), 12)
-
-    objects.Billboard = bb
-    _G.ESPStorage[Player] = objects
+    cache.Billboard = bb
+    _G.ESPStorage[plr] = cache
 end
 
-local function RemoveESP(Player)
-    if _G.ESPStorage[Player] then
-        local obj = _G.ESPStorage[Player]
-        if obj.Highlight then obj.Highlight:Destroy() end
-        if obj.Billboard then obj.Billboard:Destroy() end
-        _G.ESPStorage[Player] = nil
+local function RemoveESP(plr)
+    local cache = _G.ESPStorage[plr]
+    if cache then
+        if cache.Highlight then cache.Highlight:Destroy() end
+        if cache.Billboard then cache.Billboard:Destroy() end
+        _G.ESPStorage[plr] = nil
+    end
+end
+
+local function UpdateESP()
+    for plr, cache in pairs(_G.ESPStorage) do
+        local config = _G.ESPConfig
+        
+        if not plr or not plr.Parent then
+            RemoveESP(plr)
+            continue
+        end
+
+        local char = plr.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        local hum = char and char:FindFirstChild("Humanoid")
+        local head = char and char:FindFirstChild("Head")
+
+        if not (char and hrp and hum and hum.Health > 0 and head) then
+            cache.Highlight.Enabled = false
+            cache.Billboard.Enabled = false
+            continue
+        end
+
+        if config.TeamCheck and plr.TeamColor == LocalPlayer.TeamColor then
+            cache.Highlight.Enabled = false
+            cache.Billboard.Enabled = false
+            continue
+        end
+
+        if config.Chams then
+            cache.Highlight.Adornee = char
+            cache.Highlight.FillColor = plr.TeamColor.Color
+            cache.Highlight.Enabled = true
+        else
+            cache.Highlight.Enabled = false
+        end
+
+        local showInfo = (config.Name or config.Health or config.WeaponN or config.Studs)
+
+        if showInfo then
+            cache.Billboard.Adornee = head
+            cache.Billboard.Enabled = true
+
+            if config.Name then
+                cache.Labels.Name.Text = plr.DisplayName
+                cache.Labels.Name.Visible = true
+            else
+                cache.Labels.Name.Visible = false
+            end
+
+            if config.Health then
+                local hp = math.floor(hum.Health)
+                cache.Labels.Health.Text = string.format("%d", hp)
+                cache.Labels.Health.TextColor3 = Color3.fromRGB(255, 0, 0):Lerp(Color3.fromRGB(0, 255, 0), hp / hum.MaxHealth)
+                cache.Labels.Health.Visible = true
+            else
+                cache.Labels.Health.Visible = false
+            end
+
+            if config.WeaponN then
+                local tool = char:FindFirstChildOfClass("Tool")
+                if tool then
+                    cache.Labels.Weapon.Text = tool.Name
+                    cache.Labels.Weapon.Visible = true
+                else
+                    cache.Labels.Weapon.Visible = false
+                end
+            else
+                cache.Labels.Weapon.Visible = false
+            end
+
+            if config.Studs then
+                local dist = 0
+                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    dist = (LocalPlayer.Character.HumanoidRootPart.Position - hrp.Position).Magnitude
+                end
+                cache.Labels.Studs.Text = string.format("[%d m]", math.floor(dist))
+                cache.Labels.Studs.Visible = true
+            else
+                cache.Labels.Studs.Visible = false
+            end
+        else
+            cache.Billboard.Enabled = false
+        end
     end
 end
 
 _G.StopESP = function()
     for _, conn in pairs(_G.ESPConnections) do
-        if conn then conn:Disconnect() end
+        conn:Disconnect()
     end
     _G.ESPConnections = {}
 
@@ -126,89 +215,16 @@ _G.StartESP = function()
     GetHolder() 
 
     for _, plr in ipairs(Players:GetPlayers()) do
-        if plr.Name ~= LocalPlayer.Name then CreateESP(plr) end
+        if plr.Name ~= LocalPlayer.Name then
+            CreateESP(plr)
+        end
     end
 
-    local c1 = Players.PlayerAdded:Connect(CreateESP)
-    local c2 = Players.PlayerRemoving:Connect(RemoveESP)
-    
-    local c3 = RunService.RenderStepped:Connect(function()
-        for Player, Objects in pairs(_G.ESPStorage) do
-            local config = _G.ESPConfig
-            
-            if config.TeamCheck and Player.TeamColor == LocalPlayer.TeamColor then
-                Objects.Highlight.Enabled = false
-                Objects.Billboard.Enabled = false
-                continue
-            end
+    local added = Players.PlayerAdded:Connect(CreateESP)
+    local removed = Players.PlayerRemoving:Connect(RemoveESP)
+    local loop = RunService.RenderStepped:Connect(UpdateESP)
 
-            local char = Player.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            local hum = char and char:FindFirstChild("Humanoid")
-            local head = char and char:FindFirstChild("Head")
-
-            if char and hrp and hum and hum.Health > 0 and head then
-                if config.Chams then
-                    Objects.Highlight.Adornee = char
-                    Objects.Highlight.FillColor = Player.TeamColor.Color
-                    Objects.Highlight.Enabled = true
-                else
-                    Objects.Highlight.Enabled = false
-                end
-
-                local showText = (config.Name or config.Health or config.WeaponN or config.Studs)
-                
-                if showText then
-                    Objects.Billboard.Adornee = head
-                    Objects.Billboard.Enabled = true
-
-                    if config.Name then
-                        Objects.Labels.Name.Text = Player.Name
-                        Objects.Labels.Name.Visible = true
-                    else
-                        Objects.Labels.Name.Visible = false
-                    end
-
-                    if config.Health then
-                        local hp = math.floor(hum.Health)
-                        Objects.Labels.Health.Text = "HP: " .. hp
-                        Objects.Labels.Health.TextColor3 = Color3.fromRGB(255, 0, 0):Lerp(Color3.fromRGB(0, 255, 0), hum.Health / hum.MaxHealth)
-                        Objects.Labels.Health.Visible = true
-                    else
-                        Objects.Labels.Health.Visible = false
-                    end
-
-                    if config.WeaponN then
-                        local tool = char:FindFirstChildOfClass("Tool")
-                        if tool then
-                            Objects.Labels.Weapon.Text = string.upper(tool.Name)
-                            Objects.Labels.Weapon.Visible = true
-                        else
-                            Objects.Labels.Weapon.Visible = false
-                        end
-                    else
-                        Objects.Labels.Weapon.Visible = false
-                    end
-
-                    if config.Studs then
-                        local dist = (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")) 
-                            and (LocalPlayer.Character.HumanoidRootPart.Position - hrp.Position).Magnitude or 0
-                        Objects.Labels.Studs.Text = string.format("[%d m]", math.floor(dist))
-                        Objects.Labels.Studs.Visible = true
-                    else
-                        Objects.Labels.Studs.Visible = false
-                    end
-                else
-                    Objects.Billboard.Enabled = false
-                end
-            else
-                Objects.Highlight.Enabled = false
-                Objects.Billboard.Enabled = false
-            end
-        end
-    end)
-
-    table.insert(_G.ESPConnections, c1)
-    table.insert(_G.ESPConnections, c2)
-    table.insert(_G.ESPConnections, c3)
+    table.insert(_G.ESPConnections, added)
+    table.insert(_G.ESPConnections, removed)
+    table.insert(_G.ESPConnections, loop)
 end
