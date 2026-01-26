@@ -1,4 +1,4 @@
--- lol
+-- a
 local Junkie = loadstring(game:HttpGet("https://jnkie.com/sdk/library.lua"))()
 Junkie.service = "michigun.xyz - key system"
 Junkie.identifier = "11133"
@@ -80,29 +80,28 @@ end
 local Configuration = {
     ScreenGuiName = "JunkieKeySystem",
     Window = {
-        Size = isMobile() and UDim2.new(0.9, 0, 0, 450) or UDim2.new(0, 380, 0, 520)
+        Size = isMobile() and UDim2.new(0.85, 0, 0, 420) or UDim2.new(0, 360, 0, 480)
     }, 
     Colors = {
         Bg = Color3.fromRGB(0, 0, 0),
-        Surface = Color3.fromRGB(5, 5, 5),
+        Surface = Color3.fromRGB(12, 12, 12),
         Primary = Color3.fromRGB(255, 255, 255),
-        StatusIdle = Color3.fromRGB(150, 150, 150),
-        StatusSuccess = Color3.fromRGB(0, 255, 100),
-        StatusError = Color3.fromRGB(255, 50, 50),
-        StatusVerifying = Color3.fromRGB(200, 200, 200),
-        StatusWarning = Color3.fromRGB(255, 200, 0),
+        StatusIdle = Color3.fromRGB(100, 100, 100),
+        StatusSuccess = Color3.fromRGB(255, 255, 255), 
+        StatusError = Color3.fromRGB(200, 200, 200),
+        StatusVerifying = Color3.fromRGB(150, 150, 150),
         TextMain = Color3.fromRGB(255, 255, 255),
-        TextSec = Color3.fromRGB(180, 180, 180),
-        TextMuted = Color3.fromRGB(100, 100, 100),
-        Border = Color3.fromRGB(30, 30, 30),
-        Button = Color3.fromRGB(15, 15, 15)
+        TextSec = Color3.fromRGB(150, 150, 150),
+        TextMuted = Color3.fromRGB(80, 80, 80),
+        Border = Color3.fromRGB(40, 40, 40),
+        Button = Color3.fromRGB(255, 255, 255)
     },
     BorderTransparency = 0,
     Animations = {
         Medium = 0.4,
         Bounce = 0.6,
         Intro = 0.8,
-        Outro = 0.6
+        Outro = 0.5
     },
     Fonts = {
         Body = 13,
@@ -148,7 +147,7 @@ local function SetBlur(enabled)
             blur.Size = 0
             blur.Parent = Lighting
         end
-        Utils.Tween(blur, {Size = 24}, Configuration.Animations.Intro, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        Utils.Tween(blur, {Size = 24}, Configuration.Animations.Intro, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
     elseif blur then
         Utils.Tween(blur, {Size = 0}, Configuration.Animations.Outro, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
         task.delay(Configuration.Animations.Outro + 0.1, function() if blur then blur:Destroy() end end)
@@ -158,21 +157,6 @@ end
 local ToastSystem = {ActiveToasts = {}, MaxToasts = 3, ToastSpacing = 10}
 
 ToastSystem.Create = function(parent, message, toastType, duration)
-    local colors = {
-        success = Configuration.Colors.StatusSuccess,
-        error = Configuration.Colors.StatusError,
-        warning = Configuration.Colors.StatusWarning,
-        info = Configuration.Colors.Primary
-    }
-    local icons = {
-        success = Icons.CheckCircle,
-        error = Icons.ErrorFolder,
-        warning = Icons.Warning,
-        info = Icons.Info
-    }
-    local toastColor = colors[toastType] or colors.info
-    local toastIcon = icons[toastType] or Icons.Info
-    
     if #ToastSystem.ActiveToasts >= ToastSystem.MaxToasts then
         local oldest = table.remove(ToastSystem.ActiveToasts, 1)
         if oldest and oldest.Parent then oldest:Destroy() end
@@ -183,33 +167,23 @@ ToastSystem.Create = function(parent, message, toastType, duration)
     toast.Size = UDim2.new(0, 0, 0, 45)
     toast.Position = UDim2.new(0.5, 0, 0, 40)
     toast.AnchorPoint = Vector2.new(0.5, 0)
-    toast.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+    toast.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
     toast.BorderSizePixel = 0
     toast.ZIndex = 300
     toast.ClipsDescendants = true
     toast.Parent = parent
-    Utils.Round(toast, 8)
-    Utils.CreateStroke(toast, toastColor, 1, 0.5)
+    Utils.Round(toast, 6)
+    Utils.CreateStroke(toast, Color3.fromRGB(50,50,50), 1, 0)
     
-    local icon = Instance.new("ImageLabel")
-    icon.Size = UDim2.new(0, 18, 0, 18)
-    icon.Position = UDim2.new(0, 14, 0.5, 0)
-    icon.AnchorPoint = Vector2.new(0, 0.5)
-    icon.BackgroundTransparency = 1
-    icon.Image = toastIcon
-    icon.ImageColor3 = toastColor
-    icon.ZIndex = 302
-    icon.Parent = toast
-
     local text = Instance.new("TextLabel")
-    text.Size = UDim2.new(1, -45, 1, 0)
-    text.Position = UDim2.new(0, 42, 0, 0)
+    text.Size = UDim2.new(1, 0, 1, 0)
+    text.Position = UDim2.new(0, 0, 0, 0)
     text.BackgroundTransparency = 1
     text.Text = tostring(message)
     text.TextColor3 = Configuration.Colors.TextMain
     text.TextSize = 13
     text.Font = Enum.Font.GothamMedium
-    text.TextXAlignment = Enum.TextXAlignment.Left
+    text.TextXAlignment = Enum.TextXAlignment.Center
     text.TextYAlignment = Enum.TextYAlignment.Center
     text.TextWrapped = true
     text.ZIndex = 302
@@ -218,14 +192,14 @@ ToastSystem.Create = function(parent, message, toastType, duration)
     table.insert(ToastSystem.ActiveToasts, toast)
     ToastSystem.RepositionToasts()
     
-    local width = isMobile() and 280 or 320
+    local width = isMobile() and 260 or 300
     Utils.TweenBack(toast, {Size = UDim2.new(0, width, 0, 45)}, Configuration.Animations.Medium)
     
     task.delay(duration or 3.5, function()
         if toast.Parent then
             Utils.Tween(toast, {Position = UDim2.new(0.5, 0, 0, -60), BackgroundTransparency = 1}, Configuration.Animations.Medium)
-            if icon then Utils.Tween(icon, {ImageTransparency = 1}, Configuration.Animations.Medium) end
             if text then Utils.Tween(text, {TextTransparency = 1}, Configuration.Animations.Medium) end
+            if toast:FindFirstChild("UIStroke") then Utils.Tween(toast.UIStroke, {Transparency = 1}, Configuration.Animations.Medium) end
             
             for i, t in ipairs(ToastSystem.ActiveToasts) do
                 if t == toast then table.remove(ToastSystem.ActiveToasts, i) break end
@@ -263,20 +237,18 @@ local function Build()
     
     local main = Instance.new("Frame")
     main.Size = Configuration.Window.Size
-    -- Start slightly lower and transparent for animation
-    main.Position = UDim2.new(0.5, 0, 0.5, 100)
+    main.Position = UDim2.new(0.5, 0, 0.5, 80) 
     main.AnchorPoint = Vector2.new(0.5, 0.5)
     main.BackgroundColor3 = Configuration.Colors.Bg
-    main.BackgroundTransparency = 1 -- Start transparent
+    main.BackgroundTransparency = 1 
     main.ClipsDescendants = true
     main.Parent = screen
     Utils.Round(main, 0)
-    local mainStroke = Utils.CreateStroke(main, Color3.fromRGB(30,30,30), 1, 1) -- Start transparent
     
-    -- Function to handle closing animations
+    local mainStroke = Utils.CreateStroke(main, Configuration.Colors.Border, 1, 1)
+
     local function CloseMenu()
         SetBlur(false)
-        -- Fade out content quickly
         for _, v in pairs(main:GetDescendants()) do
             if v:IsA("GuiObject") then
                  Utils.Tween(v, {BackgroundTransparency = 1}, 0.3)
@@ -285,182 +257,181 @@ local function Build()
                  if v:IsA("UIStroke") then Utils.Tween(v, {Transparency = 1}, 0.3) end
             end
         end
-        -- Move window down and fade out
-        Utils.Tween(main, {Position = UDim2.new(0.5, 0, 0.5, 150), BackgroundTransparency = 1}, Configuration.Animations.Outro, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+        Utils.Tween(main, {Position = UDim2.new(0.5, 0, 0.5, 120), BackgroundTransparency = 1}, Configuration.Animations.Outro, Enum.EasingStyle.Back, Enum.EasingDirection.In)
         if mainStroke then Utils.Tween(mainStroke, {Transparency = 1}, Configuration.Animations.Outro) end
         task.delay(Configuration.Animations.Outro + 0.1, function() if screen and screen.Parent then screen:Destroy() end end)
     end
 
     local closeBtn = Instance.new("TextButton")
+    closeBtn.Name = "CloseBtn"
     closeBtn.Size = UDim2.fromOffset(40, 40)
     closeBtn.Position = UDim2.new(1, -40, 0, 0)
     closeBtn.BackgroundTransparency = 1
     closeBtn.Text = "X"
-    closeBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
-    closeBtn.TextSize = 18
+    closeBtn.TextColor3 = Configuration.Colors.TextSec
+    closeBtn.TextSize = 16
     closeBtn.Font = Enum.Font.Gotham
-    closeBtn.TextTransparency = 1 -- Start transparent
+    closeBtn.TextTransparency = 1
     closeBtn.Parent = main
     closeBtn.MouseButton1Click:Connect(CloseMenu)
 
     local content = Instance.new("Frame")
+    content.Name = "Content"
     content.Size = UDim2.new(1, 0, 1, 0)
     content.BackgroundTransparency = 1
     content.Parent = main
     
     local logoContainer = Instance.new("Frame")
-    logoContainer.Size = UDim2.fromOffset(100, 100)
+    logoContainer.Size = UDim2.fromOffset(90, 90)
     logoContainer.Position = UDim2.new(0.5, 0, 0.15, 0)
     logoContainer.AnchorPoint = Vector2.new(0.5, 0.5)
-    logoContainer.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
-    logoContainer.BackgroundTransparency = 1 -- Start transparent
+    logoContainer.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+    logoContainer.BackgroundTransparency = 1
     logoContainer.Parent = content
-    Utils.Round(logoContainer, 50)
-    local logoStroke = Utils.CreateStroke(logoContainer, Configuration.Colors.Border, 1, 1) -- Start transparent
+    Utils.Round(logoContainer, 45)
+    local logoStroke = Utils.CreateStroke(logoContainer, Color3.fromRGB(40,40,40), 1, 1) 
     
     local sIcon = Instance.new("ImageLabel")
-    sIcon.Size = UDim2.fromScale(0.6, 0.6)
+    sIcon.Size = UDim2.fromScale(0.65, 0.65)
     sIcon.Position = UDim2.fromScale(0.5, 0.5)
     sIcon.AnchorPoint = Vector2.new(0.5, 0.5)
     sIcon.Image = CustomLogo
     sIcon.ScaleType = Enum.ScaleType.Fit
     sIcon.BackgroundTransparency = 1
-    sIcon.ImageTransparency = 1 -- Start transparent
+    sIcon.ImageTransparency = 1
     sIcon.Parent = logoContainer
     
     local mainTitle = Instance.new("TextLabel")
-    mainTitle.Size = UDim2.new(1, 0, 0, 30)
-    mainTitle.Position = UDim2.new(0, 0, 0.3, 0)
-    mainTitle.Text = "ACESSO RESTRITO"
+    mainTitle.Size = UDim2.new(1, 0, 0, 25)
+    mainTitle.Position = UDim2.new(0, 0, 0.32, 0)
+    mainTitle.Text = "AUTENTICAÇÃO"
     mainTitle.TextColor3 = Configuration.Colors.TextMain
-    mainTitle.TextSize = 20
+    mainTitle.TextSize = 18
     mainTitle.Font = Enum.Font.GothamBold
     mainTitle.BackgroundTransparency = 1
-    mainTitle.TextTransparency = 1 -- Start transparent
+    mainTitle.TextTransparency = 1
     mainTitle.Parent = content
     
     local subTitle = Instance.new("TextLabel")
     subTitle.Size = UDim2.new(1, 0, 0, 20)
-    subTitle.Position = UDim2.new(0, 0, 0.35, 0)
+    subTitle.Position = UDim2.new(0, 0, 0.37, 0)
     subTitle.Text = "michigun.xyz"
     subTitle.TextColor3 = Configuration.Colors.TextSec
     subTitle.TextSize = 12
     subTitle.Font = Enum.Font.Gotham
     subTitle.BackgroundTransparency = 1
-    subTitle.TextTransparency = 1 -- Start transparent
+    subTitle.TextTransparency = 1
     subTitle.Parent = content
     
     local statusCard = Instance.new("Frame")
-    statusCard.Size = UDim2.new(0.85, 0, 0, 50)
-    statusCard.Position = UDim2.new(0.5, 0, 0.45, 0)
+    statusCard.Size = UDim2.new(0.85, 0, 0, 40)
+    statusCard.Position = UDim2.new(0.5, 0, 0.48, 0)
     statusCard.AnchorPoint = Vector2.new(0.5, 0.5)
     statusCard.BackgroundColor3 = Configuration.Colors.Surface
-    statusCard.BackgroundTransparency = 1 -- Start transparent
+    statusCard.BackgroundTransparency = 1
     statusCard.Parent = content
-    Utils.Round(statusCard, 8)
-    local statusStroke = Utils.CreateStroke(statusCard, Configuration.Colors.Border, 1, 1) -- Start transparent
+    Utils.Round(statusCard, 6)
+    local statusStroke = Utils.CreateStroke(statusCard, Color3.fromRGB(30,30,30), 1, 1)
     
     local sIndicator = Instance.new("Frame")
-    sIndicator.Size = UDim2.new(0, 8, 0, 8)
-    sIndicator.Position = UDim2.new(0, 20, 0.5, 0)
+    sIndicator.Size = UDim2.new(0, 6, 0, 6)
+    sIndicator.Position = UDim2.new(0, 15, 0.5, 0)
     sIndicator.AnchorPoint = Vector2.new(0, 0.5)
     sIndicator.BackgroundColor3 = Configuration.Colors.StatusIdle
-    sIndicator.BackgroundTransparency = 1 -- Start transparent
+    sIndicator.BackgroundTransparency = 1
     sIndicator.Parent = statusCard
-    Utils.Round(sIndicator, 4)
+    Utils.Round(sIndicator, 3)
 
     local sValue = Instance.new("TextLabel")
-    sValue.Size = UDim2.new(1, -50, 1, 0)
-    sValue.Position = UDim2.fromOffset(40, 0)
-    sValue.Text = "Aguardando chave..."
-    sValue.TextColor3 = Configuration.Colors.TextMain
-    sValue.TextSize = 13
-    sValue.Font = Enum.Font.Gotham
+    sValue.Size = UDim2.new(1, -40, 1, 0)
+    sValue.Position = UDim2.fromOffset(30, 0)
+    sValue.Text = "Aguardando chave"
+    sValue.TextColor3 = Configuration.Colors.TextSec
+    sValue.TextSize = 11
+    sValue.Font = Enum.Font.GothamBold
     sValue.TextXAlignment = Enum.TextXAlignment.Left
     sValue.BackgroundTransparency = 1
-    sValue.TextTransparency = 1 -- Start transparent
+    sValue.TextTransparency = 1
     sValue.Parent = statusCard
     
     local inputFrame = Instance.new("Frame")
     inputFrame.Size = UDim2.new(0.85, 0, 0, 45)
-    inputFrame.Position = UDim2.new(0.5, 0, 0.6, 0)
+    inputFrame.Position = UDim2.new(0.5, 0, 0.62, 0)
     inputFrame.AnchorPoint = Vector2.new(0.5, 0.5)
     inputFrame.BackgroundColor3 = Configuration.Colors.Surface
-    inputFrame.BackgroundTransparency = 1 -- Start transparent
+    inputFrame.BackgroundTransparency = 1
     inputFrame.Parent = content
-    Utils.Round(inputFrame, 8)
-    local iStroke = Utils.CreateStroke(inputFrame, Configuration.Colors.Border, 1, 1) -- Start transparent
+    Utils.Round(inputFrame, 6)
+    local iStroke = Utils.CreateStroke(inputFrame, Color3.fromRGB(30,30,30), 1, 1)
     
     local box = Instance.new("TextBox")
-    box.Size = UDim2.new(1, -30, 1, 0)
-    box.Position = UDim2.fromOffset(15, 0)
+    box.Size = UDim2.new(1, -20, 1, 0)
+    box.Position = UDim2.fromOffset(10, 0)
     box.Text = ""
-    box.PlaceholderText = "Insira sua chave..."
+    box.PlaceholderText = "Insira sua chave aqui..."
     box.PlaceholderColor3 = Configuration.Colors.TextMuted
     box.TextColor3 = Configuration.Colors.TextMain
-    box.TextSize = 13
+    box.TextSize = 12
     box.Font = Enum.Font.Gotham
     box.BackgroundTransparency = 1
     box.TextXAlignment = Enum.TextXAlignment.Left
     box.ClearTextOnFocus = false
-    box.TextTransparency = 1 -- Start transparent
+    box.TextTransparency = 1
     box.Parent = inputFrame
     
     local redeem = Instance.new("TextButton")
     redeem.Size = UDim2.new(0.85, 0, 0, 45)
-    redeem.Position = UDim2.new(0.5, 0, 0.75, 0)
+    redeem.Position = UDim2.new(0.5, 0, 0.77, 0)
     redeem.AnchorPoint = Vector2.new(0.5, 0.5)
     redeem.BackgroundColor3 = Configuration.Colors.Button
-    redeem.BackgroundTransparency = 1 -- Start transparent
+    redeem.BackgroundTransparency = 1
     redeem.Text = "ENTRAR"
-    redeem.TextColor3 = Configuration.Colors.TextMain
+    redeem.TextColor3 = Color3.new(0,0,0)
     redeem.Font = Enum.Font.GothamBold
     redeem.TextSize = 12
     redeem.AutoButtonColor = false
-    redeem.TextTransparency = 1 -- Start transparent
+    redeem.TextTransparency = 1
     redeem.Parent = content
-    Utils.Round(redeem, 8)
-    local redeemStroke = Utils.CreateStroke(redeem, Configuration.Colors.Border, 1, 1) -- Start transparent
+    Utils.Round(redeem, 6)
     
     local getKey = Instance.new("TextButton")
-    getKey.Size = UDim2.new(0.85, 0, 0, 30)
-    getKey.Position = UDim2.new(0.5, 0, 0.85, 0)
+    getKey.Name = "GetKeyBtn"
+    getKey.Size = UDim2.new(0.85, 0, 0, 25)
+    getKey.Position = UDim2.new(0.5, 0, 0.88, 0)
     getKey.AnchorPoint = Vector2.new(0.5, 0.5)
     getKey.BackgroundTransparency = 1
-    getKey.Text = "Não tem uma chave? Clique aqui."
+    getKey.Text = "PEGAR KEY"
     getKey.TextColor3 = Configuration.Colors.TextSec
-    getKey.Font = Enum.Font.Gotham
-    getKey.TextSize = 11
-    getKey.TextTransparency = 1 -- Start transparent
+    getKey.Font = Enum.Font.GothamBold
+    getKey.TextSize = 10
+    getKey.TextTransparency = 1
     getKey.Parent = content
     
-    local function ApplyHover(btn, isTextOnly)
-        local baseColor = btn.BackgroundColor3
-        local baseText = btn.TextColor3
+    local function ApplyHover(btn, isRedeem)
         btn.MouseEnter:Connect(function()
-            if not isTextOnly then
-                Utils.Tween(btn, {BackgroundColor3 = Color3.fromRGB(25,25,25)}, 0.2)
+            if isRedeem then
+                Utils.Tween(btn, {BackgroundColor3 = Color3.fromRGB(220,220,220)}, 0.2)
             else
                 Utils.Tween(btn, {TextColor3 = Color3.new(1,1,1)}, 0.2)
             end
         end)
         btn.MouseLeave:Connect(function()
-            if not isTextOnly then
-                Utils.Tween(btn, {BackgroundColor3 = baseColor}, 0.2)
+            if isRedeem then
+                Utils.Tween(btn, {BackgroundColor3 = Configuration.Colors.Button}, 0.2)
             else
-                Utils.Tween(btn, {TextColor3 = baseText}, 0.2)
+                Utils.Tween(btn, {TextColor3 = Configuration.Colors.TextSec}, 0.2)
             end
         end)
     end
-    ApplyHover(redeem, false)
-    ApplyHover(getKey, true)
+    ApplyHover(redeem, true)
+    ApplyHover(getKey, false)
     
-    box.Focused:Connect(function() Utils.Tween(iStroke, {Color = Color3.fromRGB(60,60,60)}, 0.3) end)
-    box.FocusLost:Connect(function() Utils.Tween(iStroke, {Color = Configuration.Colors.Border}, 0.3) end)
+    box.Focused:Connect(function() Utils.Tween(iStroke, {Color = Color3.fromRGB(80,80,80)}, 0.3) end)
+    box.FocusLost:Connect(function() Utils.Tween(iStroke, {Color = Color3.fromRGB(30,30,30)}, 0.3) end)
     
     local function SetStatus(state)
         local color = Configuration.Colors.StatusIdle
-        local text = "Aguardando chave..."
+        local text = "Aguardando chave"
         if state == "verifying" then
             color = Configuration.Colors.StatusVerifying
             text = "Verificando..."
@@ -495,7 +466,7 @@ local function Build()
             SetStatus("success")
             ToastSystem.Create(screen, "Acesso concedido", "success")
             task.wait(0.8)
-            CloseMenu() -- Trigger Out animation on success
+            CloseMenu()
         else
             SetStatus("error")
             ToastSystem.Create(screen, result.message or "Chave incorreta", "error")
@@ -507,28 +478,24 @@ local function Build()
         ToastSystem.Create(screen, "Link copiado!", "success")
     end)
     
-    -- Start Intro Animation
     SetBlur(true)
     Utils.Tween(main, {Position = UDim2.new(0.5, 0, 0.5, 0), BackgroundTransparency = 0}, Configuration.Animations.Intro, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
     Utils.Tween(mainStroke, {Transparency = 0}, Configuration.Animations.Intro)
 
-    task.wait(0.2) -- Slight delay for content
+    task.wait(0.1)
 
     for _, v in pairs(main:GetDescendants()) do
-        if v:IsA("GuiObject") and v.Parent ~= main then -- Skip main frame itself
-            local targetTrans = 0
-            if v.Name == "getKey" or v.Name == "closeBtn" then targetTrans = 1 end -- Keep these transparent backgrounds
-
-            if v:IsA("Frame") or v:IsA("TextButton") or v:IsA("TextBox") then
-                 Utils.Tween(v, {BackgroundTransparency = targetTrans}, 0.5)
-            end
-            if v:IsA("TextLabel") or v:IsA("TextButton") or v:IsA("TextBox") then
+        if v:IsA("GuiObject") and v.Name ~= "MainContainer" then
+            if v.Name == "CloseBtn" or v.Name == "GetKeyBtn" then
+                 Utils.Tween(v, {TextTransparency = 0}, 0.5)
+            elseif v:IsA("Frame") then
+                local targetTrans = (v == logoContainer or v == statusCard or v == inputFrame or v == redeem or v == sIndicator) and 0 or 1
+                Utils.Tween(v, {BackgroundTransparency = targetTrans}, 0.5)
+            elseif v:IsA("TextLabel") or v:IsA("TextBox") or v:IsA("TextButton") then
                 Utils.Tween(v, {TextTransparency = 0}, 0.5)
-            end
-            if v:IsA("ImageLabel") then
+            elseif v:IsA("ImageLabel") then
                 Utils.Tween(v, {ImageTransparency = 0}, 0.5)
-            end
-            if v:IsA("UIStroke") then
+            elseif v:IsA("UIStroke") then
                  Utils.Tween(v, {Transparency = 0}, 0.5)
             end
         end
