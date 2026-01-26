@@ -1,4 +1,4 @@
--- a
+-- k
 local Junkie = loadstring(game:HttpGet("https://jnkie.com/sdk/library.lua"))()
 Junkie.service = "michigun.xyz - key system"
 Junkie.identifier = "11133"
@@ -87,14 +87,14 @@ local Configuration = {
         Surface = Color3.fromRGB(12, 12, 12),
         Primary = Color3.fromRGB(255, 255, 255),
         StatusIdle = Color3.fromRGB(100, 100, 100),
-        StatusSuccess = Color3.fromRGB(255, 255, 255), 
+        StatusSuccess = Color3.fromRGB(0, 255, 100),
         StatusError = Color3.fromRGB(200, 200, 200),
         StatusVerifying = Color3.fromRGB(150, 150, 150),
         TextMain = Color3.fromRGB(255, 255, 255),
         TextSec = Color3.fromRGB(150, 150, 150),
         TextMuted = Color3.fromRGB(80, 80, 80),
         Border = Color3.fromRGB(40, 40, 40),
-        Button = Color3.fromRGB(255, 255, 255)
+        ButtonVerify = Color3.fromRGB(0, 180, 100) -- Verde solicitado
     },
     BorderTransparency = 0,
     Animations = {
@@ -304,7 +304,7 @@ local function Build()
     local mainTitle = Instance.new("TextLabel")
     mainTitle.Size = UDim2.new(1, 0, 0, 25)
     mainTitle.Position = UDim2.new(0, 0, 0.32, 0)
-    mainTitle.Text = "AUTENTICAÇÃO"
+    mainTitle.Text = "ACESSO RESTRITO"
     mainTitle.TextColor3 = Configuration.Colors.TextMain
     mainTitle.TextSize = 18
     mainTitle.Font = Enum.Font.GothamBold
@@ -383,16 +383,17 @@ local function Build()
     redeem.Size = UDim2.new(0.85, 0, 0, 45)
     redeem.Position = UDim2.new(0.5, 0, 0.77, 0)
     redeem.AnchorPoint = Vector2.new(0.5, 0.5)
-    redeem.BackgroundColor3 = Configuration.Colors.Button
+    redeem.BackgroundColor3 = Configuration.Colors.ButtonVerify
     redeem.BackgroundTransparency = 1
-    redeem.Text = "ENTRAR"
-    redeem.TextColor3 = Color3.new(0,0,0)
+    redeem.Text = "VERIFICAR"
+    redeem.TextColor3 = Color3.new(1,1,1)
     redeem.Font = Enum.Font.GothamBold
-    redeem.TextSize = 12
+    redeem.TextSize = 13
     redeem.AutoButtonColor = false
     redeem.TextTransparency = 1
     redeem.Parent = content
     Utils.Round(redeem, 6)
+    local redeemStroke = Utils.CreateStroke(redeem, Color3.fromRGB(0, 160, 90), 1, 1)
     
     local getKey = Instance.new("TextButton")
     getKey.Name = "GetKeyBtn"
@@ -410,14 +411,14 @@ local function Build()
     local function ApplyHover(btn, isRedeem)
         btn.MouseEnter:Connect(function()
             if isRedeem then
-                Utils.Tween(btn, {BackgroundColor3 = Color3.fromRGB(220,220,220)}, 0.2)
+                Utils.Tween(btn, {BackgroundColor3 = Color3.fromRGB(0, 200, 110)}, 0.2)
             else
                 Utils.Tween(btn, {TextColor3 = Color3.new(1,1,1)}, 0.2)
             end
         end)
         btn.MouseLeave:Connect(function()
             if isRedeem then
-                Utils.Tween(btn, {BackgroundColor3 = Configuration.Colors.Button}, 0.2)
+                Utils.Tween(btn, {BackgroundColor3 = Configuration.Colors.ButtonVerify}, 0.2)
             else
                 Utils.Tween(btn, {TextColor3 = Configuration.Colors.TextSec}, 0.2)
             end
@@ -427,7 +428,7 @@ local function Build()
     ApplyHover(getKey, false)
     
     box.Focused:Connect(function() Utils.Tween(iStroke, {Color = Color3.fromRGB(80,80,80)}, 0.3) end)
-    box.FocusLost:Connect(function() Utils.Tween(iStroke, {Color = Color3.fromRGB(30,30,30)}, 0.3) end)
+    box.FocusLost:Connect(function() Utils.Tween(iStroke, {Color = Configuration.Colors.Border}, 0.3) end)
     
     local function SetStatus(state)
         local color = Configuration.Colors.StatusIdle
@@ -454,7 +455,7 @@ local function Build()
         redeem.Active = false
         local result = Junkie.check_key(key)
         redeem.Active = true
-        redeem.Text = "ENTRAR"
+        redeem.Text = "VERIFICAR"
         if not result then
             SetStatus("error")
             ToastSystem.Create(screen, "Erro de conexão", "error")
@@ -489,7 +490,7 @@ local function Build()
             if v.Name == "CloseBtn" or v.Name == "GetKeyBtn" then
                  Utils.Tween(v, {TextTransparency = 0}, 0.5)
             elseif v:IsA("Frame") then
-                local targetTrans = (v == logoContainer or v == statusCard or v == inputFrame or v == redeem or v == sIndicator) and 0 or 1
+                local targetTrans = (v == logoContainer or v == statusCard or v == inputFrame or v == sIndicator) and 0 or (v == redeem and 0 or 1)
                 Utils.Tween(v, {BackgroundTransparency = targetTrans}, 0.5)
             elseif v:IsA("TextLabel") or v:IsA("TextBox") or v:IsA("TextButton") then
                 Utils.Tween(v, {TextTransparency = 0}, 0.5)
