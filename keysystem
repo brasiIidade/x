@@ -1,8 +1,8 @@
 -- k
 local Junkie = loadstring(game:HttpGet("https://jnkie.com/sdk/library.lua"))()
-Junkie.service = "michigun.xyz - key system"
+Junkie.service = "key"
 Junkie.identifier = "11133"
-Junkie.provider = "michigun.xyz - key system"
+Junkie.provider = "key"
 
 local CustomLogo = "rbxassetid://88026679106109"
 
