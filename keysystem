@@ -1,26 +1,676 @@
-local Arqel = loadstring(game:HttpGet("https://raw.githubusercontent.com/Cobru1/expert-octo-doodle/refs/heads/main/ArqelUi.luau"))()
+local Junkie = loadstring(game:HttpGet("https://jnkie.com/sdk/library.lua"))()
+Junkie.service = "michigun.xyz - key system"
+Junkie.identifier = "11133"
+Junkie.provider = "michigun.xyz - key system"
 
-Arqel.Appearance.Title = "michigun.xyz"
-Arqel.Appearance.Icon = "rbxassetid://124613057828354"
-Arqel.Links.Discord = "discord.gg/michigun"
-Arqel.Storage.FileName = "michigun.key"
+local CustomLogo = "rbxassetid://124613057828354" 
 
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
+local HttpService = game:GetService("HttpService")
 
+local Icons = {
+	Shield = "rbxassetid://105619007041452",
+	Loading = "rbxassetid://116535712789945",
+	Lock = "rbxassetid://114355063515473",
+	Key = "rbxassetid://93569468678423",
+	Check = "rbxassetid://119783053916823",
+	CheckCircle = "rbxassetid://10709790644",
+	XCircle = "rbxassetid://10747384394",
+	Warning = "rbxassetid://130226573962640",
+	Globe = "rbxassetid://10734950309",
+	Info = "rbxassetid://94529541997278",
+	ExternalLink = "rbxassetid://71038734318580",
+	Copy = "rbxassetid://107485544510830",
+	Spinner = "rbxassetid://10709767827",
+	Database = "rbxassetid://114209748010261",
+	Sparkles = "rbxassetid://10709767827",
+	ErrorFolder = "rbxassetid://113312905787220",
+	Candy = "rbxassetid://10709767827",
+	JunkieNewIcon = "rbxassetid://75038032192167"
+}
 
-Arqel.Theme.Accent = Color3.fromRGB(110, 60, 255)
-Arqel.Theme.AccentHover = Color3.fromRGB(130, 90, 255)
-Arqel.Theme.Background = Color3.fromRGB(10, 10, 20)
-Arqel.Theme.Header = Color3.fromRGB(15, 15, 30)
-Arqel.Theme.Input = Color3.fromRGB(20, 20, 40)
-Arqel.Theme.Text = Color3.fromRGB(255, 255, 255)
-Arqel.Theme.TextDim = Color3.fromRGB(160, 160, 200)
-Arqel.Theme.Success = Color3.fromRGB(0, 220, 180)
-Arqel.Theme.Error = Color3.fromRGB(255, 70, 90)
-Arqel.Theme.StatusIdle = Color3.fromRGB(120, 100, 200)
+local function hasFileSystemSupport()
+    local hasWritefile = pcall(function() return type(writefile) == "function" end)
+    local hasReadfile = pcall(function() return type(readfile) == "function" end)
+    local hasIsfile = pcall(function() return type(isfile) == "function" end)
+    return hasWritefile and hasReadfile and hasIsfile
+end
 
+local fileSystemSupported = hasFileSystemSupport()
 
-Arqel:LaunchJunkie({
-    Service = "Teste",
-    Identifier = "1000381",
-    Provider = "Keysystem"
-})
+local function saveVerifiedKey(key)
+    if not fileSystemSupported then return false end
+    local ok = pcall(function()
+        writefile("michigun.txt", key)
+    end)
+    return ok
+end
+
+local function loadVerifiedKey()
+    if not fileSystemSupported then 
+        return nil 
+    end
+    
+    local ok, content = pcall(function()
+        return readfile("michigun.txt")
+    end)
+    
+    if not ok or not content then 
+        return nil 
+    end
+    return content
+end
+
+local function clearSavedKey()
+    if not fileSystemSupported then return false end
+    local ok = pcall(function() delfile("michigun.txt") end)
+    return ok
+end
+
+local Configuration = {
+	ScreenGuiName = "JunkieKeySystem",
+	Window = {Size = UDim2.new(0, 360, 0, 480)}, 
+	Colors = {
+		Bg = Color3.fromRGB(18, 18, 24),
+		Primary = Color3.fromRGB(99, 102, 241),
+		PrimaryDark = Color3.fromRGB(67, 56, 202),
+		StatusIdle = Color3.fromRGB(156, 163, 175),
+		StatusSuccess = Color3.fromRGB(34, 197, 94),
+		StatusError = Color3.fromRGB(239, 68, 68),
+		StatusVerifying = Color3.fromRGB(99, 102, 241),
+		StatusWarning = Color3.fromRGB(234, 179, 8),
+		TextMain = Color3.fromRGB(249, 250, 251),
+		TextSec = Color3.fromRGB(156, 163, 175),
+		TextMuted = Color3.fromRGB(107, 114, 128),
+		Border = Color3.fromRGB(45, 45, 55),
+		TrafficRed = Color3.fromRGB(255, 95, 87),
+		TrafficYellow = Color3.fromRGB(254, 188, 46),
+		TrafficGreen = Color3.fromRGB(40, 200, 64),
+		Success = Color3.fromRGB(34, 197, 94),
+		Error = Color3.fromRGB(239, 68, 68),
+		Warning = Color3.fromRGB(234, 179, 8)
+	},
+	BorderTransparency = 0,
+	Animations = {
+		VeryFast = 0.1,
+		Fast = 0.2,
+		Medium = 0.4,
+		Slow = 0.5,
+		VerySlow = 0.6,
+		Bounce = 0.6
+	},
+	Fonts = {
+		Title = 24,
+		Subtitle = 12,
+		Button = 14,
+		Input = 16,
+		Body = 13,
+		Small = 11,
+		Tiny = 12
+	}
+}
+
+local Utils = {}
+
+Utils.Tween = function(obj, props, time, style, dir)
+	local t =
+		TweenService:Create(
+		obj,
+		TweenInfo.new(time or 0.3, style or Enum.EasingStyle.Quint, dir or Enum.EasingDirection.Out),
+		props
+	)
+	t:Play()
+	return t
+end
+
+Utils.CreateCorner = function(parent, radius)
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, radius or Configuration.CornerRadius)
+	corner.Parent = parent
+	return corner
+end
+
+Utils.Round = function(obj, radius)
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(0, radius or 12)
+	c.Parent = obj
+	return c
+end
+
+Utils.TweenBack = function(instance, properties, duration)
+	return Utils.Tween(instance, properties, duration, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+end
+
+Utils.CreateStroke = function(parent, color, thickness, transparency)
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = color or Configuration.Colors.Border
+	stroke.Thickness = thickness or 1
+	stroke.Transparency = transparency or 0
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stroke.Parent = parent
+	return stroke
+end
+
+Utils.Stroke = function(obj, color, thick, trans)
+	local s = Instance.new("UIStroke")
+	s.Color = color or Configuration.Colors.Border
+	s.Thickness = thick or 1
+	s.Transparency = trans or 0
+	s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	s.Parent = obj
+	return s
+end
+
+Utils.CreateGradient = function(parent, color1, color2, rotation)
+	local gradient = Instance.new("UIGradient")
+	gradient.Color =
+		ColorSequence.new(
+		{
+			ColorSequenceKeypoint.new(0, color1),
+			ColorSequenceKeypoint.new(1, color2)
+		}
+	)
+	gradient.Rotation = rotation or 45
+	gradient.Parent = parent
+	return gradient
+end
+
+local function SetBlur(enabled)
+	local blur = Lighting:FindFirstChild("JunkieBlur")
+	if enabled then
+		if not blur then
+			blur = Instance.new("BlurEffect")
+			blur.Name = "JunkieBlur"
+			blur.Size = 0
+			blur.Parent = Lighting
+		end
+		Utils.Tween(blur, {Size = 18}, Configuration.Animations.Bounce)
+	elseif blur then
+		Utils.Tween(blur, {Size = 0}, Configuration.Animations.Medium)
+		task.delay(
+			0.4,
+			function()
+				blur:Destroy()
+			end
+		)
+	end
+end
+
+local ToastSystem = {ActiveToasts = {}, MaxToasts = 3, ToastSpacing = 10}
+
+ToastSystem.Create = function(parent, message, toastType, duration, statusCode)
+	local colors = {
+		success = Configuration.Colors.Success,
+		error = Configuration.Colors.Error,
+		warning = Configuration.Colors.Warning,
+		info = Configuration.Colors.Primary
+	}
+	local icons = {
+		success = Icons.CheckCircle,
+		error = Icons.ErrorFolder,
+		warning = Icons.Warning,
+		info = Icons.Info
+	}
+	local toastColor = colors[toastType] or colors.Bg
+	local toastIcon = icons[toastType] or nil
+	if #ToastSystem.ActiveToasts >= ToastSystem.MaxToasts then
+		local oldest = table.remove(ToastSystem.ActiveToasts, 1)
+		if oldest and oldest.Parent then
+			oldest:Destroy()
+		end
+	end
+	local toastHeight = 50
+	local toast = Instance.new("Frame")
+	toast.Name = tick()
+	toast.Size = UDim2.new(0, 0, 0, toastHeight)
+	toast.Position = UDim2.new(0.5, 0, 0, 30)
+	toast.AnchorPoint = Vector2.new(0.5, 0)
+	toast.BackgroundColor3 = Configuration.Colors.Bg
+	toast.BorderSizePixel = 0
+	toast.ZIndex = 300
+	toast.ClipsDescendants = true
+	toast.Parent = parent
+	Utils.Round(toast, 10)
+	Utils.CreateStroke(toast, toastColor, 1, 0.5)
+	
+	local icon = Instance.new("ImageLabel")
+	icon.Name = "Icon"
+	icon.Size = UDim2.new(0, 20, 0, 20)
+	icon.Position = UDim2.new(0, 15, 0.5, 0)
+	icon.AnchorPoint = Vector2.new(0, 0.5)
+	icon.BackgroundTransparency = 1
+	icon.Image = toastIcon
+	icon.ImageColor3 = toastColor
+	icon.ZIndex = 302
+	icon.Parent = toast
+
+	local text = Instance.new("TextLabel")
+	text.Name = "Message"
+	text.Size = UDim2.new(1, -50, 1, 0)
+	text.Position = UDim2.new(0, 45, 0, 0)
+	text.BackgroundTransparency = 1
+	text.Text = message or ""
+	text.TextColor3 = Configuration.Colors.TextMain
+	text.TextSize = Configuration.Fonts.Body
+	text.Font = Enum.Font.GothamMedium
+	text.TextXAlignment = Enum.TextXAlignment.Left
+	text.TextYAlignment = Enum.TextYAlignment.Center
+	text.TextWrapped = true
+	text.ZIndex = 301
+	text.Parent = toast
+
+	table.insert(ToastSystem.ActiveToasts, toast)
+	ToastSystem.RepositionToasts()
+	local targetWidth = 300
+	Utils.TweenBack(toast, {Size = UDim2.new(0, targetWidth, 0, toastHeight)}, Configuration.Animations.Medium)
+	task.delay(
+		duration or 3.5,
+		function()
+			if toast.Parent then
+				Utils.Tween(
+					toast,
+					{
+						Position = UDim2.new(0.5, 0, 0, -80),
+						BackgroundTransparency = 1
+					},
+					Configuration.Animations.Medium
+				)
+				for i, t in ipairs(ToastSystem.ActiveToasts) do
+					if t == toast then
+						table.remove(ToastSystem.ActiveToasts, i)
+						break
+					end
+				end
+				task.wait(Configuration.Animations.Medium)
+				toast:Destroy()
+				ToastSystem.RepositionToasts()
+			end
+		end
+	)
+	return toast
+end
+
+ToastSystem.RepositionToasts = function()
+	for i, toast in ipairs(ToastSystem.ActiveToasts) do
+		local targetY = 30 + ((i - 1) * (55 + ToastSystem.ToastSpacing))
+		Utils.Tween(toast, {Position = UDim2.new(0.5, 0, 0, targetY)}, Configuration.Animations.Medium)
+	end
+end
+
+local function Build()
+	local parent = game:GetService("CoreGui")
+	local old = parent:FindFirstChild(Configuration.ScreenGuiName)
+	if old then
+		old:Destroy()
+	end
+	local screen = Instance.new("ScreenGui")
+	screen.Name = Configuration.ScreenGuiName
+	screen.ResetOnSpawn = false
+	screen.Parent = parent
+	
+	local overlay = Instance.new("Frame")
+	overlay.Size = UDim2.fromScale(1, 1)
+	overlay.BackgroundColor3 = Color3.new(0, 0, 0)
+	overlay.BackgroundTransparency = 1
+	overlay.Parent = screen
+	Utils.Tween(overlay, {BackgroundTransparency = 0.6}, 1)
+	SetBlur(true)
+	
+	local main = Instance.new("Frame")
+	main.Size = Configuration.Window.Size
+	main.Position = UDim2.new(0.5, 0, 0.5, 50)
+	main.AnchorPoint = Vector2.new(0.5, 0.5)
+	main.BackgroundColor3 = Configuration.Colors.Bg
+	main.BackgroundTransparency = 0
+	main.ClipsDescendants = true
+	main.Parent = screen
+	Utils.Round(main, 16)
+	Utils.Stroke(main, Configuration.Colors.Border, 1, 0)
+	
+	local topBar = Instance.new("Frame")
+	topBar.Size = UDim2.new(1, 0, 0, 40)
+	topBar.BackgroundTransparency = 1
+	topBar.Parent = main
+	
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Size = UDim2.new(1, 0, 1, 0)
+	titleLabel.Text = "SISTEMA DE CHAVE"
+	titleLabel.TextColor3 = Configuration.Colors.TextMuted
+	titleLabel.TextSize = 11
+	titleLabel.Font = Enum.Font.GothamBold
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.Parent = topBar
+	
+	local content = Instance.new("ScrollingFrame")
+	content.Size = UDim2.new(1, 0, 1, -40)
+	content.Position = UDim2.new(0, 0, 0, 40)
+	content.BackgroundTransparency = 1
+	content.ScrollBarThickness = 0
+	content.Parent = main
+	
+	local list = Instance.new("UIListLayout")
+	list.Padding = UDim.new(0, 20)
+	list.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	list.Parent = content
+	
+	local pad = Instance.new("UIPadding")
+	pad.PaddingTop = UDim.new(0, 10)
+	pad.Parent = content
+	
+	local logoContainer = Instance.new("Frame")
+	logoContainer.Size = UDim2.fromOffset(90, 90)
+	logoContainer.BackgroundColor3 = Configuration.Colors.Bg
+	logoContainer.Parent = content
+	Utils.Round(logoContainer, 45)
+	Utils.Stroke(logoContainer, Configuration.Colors.Border, 1, 0)
+	
+	local sIcon = Instance.new("ImageLabel")
+	sIcon.Size = UDim2.fromScale(0.65, 0.65)
+	sIcon.Position = UDim2.fromScale(0.5, 0.5)
+	sIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+	sIcon.Image = CustomLogo
+	sIcon.ScaleType = Enum.ScaleType.Fit
+	sIcon.BackgroundTransparency = 1
+	sIcon.Parent = logoContainer
+	
+	local titleArea = Instance.new("Frame")
+	titleArea.Size = UDim2.new(1, 0, 0, 50)
+	titleArea.BackgroundTransparency = 1
+	titleArea.Parent = content
+	
+	local mainTitle = Instance.new("TextLabel")
+	mainTitle.Size = UDim2.new(1, 0, 0, 30)
+	mainTitle.Text = "Autenticação"
+	mainTitle.TextColor3 = Configuration.Colors.TextMain
+	mainTitle.TextSize = 22
+	mainTitle.Font = Enum.Font.GothamBold
+	mainTitle.BackgroundTransparency = 1
+	mainTitle.Parent = titleArea
+	
+	local subTitle = Instance.new("TextLabel")
+	subTitle.Size = UDim2.new(1, 0, 0, 20)
+	subTitle.Position = UDim2.fromOffset(0, 30)
+	subTitle.Text = "michigun.xyz"
+	subTitle.TextColor3 = Configuration.Colors.Primary
+	subTitle.TextSize = 14
+	subTitle.Font = Enum.Font.GothamMedium
+	subTitle.BackgroundTransparency = 1
+	subTitle.Parent = titleArea
+	
+	local statusCard = Instance.new("Frame")
+	statusCard.Size = UDim2.new(0, 300, 0, 60)
+	statusCard.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+	statusCard.Parent = content
+	Utils.Round(statusCard, 10)
+	Utils.Stroke(statusCard, Configuration.Colors.Border, 1, 0)
+	
+	local sIconBg = Instance.new("Frame")
+	sIconBg.Size = UDim2.fromOffset(36, 36)
+	sIconBg.Position = UDim2.new(0, 12, 0.5, 0)
+	sIconBg.AnchorPoint = Vector2.new(0, 0.5)
+	sIconBg.BackgroundColor3 = Configuration.Colors.Bg
+	sIconBg.Parent = statusCard
+	Utils.Round(sIconBg, 18)
+	
+	local sImg = Instance.new("ImageLabel")
+	sImg.Size = UDim2.fromScale(0.5, 0.5)
+	sImg.Position = UDim2.fromScale(0.5, 0.5)
+	sImg.AnchorPoint = Vector2.new(0.5, 0.5)
+	sImg.Image = Icons.Lock
+	sImg.ImageColor3 = Configuration.Colors.TextMuted
+	sImg.BackgroundTransparency = 1
+	sImg.Parent = sIconBg
+	
+	local sLabel = Instance.new("TextLabel")
+	sLabel.Size = UDim2.new(1, -60, 0, 14)
+	sLabel.Position = UDim2.fromOffset(60, 14)
+	sLabel.Text = "STATUS DO ACESSO"
+	sLabel.TextColor3 = Configuration.Colors.TextMuted
+	sLabel.TextSize = 10
+	sLabel.Font = Enum.Font.GothamBold
+	sLabel.TextXAlignment = Enum.TextXAlignment.Left
+	sLabel.BackgroundTransparency = 1
+	sLabel.Parent = statusCard
+	
+	local sValue = Instance.new("TextLabel")
+	sValue.Size = UDim2.new(1, -60, 0, 20)
+	sValue.Position = UDim2.fromOffset(60, 28)
+	sValue.Text = "Nenhuma chave detectada"
+	sValue.TextColor3 = Configuration.Colors.TextMain
+	sValue.TextSize = 14
+	sValue.Font = Enum.Font.GothamMedium
+	sValue.TextXAlignment = Enum.TextXAlignment.Left
+	sValue.BackgroundTransparency = 1
+	sValue.Parent = statusCard
+	
+	local inputFrame = Instance.new("Frame")
+	inputFrame.Size = UDim2.new(0, 300, 0, 50)
+	inputFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+	inputFrame.Parent = content
+	Utils.Round(inputFrame, 10)
+	local iStroke = Utils.Stroke(inputFrame, Configuration.Colors.Border, 1, 0)
+	
+	local kIcon = Instance.new("ImageLabel")
+	kIcon.Size = UDim2.fromOffset(18, 18)
+	kIcon.Position = UDim2.new(0, 15, 0.5, 0)
+	kIcon.AnchorPoint = Vector2.new(0, 0.5)
+	kIcon.Image = Icons.Key
+	kIcon.ImageColor3 = Configuration.Colors.TextMuted
+	kIcon.BackgroundTransparency = 1
+	kIcon.Parent = inputFrame
+	
+	local box = Instance.new("TextBox")
+	box.Size = UDim2.new(1, -80, 1, 0)
+	box.Position = UDim2.fromOffset(45, 0)
+	box.Text = ""
+	box.PlaceholderText = "Cole sua chave aqui..."
+	box.PlaceholderColor3 = Configuration.Colors.TextMuted
+	box.TextColor3 = Configuration.Colors.TextMain
+	box.TextSize = 14
+	box.Font = Enum.Font.Gotham
+	box.BackgroundTransparency = 1
+	box.TextXAlignment = Enum.TextXAlignment.Left
+	box.Parent = inputFrame
+	
+	local paste = Instance.new("ImageButton")
+	paste.Size = UDim2.fromOffset(20, 20)
+	paste.Position = UDim2.new(1, -15, 0.5, 0)
+	paste.AnchorPoint = Vector2.new(1, 0.5)
+	paste.Image = Icons.Copy
+	paste.ImageColor3 = Configuration.Colors.TextSec
+	paste.BackgroundTransparency = 1
+	paste.Parent = inputFrame
+	
+	local btnRow = Instance.new("Frame")
+	btnRow.Size = UDim2.new(0, 300, 0, 45)
+	btnRow.BackgroundTransparency = 1
+	btnRow.Parent = content
+	
+	local redeem = Instance.new("TextButton")
+	redeem.Size = UDim2.new(0.6, -5, 1, 0)
+	redeem.BackgroundColor3 = Configuration.Colors.Primary
+	redeem.Text = "Verificar Chave"
+	redeem.TextColor3 = Color3.new(1, 1, 1)
+	redeem.Font = Enum.Font.GothamBold
+	redeem.TextSize = 14
+	redeem.AutoButtonColor = false
+	redeem.Parent = btnRow
+	Utils.Round(redeem, 10)
+	
+	local getKey = Instance.new("TextButton")
+	getKey.Size = UDim2.new(0.4, -5, 1, 0)
+	getKey.Position = UDim2.new(0.6, 5, 0, 0)
+	getKey.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+	getKey.Text = "Obter Chave"
+	getKey.TextColor3 = Configuration.Colors.TextMain
+	getKey.Font = Enum.Font.GothamBold
+	getKey.TextSize = 14
+	getKey.AutoButtonColor = false
+	getKey.Parent = btnRow
+	Utils.Round(getKey, 10)
+	Utils.Stroke(getKey, Configuration.Colors.Border, 1, 0)
+	
+	local function ApplyHover(btn)
+		local baseColor = btn.BackgroundColor3
+		btn.MouseEnter:Connect(
+			function()
+				Utils.Tween(btn, {BackgroundColor3 = baseColor:Lerp(Color3.new(1, 1, 1), 0.1)}, 0.2)
+			end
+		)
+		btn.MouseLeave:Connect(
+			function()
+				Utils.Tween(btn, {BackgroundColor3 = baseColor}, 0.2)
+			end
+		)
+	end
+	ApplyHover(redeem)
+	ApplyHover(getKey)
+	
+	box.Focused:Connect(function() Utils.Tween(iStroke, {Color = Configuration.Colors.Primary}, 0.3) end)
+	box.FocusLost:Connect(function() Utils.Tween(iStroke, {Color = Configuration.Colors.Border}, 0.3) end)
+	
+	local spinConnection
+	local dotsThread
+	local function SetStatus(state)
+		if spinConnection then
+			spinConnection:Disconnect()
+			spinConnection = nil
+			sImg.Rotation = 0
+		end
+		if dotsThread then
+			task.cancel(dotsThread)
+			dotsThread = nil
+		end
+		local color = Configuration.Colors.TextMuted
+		local icon = Icons.Lock
+		local text = "Nenhuma chave detectada"
+		if state == "verifying" then
+			color = Configuration.Colors.StatusVerifying
+			icon = Icons.Loading
+			text = "Verificando"
+			spinConnection = RunService.Heartbeat:Connect(function(dt)
+				if not sImg or not sImg.Parent then
+					if spinConnection then spinConnection:Disconnect() end
+					spinConnection = nil
+					return
+				end
+				sImg.Rotation = (sImg.Rotation + dt * 360) % 360
+			end)
+			local dots = {".", "..", "...", ""}
+			local i = 1
+			dotsThread = task.spawn(function()
+				while sValue and sValue.Parent do
+					if not sValue.Text:find("Verificando", 1, true) then break end
+					sValue.Text = text .. dots[i]
+					i = (i % #dots) + 1
+					task.wait(0.45)
+				end
+			end)
+		elseif state == "success" then
+			color = Configuration.Colors.StatusSuccess
+			icon = Icons.CheckCircle
+			text = "Acesso Permitido"
+		elseif state == "error" then
+			color = Configuration.Colors.StatusError
+			icon = Icons.XCircle
+			text = "Chave Inválida"
+		end
+		Utils.Tween(sValue, {TextColor3 = color}, 0.35)
+		Utils.Tween(sImg, {ImageColor3 = color}, 0.35)
+		sValue.Text = text
+		sImg.Image = icon
+	end
+	
+	redeem.MouseButton1Click:Connect(function()
+		local key = box.Text:upper()
+		SetStatus("verifying")
+		redeem.Text = "..."
+		redeem.Active = false
+		local result = Junkie.check_key(key)
+		redeem.Active = true
+		redeem.Text = "Verificar Chave"
+		if not result then
+			SetStatus("error")
+			ToastSystem.Create(screen, "Erro na API: " .. tostring(result), "error")
+			return
+		end
+		if result.valid then
+			saveVerifiedKey(key)
+			getgenv().SCRIPT_KEY = key
+			SetStatus("success")
+			ToastSystem.Create(screen, "Acesso liberado com sucesso!", "success")
+			task.wait(0.8)
+			SetBlur(false)
+			Utils.Tween(main, {Position = UDim2.new(0.5, 0, 0.5, 100), BackgroundTransparency = 1}, 0.7, Enum.EasingStyle.Exponential, Enum.EasingDirection.In)
+			task.delay(0.7, function() screen:Destroy() end)
+		else
+			SetStatus("error")
+			ToastSystem.Create(screen, result.message or "Chave inválida", "error")
+		end
+	end)
+	
+	getKey.MouseButton1Click:Connect(function()
+		setclipboard(Junkie.get_key_link())
+		ToastSystem.Create(screen, "Link copiado para a área de transferência", "success")
+	end)
+	
+	paste.MouseButton1Click:Connect(function()
+		ToastSystem.Create(screen, "Função de colar bloqueada pelo Roblox", "warning")
+	end)
+	
+	main.Position = UDim2.new(0.5, 0, 0.5, 100)
+	main.BackgroundTransparency = 1
+	Utils.Tween(main, {Position = UDim2.new(0.5, 0, 0.5, 0), BackgroundTransparency = 0}, 1, Enum.EasingStyle.Exponential)
+	
+	local dragging, dragStart, startPos
+	main.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragging = true
+			dragStart = input.Position
+			startPos = main.Position
+		end
+	end)
+	UserInputService.InputChanged:Connect(function(input)
+		if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+			local delta = input.Position - dragStart
+			main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+		end
+	end)
+	UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragging = false
+		end
+	end)
+	
+	return screen
+end
+
+local savedKey = loadVerifiedKey()
+local keyToCheck = savedKey
+if not keyToCheck then
+    keyToCheck = getgenv().SCRIPT_KEY
+end
+
+local result = Junkie.check_key(keyToCheck)
+if result and result.valid then
+    if result.message == "KEYLESS" then
+        getgenv().SCRIPT_KEY = "KEYLESS"
+    elseif result.message == "KEY_VALID" then
+        if not savedKey and keyToCheck then
+            saveVerifiedKey(keyToCheck)
+        end
+        getgenv().SCRIPT_KEY = keyToCheck
+    else
+        Build()
+    end
+else
+    Build()
+end
+
+while not getgenv().SCRIPT_KEY do
+    task.wait(0.1)
+end
