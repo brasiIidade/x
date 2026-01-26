@@ -1,0 +1,413 @@
+_G.AimbotConfig = _G.AimbotConfig or {
+    Enabled = false,
+    TeamCheck = "Team",         
+    TargetPart = {"Random"},      
+    MaxDistance = 1000,         
+    SwitchThreshold = 5,
+    WhitelistedUsers = {}, 
+    WhitelistedTeams = {}, 
+    FocusList = {},
+    FocusMode = false,
+    UseLegitOffset = true,
+    HitChance = 100,
+    WallCheck = true,
+    FOVSize = 200,
+    ShowFOV = true,
+    FOVBehavior = "Center",
+    FOVColor1 = Color3.fromRGB(255, 255, 255), 
+    ShowHighlight = true,
+    HighlightColor = Color3.fromRGB(255, 60, 60),
+    ESP = {
+        Enabled = true,
+        ShowName = true,
+        ShowHealth = true,
+        ShowWeapon = true,
+        TextColor = Color3.fromRGB(255, 255, 255),
+        OutlineColor = Color3.fromRGB(255, 60, 60),
+    }
+}
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local Camera = Workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+
+local Vector2New = Vector2.new
+local Vector3New = Vector3.new
+local CFrameNew = CFrame.new
+local MathRandom = math.random
+local IPairs = ipairs
+local Pairs = pairs
+local StringLower = string.lower
+local StringFind = string.find
+local MathHuge = math.huge
+local MathFloor = math.floor
+
+_G.SilentAimConnections = {}
+_G.SilentAimActive = false
+local ClosestHitPart = nil
+local CurrentTargetCharacter = nil
+
+local bulletFunctions = {
+    "fire", "shoot", "bullet", "ammo", "projectile", 
+    "missile", "rocket", "hit", "damage", "attack", 
+    "cast", "ray", "target", "server", "remote", "action", 
+    "mouse", "input", "create"
+}
+
+local function getLegitOffset()
+    if not _G.AimbotConfig.UseLegitOffset then return Vector3New(0,0,0) end
+    return Vector3New(
+        (MathRandom() - 0.5) * (MathRandom(1, 35) / 10),
+        (MathRandom() - 0.5) * (MathRandom(1, 35) / 10),
+        (MathRandom() - 0.5) * (MathRandom(1, 35) / 10)
+    )
+end
+
+local function isBulletRemote(name)
+    name = StringLower(name)
+    for _, keyword in IPairs(bulletFunctions) do
+        if StringFind(name, keyword) then return true end
+    end
+    return false
+end
+
+local function isWhitelisted(player)
+    if not player then return false end
+    if #_G.AimbotConfig.WhitelistedUsers > 0 then
+        if table.find(_G.AimbotConfig.WhitelistedUsers, player.Name) then return true end
+    end
+    if player.Team and #_G.AimbotConfig.WhitelistedTeams > 0 then
+        if table.find(_G.AimbotConfig.WhitelistedTeams, player.Team.Name) then return true end
+    end
+    return false
+end
+
+local RayParams = RaycastParams.new()
+RayParams.FilterType = Enum.RaycastFilterType.Exclude
+RayParams.IgnoreWater = true
+
+local function IsPartVisible(part, character)
+    if not _G.AimbotConfig.WallCheck then return true end
+    local origin = Camera.CFrame.Position
+    local direction = part.Position - origin
+    RayParams.FilterDescendantsInstances = {LocalPlayer.Character, character, Camera, _G.AimbotGui}
+    local rayResult = Workspace:Raycast(origin, direction, RayParams)
+    return rayResult == nil
+end
+
+local function GetBestPart(character)
+    local targets = _G.AimbotConfig.TargetPart
+    if typeof(targets) ~= "table" then targets = {targets} end
+    
+    if #targets == 0 or table.find(targets, "Random") then
+        targets = {"Head", "HumanoidRootPart", "UpperTorso", "LowerTorso", "Torso", "LeftUpperArm", "RightUpperArm", "LeftUpperLeg", "RightUpperLeg"}
+    end
+
+    for _, name in IPairs(targets) do
+        local part = character:FindFirstChild(name)
+        if part and IsPartVisible(part, character) then return part end
+    end
+    return nil
+end
+
+local function getClosestPlayer()
+    local BestPart = nil
+    local BestChar = nil
+    local ClosestDistance3D = MathHuge 
+    local OriginPos = (_G.AimbotConfig.FOVBehavior == "Mouse") and UserInputService:GetMouseLocation() or Vector2New(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    local myPos = Camera.CFrame.Position
+
+    for _, Player in Pairs(Players:GetPlayers()) do
+        if Player == LocalPlayer then continue end
+        if _G.AimbotConfig.TeamCheck == "Team" and Player.Team == LocalPlayer.Team then continue end
+        
+        if _G.AimbotConfig.FocusMode then
+            if not table.find(_G.AimbotConfig.FocusList, Player.Name) then continue end
+        else
+            if isWhitelisted(Player) then continue end
+        end
+
+        local Character = Player.Character
+        if not Character then continue end
+        
+        local RootPart = Character:FindFirstChild("HumanoidRootPart")
+        local Humanoid = Character:FindFirstChild("Humanoid")
+        
+        if not RootPart or not Humanoid or Humanoid.Health <= 0 then continue end
+        
+        local currentDistance3D = (RootPart.Position - myPos).Magnitude
+        if currentDistance3D > _G.AimbotConfig.MaxDistance then continue end
+
+        local ReferencePart = Character:FindFirstChild("Head") or RootPart
+        local screenPos, onScreen = Camera:WorldToScreenPoint(ReferencePart.Position)
+        
+        if onScreen then
+            local dist2D = (OriginPos - Vector2New(screenPos.X, screenPos.Y)).Magnitude
+            
+            if dist2D <= _G.AimbotConfig.FOVSize then
+                if currentDistance3D < ClosestDistance3D then
+                    local ValidPart = GetBestPart(Character)
+                    if ValidPart then
+                        ClosestDistance3D = currentDistance3D
+                        BestPart = ValidPart
+                        BestChar = Character
+                    end
+                end
+            end
+        end
+    end
+    return BestPart, BestChar
+end
+
+_G.StopSilentAim = function()
+    _G.SilentAimActive = false
+    
+    for _, conn in pairs(_G.SilentAimConnections) do
+        if conn then conn:Disconnect() end
+    end
+    _G.SilentAimConnections = {}
+
+    if _G.AimFOVCircle then _G.AimFOVCircle:Remove(); _G.AimFOVCircle = nil end
+    if _G.AimbotGui then _G.AimbotGui:Destroy(); _G.AimbotGui = nil end
+    if _G.AimHighlight then _G.AimHighlight:Destroy(); _G.AimHighlight = nil end
+    
+    ClosestHitPart = nil
+    CurrentTargetCharacter = nil
+end
+
+_G.StartSilentAim = function()
+    _G.StopSilentAim()
+    _G.SilentAimActive = true
+    local config = _G.AimbotConfig
+
+    local fov_circle = Drawing.new("Circle")
+    fov_circle.Visible = false
+    fov_circle.Thickness = 1.5
+    fov_circle.Transparency = 0.8
+    fov_circle.Color = config.FOVColor1
+    fov_circle.Filled = false
+    fov_circle.NumSides = 64
+    _G.AimFOVCircle = fov_circle
+
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "InternalAimbotUI"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.IgnoreGuiInset = true 
+    if pcall(function() ScreenGui.Parent = CoreGui end) then
+        _G.AimbotGui = ScreenGui
+    else
+        ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+        _G.AimbotGui = ScreenGui
+    end
+
+    local TargetHighlight = Instance.new("Highlight")
+    TargetHighlight.Name = "TargetFX"
+    TargetHighlight.FillTransparency = 0.85
+    TargetHighlight.OutlineTransparency = 0.1
+    TargetHighlight.OutlineColor = config.HighlightColor
+    TargetHighlight.FillColor = config.HighlightColor
+    TargetHighlight.Parent = ScreenGui
+    _G.AimHighlight = TargetHighlight
+
+    local HeadBillboard = Instance.new("BillboardGui")
+    HeadBillboard.Size = UDim2.new(0, 100, 0, 35)
+    HeadBillboard.StudsOffset = Vector3New(0, 4.5, 0)
+    HeadBillboard.AlwaysOnTop = true
+    HeadBillboard.Enabled = false
+    HeadBillboard.Parent = ScreenGui
+
+    local Container = Instance.new("Frame")
+    Container.Size = UDim2.new(1, 0, 1, 0)
+    Container.BackgroundTransparency = 1
+    Container.Parent = HeadBillboard
+
+    local BackgroundBar = Instance.new("Frame")
+    BackgroundBar.Size = UDim2.new(1, 0, 0, 24)
+    BackgroundBar.Position = UDim2.new(0, 0, 0, 0)
+    BackgroundBar.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+    BackgroundBar.BackgroundTransparency = 0.2
+    BackgroundBar.Parent = Container
+
+    local UICorner = Instance.new("UICorner")
+    UICorner.CornerRadius = UDim.new(0, 4)
+    UICorner.Parent = BackgroundBar
+
+    local Stroke = Instance.new("UIStroke")
+    Stroke.Thickness = 1
+    Stroke.Color = config.HighlightColor
+    Stroke.Transparency = 0.2
+    Stroke.Parent = BackgroundBar
+
+    local NameLabel = Instance.new("TextLabel")
+    NameLabel.Size = UDim2.new(1, -8, 0, 12)
+    NameLabel.Position = UDim2.new(0, 4, 0, 6)
+    NameLabel.BackgroundTransparency = 1
+    NameLabel.Font = Enum.Font.GothamBold
+    NameLabel.TextSize = 10
+    NameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    NameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    NameLabel.Parent = BackgroundBar
+
+    local WeaponLabel = Instance.new("TextLabel")
+    WeaponLabel.Size = UDim2.new(1, -8, 0, 12)
+    WeaponLabel.Position = UDim2.new(0, 4, 0, 6)
+    WeaponLabel.BackgroundTransparency = 1
+    WeaponLabel.Font = Enum.Font.Gotham
+    WeaponLabel.TextSize = 9
+    WeaponLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+    WeaponLabel.TextXAlignment = Enum.TextXAlignment.Right
+    WeaponLabel.Parent = BackgroundBar
+
+    local HealthBarBack = Instance.new("Frame")
+    HealthBarBack.Size = UDim2.new(1, -8, 0, 2)
+    HealthBarBack.Position = UDim2.new(0, 4, 1, -4)
+    HealthBarBack.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    HealthBarBack.BorderSizePixel = 0
+    HealthBarBack.Parent = BackgroundBar
+
+    local HealthCorner = Instance.new("UICorner")
+    HealthCorner.CornerRadius = UDim.new(1, 0)
+    HealthCorner.Parent = HealthBarBack
+
+    local HealthBarFill = Instance.new("Frame")
+    HealthBarFill.Size = UDim2.new(1, 0, 1, 0)
+    HealthBarFill.BackgroundColor3 = Color3.fromRGB(0, 255, 150)
+    HealthBarFill.BorderSizePixel = 0
+    HealthBarFill.Parent = HealthBarBack
+
+    local HealthFillCorner = Instance.new("UICorner")
+    HealthFillCorner.CornerRadius = UDim.new(1, 0)
+    HealthFillCorner.Parent = HealthBarFill
+
+    local c1 = RunService.RenderStepped:Connect(function()
+        if _G.SilentAimActive and config.ShowFOV then
+            fov_circle.Visible = true
+            fov_circle.Radius = config.FOVSize
+            fov_circle.Color = config.FOVColor1
+            if config.FOVBehavior == "Mouse" then
+                fov_circle.Position = UserInputService:GetMouseLocation()
+            else
+                fov_circle.Position = Vector2New(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+            end
+        else
+            fov_circle.Visible = false
+        end
+    end)
+    table.insert(_G.SilentAimConnections, c1)
+
+    local c2 = RunService.RenderStepped:Connect(function()
+        if _G.SilentAimActive then
+            local Part, Character = getClosestPlayer()
+            ClosestHitPart = Part
+            CurrentTargetCharacter = Character
+        
+            if config.ShowHighlight and Character then
+                TargetHighlight.Adornee = Character
+                TargetHighlight.Enabled = true
+                TargetHighlight.OutlineColor = config.HighlightColor
+                Stroke.Color = config.HighlightColor
+            else
+                TargetHighlight.Adornee = nil
+                TargetHighlight.Enabled = false
+            end
+
+            if config.ESP.Enabled and Character then
+                local head = Character:FindFirstChild("Head")
+                local hum = Character:FindFirstChild("Humanoid")
+
+                if head and hum then
+                    HeadBillboard.Adornee = head
+                    HeadBillboard.Enabled = true
+                    
+                    if config.ESP.ShowName then
+                        NameLabel.Text = Character.Name
+                    else
+                        NameLabel.Text = ""
+                    end
+
+                    if config.ESP.ShowWeapon then
+                        local tool = Character:FindFirstChildWhichIsA("Tool")
+                        WeaponLabel.Text = tool and string.upper(tool.Name) or "NONE"
+                    else
+                        WeaponLabel.Text = ""
+                    end
+                    
+                    if config.ESP.ShowHealth then
+                        local hp = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+                        HealthBarFill.Size = UDim2.new(hp, 0, 1, 0)
+                        HealthBarFill.BackgroundColor3 = Color3.fromHSV((hp * 0.33), 0.7, 0.9)
+                        HealthBarBack.Visible = true
+                    else
+                        HealthBarBack.Visible = false
+                    end
+                else
+                    HeadBillboard.Enabled = false
+                end
+            else
+                HeadBillboard.Enabled = false
+            end
+        else
+            ClosestHitPart = nil
+            CurrentTargetCharacter = nil
+            TargetHighlight.Enabled = false
+            HeadBillboard.Enabled = false
+        end
+    end)
+    table.insert(_G.SilentAimConnections, c2)
+end
+
+local oldNamecall
+oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+    if not checkcaller() and _G.SilentAimActive and ClosestHitPart then
+        local Method = getnamecallmethod()
+        
+        if MathRandom(1, 100) <= _G.AimbotConfig.HitChance then
+            local Arguments = {...}
+
+            if Method == "Raycast" and self == Workspace then
+                local finalPosition = ClosestHitPart.Position + getLegitOffset()
+                local origin = Arguments[1] 
+                local direction = (finalPosition - origin).Unit * 1000 
+                Arguments[2] = direction 
+                return oldNamecall(self, unpack(Arguments))
+            
+            elseif (Method == "FireServer" or Method == "InvokeServer") then
+                if isBulletRemote(self.Name) then
+                    local finalPosition = ClosestHitPart.Position + getLegitOffset()
+                    local cameraPos = Camera.CFrame.Position
+                    
+                    for i, v in Pairs(Arguments) do
+                        if typeof(v) == "Vector3" then
+                            if v.Magnitude <= 5 then 
+                                Arguments[i] = (finalPosition - cameraPos).Unit
+                            else
+                                Arguments[i] = finalPosition
+                            end
+                        elseif typeof(v) == "CFrame" then
+                            Arguments[i] = CFrameNew(cameraPos, finalPosition)
+                        elseif typeof(v) == "table" then
+                            for k, subVal in Pairs(v) do
+                                if typeof(subVal) == "Vector3" then
+                                     if subVal.Magnitude <= 5 then
+                                        v[k] = (finalPosition - cameraPos).Unit
+                                     else
+                                        v[k] = finalPosition
+                                     end
+                                elseif typeof(subVal) == "CFrame" then
+                                    v[k] = CFrameNew(cameraPos, finalPosition)
+                                end
+                            end
+                        end
+                    end
+                    return oldNamecall(self, unpack(Arguments))
+                end
+            end
+        end
+    end
+    return oldNamecall(self, ...)
+end))
