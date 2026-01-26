@@ -16,11 +16,10 @@ _G.F3X.RedoStack = {}
 _G.F3X.ModifiedParts = {}
 _G.F3X.SelectedConfig = nil
 _G.F3X.CurrentConfigName = nil
-_G.F3X.UpdateUI = nil -- Função ponte
-_G.F3X.NotifyFunc = nil -- Função ponte de notificação
+_G.F3X.UpdateUI = nil
+_G.F3X.NotifyFunc = nil
 _G.F3X.IsReady = true
 
--- Pastas
 if not isfolder("michigun.xyz") then makefolder("michigun.xyz") end
 local F3X_FOLDER = "michigun.xyz/fp3_F3X"
 if writefile and not isfolder(F3X_FOLDER) then makefolder(F3X_FOLDER) end
@@ -35,12 +34,6 @@ local function sizeMatch(a, b)
     return math.abs(a.X - b.X) <= TOLERANCE
        and math.abs(a.Y - b.Y) <= TOLERANCE
        and math.abs(a.Z - b.Z) <= TOLERANCE
-end
-
-local function safeNotify(title, msg)
-    if _G.F3X.NotifyFunc then
-        _G.F3X.NotifyFunc(title .. ": " .. msg, 3, "lucide:info")
-    end
 end
 
 local function clearHighlights()
@@ -124,7 +117,7 @@ end
 
 _G.F3X.SaveConfig = function(name)
     if not name or name == "" then
-        safeNotify("F3X", "Nome inválido.")
+        if _G.F3X.NotifyFunc then _G.F3X.NotifyFunc("F3X: Nome inválido", 3, "lucide:alert-circle") end
         return nil
     end
 
@@ -144,7 +137,7 @@ _G.F3X.SaveConfig = function(name)
     end
 
     writefile(F3X_FOLDER .. "/" .. name .. ".json", HttpService:JSONEncode(data))
-    safeNotify("F3X", "Config salva")
+    if _G.F3X.NotifyFunc then _G.F3X.NotifyFunc("F3X: Config salva", 3, "lucide:check") end
     return _G.F3X.ListConfigs()
 end
 
@@ -156,7 +149,7 @@ _G.F3X.ApplyConfig = function(name)
     local data = HttpService:JSONDecode(readfile(path))
 
     if data.PlaceId ~= game.PlaceId then
-        safeNotify("F3X", "Essa configuração não é desse mapa.")
+        if _G.F3X.NotifyFunc then _G.F3X.NotifyFunc("F3X: Config de outro mapa", 3, "lucide:alert-circle") end
         return
     end
 
@@ -172,16 +165,16 @@ _G.F3X.ApplyConfig = function(name)
         end
     end
 
-    safeNotify("F3X", "Aplicada.")
+    if _G.F3X.NotifyFunc then _G.F3X.NotifyFunc("F3X: Aplicada", 3, "lucide:check") end
 end
 
 _G.F3X.DeleteConfig = function(name)
     if not name then
-        safeNotify("F3X", "Nenhuma configuração selecionada.")
+        if _G.F3X.NotifyFunc then _G.F3X.NotifyFunc("F3X: Nenhuma seleção", 3, "lucide:alert-circle") end
         return nil
     end
     delfile(F3X_FOLDER .. "/" .. name .. ".json")
-    safeNotify("F3X", "Deletada.")
+    if _G.F3X.NotifyFunc then _G.F3X.NotifyFunc("F3X: Deletada", 3, "lucide:trash") end
     return _G.F3X.ListConfigs()
 end
 
@@ -192,7 +185,6 @@ _G.F3X.Toggle = function(state)
     end
 end
 
--- Mouse Connection
 Mouse.Button1Down:Connect(function()
     if not _G.F3X.Enabled then return end
     local t = Mouse.Target
@@ -211,7 +203,7 @@ Mouse.Button1Down:Connect(function()
     end
 
     if #_G.F3X.SelectedParts > 0 and not sizeMatch(_G.F3X.SelectedParts[1].Size, t.Size) then
-        safeNotify("F3X", "Os itens selecionados devem ter o mesmo tamanho.")
+        if _G.F3X.NotifyFunc then _G.F3X.NotifyFunc("F3X: Tamanhos diferentes", 3, "lucide:alert-circle") end
         return
     end
 
