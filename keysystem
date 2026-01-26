@@ -1,50 +1,29 @@
+-- Docs 
+-- https://github.com/Cobru1/expert-octo-doodle/tree/main 
 
-game:GetService("StarterGui"):SetCore("SendNotification", {
-	Title = "Aviso",
-	Text = "Cole a chave copiada!",
-	Duration = 10
+local Arqel = loadstring(game:HttpGet("https://raw.githubusercontent.com/Cobru1/expert-octo-doodle/refs/heads/main/ArqelUi.luau"))()
+
+Arqel.Appearance.Title = "michigun.xyz"
+Arqel.Appearance.Icon = "rbxassetid://124613057828354"
+Arqel.Links.Discord = "discord.gg/michigun"
+Arqel.Storage.FileName = "michigun.key"
+
+
+
+Arqel.Theme.Accent = Color3.fromRGB(110, 60, 255)
+Arqel.Theme.AccentHover = Color3.fromRGB(130, 90, 255)
+Arqel.Theme.Background = Color3.fromRGB(10, 10, 20)
+Arqel.Theme.Header = Color3.fromRGB(15, 15, 30)
+Arqel.Theme.Input = Color3.fromRGB(20, 20, 40)
+Arqel.Theme.Text = Color3.fromRGB(255, 255, 255)
+Arqel.Theme.TextDim = Color3.fromRGB(160, 160, 200)
+Arqel.Theme.Success = Color3.fromRGB(0, 220, 180)
+Arqel.Theme.Error = Color3.fromRGB(255, 70, 90)
+Arqel.Theme.StatusIdle = Color3.fromRGB(120, 100, 200)
+
+
+Arqel:LaunchJunkie({
+    Service = "Teste",
+    Identifier = "1000381",
+    Provider = "Keysystem"
 })
-
-setclipboard("c24726ea-8728-49e7-a842-90a5c211aa82")
-
---DETAILED DOCS https://github.com/AsuraXowner/Sentinel-Open-Source/blob/main/SentinelKeySystem/README.md
-local Junkie = loadstring(game:HttpGet("https://jnkie.com/sdk/library.lua"))()
-Junkie.service = "Teste"
-Junkie.identifier = "1000381"
-Junkie.provider = "Keysystem"
-
-local SentinelUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/AsuraXowner/Sentinel-Open-Source/refs/heads/main/SentinelKeySystem/Installer.lua"))()
-local AuthorizeToken = crypt.hash(tick()..tostring(math.random()), "sha256")-- This generates a unique key to prevent key bypassing. Do not modify.
-
--- Configuration
-SentinelUI.Keys.MainTitle    = "Digite qualquer coisa"-- The title
-SentinelUI.Keys.MainDesc     = "Digite sua chave"-- The subtitle
-SentinelUI.Keys.Directory    = "michigun_chave" -- file name where the key saves (Change this)
-SentinelUI.Keys.Assets.Logo  = {ID='rbxassetid://124613057828354', Size=UDim2.new(0, 95, 0, 95)}-- Your logo Image ID and Image Size
-SentinelUI.Keys.DiscordLink    = "michigun" -- discord server link only works if premium is true
-
-local function OnKeyVerified()
-    return
-end
-
-SentinelUI.Initialize({
-    KeyLink = Junkie.get_key_link(),
-    Token = AuthorizeToken,
-    MainLoader = OnKeyVerified,
-    --Keyless true, --keyless mode
-    --Premium true, --remvoes get key button and puts discord link
-    Function = function(userInput)
-        getgenv().SCRIPT_KEY = userInput
-        local result = Junkie.check_key(userInput)
-        if result and (result.valid or result.message == "KEY_VALID" or result.message == "KEYLESS") then
-            SentinelUI.Authorize(AuthorizeToken)
-        else
-            SentinelUI.Fail()
-        end
-    end
-})
-
-
-while not getgenv().SCRIPT_KEY do
-    task.wait(0.1)
-end
