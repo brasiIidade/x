@@ -8,7 +8,7 @@ return {
     char = "char",
     antilag = "antilag.lua",
     chatgpt = "chatgpt.lua",
-    local = "local.lua",
+    player = "local.lua",
     tevez = "tevez3.lua",
     delta = "delta.lua",
     soucre = "soucre.lua"
