@@ -3,364 +3,659 @@ Junkie.service = "key"
 Junkie.identifier = "11133"
 Junkie.provider = "key"
 
-local Config = {
-    Text = {
-        Title = "SYSTEM ACCESS",
-        Subtitle = "Authenticating User",
-        InputPlaceholder = "Enter License Key...",
-        ButtonVerify = "VERIFY KEY",
-        ButtonLink = "GET KEY LINK",
-        StatusIdle = "Waiting for input...",
-        StatusVerifying = "Checking key...",
-        StatusSuccess = "Access Granted",
-        StatusError = "Invalid Key",
-        NotifyCopied = "Link copied to clipboard!",
-        NotifyEmpty = "Please enter a key!",
-        NotifyError = "Connection Error"
+-- [[ CONFIGURAÇÃO DE TEXTOS E SONS ]] --
+local ConfigData = {
+    Texts = {
+        Title = "Key system",
+        Subtitle = "michigun.xyz",
+        GreetingMorning = "Bom dia, %s",
+        GreetingAfternoon = "Boa tarde, %s",
+        GreetingEvening = "Boa noite, %s",
+        StatusWaiting = "Aguardando validação",
+        StatusVerifying = "Verificando chave...",
+        StatusSuccess = "Sucesso!",
+        StatusError = "Chave inválida",
+        Placeholder = "Insira sua chave",
+        BtnVerify = "Verificar",
+        BtnGetKey = "Obter chave",
+        ToastError = "Falha na conexão com o servidor.",
+        ToastSuccess = "Autenticado com sucesso!",
+        ToastCopied = "Link copiado.",
+        ToastInvalid = "A chave inserida não é válida."
     },
-    Colors = {
-        Background = Color3.fromRGB(15, 15, 15),
-        Accent = Color3.fromRGB(0, 255, 170),
-        TextMain = Color3.fromRGB(255, 255, 255),
-        TextDim = Color3.fromRGB(150, 150, 150),
-        InputBg = Color3.fromRGB(25, 25, 25),
-        Error = Color3.fromRGB(255, 80, 80),
-        Border = Color3.fromRGB(40, 40, 40)
-    },
-    Assets = {
-        SoundSuccess = "rbxassetid://6895079853",
-        SoundError = "rbxassetid://4590662766",
-        SoundClick = "rbxassetid://6895079853",
-        Logo = "rbxassetid://88026679106109"
+    Sounds = {
+        Success = "rbxassetid://6895079853",
+        Error = "rbxassetid://4590662766",
+        Hover = "rbxassetid://6895079632",
+        Click = "rbxassetid://4590657391"
     }
+}
+
+-- [[ ÍCONES FUNCIONAIS E LEVES ]] --
+-- Substituídos por IDs de ativos reais (Image IDs) para carregamento instantâneo
+local Icons = {
+    Logo = "rbxassetid://13409416568", -- Escudo moderno
+    KeyInput = "rbxassetid://13464528148", -- Chave minimalista
+    VerifyCheck = "rbxassetid://13464534731", -- Check grosso
+    LinkExternal = "rbxassetid://13464548815", -- Link
+    ToastSuccess = "rbxassetid://13464534731", -- Check (reutilizado para garantir cache)
+    ToastError = "rbxassetid://13464551109" -- X Círculo
 }
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
-local CoreGui = game:GetService("CoreGui")
-local RunService = game:GetService("RunService")
-local Lighting = game:GetService("Lighting")
+local ContentProvider = game:GetService("ContentProvider") -- Serviço de Preload
 local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
+local SoundService = game:GetService("SoundService")
 
-local function hasFileSystemSupport()
-    return (writefile and readfile and isfile and delfile)
+-- Função para forçar o carregamento dos ícones antes da UI aparecer
+local function PreloadAssets()
+    local assets = {}
+    for _, id in pairs(Icons) do
+        table.insert(assets, id)
+    end
+    -- Tenta carregar em uma thread separada para não travar o script, mas inicia o fetch
+    task.spawn(function()
+        pcall(function()
+            ContentProvider:PreloadAsync(assets)
+        end)
+    end)
+end
+PreloadAssets()
+
+local function PlayAudio(id)
+    local sound = Instance.new("Sound")
+    sound.SoundId = id
+    sound.Volume = 1.2
+    sound.Parent = SoundService
+    sound.PlayOnRemove = true
+    sound:Destroy()
 end
 
+local function GetDynamicGreeting()
+    local hour = tonumber(os.date("%H"))
+    local playerName = Players.LocalPlayer.DisplayName
+    if hour >= 5 and hour < 12 then
+        return string.format(ConfigData.Texts.GreetingMorning, playerName)
+    elseif hour >= 12 and hour < 18 then
+        return string.format(ConfigData.Texts.GreetingAfternoon, playerName)
+    else
+        return string.format(ConfigData.Texts.GreetingEvening, playerName)
+    end
+end
+
+local function hasFileSystemSupport()
+    local hasWritefile = pcall(function() return type(writefile) == "function" end)
+    local hasReadfile = pcall(function() return type(readfile) == "function" end)
+    local hasIsfile = pcall(function() return type(isfile) == "function" end)
+    return hasWritefile and hasReadfile and hasIsfile
+end
+
+local fileSystemSupported = hasFileSystemSupport()
+
 local function saveVerifiedKey(key)
-    if not hasFileSystemSupport() then return end
-    pcall(writefile, "michigun.key.txt", key)
+    if not fileSystemSupported then return false end
+    local ok = pcall(function() writefile("michigun.key.txt", key) end)
+    return ok
 end
 
 local function loadVerifiedKey()
-    if not hasFileSystemSupport() then return nil end
-    local s, r = pcall(readfile, "michigun.key.txt")
-    if s then return r end
-    return nil
+    if not fileSystemSupported then return nil end
+    local ok, content = pcall(function() return readfile("michigun.key.txt") end)
+    if not ok or not content then return nil end
+    return content
 end
 
-local function playSound(id)
-    local s = Instance.new("Sound")
-    s.SoundId = id
-    s.Volume = 1
-    s.Parent = game:GetService("SoundService")
-    s.PlayOnRemove = true
-    s:Destroy()
+local function isMobile()
+    return UserInputService.TouchEnabled and not UserInputService.MouseEnabled
 end
 
-local function CreateUI()
-    local Screen = Instance.new("ScreenGui")
-    Screen.Name = "JunkieModernUI"
-    Screen.IgnoreGuiInset = true
-    Screen.ResetOnSpawn = false
-    Screen.Parent = CoreGui
+-- PALETA DE CORES DARK MODERN
+local Configuration = {
+    ScreenGuiName = "JunkieKeySystemEnhanced",
+    Window = {
+        Size = isMobile() and UDim2.new(0.85, 0, 0, 460) or UDim2.new(0, 400, 0, 520)
+    }, 
+    Colors = {
+        Bg = Color3.fromRGB(18, 18, 22), 
+        Surface = Color3.fromRGB(30, 30, 36),
+        SurfaceHighlight = Color3.fromRGB(40, 40, 48),
+        TextMain = Color3.fromRGB(240, 240, 245),
+        TextSec = Color3.fromRGB(160, 160, 170),
+        TextMuted = Color3.fromRGB(100, 100, 110),
+        Border = Color3.fromRGB(50, 50, 60),
+        BorderHighlight = Color3.fromRGB(80, 80, 95),
+        StatusIdle = Color3.fromRGB(120, 120, 130),
+        StatusSuccess = Color3.fromRGB(46, 204, 113),
+        StatusError = Color3.fromRGB(231, 76, 60),
+        StatusVerifying = Color3.fromRGB(241, 196, 15),
+        ButtonVerify = Color3.fromRGB(46, 204, 113),
+        ButtonVerifyHover = Color3.fromRGB(39, 174, 96)
+    },
+    Animations = {
+        Medium = 0.4,
+        Intro = 0.7,
+        Outro = 0.4
+    }
+}
 
-    local Blur = Instance.new("BlurEffect")
-    Blur.Size = 0
-    Blur.Parent = Lighting
+local Utils = {}
 
-    local Main = Instance.new("Frame")
-    Main.Size = UDim2.fromOffset(400, 250)
-    Main.Position = UDim2.fromScale(0.5, 0.5)
-    Main.AnchorPoint = Vector2.new(0.5, 0.5)
-    Main.BackgroundColor3 = Config.Colors.Background
-    Main.BackgroundTransparency = 1
-    Main.ClipsDescendants = true
-    Main.Parent = Screen
+Utils.Tween = function(obj, props, time, style, dir)
+    local t = TweenService:Create(obj, TweenInfo.new(time or 0.3, style or Enum.EasingStyle.Quint, dir or Enum.EasingDirection.Out), props)
+    t:Play()
+    return t
+end
 
-    local MainCorner = Instance.new("UICorner")
-    MainCorner.CornerRadius = UDim.new(0, 10)
-    MainCorner.Parent = Main
+Utils.Round = function(obj, radius)
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, radius or 14)
+    c.Parent = obj
+    return c
+end
 
-    local MainStroke = Instance.new("UIStroke")
-    MainStroke.Color = Config.Colors.Border
-    MainStroke.Thickness = 1
-    MainStroke.Transparency = 1
-    MainStroke.Parent = Main
+Utils.CreateStroke = function(parent, color, thickness, transparency)
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = color or Configuration.Colors.Border
+    stroke.Thickness = thickness or 1.5
+    stroke.Transparency = transparency or 0
+    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    stroke.Parent = parent
+    return stroke
+end
 
-    local TopBar = Instance.new("Frame")
-    TopBar.Size = UDim2.new(1, 0, 0, 30)
-    TopBar.BackgroundTransparency = 1
-    TopBar.Parent = Main
+local function SetBlur(enabled)
+    local blur = Lighting:FindFirstChild("JunkieBlurEnhanced")
+    if enabled then
+        if not blur then
+            blur = Instance.new("BlurEffect")
+            blur.Name = "JunkieBlurEnhanced"
+            blur.Size = 0
+            blur.Parent = Lighting
+        end
+        Utils.Tween(blur, {Size = 20}, Configuration.Animations.Intro, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
+    elseif blur then
+        Utils.Tween(blur, {Size = 0}, Configuration.Animations.Outro, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+        task.delay(Configuration.Animations.Outro + 0.1, function() if blur then blur:Destroy() end end)
+    end
+end
 
-    local Title = Instance.new("TextLabel")
-    Title.Text = Config.Text.Title
-    Title.TextColor3 = Config.Colors.TextMain
-    Title.Font = Enum.Font.GothamBold
-    Title.TextSize = 14
-    Title.Size = UDim2.new(1, -40, 1, 0)
-    Title.Position = UDim2.fromOffset(15, 0)
-    Title.TextXAlignment = Enum.TextXAlignment.Left
-    Title.BackgroundTransparency = 1
-    Title.TextTransparency = 1
-    Title.Parent = TopBar
+-- SISTEMA DE NOTIFICAÇÃO
+local ToastSystem = {ActiveToasts = {}, MaxToasts = 3, ToastSpacing = 14}
 
-    local CloseBtn = Instance.new("TextButton")
-    CloseBtn.Text = "X"
-    CloseBtn.TextColor3 = Config.Colors.TextDim
-    CloseBtn.Font = Enum.Font.GothamBold
-    CloseBtn.TextSize = 14
-    CloseBtn.Size = UDim2.fromOffset(30, 30)
-    CloseBtn.Position = UDim2.new(1, -30, 0, 0)
-    CloseBtn.BackgroundTransparency = 1
-    CloseBtn.TextTransparency = 1
-    CloseBtn.Parent = TopBar
+ToastSystem.Create = function(parent, message, toastType, duration)
+    if #ToastSystem.ActiveToasts >= ToastSystem.MaxToasts then
+        local oldest = table.remove(ToastSystem.ActiveToasts, 1)
+        if oldest and oldest.Parent then oldest:Destroy() end
+    end
+    
+    local isError = toastType == "error"
+    local iconId = isError and Icons.ToastError or Icons.ToastSuccess
+    local accentColor = isError and Configuration.Colors.StatusError or Configuration.Colors.StatusSuccess
 
-    local Content = Instance.new("Frame")
-    Content.Size = UDim2.new(1, -40, 1, -40)
-    Content.Position = UDim2.fromOffset(20, 40)
-    Content.BackgroundTransparency = 1
-    Content.Parent = Main
+    local toast = Instance.new("Frame")
+    toast.Name = tick()
+    toast.Size = UDim2.new(0, 0, 0, 55)
+    toast.Position = UDim2.new(0.5, 0, 0, 60)
+    toast.AnchorPoint = Vector2.new(0.5, 0)
+    toast.BackgroundColor3 = Configuration.Colors.Surface
+    toast.ZIndex = 300
+    toast.ClipsDescendants = true
+    toast.Parent = parent
+    Utils.Round(toast, 10)
+    Utils.CreateStroke(toast, Configuration.Colors.Border, 1, 0)
+    
+    local iconContainer = Instance.new("Frame")
+    iconContainer.Size = UDim2.new(0, 55, 1, 0)
+    iconContainer.BackgroundColor3 = Color3.new(0,0,0)
+    iconContainer.BackgroundTransparency = 0.8
+    iconContainer.Parent = toast
+    
+    local iconImg = Instance.new("ImageLabel")
+    iconImg.Size = UDim2.fromOffset(24, 24)
+    iconImg.AnchorPoint = Vector2.new(0.5, 0.5)
+    iconImg.Position = UDim2.fromScale(0.5, 0.5)
+    iconImg.BackgroundTransparency = 1
+    iconImg.Image = iconId
+    iconImg.ImageColor3 = accentColor
+    iconImg.Parent = iconContainer
 
-    local InputBg = Instance.new("Frame")
-    InputBg.Size = UDim2.new(1, 0, 0, 40)
-    InputBg.BackgroundColor3 = Config.Colors.InputBg
-    InputBg.BackgroundTransparency = 1
-    InputBg.Parent = Content
+    local text = Instance.new("TextLabel")
+    text.Size = UDim2.new(1, -70, 1, 0)
+    text.Position = UDim2.new(0, 65, 0, 0)
+    text.BackgroundTransparency = 1
+    text.Text = tostring(message)
+    text.TextColor3 = Configuration.Colors.TextMain
+    text.TextSize = 13
+    text.Font = Enum.Font.GothamMedium
+    text.TextXAlignment = Enum.TextXAlignment.Left
+    text.TextYAlignment = Enum.TextYAlignment.Center
+    text.TextWrapped = true
+    text.ZIndex = 302
+    text.Parent = toast
 
-    local InputCorner = Instance.new("UICorner")
-    InputCorner.CornerRadius = UDim.new(0, 6)
-    InputCorner.Parent = InputBg
-
-    local InputStroke = Instance.new("UIStroke")
-    InputStroke.Color = Config.Colors.Border
-    InputStroke.Thickness = 1
-    InputStroke.Transparency = 1
-    InputStroke.Parent = InputBg
-
-    local InputBox = Instance.new("TextBox")
-    InputBox.Size = UDim2.new(1, -20, 1, 0)
-    InputBox.Position = UDim2.fromOffset(10, 0)
-    InputBox.BackgroundTransparency = 1
-    InputBox.Text = ""
-    InputBox.PlaceholderText = Config.Text.InputPlaceholder
-    InputBox.PlaceholderColor3 = Config.Colors.TextDim
-    InputBox.TextColor3 = Config.Colors.TextMain
-    InputBox.Font = Enum.Font.Gotham
-    InputBox.TextSize = 13
-    InputBox.TextXAlignment = Enum.TextXAlignment.Left
-    InputBox.TextTransparency = 1
-    InputBox.ClearTextOnFocus = false
-    InputBox.Parent = InputBg
-
-    local StatusText = Instance.new("TextLabel")
-    StatusText.Text = Config.Text.StatusIdle
-    StatusText.TextColor3 = Config.Colors.TextDim
-    StatusText.Font = Enum.Font.Gotham
-    StatusText.TextSize = 11
-    StatusText.Size = UDim2.new(1, 0, 0, 20)
-    StatusText.Position = UDim2.new(0, 0, 0, 45)
-    StatusText.TextXAlignment = Enum.TextXAlignment.Left
-    StatusText.BackgroundTransparency = 1
-    StatusText.TextTransparency = 1
-    StatusText.Parent = Content
-
-    local VerifyBtn = Instance.new("TextButton")
-    VerifyBtn.Text = Config.Text.ButtonVerify
-    VerifyBtn.TextColor3 = Config.Colors.Background
-    VerifyBtn.Font = Enum.Font.GothamBold
-    VerifyBtn.TextSize = 13
-    VerifyBtn.Size = UDim2.new(1, 0, 0, 40)
-    VerifyBtn.Position = UDim2.new(0, 0, 1, -65)
-    VerifyBtn.BackgroundColor3 = Config.Colors.Accent
-    VerifyBtn.BackgroundTransparency = 1
-    VerifyBtn.TextTransparency = 1
-    VerifyBtn.AutoButtonColor = false
-    VerifyBtn.Parent = Content
-
-    local VerifyCorner = Instance.new("UICorner")
-    VerifyCorner.CornerRadius = UDim.new(0, 6)
-    VerifyCorner.Parent = VerifyBtn
-
-    local GetKeyBtn = Instance.new("TextButton")
-    GetKeyBtn.Text = Config.Text.ButtonLink
-    GetKeyBtn.TextColor3 = Config.Colors.TextDim
-    GetKeyBtn.Font = Enum.Font.GothamBold
-    GetKeyBtn.TextSize = 11
-    GetKeyBtn.Size = UDim2.new(1, 0, 0, 20)
-    GetKeyBtn.Position = UDim2.new(0, 0, 1, -20)
-    GetKeyBtn.BackgroundTransparency = 1
-    GetKeyBtn.TextTransparency = 1
-    GetKeyBtn.Parent = Content
-
-    local NotifyFrame = Instance.new("Frame")
-    NotifyFrame.Size = UDim2.new(1, 0, 0, 0)
-    NotifyFrame.Position = UDim2.new(0, 0, 1, 0)
-    NotifyFrame.BackgroundColor3 = Config.Colors.Accent
-    NotifyFrame.BorderSizePixel = 0
-    NotifyFrame.Parent = Main
-
-    local NotifyLabel = Instance.new("TextLabel")
-    NotifyLabel.Size = UDim2.fromScale(1, 1)
-    NotifyLabel.BackgroundTransparency = 1
-    NotifyLabel.TextColor3 = Config.Colors.Background
-    NotifyLabel.Font = Enum.Font.GothamBold
-    NotifyLabel.TextSize = 12
-    NotifyLabel.Text = ""
-    NotifyLabel.Parent = NotifyFrame
-
-    local function AnimateIn()
-        TweenService:Create(Blur, TweenInfo.new(1), {Size = 20}):Play()
-        TweenService:Create(Main, TweenInfo.new(0.6, Enum.EasingStyle.Back), {BackgroundTransparency = 0}):Play()
-        TweenService:Create(MainStroke, TweenInfo.new(0.6), {Transparency = 0}):Play()
-        task.wait(0.2)
-        for _, v in pairs(Main:GetDescendants()) do
-            if v:IsA("TextLabel") or v:IsA("TextButton") or v:IsA("TextBox") then
-                TweenService:Create(v, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
-            elseif v == InputBg or v == VerifyBtn then
-                TweenService:Create(v, TweenInfo.new(0.5), {BackgroundTransparency = 0}):Play()
-            elseif v:IsA("UIStroke") then
-                TweenService:Create(v, TweenInfo.new(0.5), {Transparency = 0}):Play()
+    table.insert(ToastSystem.ActiveToasts, toast)
+    ToastSystem.RepositionToasts()
+    
+    local width = isMobile() and 300 or 340
+    Utils.Tween(toast, {Size = UDim2.new(0, width, 0, 55)}, Configuration.Animations.Medium, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+    
+    task.delay(duration or 3.5, function()
+        if toast.Parent then
+            Utils.Tween(toast, {Position = UDim2.new(0.5, 0, 0, -80), BackgroundTransparency = 1}, Configuration.Animations.Medium)
+            if text then Utils.Tween(text, {TextTransparency = 1}, Configuration.Animations.Medium) end
+            if iconImg then Utils.Tween(iconImg, {ImageTransparency = 1}, Configuration.Animations.Medium) end
+            if toast:FindFirstChild("UIStroke") then Utils.Tween(toast.UIStroke, {Transparency = 1}, Configuration.Animations.Medium) end
+            
+            for i, t in ipairs(ToastSystem.ActiveToasts) do
+                if t == toast then table.remove(ToastSystem.ActiveToasts, i) break end
             end
+            task.wait(Configuration.Animations.Medium)
+            toast:Destroy()
+            ToastSystem.RepositionToasts()
         end
+    end)
+end
+
+ToastSystem.RepositionToasts = function()
+    for i, toast in ipairs(ToastSystem.ActiveToasts) do
+        local targetY = 60 + ((i - 1) * (60 + ToastSystem.ToastSpacing))
+        Utils.Tween(toast, {Position = UDim2.new(0.5, 0, 0, targetY)}, Configuration.Animations.Medium)
+    end
+end
+
+local function Build()
+    local parent = game:GetService("CoreGui")
+    local old = parent:FindFirstChild(Configuration.ScreenGuiName)
+    if old then old:Destroy() end
+    
+    local screen = Instance.new("ScreenGui")
+    screen.Name = Configuration.ScreenGuiName
+    screen.ResetOnSpawn = false
+    screen.IgnoreGuiInset = true
+    screen.Parent = parent
+    
+    local background = Instance.new("Frame")
+    background.Size = UDim2.fromScale(1, 1)
+    background.BackgroundColor3 = Configuration.Colors.Bg
+    background.BackgroundTransparency = 0.3
+    background.Parent = screen
+    
+    local main = Instance.new("Frame")
+    main.Size = Configuration.Window.Size
+    main.Position = UDim2.new(0.5, 0, 0.5, 0) 
+    main.AnchorPoint = Vector2.new(0.5, 0.5)
+    main.BackgroundColor3 = Configuration.Colors.Bg
+    main.BackgroundTransparency = 1 
+    main.ClipsDescendants = true
+    main.Parent = screen
+    Utils.Round(main, 20)
+    
+    local mainStroke = Utils.CreateStroke(main, Configuration.Colors.Border, 1.5, 1)
+
+    -- Função de fechar
+    local function CloseMenu()
+        SetBlur(false)
+        Utils.Tween(main, {Position = UDim2.new(0.5, 0, 0.5, 150), BackgroundTransparency = 1}, Configuration.Animations.Outro, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+        if mainStroke then Utils.Tween(mainStroke, {Transparency = 1}, Configuration.Animations.Outro) end
+        
+        for _, v in pairs(main:GetDescendants()) do
+             if v:IsA("GuiObject") then
+                 Utils.Tween(v, {BackgroundTransparency = 1}, 0.3)
+                 if v:IsA("TextLabel") or v:IsA("TextButton") or v:IsA("TextBox") then Utils.Tween(v, {TextTransparency = 1}, 0.3) end
+                 if v:IsA("ImageLabel") then Utils.Tween(v, {ImageTransparency = 1}, 0.3) end
+                 if v:IsA("UIStroke") then Utils.Tween(v, {Transparency = 1}, 0.3) end
+             end
+        end
+        task.delay(Configuration.Animations.Outro + 0.1, function() if screen and screen.Parent then screen:Destroy() end end)
     end
 
-    local function CloseApp()
-        TweenService:Create(Blur, TweenInfo.new(0.5), {Size = 0}):Play()
-        TweenService:Create(Main, TweenInfo.new(0.4), {Position = UDim2.fromScale(0.5, 0.6), BackgroundTransparency = 1}):Play()
-        for _, v in pairs(Main:GetDescendants()) do
-            if v:IsA("GuiObject") then
-                TweenService:Create(v, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
-                if v:IsA("TextLabel") or v:IsA("TextButton") or v:IsA("TextBox") then
-                    TweenService:Create(v, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
-                end
-                if v:IsA("UIStroke") then
-                    TweenService:Create(v, TweenInfo.new(0.3), {Transparency = 1}):Play()
-                end
-            end
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Name = "CloseBtn"
+    closeBtn.Size = UDim2.fromOffset(40, 40)
+    closeBtn.Position = UDim2.new(1, -40, 0, 0)
+    closeBtn.BackgroundTransparency = 1
+    closeBtn.Text = "×" 
+    closeBtn.TextColor3 = Configuration.Colors.TextSec
+    closeBtn.TextSize = 24
+    closeBtn.Font = Enum.Font.GothamMedium
+    closeBtn.TextTransparency = 1
+    closeBtn.Parent = main
+    closeBtn.MouseEnter:Connect(function() Utils.Tween(closeBtn, {TextColor3 = Configuration.Colors.TextMain}, 0.2) end)
+    closeBtn.MouseLeave:Connect(function() Utils.Tween(closeBtn, {TextColor3 = Configuration.Colors.TextSec}, 0.2) end)
+    closeBtn.MouseButton1Click:Connect(function()
+        PlayAudio(ConfigData.Sounds.Click)
+        CloseMenu()
+    end)
+
+    local content = Instance.new("Frame")
+    content.Name = "Content"
+    content.Size = UDim2.new(1, 0, 1, 0)
+    content.BackgroundTransparency = 1
+    content.Parent = main
+    
+    -- Logo Container
+    local logoContainer = Instance.new("Frame")
+    logoContainer.Size = UDim2.fromOffset(100, 100)
+    logoContainer.Position = UDim2.new(0.5, 0, 0.14, 0)
+    logoContainer.AnchorPoint = Vector2.new(0.5, 0.5)
+    logoContainer.BackgroundColor3 = Configuration.Colors.Surface
+    logoContainer.BackgroundTransparency = 1
+    logoContainer.Parent = content
+    Utils.Round(logoContainer, 50)
+    Utils.CreateStroke(logoContainer, Configuration.Colors.Border, 1.5, 1) 
+    
+    local sIcon = Instance.new("ImageLabel")
+    sIcon.Size = UDim2.fromScale(0.55, 0.55)
+    sIcon.Position = UDim2.fromScale(0.5, 0.5)
+    sIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+    sIcon.Image = Icons.Logo
+    sIcon.ScaleType = Enum.ScaleType.Fit
+    sIcon.BackgroundTransparency = 1
+    sIcon.ImageTransparency = 1
+    sIcon.Parent = logoContainer
+    
+    -- Textos
+    local greetingLabel = Instance.new("TextLabel")
+    greetingLabel.Size = UDim2.new(1, 0, 0, 25)
+    greetingLabel.Position = UDim2.new(0, 0, 0.30, 0)
+    greetingLabel.Text = GetDynamicGreeting()
+    greetingLabel.TextColor3 = Configuration.Colors.TextMain
+    greetingLabel.TextSize = 16
+    greetingLabel.Font = Enum.Font.GothamBold
+    greetingLabel.BackgroundTransparency = 1
+    greetingLabel.TextTransparency = 1
+    greetingLabel.Parent = content
+
+    local subTitle = Instance.new("TextLabel")
+    subTitle.Size = UDim2.new(1, 0, 0, 20)
+    subTitle.Position = UDim2.new(0, 0, 0.35, 0)
+    subTitle.Text = ConfigData.Texts.Subtitle
+    subTitle.TextColor3 = Configuration.Colors.TextSec
+    subTitle.TextSize = 12
+    subTitle.Font = Enum.Font.Gotham
+    subTitle.BackgroundTransparency = 1
+    subTitle.TextTransparency = 1
+    subTitle.Parent = content
+    
+    -- Status Card
+    local statusCard = Instance.new("Frame")
+    statusCard.Size = UDim2.new(0.82, 0, 0, 40)
+    statusCard.Position = UDim2.new(0.5, 0, 0.47, 0)
+    statusCard.AnchorPoint = Vector2.new(0.5, 0.5)
+    statusCard.BackgroundColor3 = Configuration.Colors.Surface
+    statusCard.BackgroundTransparency = 1
+    statusCard.Parent = content
+    Utils.Round(statusCard, 10)
+    Utils.CreateStroke(statusCard, Configuration.Colors.Border, 1, 1)
+    
+    local sIndicator = Instance.new("Frame")
+    sIndicator.Size = UDim2.new(0, 8, 0, 8)
+    sIndicator.Position = UDim2.new(0, 15, 0.5, 0)
+    sIndicator.AnchorPoint = Vector2.new(0, 0.5)
+    sIndicator.BackgroundColor3 = Configuration.Colors.StatusIdle
+    sIndicator.BackgroundTransparency = 1
+    sIndicator.Parent = statusCard
+    Utils.Round(sIndicator, 4)
+
+    local sValue = Instance.new("TextLabel")
+    sValue.Size = UDim2.new(1, -40, 1, 0)
+    sValue.Position = UDim2.fromOffset(35, 0)
+    sValue.Text = ConfigData.Texts.StatusWaiting
+    sValue.TextColor3 = Configuration.Colors.TextSec
+    sValue.TextSize = 12
+    sValue.Font = Enum.Font.GothamMedium
+    sValue.TextXAlignment = Enum.TextXAlignment.Left
+    sValue.BackgroundTransparency = 1
+    sValue.TextTransparency = 1
+    sValue.Parent = statusCard
+    
+    -- Input Field
+    local inputFrame = Instance.new("Frame")
+    inputFrame.Size = UDim2.new(0.82, 0, 0, 55)
+    inputFrame.Position = UDim2.new(0.5, 0, 0.62, 0)
+    inputFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    inputFrame.BackgroundColor3 = Configuration.Colors.Surface
+    inputFrame.BackgroundTransparency = 1
+    inputFrame.Parent = content
+    Utils.Round(inputFrame, 10)
+    local iStroke = Utils.CreateStroke(inputFrame, Configuration.Colors.Border, 1.5, 1)
+    
+    local inputIcon = Instance.new("ImageLabel")
+    inputIcon.Size = UDim2.fromOffset(20, 20)
+    inputIcon.Position = UDim2.new(0, 15, 0.5, 0)
+    inputIcon.AnchorPoint = Vector2.new(0, 0.5)
+    inputIcon.Image = Icons.KeyInput
+    inputIcon.ImageColor3 = Configuration.Colors.TextSec
+    inputIcon.BackgroundTransparency = 1
+    inputIcon.ImageTransparency = 1
+    inputIcon.Parent = inputFrame
+
+    local box = Instance.new("TextBox")
+    box.Size = UDim2.new(1, -50, 1, 0)
+    box.Position = UDim2.fromOffset(45, 0)
+    box.Text = ""
+    box.PlaceholderText = ConfigData.Texts.Placeholder
+    box.PlaceholderColor3 = Configuration.Colors.TextMuted
+    box.TextColor3 = Configuration.Colors.TextMain
+    box.TextSize = 14
+    box.Font = Enum.Font.GothamMedium
+    box.BackgroundTransparency = 1
+    box.TextXAlignment = Enum.TextXAlignment.Left
+    box.ClearTextOnFocus = false
+    box.TextTransparency = 1
+    box.Parent = inputFrame
+    
+    -- Efeito de Foco
+    box.Focused:Connect(function() 
+        Utils.Tween(iStroke, {Color = Configuration.Colors.BorderHighlight}, 0.3)
+        Utils.Tween(inputFrame, {BackgroundColor3 = Configuration.Colors.SurfaceHighlight}, 0.3)
+        Utils.Tween(inputIcon, {ImageColor3 = Configuration.Colors.TextMain}, 0.3)
+    end)
+    box.FocusLost:Connect(function() 
+        Utils.Tween(iStroke, {Color = Configuration.Colors.Border}, 0.3)
+        Utils.Tween(inputFrame, {BackgroundColor3 = Configuration.Colors.Surface}, 0.3)
+        Utils.Tween(inputIcon, {ImageColor3 = Configuration.Colors.TextSec}, 0.3)
+    end)
+    
+    -- Botão Verificar
+    local redeem = Instance.new("TextButton")
+    redeem.Size = UDim2.new(0.82, 0, 0, 55)
+    redeem.Position = UDim2.new(0.5, 0, 0.78, 0)
+    redeem.AnchorPoint = Vector2.new(0.5, 0.5)
+    redeem.BackgroundColor3 = Configuration.Colors.ButtonVerify
+    redeem.BackgroundTransparency = 1
+    redeem.Text = "" 
+    redeem.AutoButtonColor = false
+    redeem.Parent = content
+    Utils.Round(redeem, 10)
+    
+    local redeemLayout = Instance.new("UIListLayout")
+    redeemLayout.FillDirection = Enum.FillDirection.Horizontal
+    redeemLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    redeemLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+    redeemLayout.Padding = UDim.new(0, 8)
+    redeemLayout.Parent = redeem
+    
+    local redeemIcon = Instance.new("ImageLabel")
+    redeemIcon.Size = UDim2.fromOffset(20, 20)
+    redeemIcon.Image = Icons.VerifyCheck
+    redeemIcon.ImageColor3 = Configuration.Colors.TextMain
+    redeemIcon.BackgroundTransparency = 1
+    redeemIcon.ImageTransparency = 1
+    redeemIcon.Parent = redeem
+    
+    local redeemText = Instance.new("TextLabel")
+    redeemText.Size = UDim2.new(0, 0, 0, 20)
+    redeemText.AutomaticSize = Enum.AutomaticSize.X
+    redeemText.Text = ConfigData.Texts.BtnVerify
+    redeemText.TextColor3 = Configuration.Colors.TextMain
+    redeemText.Font = Enum.Font.GothamBold
+    redeemText.TextSize = 14
+    redeemText.BackgroundTransparency = 1
+    redeemText.TextTransparency = 1
+    redeemText.Parent = redeem
+
+    -- Botão Get Key
+    local getKey = Instance.new("TextButton")
+    getKey.Name = "GetKeyBtn"
+    getKey.Size = UDim2.new(0.82, 0, 0, 30)
+    getKey.Position = UDim2.new(0.5, 0, 0.90, 0)
+    getKey.AnchorPoint = Vector2.new(0.5, 0.5)
+    getKey.BackgroundTransparency = 1
+    getKey.Text = ""
+    getKey.Parent = content
+    
+    local getKeyLayout = Instance.new("UIListLayout")
+    getKeyLayout.FillDirection = Enum.FillDirection.Horizontal
+    getKeyLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    getKeyLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+    getKeyLayout.Padding = UDim.new(0, 6)
+    getKeyLayout.Parent = getKey
+
+    local getKeyIcon = Instance.new("ImageLabel")
+    getKeyIcon.Size = UDim2.fromOffset(14, 14)
+    getKeyIcon.Image = Icons.LinkExternal
+    getKeyIcon.ImageColor3 = Configuration.Colors.TextSec
+    getKeyIcon.BackgroundTransparency = 1
+    getKeyIcon.ImageTransparency = 1
+    getKeyIcon.Parent = getKey
+
+    local getKeyText = Instance.new("TextLabel")
+    getKeyText.Size = UDim2.new(0, 0, 0, 20)
+    getKeyText.AutomaticSize = Enum.AutomaticSize.X
+    getKeyText.Text = ConfigData.Texts.BtnGetKey
+    getKeyText.TextColor3 = Configuration.Colors.TextSec
+    getKeyText.Font = Enum.Font.GothamMedium
+    getKeyText.TextSize = 12
+    getKeyText.BackgroundTransparency = 1
+    getKeyText.TextTransparency = 1
+    getKeyText.Parent = getKey
+    
+    -- Interações Hover
+    redeem.MouseEnter:Connect(function()
+        PlayAudio(ConfigData.Sounds.Hover)
+        Utils.Tween(redeem, {BackgroundColor3 = Configuration.Colors.ButtonVerifyHover}, 0.2)
+    end)
+    redeem.MouseLeave:Connect(function()
+        Utils.Tween(redeem, {BackgroundColor3 = Configuration.Colors.ButtonVerify}, 0.2)
+    end)
+    
+    getKey.MouseEnter:Connect(function()
+        Utils.Tween(getKeyText, {TextColor3 = Configuration.Colors.TextMain}, 0.2)
+        Utils.Tween(getKeyIcon, {ImageColor3 = Configuration.Colors.TextMain}, 0.2)
+    end)
+    getKey.MouseLeave:Connect(function()
+        Utils.Tween(getKeyText, {TextColor3 = Configuration.Colors.TextSec}, 0.2)
+        Utils.Tween(getKeyIcon, {ImageColor3 = Configuration.Colors.TextSec}, 0.2)
+    end)
+    
+    local function SetStatus(state)
+        local color = Configuration.Colors.StatusIdle
+        local text = ConfigData.Texts.StatusWaiting
+        if state == "verifying" then
+            color = Configuration.Colors.StatusVerifying
+            text = ConfigData.Texts.StatusVerifying
+        elseif state == "success" then
+            color = Configuration.Colors.StatusSuccess
+            text = ConfigData.Texts.StatusSuccess
+        elseif state == "error" then
+            color = Configuration.Colors.StatusError
+            text = ConfigData.Texts.StatusError
         end
-        task.wait(0.5)
-        Blur:Destroy()
-        Screen:Destroy()
+        Utils.Tween(sValue, {TextColor3 = color}, 0.35)
+        Utils.Tween(sIndicator, {BackgroundColor3 = color}, 0.35)
+        sValue.Text = text
     end
-
-    local function Notify(msg, isError)
-        NotifyLabel.Text = msg
-        NotifyFrame.BackgroundColor3 = isError and Config.Colors.Error or Config.Colors.Accent
-        TweenService:Create(NotifyFrame, TweenInfo.new(0.3), {Size = UDim2.new(1, 0, 0, 25), Position = UDim2.new(0, 0, 1, -25)}):Play()
-        task.delay(2, function()
-            TweenService:Create(NotifyFrame, TweenInfo.new(0.3), {Size = UDim2.new(1, 0, 0, 0), Position = UDim2.new(0, 0, 1, 0)}):Play()
-        end)
-    end
-
-    local function Shake()
-        local x = Main.Position.X.Scale
-        local y = Main.Position.Y.Scale
-        local offset = 5
-        for i = 1, 5 do
-            Main.Position = UDim2.new(x, math.random(-offset, offset), y, math.random(-offset, offset))
-            task.wait(0.03)
-        end
-        Main.Position = UDim2.fromScale(x, y)
-    end
-
-    local dragging, dragInput, dragStart, startPos
-    Main.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = Main.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then dragging = false end
-            end)
-        end
-    end)
-    Main.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
-        end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            local delta = input.Position - dragStart
-            Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
-
-    InputBox.Focused:Connect(function()
-        TweenService:Create(InputStroke, TweenInfo.new(0.3), {Color = Config.Colors.Accent}):Play()
-    end)
-    InputBox.FocusLost:Connect(function()
-        TweenService:Create(InputStroke, TweenInfo.new(0.3), {Color = Config.Colors.Border}):Play()
-    end)
-
-    CloseBtn.MouseButton1Click:Connect(function()
-        playSound(Config.Assets.SoundClick)
-        CloseApp()
-    end)
-
-    GetKeyBtn.MouseButton1Click:Connect(function()
-        playSound(Config.Assets.SoundClick)
-        setclipboard(Junkie.get_key_link())
-        Notify(Config.Text.NotifyCopied, false)
-    end)
-
-    VerifyBtn.MouseButton1Click:Connect(function()
-        local k = InputBox.Text:gsub("%s+", "")
-        if k == "" then
-            playSound(Config.Assets.SoundError)
-            Shake()
-            Notify(Config.Text.NotifyEmpty, true)
+    
+    redeem.MouseButton1Click:Connect(function()
+        PlayAudio(ConfigData.Sounds.Click)
+        local key = box.Text:gsub("%s+", "")
+        SetStatus("verifying")
+        redeemText.Text = "Verificando..."
+        redeem.Active = false
+        
+        local result = Junkie.check_key(key)
+        
+        redeem.Active = true
+        redeemText.Text = ConfigData.Texts.BtnVerify
+        
+        if not result then
+            SetStatus("error")
+            PlayAudio(ConfigData.Sounds.Error)
+            ToastSystem.Create(screen, ConfigData.Texts.ToastError, "error")
             return
         end
-
-        playSound(Config.Assets.SoundClick)
-        VerifyBtn.Text = "..."
-        StatusText.Text = Config.Text.StatusVerifying
-        StatusText.TextColor3 = Config.Colors.Accent
-
-        local res = Junkie.check_key(k)
-
-        if res and res.valid then
-            playSound(Config.Assets.SoundSuccess)
-            saveVerifiedKey(k)
-            getgenv().SCRIPT_KEY = k
-            StatusText.Text = Config.Text.StatusSuccess
-            Notify(Config.Text.StatusSuccess, false)
-            task.wait(1)
-            CloseApp()
+        
+        if result.valid then
+            saveVerifiedKey(key)
+            getgenv().SCRIPT_KEY = key
+            SetStatus("success")
+            PlayAudio(ConfigData.Sounds.Success)
+            ToastSystem.Create(screen, ConfigData.Texts.ToastSuccess, "success")
+            task.wait(0.8)
+            CloseMenu()
         else
-            playSound(Config.Assets.SoundError)
-            Shake()
-            VerifyBtn.Text = Config.Text.ButtonVerify
-            StatusText.Text = res and res.message or Config.Text.StatusError
-            StatusText.TextColor3 = Config.Colors.Error
-            Notify(res and res.message or Config.Text.NotifyError, true)
+            SetStatus("error")
+            PlayAudio(ConfigData.Sounds.Error)
+            ToastSystem.Create(screen, result.message or ConfigData.Texts.ToastInvalid, "error")
         end
     end)
+    
+    getKey.MouseButton1Click:Connect(function()
+        PlayAudio(ConfigData.Sounds.Click)
+        setclipboard(Junkie.get_key_link())
+        ToastSystem.Create(screen, ConfigData.Texts.ToastCopied, "success")
+    end)
+    
+    SetBlur(true)
+    Utils.Tween(main, {Position = UDim2.new(0.5, 0, 0.5, 0), BackgroundTransparency = 0}, Configuration.Animations.Intro, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
+    Utils.Tween(mainStroke, {Transparency = 0}, Configuration.Animations.Intro)
 
-    AnimateIn()
+    task.wait(0.1)
+
+    -- Animação de entrada dos elementos
+    for _, v in pairs(main:GetDescendants()) do
+        if v:IsA("GuiObject") and v.Name ~= "MainContainer" then
+            if v.Name == "CloseBtn" then
+                 Utils.Tween(v, {TextTransparency = 0}, 0.5)
+            elseif v:IsA("Frame") then
+                local shouldBeVisible = (v == logoContainer or v == statusCard or v == inputFrame or v == sIndicator or v == redeem)
+                Utils.Tween(v, {BackgroundTransparency = shouldBeVisible and 0 or 1}, 0.5)
+            elseif v:IsA("TextLabel") or v:IsA("TextBox") then
+                Utils.Tween(v, {TextTransparency = 0}, 0.5)
+            elseif v:IsA("ImageLabel") then
+                Utils.Tween(v, {ImageTransparency = 0}, 0.5)
+            elseif v:IsA("UIStroke") then
+                 Utils.Tween(v, {Transparency = 0}, 0.5)
+            end
+        end
+    end
+    
+    return screen
 end
 
-local saved = loadVerifiedKey()
-if saved then
-    local res = Junkie.check_key(saved)
-    if res and res.valid then
-        getgenv().SCRIPT_KEY = saved
+local savedKey = loadVerifiedKey()
+local keyToCheck = savedKey
+if not keyToCheck then
+    keyToCheck = getgenv().SCRIPT_KEY
+end
+
+local result = Junkie.check_key(keyToCheck)
+if result and result.valid then
+    if result.message == "KEYLESS" then
+        getgenv().SCRIPT_KEY = "KEYLESS"
+    elseif result.message == "KEY_VALID" then
+        if not savedKey and keyToCheck then
+            saveVerifiedKey(keyToCheck)
+        end
+        getgenv().SCRIPT_KEY = keyToCheck
     else
-        CreateUI()
+        Build()
     end
 else
-    CreateUI()
+    Build()
 end
 
 while not getgenv().SCRIPT_KEY do
