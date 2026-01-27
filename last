@@ -95,7 +95,7 @@ local function notificar(mensagem, tempo, icone)
     })
 end
 
-local BaseURL = "https://raw.githubusercontent.com/michigunxyz/michigun/main/"
+local BaseURL = "https://raw.githubusercontent.com/brasiIidade/x/main/"
 local FilePaths = {}
 
 local function LoadPathMap()
