@@ -3,7 +3,7 @@ Junkie.service = "key"
 Junkie.identifier = "11133"
 Junkie.provider = "key"
 
--- [[ CONFIGURAÇÃO DE TEXTOS E SONS ]] --
+-- [[ CONFIGURAÇÃO ]] --
 local ConfigData = {
     Texts = {
         Title = "Key system",
@@ -11,14 +11,14 @@ local ConfigData = {
         GreetingMorning = "Bom dia, %s",
         GreetingAfternoon = "Boa tarde, %s",
         GreetingEvening = "Boa noite, %s",
-        StatusWaiting = "Aguardando validação",
+        StatusWaiting = "Aguardando",
         StatusVerifying = "Verificando chave...",
         StatusSuccess = "Sucesso!",
         StatusError = "Chave inválida",
         Placeholder = "Insira sua chave",
         BtnVerify = "Verificar",
         BtnGetKey = "Obter chave",
-        ToastError = "Falha na conexão com o servidor.",
+        ToastError = "Falha na conexão.",
         ToastSuccess = "Autenticado com sucesso!",
         ToastCopied = "Link copiado.",
         ToastInvalid = "A chave inserida não é válida."
@@ -31,38 +31,52 @@ local ConfigData = {
     }
 }
 
--- [[ ÍCONES FUNCIONAIS E LEVES ]] --
--- Substituídos por IDs de ativos reais (Image IDs) para carregamento instantâneo
+-- [[ ÍCONES ]] --
 local Icons = {
-    Logo = "rbxassetid://13409416568", -- Escudo moderno
-    KeyInput = "rbxassetid://13464528148", -- Chave minimalista
-    VerifyCheck = "rbxassetid://13464534731", -- Check grosso
-    LinkExternal = "rbxassetid://13464548815", -- Link
-    ToastSuccess = "rbxassetid://13464534731", -- Check (reutilizado para garantir cache)
-    ToastError = "rbxassetid://13464551109" -- X Círculo
+    -- Usando rbxthumb para garantir que carregue mesmo se for ID de Decal
+    Logo = "rbxthumb://type=Asset&id=88026679106109&w=420&h=420",
+    
+    -- Ícones Lucide (Assets nativos otimizados)
+    KeyInput = "rbxassetid://10723415903",     -- Key
+    VerifyCheck = "rbxassetid://10709790644",    -- Check
+    LinkExternal = "rbxassetid://10734950309",   -- ExternalLink
+    ToastSuccess = "rbxassetid://10709790537",   -- CheckCircle (Carregamento rápido)
+    ToastError = "rbxassetid://10747384394",     -- XCircle (Carregamento rápido)
+    Close = "rbxassetid://10747384394"
 }
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
-local ContentProvider = game:GetService("ContentProvider") -- Serviço de Preload
+local ContentProvider = game:GetService("ContentProvider") -- Essencial para carregar imagens
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local SoundService = game:GetService("SoundService")
 
--- Função para forçar o carregamento dos ícones antes da UI aparecer
-local function PreloadAssets()
-    local assets = {}
+-- [[ FUNÇÃO DE PRELOAD ROBUSTA ]] --
+-- Isso trava o script brevemente para garantir que as imagens baixem antes de mostrar a UI
+local function LoadAssets()
+    local assetsToLoad = {}
+    
+    -- Cria instâncias temporárias para o ContentProvider ler
     for _, id in pairs(Icons) do
-        table.insert(assets, id)
+        local img = Instance.new("ImageLabel")
+        img.Image = id
+        table.insert(assetsToLoad, img)
     end
-    -- Tenta carregar em uma thread separada para não travar o script, mas inicia o fetch
-    task.spawn(function()
-        pcall(function()
-            ContentProvider:PreloadAsync(assets)
-        end)
+    
+    -- Força o download
+    pcall(function()
+        ContentProvider:PreloadAsync(assetsToLoad)
     end)
+    
+    -- Limpeza
+    for _, instance in pairs(assetsToLoad) do
+        instance:Destroy()
+    end
 end
-PreloadAssets()
+
+-- Inicia o carregamento imediatamente
+task.spawn(LoadAssets)
 
 local function PlayAudio(id)
     local sound = Instance.new("Sound")
@@ -191,6 +205,7 @@ ToastSystem.Create = function(parent, message, toastType, duration)
     end
     
     local isError = toastType == "error"
+    -- Usamos os IDs pré-carregados
     local iconId = isError and Icons.ToastError or Icons.ToastSuccess
     local accentColor = isError and Configuration.Colors.StatusError or Configuration.Colors.StatusSuccess
 
@@ -322,8 +337,13 @@ local function Build()
     closeBtn.Font = Enum.Font.GothamMedium
     closeBtn.TextTransparency = 1
     closeBtn.Parent = main
-    closeBtn.MouseEnter:Connect(function() Utils.Tween(closeBtn, {TextColor3 = Configuration.Colors.TextMain}, 0.2) end)
-    closeBtn.MouseLeave:Connect(function() Utils.Tween(closeBtn, {TextColor3 = Configuration.Colors.TextSec}, 0.2) end)
+    
+    closeBtn.MouseEnter:Connect(function() 
+        Utils.Tween(closeBtn, {TextColor3 = Configuration.Colors.TextMain}, 0.2)
+    end)
+    closeBtn.MouseLeave:Connect(function() 
+        Utils.Tween(closeBtn, {TextColor3 = Configuration.Colors.TextSec}, 0.2)
+    end)
     closeBtn.MouseButton1Click:Connect(function()
         PlayAudio(ConfigData.Sounds.Click)
         CloseMenu()
