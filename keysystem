@@ -1,532 +1,568 @@
--- k
-local Junkie = loadstring(game:HttpGet("https://jnkie.com/sdk/library.lua"))()
+local Config = {
+    Texts = {
+        Title = "Key system",
+        Subtitle = "michigun.xyz",
+        Welcome = "Olá, %s", 
+        StatusWaiting = "Aguardando chave",
+        StatusVerifying = "Verificando...",
+        StatusSuccess = "Sucesso!",
+        StatusError = "Chave inválida",
+        Placeholder = "Insira sua chave aqui",
+        BtnVerify = "VERIFICAR",
+        BtnGetKey = "PEGAR KEY",
+        BtnDiscord = "DISCORD",
+        BtnReset = "Resetar key",
+        NotifyCopy = "Link copiado para a área de transferência!",
+        NotifyReset = "Chave salva removida com sucesso.",
+        NotifyEmpty = "Por favor, insira uma chave."
+    },
+    
+    Links = {
+        GetKey = "https://jnkie.com/key-link", 
+        Discord = "https://discord.gg/seuserver" 
+    },
+
+    Sounds = {
+        Success = "rbxassetid://6895079853", 
+        Error = "rbxassetid://4590662766",   
+        Click = "rbxassetid://6895079853"    
+    },
+
+    Colors = {
+        Background = Color3.fromRGB(10, 10, 10),
+        Primary = Color3.fromRGB(0, 180, 100), 
+        Error = Color3.fromRGB(255, 60, 60),
+        TextMain = Color3.fromRGB(255, 255, 255),
+        TextSec = Color3.fromRGB(150, 150, 150)
+    }
+}
+
+local successLoad, Junkie = pcall(function()
+    return loadstring(game:HttpGet("https://jnkie.com/sdk/library.lua"))()
+end)
+
+if not successLoad or not Junkie then
+    game.Players.LocalPlayer:Kick("Github ou Junkie está fora do ar. Aguarde.")
+    return 
+end
+
 Junkie.service = "key"
 Junkie.identifier = "11133"
 Junkie.provider = "key"
 
-local CustomLogo = "rbxassetid://88026679106109"
-
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
-local HttpService = game:GetService("HttpService")
+local CoreGui = game:GetService("CoreGui")
+local RunService = game:GetService("RunService")
+
+local LocalPlayer = Players.LocalPlayer
 
 local Icons = {
-    Shield = "rbxassetid://105619007041452",
-    Loading = "rbxassetid://116535712789945",
-    Lock = "rbxassetid://114355063515473",
+    Logo = "rbxassetid://88026679106109",
+    Discord = "rbxassetid://10709793574", 
     Key = "rbxassetid://93569468678423",
-    Check = "rbxassetid://119783053916823",
-    CheckCircle = "rbxassetid://10709790644",
-    XCircle = "rbxassetid://10747384394",
-    Warning = "rbxassetid://130226573962640",
-    Globe = "rbxassetid://10734950309",
-    Info = "rbxassetid://94529541997278",
-    ExternalLink = "rbxassetid://71038734318580",
-    Copy = "rbxassetid://107485544510830",
-    Spinner = "rbxassetid://10709767827",
-    Database = "rbxassetid://114209748010261",
-    Sparkles = "rbxassetid://10709767827",
-    ErrorFolder = "rbxassetid://113312905787220",
-    Candy = "rbxassetid://10709767827",
-    JunkieNewIcon = "rbxassetid://75038032192167",
-    Close = "rbxassetid://10747384394"
+    Trash = "rbxassetid://10747384394"
 }
 
-local function hasFileSystemSupport()
-    local hasWritefile = pcall(function() return type(writefile) == "function" end)
-    local hasReadfile = pcall(function() return type(readfile) == "function" end)
-    local hasIsfile = pcall(function() return type(isfile) == "function" end)
-    return hasWritefile and hasReadfile and hasIsfile
+local function GetRandomName()
+    return HttpService:GenerateGUID(false)
 end
 
-local fileSystemSupported = hasFileSystemSupport()
-
-local function saveVerifiedKey(key)
-    if not fileSystemSupported then return false end
-    local ok = pcall(function()
-        writefile("michigun.key.txt", key)
-    end)
-    return ok
-end
-
-local function loadVerifiedKey()
-    if not fileSystemSupported then 
-        return nil 
+local function GetProtectionParent()
+    if gethui then
+        return gethui()
+    elseif syn and syn.protect_gui then
+        return syn.protect_gui
+    else
+        return CoreGui
     end
-    
-    local ok, content = pcall(function()
+end
+
+local function hasFileSystem()
+    return (writefile and readfile and isfile and delfile)
+end
+
+local function saveKey(key)
+    if hasFileSystem() then pcall(writefile, "michigun.key.txt", key) end
+end
+
+local function loadKey()
+    if hasFileSystem() and pcall(isfile, "michigun.key.txt") and isfile("michigun.key.txt") then
         return readfile("michigun.key.txt")
-    end)
-    
-    if not ok or not content then 
-        return nil 
     end
-    return content
+    return nil
 end
 
-local function clearSavedKey()
-    if not fileSystemSupported then return false end
-    local ok = pcall(function() delfile("michigun.key.txt") end)
-    return ok
+local function deleteKey()
+    if hasFileSystem() and pcall(isfile, "michigun.key.txt") then
+        pcall(delfile, "michigun.key.txt")
+    end
 end
-
-local function isMobile()
-    return UserInputService.TouchEnabled and not UserInputService.MouseEnabled
-end
-
-local Configuration = {
-    ScreenGuiName = "JunkieKeySystem",
-    Window = {
-        Size = isMobile() and UDim2.new(0.85, 0, 0, 420) or UDim2.new(0, 360, 0, 480)
-    }, 
-    Colors = {
-        Bg = Color3.fromRGB(0, 0, 0),
-        Surface = Color3.fromRGB(12, 12, 12),
-        Primary = Color3.fromRGB(255, 255, 255),
-        StatusIdle = Color3.fromRGB(100, 100, 100),
-        StatusSuccess = Color3.fromRGB(0, 255, 100),
-        StatusError = Color3.fromRGB(200, 200, 200),
-        StatusVerifying = Color3.fromRGB(150, 150, 150),
-        TextMain = Color3.fromRGB(255, 255, 255),
-        TextSec = Color3.fromRGB(150, 150, 150),
-        TextMuted = Color3.fromRGB(80, 80, 80),
-        Border = Color3.fromRGB(40, 40, 40),
-        ButtonVerify = Color3.fromRGB(0, 180, 100) -- Verde solicitado
-    },
-    BorderTransparency = 0,
-    Animations = {
-        Medium = 0.4,
-        Bounce = 0.6,
-        Intro = 0.8,
-        Outro = 0.5
-    },
-    Fonts = {
-        Body = 13,
-        Small = 11
-    }
-}
 
 local Utils = {}
 
-Utils.Tween = function(obj, props, time, style, dir)
-    local t = TweenService:Create(obj, TweenInfo.new(time or 0.3, style or Enum.EasingStyle.Quint, dir or Enum.EasingDirection.Out), props)
-    t:Play()
-    return t
+function Utils.Tween(obj, props, time, style, dir)
+    local info = TweenInfo.new(time or 0.3, style or Enum.EasingStyle.Quint, dir or Enum.EasingDirection.Out)
+    local tween = TweenService:Create(obj, info, props)
+    tween:Play()
+    return tween
 end
 
-Utils.Round = function(obj, radius)
+function Utils.Round(obj, radius)
     local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, radius or 12)
+    c.Name = GetRandomName()
+    c.CornerRadius = UDim.new(0, radius or 8)
     c.Parent = obj
     return c
 end
 
-Utils.TweenBack = function(instance, properties, duration)
-    return Utils.Tween(instance, properties, duration, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+function Utils.Stroke(obj, color, thick)
+    local s = Instance.new("UIStroke")
+    s.Name = GetRandomName()
+    s.Color = color or Color3.fromRGB(40,40,40)
+    s.Thickness = thick or 1
+    s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    s.Parent = obj
+    return s
 end
 
-Utils.CreateStroke = function(parent, color, thickness, transparency)
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = color or Configuration.Colors.Border
-    stroke.Thickness = thickness or 1
-    stroke.Transparency = transparency or 0
-    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    stroke.Parent = parent
-    return stroke
+function Utils.PlaySound(id)
+    local sound = Instance.new("Sound")
+    sound.Name = GetRandomName()
+    sound.SoundId = id
+    sound.Volume = 1
+    sound.Parent = game:GetService("SoundService")
+    sound:Play()
+    game:GetService("Debris"):AddItem(sound, 3)
 end
 
-local function SetBlur(enabled)
-    local blur = Lighting:FindFirstChild("JunkieBlur")
+local function ToggleBlur(enabled)
+    local blurName = "JunkieBlur_" .. string.sub(LocalPlayer.UserId, 1, 4)
+    local blur = Lighting:FindFirstChild(blurName)
     if enabled then
         if not blur then
             blur = Instance.new("BlurEffect")
-            blur.Name = "JunkieBlur"
+            blur.Name = blurName
             blur.Size = 0
             blur.Parent = Lighting
         end
-        Utils.Tween(blur, {Size = 24}, Configuration.Animations.Intro, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
-    elseif blur then
-        Utils.Tween(blur, {Size = 0}, Configuration.Animations.Outro, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-        task.delay(Configuration.Animations.Outro + 0.1, function() if blur then blur:Destroy() end end)
-    end
-end
-
-local ToastSystem = {ActiveToasts = {}, MaxToasts = 3, ToastSpacing = 10}
-
-ToastSystem.Create = function(parent, message, toastType, duration)
-    if #ToastSystem.ActiveToasts >= ToastSystem.MaxToasts then
-        local oldest = table.remove(ToastSystem.ActiveToasts, 1)
-        if oldest and oldest.Parent then oldest:Destroy() end
-    end
-    
-    local toast = Instance.new("Frame")
-    toast.Name = tick()
-    toast.Size = UDim2.new(0, 0, 0, 45)
-    toast.Position = UDim2.new(0.5, 0, 0, 40)
-    toast.AnchorPoint = Vector2.new(0.5, 0)
-    toast.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-    toast.BorderSizePixel = 0
-    toast.ZIndex = 300
-    toast.ClipsDescendants = true
-    toast.Parent = parent
-    Utils.Round(toast, 6)
-    Utils.CreateStroke(toast, Color3.fromRGB(50,50,50), 1, 0)
-    
-    local text = Instance.new("TextLabel")
-    text.Size = UDim2.new(1, 0, 1, 0)
-    text.Position = UDim2.new(0, 0, 0, 0)
-    text.BackgroundTransparency = 1
-    text.Text = tostring(message)
-    text.TextColor3 = Configuration.Colors.TextMain
-    text.TextSize = 13
-    text.Font = Enum.Font.GothamMedium
-    text.TextXAlignment = Enum.TextXAlignment.Center
-    text.TextYAlignment = Enum.TextYAlignment.Center
-    text.TextWrapped = true
-    text.ZIndex = 302
-    text.Parent = toast
-
-    table.insert(ToastSystem.ActiveToasts, toast)
-    ToastSystem.RepositionToasts()
-    
-    local width = isMobile() and 260 or 300
-    Utils.TweenBack(toast, {Size = UDim2.new(0, width, 0, 45)}, Configuration.Animations.Medium)
-    
-    task.delay(duration or 3.5, function()
-        if toast.Parent then
-            Utils.Tween(toast, {Position = UDim2.new(0.5, 0, 0, -60), BackgroundTransparency = 1}, Configuration.Animations.Medium)
-            if text then Utils.Tween(text, {TextTransparency = 1}, Configuration.Animations.Medium) end
-            if toast:FindFirstChild("UIStroke") then Utils.Tween(toast.UIStroke, {Transparency = 1}, Configuration.Animations.Medium) end
-            
-            for i, t in ipairs(ToastSystem.ActiveToasts) do
-                if t == toast then table.remove(ToastSystem.ActiveToasts, i) break end
-            end
-            task.wait(Configuration.Animations.Medium)
-            toast:Destroy()
-            ToastSystem.RepositionToasts()
+        Utils.Tween(blur, {Size = 24}, 0.8)
+    else
+        if blur then
+            Utils.Tween(blur, {Size = 0}, 0.5)
+            game:GetService("Debris"):AddItem(blur, 0.6)
         end
-    end)
-end
-
-ToastSystem.RepositionToasts = function()
-    for i, toast in ipairs(ToastSystem.ActiveToasts) do
-        local targetY = 40 + ((i - 1) * (50 + ToastSystem.ToastSpacing))
-        Utils.Tween(toast, {Position = UDim2.new(0.5, 0, 0, targetY)}, Configuration.Animations.Medium)
     end
 end
 
-local function Build()
-    local parent = game:GetService("CoreGui")
-    local old = parent:FindFirstChild(Configuration.ScreenGuiName)
-    if old then old:Destroy() end
-    
-    local screen = Instance.new("ScreenGui")
-    screen.Name = Configuration.ScreenGuiName
-    screen.ResetOnSpawn = false
-    screen.IgnoreGuiInset = true
-    screen.Parent = parent
-    
-    local background = Instance.new("Frame")
-    background.Size = UDim2.fromScale(1, 1)
-    background.BackgroundColor3 = Color3.new(0, 0, 0)
-    background.BackgroundTransparency = 0
-    background.Parent = screen
-    
-    local main = Instance.new("Frame")
-    main.Size = Configuration.Window.Size
-    main.Position = UDim2.new(0.5, 0, 0.5, 80) 
-    main.AnchorPoint = Vector2.new(0.5, 0.5)
-    main.BackgroundColor3 = Configuration.Colors.Bg
-    main.BackgroundTransparency = 1 
-    main.ClipsDescendants = true
-    main.Parent = screen
-    Utils.Round(main, 0)
-    
-    local mainStroke = Utils.CreateStroke(main, Configuration.Colors.Border, 1, 1)
-
-    local function CloseMenu()
-        SetBlur(false)
-        for _, v in pairs(main:GetDescendants()) do
-            if v:IsA("GuiObject") then
-                 Utils.Tween(v, {BackgroundTransparency = 1}, 0.3)
-                 if v:IsA("TextLabel") or v:IsA("TextButton") or v:IsA("TextBox") then Utils.Tween(v, {TextTransparency = 1}, 0.3) end
-                 if v:IsA("ImageLabel") then Utils.Tween(v, {ImageTransparency = 1}, 0.3) end
-                 if v:IsA("UIStroke") then Utils.Tween(v, {Transparency = 1}, 0.3) end
-            end
-        end
-        Utils.Tween(main, {Position = UDim2.new(0.5, 0, 0.5, 120), BackgroundTransparency = 1}, Configuration.Animations.Outro, Enum.EasingStyle.Back, Enum.EasingDirection.In)
-        if mainStroke then Utils.Tween(mainStroke, {Transparency = 1}, Configuration.Animations.Outro) end
-        task.delay(Configuration.Animations.Outro + 0.1, function() if screen and screen.Parent then screen:Destroy() end end)
+local function BuildInterface()
+    for _, v in pairs(GetProtectionParent():GetChildren()) do
+        if v:FindFirstChild("IsJunkieKeySystem") then v:Destroy() end
     end
 
-    local closeBtn = Instance.new("TextButton")
-    closeBtn.Name = "CloseBtn"
-    closeBtn.Size = UDim2.fromOffset(40, 40)
-    closeBtn.Position = UDim2.new(1, -40, 0, 0)
-    closeBtn.BackgroundTransparency = 1
-    closeBtn.Text = "X"
-    closeBtn.TextColor3 = Configuration.Colors.TextSec
-    closeBtn.TextSize = 16
-    closeBtn.Font = Enum.Font.Gotham
-    closeBtn.TextTransparency = 1
-    closeBtn.Parent = main
-    closeBtn.MouseButton1Click:Connect(CloseMenu)
+    local Screen = Instance.new("ScreenGui")
+    Screen.Name = GetRandomName()
+    Screen.Parent = GetProtectionParent()
+    Screen.IgnoreGuiInset = true
+    Screen.ResetOnSpawn = false
+    
+    local tag = Instance.new("BoolValue", Screen)
+    tag.Name = "IsJunkieKeySystem"
 
-    local content = Instance.new("Frame")
-    content.Name = "Content"
-    content.Size = UDim2.new(1, 0, 1, 0)
-    content.BackgroundTransparency = 1
-    content.Parent = main
-    
-    local logoContainer = Instance.new("Frame")
-    logoContainer.Size = UDim2.fromOffset(90, 90)
-    logoContainer.Position = UDim2.new(0.5, 0, 0.15, 0)
-    logoContainer.AnchorPoint = Vector2.new(0.5, 0.5)
-    logoContainer.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
-    logoContainer.BackgroundTransparency = 1
-    logoContainer.Parent = content
-    Utils.Round(logoContainer, 45)
-    local logoStroke = Utils.CreateStroke(logoContainer, Color3.fromRGB(40,40,40), 1, 1) 
-    
-    local sIcon = Instance.new("ImageLabel")
-    sIcon.Size = UDim2.fromScale(0.65, 0.65)
-    sIcon.Position = UDim2.fromScale(0.5, 0.5)
-    sIcon.AnchorPoint = Vector2.new(0.5, 0.5)
-    sIcon.Image = CustomLogo
-    sIcon.ScaleType = Enum.ScaleType.Fit
-    sIcon.BackgroundTransparency = 1
-    sIcon.ImageTransparency = 1
-    sIcon.Parent = logoContainer
-    
-    local mainTitle = Instance.new("TextLabel")
-    mainTitle.Size = UDim2.new(1, 0, 0, 25)
-    mainTitle.Position = UDim2.new(0, 0, 0.32, 0)
-    mainTitle.Text = "ACESSO RESTRITO"
-    mainTitle.TextColor3 = Configuration.Colors.TextMain
-    mainTitle.TextSize = 18
-    mainTitle.Font = Enum.Font.GothamBold
-    mainTitle.BackgroundTransparency = 1
-    mainTitle.TextTransparency = 1
-    mainTitle.Parent = content
-    
-    local subTitle = Instance.new("TextLabel")
-    subTitle.Size = UDim2.new(1, 0, 0, 20)
-    subTitle.Position = UDim2.new(0, 0, 0.37, 0)
-    subTitle.Text = "michigun.xyz"
-    subTitle.TextColor3 = Configuration.Colors.TextSec
-    subTitle.TextSize = 12
-    subTitle.Font = Enum.Font.Gotham
-    subTitle.BackgroundTransparency = 1
-    subTitle.TextTransparency = 1
-    subTitle.Parent = content
-    
-    local statusCard = Instance.new("Frame")
-    statusCard.Size = UDim2.new(0.85, 0, 0, 40)
-    statusCard.Position = UDim2.new(0.5, 0, 0.48, 0)
-    statusCard.AnchorPoint = Vector2.new(0.5, 0.5)
-    statusCard.BackgroundColor3 = Configuration.Colors.Surface
-    statusCard.BackgroundTransparency = 1
-    statusCard.Parent = content
-    Utils.Round(statusCard, 6)
-    local statusStroke = Utils.CreateStroke(statusCard, Color3.fromRGB(30,30,30), 1, 1)
-    
-    local sIndicator = Instance.new("Frame")
-    sIndicator.Size = UDim2.new(0, 6, 0, 6)
-    sIndicator.Position = UDim2.new(0, 15, 0.5, 0)
-    sIndicator.AnchorPoint = Vector2.new(0, 0.5)
-    sIndicator.BackgroundColor3 = Configuration.Colors.StatusIdle
-    sIndicator.BackgroundTransparency = 1
-    sIndicator.Parent = statusCard
-    Utils.Round(sIndicator, 3)
+    local BgOverlay = Instance.new("Frame")
+    BgOverlay.Name = GetRandomName()
+    BgOverlay.Size = UDim2.fromScale(1, 1)
+    BgOverlay.BackgroundColor3 = Color3.new(0,0,0)
+    BgOverlay.BackgroundTransparency = 1 
+    BgOverlay.Parent = Screen
 
-    local sValue = Instance.new("TextLabel")
-    sValue.Size = UDim2.new(1, -40, 1, 0)
-    sValue.Position = UDim2.fromOffset(30, 0)
-    sValue.Text = "Aguardando chave"
-    sValue.TextColor3 = Configuration.Colors.TextSec
-    sValue.TextSize = 11
-    sValue.Font = Enum.Font.GothamBold
-    sValue.TextXAlignment = Enum.TextXAlignment.Left
-    sValue.BackgroundTransparency = 1
-    sValue.TextTransparency = 1
-    sValue.Parent = statusCard
+    local Main = Instance.new("Frame")
+    Main.Name = GetRandomName()
+    Main.Size = UDim2.new(0, 380, 0, 460)
+    Main.Position = UDim2.new(0.5, 0, 0.5, 50) 
+    Main.AnchorPoint = Vector2.new(0.5, 0.5)
+    Main.BackgroundColor3 = Config.Colors.Background
+    Main.BackgroundTransparency = 1 
+    Main.ClipsDescendants = true
+    Main.Parent = Screen
+    Utils.Round(Main, 10)
+    local MainStroke = Utils.Stroke(Main, Color3.fromRGB(30,30,30), 1)
+    MainStroke.Transparency = 1
+
+    local NotifyBar = Instance.new("Frame")
+    NotifyBar.Name = GetRandomName()
+    NotifyBar.Size = UDim2.new(1, 0, 0, 0) 
+    NotifyBar.Position = UDim2.new(0, 0, 0, 0)
+    NotifyBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    NotifyBar.BorderSizePixel = 0
+    NotifyBar.ZIndex = 10
+    NotifyBar.Parent = Main
     
-    local inputFrame = Instance.new("Frame")
-    inputFrame.Size = UDim2.new(0.85, 0, 0, 45)
-    inputFrame.Position = UDim2.new(0.5, 0, 0.62, 0)
-    inputFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-    inputFrame.BackgroundColor3 = Configuration.Colors.Surface
-    inputFrame.BackgroundTransparency = 1
-    inputFrame.Parent = content
-    Utils.Round(inputFrame, 6)
-    local iStroke = Utils.CreateStroke(inputFrame, Color3.fromRGB(30,30,30), 1, 1)
-    
-    local box = Instance.new("TextBox")
-    box.Size = UDim2.new(1, -20, 1, 0)
-    box.Position = UDim2.fromOffset(10, 0)
-    box.Text = ""
-    box.PlaceholderText = "Insira sua chave aqui..."
-    box.PlaceholderColor3 = Configuration.Colors.TextMuted
-    box.TextColor3 = Configuration.Colors.TextMain
-    box.TextSize = 12
-    box.Font = Enum.Font.Gotham
-    box.BackgroundTransparency = 1
-    box.TextXAlignment = Enum.TextXAlignment.Left
-    box.ClearTextOnFocus = false
-    box.TextTransparency = 1
-    box.Parent = inputFrame
-    
-    local redeem = Instance.new("TextButton")
-    redeem.Size = UDim2.new(0.85, 0, 0, 45)
-    redeem.Position = UDim2.new(0.5, 0, 0.77, 0)
-    redeem.AnchorPoint = Vector2.new(0.5, 0.5)
-    redeem.BackgroundColor3 = Configuration.Colors.ButtonVerify
-    redeem.BackgroundTransparency = 1
-    redeem.Text = "VERIFICAR"
-    redeem.TextColor3 = Color3.new(1,1,1)
-    redeem.Font = Enum.Font.GothamBold
-    redeem.TextSize = 13
-    redeem.AutoButtonColor = false
-    redeem.TextTransparency = 1
-    redeem.Parent = content
-    Utils.Round(redeem, 6)
-    local redeemStroke = Utils.CreateStroke(redeem, Color3.fromRGB(0, 160, 90), 1, 1)
-    
-    local getKey = Instance.new("TextButton")
-    getKey.Name = "GetKeyBtn"
-    getKey.Size = UDim2.new(0.85, 0, 0, 25)
-    getKey.Position = UDim2.new(0.5, 0, 0.88, 0)
-    getKey.AnchorPoint = Vector2.new(0.5, 0.5)
-    getKey.BackgroundTransparency = 1
-    getKey.Text = "PEGAR KEY"
-    getKey.TextColor3 = Configuration.Colors.TextSec
-    getKey.Font = Enum.Font.GothamBold
-    getKey.TextSize = 10
-    getKey.TextTransparency = 1
-    getKey.Parent = content
-    
-    local function ApplyHover(btn, isRedeem)
-        btn.MouseEnter:Connect(function()
-            if isRedeem then
-                Utils.Tween(btn, {BackgroundColor3 = Color3.fromRGB(0, 200, 110)}, 0.2)
-            else
-                Utils.Tween(btn, {TextColor3 = Color3.new(1,1,1)}, 0.2)
-            end
-        end)
-        btn.MouseLeave:Connect(function()
-            if isRedeem then
-                Utils.Tween(btn, {BackgroundColor3 = Configuration.Colors.ButtonVerify}, 0.2)
-            else
-                Utils.Tween(btn, {TextColor3 = Configuration.Colors.TextSec}, 0.2)
-            end
+    local NotifyText = Instance.new("TextLabel")
+    NotifyText.Name = GetRandomName()
+    NotifyText.Size = UDim2.fromScale(1, 1)
+    NotifyText.BackgroundTransparency = 1
+    NotifyText.Text = ""
+    NotifyText.TextColor3 = Config.Colors.TextMain
+    NotifyText.TextSize = 12
+    NotifyText.Font = Enum.Font.GothamBold
+    NotifyText.Parent = NotifyBar
+
+    local function ShowNotification(text, color)
+        NotifyText.Text = text
+        NotifyBar.BackgroundColor3 = color or Color3.fromRGB(30, 30, 30)
+        Utils.Tween(NotifyBar, {Size = UDim2.new(1, 0, 0, 30)}, 0.3)
+        task.delay(2.5, function()
+            Utils.Tween(NotifyBar, {Size = UDim2.new(1, 0, 0, 0)}, 0.3)
         end)
     end
-    ApplyHover(redeem, true)
-    ApplyHover(getKey, false)
-    
-    box.Focused:Connect(function() Utils.Tween(iStroke, {Color = Color3.fromRGB(80,80,80)}, 0.3) end)
-    box.FocusLost:Connect(function() Utils.Tween(iStroke, {Color = Configuration.Colors.Border}, 0.3) end)
-    
-    local function SetStatus(state)
-        local color = Configuration.Colors.StatusIdle
-        local text = "Aguardando chave"
-        if state == "verifying" then
-            color = Configuration.Colors.StatusVerifying
-            text = "Verificando..."
-        elseif state == "success" then
-            color = Configuration.Colors.StatusSuccess
-            text = "Autenticado"
-        elseif state == "error" then
-            color = Configuration.Colors.StatusError
-            text = "Chave Inválida"
+
+    local function ShakeWindow()
+        local originalPos = Main.Position
+        local offset = 6
+        for i = 1, 6 do
+            local xOffset = (i % 2 == 0) and -offset or offset
+            Main.Position = UDim2.new(originalPos.X.Scale, originalPos.X.Offset + xOffset, originalPos.Y.Scale, originalPos.Y.Offset)
+            task.wait(0.04)
         end
-        Utils.Tween(sValue, {TextColor3 = color}, 0.35)
-        Utils.Tween(sIndicator, {BackgroundColor3 = color}, 0.35)
-        sValue.Text = text
+        Main.Position = originalPos
     end
-    
-    redeem.MouseButton1Click:Connect(function()
-        local key = box.Text:gsub("%s+", "")
-        SetStatus("verifying")
-        redeem.Text = "..."
-        redeem.Active = false
-        local result = Junkie.check_key(key)
-        redeem.Active = true
-        redeem.Text = "VERIFICAR"
-        if not result then
-            SetStatus("error")
-            ToastSystem.Create(screen, "Erro de conexão", "error")
+
+    local LogoCont = Instance.new("Frame")
+    LogoCont.Name = GetRandomName()
+    LogoCont.Size = UDim2.fromOffset(80, 80)
+    LogoCont.Position = UDim2.new(0.5, 0, 0.12, 0)
+    LogoCont.AnchorPoint = Vector2.new(0.5, 0.5)
+    LogoCont.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+    LogoCont.BackgroundTransparency = 1
+    LogoCont.Parent = Main
+    Utils.Round(LogoCont, 40)
+    local LogoStroke = Utils.Stroke(LogoCont, Color3.fromRGB(40,40,40), 1)
+    LogoStroke.Transparency = 1
+
+    local LogoImg = Instance.new("ImageLabel")
+    LogoImg.Name = GetRandomName()
+    LogoImg.Size = UDim2.fromScale(0.6, 0.6)
+    LogoImg.Position = UDim2.fromScale(0.5, 0.5)
+    LogoImg.AnchorPoint = Vector2.new(0.5, 0.5)
+    LogoImg.Image = Icons.Logo
+    LogoImg.BackgroundTransparency = 1
+    LogoImg.ImageTransparency = 1
+    LogoImg.ScaleType = Enum.ScaleType.Fit
+    LogoImg.Parent = LogoCont
+
+    local Title = Instance.new("TextLabel")
+    Title.Name = GetRandomName()
+    Title.Text = Config.Texts.Title
+    Title.Size = UDim2.new(1, 0, 0, 20)
+    Title.Position = UDim2.new(0, 0, 0.28, 0)
+    Title.TextColor3 = Config.Colors.TextMain
+    Title.Font = Enum.Font.GothamBlack
+    Title.TextSize = 16
+    Title.BackgroundTransparency = 1
+    Title.TextTransparency = 1
+    Title.Parent = Main
+
+    local Welcome = Instance.new("TextLabel")
+    Welcome.Name = GetRandomName()
+    Welcome.Text = string.format(Config.Texts.Welcome, LocalPlayer.Name) 
+    Welcome.Size = UDim2.new(1, 0, 0, 20)
+    Welcome.Position = UDim2.new(0, 0, 0.34, 0)
+    Welcome.TextColor3 = Config.Colors.TextSec
+    Welcome.Font = Enum.Font.Gotham
+    Welcome.TextSize = 12
+    Welcome.BackgroundTransparency = 1
+    Welcome.TextTransparency = 1
+    Welcome.Parent = Main
+
+    local StatusBox = Instance.new("Frame")
+    StatusBox.Name = GetRandomName()
+    StatusBox.Size = UDim2.new(0.85, 0, 0, 35)
+    StatusBox.Position = UDim2.new(0.5, 0, 0.45, 0)
+    StatusBox.AnchorPoint = Vector2.new(0.5, 0.5)
+    StatusBox.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+    StatusBox.BackgroundTransparency = 1
+    StatusBox.Parent = Main
+    Utils.Round(StatusBox, 6)
+    local StatusStroke = Utils.Stroke(StatusBox, Color3.fromRGB(35,35,35), 1)
+    StatusStroke.Transparency = 1
+
+    local StatusDot = Instance.new("Frame")
+    StatusDot.Name = GetRandomName()
+    StatusDot.Size = UDim2.fromOffset(6, 6)
+    StatusDot.Position = UDim2.new(0, 15, 0.5, 0)
+    StatusDot.AnchorPoint = Vector2.new(0, 0.5)
+    StatusDot.BackgroundColor3 = Color3.fromRGB(80, 80, 80) 
+    StatusDot.BackgroundTransparency = 1
+    StatusDot.Parent = StatusBox
+    Utils.Round(StatusDot, 3)
+
+    local StatusText = Instance.new("TextLabel")
+    StatusText.Name = GetRandomName()
+    StatusText.Text = Config.Texts.StatusWaiting
+    StatusText.Size = UDim2.new(1, -40, 1, 0)
+    StatusText.Position = UDim2.fromOffset(30, 0)
+    StatusText.TextColor3 = Config.Colors.TextSec
+    StatusText.Font = Enum.Font.GothamBold
+    StatusText.TextSize = 11
+    StatusText.TextXAlignment = Enum.TextXAlignment.Left
+    StatusText.BackgroundTransparency = 1
+    StatusText.TextTransparency = 1
+    StatusText.Parent = StatusBox
+
+    local InputFrame = Instance.new("Frame")
+    InputFrame.Name = GetRandomName()
+    InputFrame.Size = UDim2.new(0.85, 0, 0, 45)
+    InputFrame.Position = UDim2.new(0.5, 0, 0.58, 0)
+    InputFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    InputFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+    InputFrame.BackgroundTransparency = 1
+    InputFrame.Parent = Main
+    Utils.Round(InputFrame, 6)
+    local InputStroke = Utils.Stroke(InputFrame, Color3.fromRGB(35,35,35), 1)
+    InputStroke.Transparency = 1
+
+    local InputBox = Instance.new("TextBox")
+    InputBox.Name = GetRandomName()
+    InputBox.Size = UDim2.new(1, -20, 1, 0)
+    InputBox.Position = UDim2.fromOffset(10, 0)
+    InputBox.BackgroundTransparency = 1
+    InputBox.Text = ""
+    InputBox.PlaceholderText = Config.Texts.Placeholder
+    InputBox.PlaceholderColor3 = Color3.fromRGB(80, 80, 80)
+    InputBox.TextColor3 = Config.Colors.TextMain
+    InputBox.Font = Enum.Font.Gotham
+    InputBox.TextSize = 13
+    InputBox.TextXAlignment = Enum.TextXAlignment.Left
+    InputBox.ClearTextOnFocus = false
+    InputBox.TextTransparency = 1
+    InputBox.Parent = InputFrame
+
+    local BtnVerify = Instance.new("TextButton")
+    BtnVerify.Name = GetRandomName()
+    BtnVerify.Size = UDim2.new(0.85, 0, 0, 45)
+    BtnVerify.Position = UDim2.new(0.5, 0, 0.72, 0)
+    BtnVerify.AnchorPoint = Vector2.new(0.5, 0.5)
+    BtnVerify.BackgroundColor3 = Config.Colors.Primary
+    BtnVerify.BackgroundTransparency = 1
+    BtnVerify.Text = Config.Texts.BtnVerify
+    BtnVerify.TextColor3 = Color3.new(1,1,1)
+    BtnVerify.Font = Enum.Font.GothamBold
+    BtnVerify.TextSize = 14
+    BtnVerify.TextTransparency = 1
+    BtnVerify.AutoButtonColor = false
+    BtnVerify.Parent = Main
+    Utils.Round(BtnVerify, 6)
+
+    local BottomCont = Instance.new("Frame")
+    BottomCont.Name = GetRandomName()
+    BottomCont.Size = UDim2.new(0.85, 0, 0, 30)
+    BottomCont.Position = UDim2.new(0.5, 0, 0.85, 0)
+    BottomCont.AnchorPoint = Vector2.new(0.5, 0.5)
+    BottomCont.BackgroundTransparency = 1
+    BottomCont.Parent = Main
+
+    local BtnGetKey = Instance.new("TextButton")
+    BtnGetKey.Name = GetRandomName()
+    BtnGetKey.Size = UDim2.new(0.3, 0, 1, 0)
+    BtnGetKey.BackgroundTransparency = 1
+    BtnGetKey.Text = Config.Texts.BtnGetKey
+    BtnGetKey.TextColor3 = Config.Colors.TextSec
+    BtnGetKey.Font = Enum.Font.GothamBold
+    BtnGetKey.TextSize = 11
+    BtnGetKey.TextTransparency = 1
+    BtnGetKey.Parent = BottomCont
+
+    local BtnDiscord = Instance.new("TextButton")
+    BtnDiscord.Name = GetRandomName()
+    BtnDiscord.Size = UDim2.new(0.3, 0, 1, 0)
+    BtnDiscord.Position = UDim2.new(0.35, 0, 0, 0)
+    BtnDiscord.BackgroundTransparency = 1
+    BtnDiscord.Text = Config.Texts.BtnDiscord
+    BtnDiscord.TextColor3 = Color3.fromRGB(88, 101, 242) 
+    BtnDiscord.Font = Enum.Font.GothamBold
+    BtnDiscord.TextSize = 11
+    BtnDiscord.TextTransparency = 1
+    BtnDiscord.Parent = BottomCont
+
+    local BtnReset = Instance.new("TextButton")
+    BtnReset.Name = GetRandomName()
+    BtnReset.Size = UDim2.new(0.3, 0, 1, 0)
+    BtnReset.Position = UDim2.new(0.7, 0, 0, 0)
+    BtnReset.BackgroundTransparency = 1
+    BtnReset.Text = Config.Texts.BtnReset
+    BtnReset.TextColor3 = Color3.fromRGB(180, 60, 60)
+    BtnReset.Font = Enum.Font.GothamBold
+    BtnReset.TextSize = 11
+    BtnReset.TextTransparency = 1
+    BtnReset.Parent = BottomCont
+
+    local function UpdateStatus(status, msg)
+        local color = Config.Colors.TextSec
+        local dotColor = Color3.fromRGB(80, 80, 80)
+
+        if status == "verify" then
+            color = Color3.fromRGB(255, 200, 50)
+            dotColor = color
+        elseif status == "success" then
+            color = Config.Colors.Primary
+            dotColor = color
+        elseif status == "error" then
+            color = Config.Colors.Error
+            dotColor = color
+        end
+
+        Utils.Tween(StatusText, {TextColor3 = color}, 0.3)
+        Utils.Tween(StatusDot, {BackgroundColor3 = dotColor}, 0.3)
+        StatusText.Text = msg
+    end
+
+    local function CloseUI()
+        ToggleBlur(false)
+        Utils.Tween(Main, {Position = UDim2.new(0.5, 0, 0.5, 80), BackgroundTransparency = 1}, 0.5)
+        
+        for _, v in pairs(Main:GetDescendants()) do
+            if v:IsA("TextLabel") or v:IsA("TextButton") or v:IsA("TextBox") then
+                Utils.Tween(v, {TextTransparency = 1}, 0.3)
+            elseif v:IsA("Frame") or v:IsA("ImageLabel") then
+                Utils.Tween(v, {BackgroundTransparency = 1, ImageTransparency = 1}, 0.3)
+            elseif v:IsA("UIStroke") then
+                Utils.Tween(v, {Transparency = 1}, 0.3)
+            end
+        end
+        
+        task.wait(0.6)
+        Screen:Destroy()
+    end
+
+    local function VerifyKey()
+        local key = InputBox.Text:gsub("%s+", "")
+        if key == "" then
+            ShakeWindow()
+            ShowNotification(Config.Texts.NotifyEmpty, Config.Colors.Error)
             return
         end
-        if result.valid then
-            saveVerifiedKey(key)
+
+        UpdateStatus("verify", Config.Texts.StatusVerifying)
+        
+        local result = Junkie.check_key(key)
+        
+        if result and result.valid then
+            Utils.PlaySound(Config.Sounds.Success)
+            UpdateStatus("success", Config.Texts.StatusSuccess)
+            saveKey(key)
             getgenv().SCRIPT_KEY = key
-            SetStatus("success")
-            ToastSystem.Create(screen, "Acesso concedido", "success")
-            task.wait(0.8)
-            CloseMenu()
+            ShowNotification(Config.Texts.StatusSuccess, Config.Colors.Primary)
+            task.wait(1)
+            CloseUI()
         else
-            SetStatus("error")
-            ToastSystem.Create(screen, result.message or "Chave incorreta", "error")
+            Utils.PlaySound(Config.Sounds.Error)
+            ShakeWindow()
+            UpdateStatus("error", result.message or Config.Texts.StatusError)
+            ShowNotification(Config.Texts.StatusError, Config.Colors.Error)
+        end
+    end
+
+    BtnVerify.MouseButton1Click:Connect(VerifyKey)
+    
+    InputBox.FocusLost:Connect(function(enterPressed)
+        if enterPressed then
+            VerifyKey()
         end
     end)
-    
-    getKey.MouseButton1Click:Connect(function()
-        setclipboard(Junkie.get_key_link())
-        ToastSystem.Create(screen, "Link copiado!", "success")
+
+    BtnGetKey.MouseButton1Click:Connect(function()
+        setclipboard(Config.Links.GetKey)
+        ShowNotification(Config.Texts.NotifyCopy, Config.Colors.Primary)
     end)
+
+    BtnDiscord.MouseButton1Click:Connect(function()
+        setclipboard(Config.Links.Discord)
+        if request then
+            pcall(function()
+                request({
+                    Url = "http://127.0.0.1:6463/rpc?v=1",
+                    Method = "POST",
+                    Headers = {["Content-Type"] = "application/json", ["Origin"] = "https://discord.com"},
+                    Body = game:HttpService():JSONEncode({cmd = "INVITE_BROWSER", args = {code = Config.Links.Discord:match("discord.gg/(.+)")}, nonce = game:HttpService():GenerateGUID(false)})
+                })
+            end)
+        end
+        ShowNotification("Link do Discord copiado!", Config.Colors.Primary)
+    end)
+
+    BtnReset.MouseButton1Click:Connect(function()
+        deleteKey()
+        InputBox.Text = ""
+        ShowNotification(Config.Texts.NotifyReset, Config.Colors.Error)
+    end)
+
+    ToggleBlur(true)
+    Utils.Tween(Main, {BackgroundTransparency = 0, Position = UDim2.new(0.5, 0, 0.5, 0)}, 0.6, Enum.EasingStyle.Back)
+    Utils.Tween(MainStroke, {Transparency = 0}, 0.6)
     
-    SetBlur(true)
-    Utils.Tween(main, {Position = UDim2.new(0.5, 0, 0.5, 0), BackgroundTransparency = 0}, Configuration.Animations.Intro, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
-    Utils.Tween(mainStroke, {Transparency = 0}, Configuration.Animations.Intro)
-
-    task.wait(0.1)
-
-    for _, v in pairs(main:GetDescendants()) do
-        if v:IsA("GuiObject") and v.Name ~= "MainContainer" then
-            if v.Name == "CloseBtn" or v.Name == "GetKeyBtn" then
-                 Utils.Tween(v, {TextTransparency = 0}, 0.5)
-            elseif v:IsA("Frame") then
-                local targetTrans = (v == logoContainer or v == statusCard or v == inputFrame or v == sIndicator) and 0 or (v == redeem and 0 or 1)
-                Utils.Tween(v, {BackgroundTransparency = targetTrans}, 0.5)
-            elseif v:IsA("TextLabel") or v:IsA("TextBox") or v:IsA("TextButton") then
+    task.wait(0.2)
+    for _, v in pairs(Main:GetDescendants()) do
+        if v.Parent ~= NotifyBar then 
+            if v:IsA("TextLabel") or v:IsA("TextButton") or v:IsA("TextBox") then
                 Utils.Tween(v, {TextTransparency = 0}, 0.5)
             elseif v:IsA("ImageLabel") then
                 Utils.Tween(v, {ImageTransparency = 0}, 0.5)
+            elseif v:IsA("Frame") and v ~= NotifyBar then
+                if v == LogoCont or v == StatusBox or v == InputFrame then
+                    Utils.Tween(v, {BackgroundTransparency = 0}, 0.5)
+                elseif v == StatusDot then
+                    Utils.Tween(v, {BackgroundTransparency = 0}, 0.5)
+                elseif v == BtnVerify then
+                     Utils.Tween(v, {BackgroundTransparency = 0}, 0.5)
+                end
             elseif v:IsA("UIStroke") then
-                 Utils.Tween(v, {Transparency = 0}, 0.5)
+                Utils.Tween(v, {Transparency = 0}, 0.5)
             end
         end
     end
-    
-    return screen
-end
 
-local savedKey = loadVerifiedKey()
-local keyToCheck = savedKey
-if not keyToCheck then
-    keyToCheck = getgenv().SCRIPT_KEY
-end
+    local dragging, dragInput, dragStart, startPos
+    local function update(input)
+        local delta = input.Position - dragStart
+        Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
 
-local result = Junkie.check_key(keyToCheck)
-if result and result.valid then
-    if result.message == "KEYLESS" then
-        getgenv().SCRIPT_KEY = "KEYLESS"
-    elseif result.message == "KEY_VALID" then
-        if not savedKey and keyToCheck then
-            saveVerifiedKey(keyToCheck)
+    Main.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = Main.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
+            end)
         end
-        getgenv().SCRIPT_KEY = keyToCheck
+    end)
+
+    Main.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then update(input) end
+    end)
+end
+
+local saved = loadKey()
+if saved then
+    local res = Junkie.check_key(saved)
+    if res and res.valid then
+        getgenv().SCRIPT_KEY = saved
     else
-        Build()
+        BuildInterface()
     end
 else
-    Build()
+    BuildInterface()
 end
 
-while not getgenv().SCRIPT_KEY do
-    task.wait(0.1)
-end
+repeat task.wait(0.5) until getgenv().SCRIPT_KEY
