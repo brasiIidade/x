@@ -264,7 +264,7 @@ if not _G.AimbotConfig then
         FocusList = {},
         FocusMode = false,
         UseLegitOffset = true,
-        HitChance = 100,
+        HitChance = 60,
         WallCheck = true,
         FOVSize = 200,
         ShowFOV = true,
