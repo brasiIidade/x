@@ -65,18 +65,6 @@ local main = UI:CreateWindow({
     HideSearchBar = true,
     -- Background = "rbxassetid://",
     -- BackgroundImageTransparency = 0.5,
-    OpenButton = {
-        Icon = "rbxthumb://type=Asset&id=88026679106109&w=420&h=420",
-        CornerRadius = UDim.new(0, 5),
-        StrokeThickness = 1,
-        Color = ColorSequence.new(
-            Color3.fromHex("#282828"), 
-            Color3.fromHex("#FFFFFF")
-        ),
-        OnlyMobile = false,
-        Enabled = true,
-        Draggable = true,
-    },
     User = {
         Enabled = true,
         Callback = function()
@@ -2361,12 +2349,10 @@ local Toggle = InterfaceSection:Toggle({
     Desc = "Ativa o botão flutuante ao minimizar a UI",
     Icon = "lucide:check",
     IconColor = "Green",
-    Type = "Checkbox",
     Value = true,
     Callback = function(state)
     main:EditOpenButton({
-    Title = "michigun.xyz",
-    Icon = "lucide:code-xml",
+    Icon = "rbxthumb://type=Asset&id=88026679106109&w=420&h=420",
     CornerRadius = UDim.new(0, 5),
     StrokeThickness = 1,
     Color = ColorSequence.new(
