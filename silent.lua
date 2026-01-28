@@ -393,12 +393,7 @@ _G.StartSilentAim = function()
                     
                     if config.ESP.ShowName then
                         Name.Visible = true
-                        local plr = Players:GetPlayerFromCharacter(Character)
-                        if plr and plr.Team == LocalPlayer.Team then
-                             Name.Text = string.format('[<font color="rgb(0, 255, 0)">aliado</font>] %s', Character.Name)
-                        else
-                             Name.Text = string.format('[<font color="rgb(255, 0, 0)">inimigo</font>] %s', Character.Name)
-                        end
+                        Name.Text = string.format('(<font color="rgb(255, 0, 0)">inimigo</font>) %s', Character.Name)
                         Name.Position = UDim2.new(0, Pos.X, 0, Pos.Y + h / 2 + 8)
                         OffsetY = OffsetY + 11
                     else
