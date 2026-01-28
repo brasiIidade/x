@@ -2344,15 +2344,16 @@ setupKeybind(false)
 
 local InterfaceSection = criarsection(Configs, "Interface", "Opções da UI", "lucide:monitor", false)
 
-local Toggle = InterfaceSection:Toggle({
+InterfaceSection:Toggle({
     Title = "Botão UI",
     Desc = "Ativa o botão flutuante ao minimizar a UI",
     Icon = "lucide:check",
     IconColor = "Green",
+    Type = "Checkbox",
     Value = true,
     Callback = function(state)
     main:EditOpenButton({
-    Title = "michigun",
+    Title = "",
     Icon = "rbxthumb://type=Asset&id=88026679106109&w=420&h=420",
     CornerRadius = UDim.new(0, 5),
     StrokeThickness = 1,
