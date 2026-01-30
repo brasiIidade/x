@@ -1,6 +1,3 @@
--- [[ SCRIPT 1: LÓGICA & CONFIGURAÇÃO ]]
-
--- 1. Definição das Configurações (Garante que não seja nil)
 _G.AimbotConfig = _G.AimbotConfig or {
     Enabled = false,
     TeamCheck = "Team",         
@@ -16,14 +13,13 @@ _G.AimbotConfig = _G.AimbotConfig or {
     HitChance = 60,
     WallCheck = true,
     
-    -- Configurações do FOV (Novo)
     FOVSize = 200,
     ShowFOV = true,
     FOVBehavior = "Center",
-    FOVNumSides = 60, -- Quantidade de lados padrão
-    FOVColor1 = Color3.fromRGB(0, 255, 255), -- Cor A (Ciano)
-    FOVColor2 = Color3.fromRGB(255, 0, 255), -- Cor B (Magenta)
-    GradientSpeed = 3, -- Velocidade da animação
+    FOVNumSides = 10,
+    FOVColor1 = Color3.fromRGB(0, 255, 255),
+    FOVColor2 = Color3.fromRGB(255, 0, 255),
+    GradientSpeed = 5,
     
     ShowHighlight = true,
     HighlightColor = Color3.fromRGB(255, 60, 60),
@@ -38,7 +34,6 @@ _G.AimbotConfig = _G.AimbotConfig or {
     }
 }
 
--- 2. Limpeza de conexões antigas
 if _G.SilentAimConnections then
     for _, conn in pairs(_G.SilentAimConnections) do conn:Disconnect() end
 end
@@ -46,7 +41,6 @@ _G.SilentAimConnections = {}
 
 if _G.AimFOVCircle then pcall(function() _G.AimFOVCircle:Remove() end) _G.AimFOVCircle = nil end
 
--- Limpa linhas do FOV antigo
 if _G.FOVLines then
     for _, line in pairs(_G.FOVLines) do pcall(function() line:Remove() end) end
 end
@@ -55,7 +49,6 @@ _G.FOVLines = {}
 if _G.AimbotGui then _G.AimbotGui:Destroy() _G.AimbotGui = nil end
 if _G.AimHighlight then _G.AimHighlight:Destroy() _G.AimHighlight = nil end
 
--- 3. Variáveis e Serviços
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
@@ -81,7 +74,6 @@ local ClosestHitPart = nil
 local CurrentTargetCharacter = nil
 local RotationAngle, Tick = -45, tick();
 
--- Funções Auxiliares
 local Functions = {}
 function Functions:Create(Class, Properties)
     local _Instance = typeof(Class) == 'string' and Instance.new(Class) or Class
@@ -205,7 +197,6 @@ local function getClosestPlayer()
         local RootPart = Character:FindFirstChild("HumanoidRootPart")
         local Humanoid = Character:FindFirstChild("Humanoid")
         
-        -- DeathCheck incluso
         if not RootPart or not Humanoid or Humanoid.Health <= 0 then continue end
 
         local dist3D = (RootPart.Position - MyPos).Magnitude
@@ -232,7 +223,6 @@ local function getClosestPlayer()
     return BestPart, BestChar
 end
 
--- 4. Funções de Start/Stop
 _G.StopSilentAim = function()
     _G.SilentAimActive = false
     if _G.SilentAimConnections then
@@ -281,7 +271,6 @@ _G.StartSilentAim = function()
     local ScreenGui = Functions:Create("ScreenGui", {Parent = CoreGui, Name = "HUD"})
     _G.AimbotGui = ScreenGui
 
-    -- Elementos do ESP (Criados aqui para referência no RenderStepped)
     local Name = Functions:Create("TextLabel", {Parent = ScreenGui, Size = UDim2.new(0, 100, 0, 20), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundTransparency = 1, TextColor3 = Color3.fromRGB(255, 255, 255), Font = Enum.Font.Code, TextSize = ESP_SETTINGS.FontSize, TextStrokeTransparency = 0, TextStrokeColor3 = Color3.fromRGB(0, 0, 0), RichText = true, Visible = false})
     local Team = Functions:Create("TextLabel", {Parent = ScreenGui, Size = UDim2.new(0, 100, 0, 20), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundTransparency = 1, TextColor3 = Color3.fromRGB(255, 255, 255), Font = Enum.Font.Code, TextSize = ESP_SETTINGS.FontSize, TextStrokeTransparency = 0, TextStrokeColor3 = Color3.fromRGB(0, 0, 0), RichText = true, Visible = false})
     local Distance = Functions:Create("TextLabel", {Parent = ScreenGui, Size = UDim2.new(0, 100, 0, 20), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundTransparency = 1, TextColor3 = Color3.fromRGB(255, 255, 255), Font = Enum.Font.Code, TextSize = ESP_SETTINGS.FontSize, TextStrokeTransparency = 0, TextStrokeColor3 = Color3.fromRGB(0, 0, 0), RichText = true, Visible = false})
@@ -296,7 +285,6 @@ _G.StartSilentAim = function()
     local HealthText = Functions:Create("TextLabel", {Parent = ScreenGui, Size = UDim2.new(0, 100, 0, 20), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundTransparency = 1, TextColor3 = Color3.fromRGB(255, 255, 255), Font = Enum.Font.Code, TextSize = ESP_SETTINGS.FontSize, TextStrokeTransparency = 0, TextStrokeColor3 = Color3.fromRGB(0, 0, 0), Visible = false})
     local Chams = Functions:Create("Highlight", {Parent = ScreenGui, FillTransparency = 1, OutlineTransparency = 0, OutlineColor = Color3.fromRGB(119, 120, 255), DepthMode = "AlwaysOnTop", Enabled = false})
 
-    -- Box Corners
     local LeftTop = Functions:Create("Frame", {Parent = ScreenGui, BackgroundColor3 = ESP_SETTINGS.Drawing.Boxes.Corner.RGB, Visible = false})
     local LeftSide = Functions:Create("Frame", {Parent = ScreenGui, BackgroundColor3 = ESP_SETTINGS.Drawing.Boxes.Corner.RGB, Visible = false})
     local RightTop = Functions:Create("Frame", {Parent = ScreenGui, BackgroundColor3 = ESP_SETTINGS.Drawing.Boxes.Corner.RGB, Visible = false})
@@ -307,7 +295,6 @@ _G.StartSilentAim = function()
     local BottomRightDown = Functions:Create("Frame", {Parent = ScreenGui, BackgroundColor3 = ESP_SETTINGS.Drawing.Boxes.Corner.RGB, Visible = false})
 
     local c1 = RunService.RenderStepped:Connect(function()
-        -- [[ DESENHO DO FOV CUSTOMIZADO ]]
         if _G.SilentAimActive and config.ShowFOV then
             local pos = config.FOVBehavior == "Mouse" and UserInputService:GetMouseLocation() or Vector2New(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
             local numSides = config.FOVNumSides or 60
@@ -343,7 +330,6 @@ _G.StartSilentAim = function()
                 line.From = p1
                 line.To = p2
 
-                -- Lógica Gradient
                 local progress = i / numSides
                 local wave = math.sin(time * config.GradientSpeed + (progress * math.pi * 2))
                 local lerpFactor = (wave + 1) / 2
@@ -356,7 +342,6 @@ _G.StartSilentAim = function()
             end
         end
 
-        -- [[ LOGICA AIMBOT E ESP ]]
         if _G.SilentAimActive then
             local Part, Character = getClosestPlayer()
             ClosestHitPart = Part
@@ -472,7 +457,6 @@ _G.StartSilentAim = function()
     table.insert(_G.SilentAimConnections, c1)
 end
 
--- 5. Hook (Silent Aim)
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
     if not checkcaller() and _G.SilentAimActive and ClosestHitPart then
