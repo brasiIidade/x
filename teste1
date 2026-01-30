@@ -239,9 +239,7 @@ local Player = criartab("Player", "solar:user-bold", false)
 local Configs = criartab("Configurações", "lucide:settings", false)
 
 --// tab silent
--- [[ SCRIPT 2: INTERFACE DE USUÁRIO ]]
 
--- Proteção contra erro "Index Nil"
 if not _G.AimbotConfig then
     warn("Configurações não encontradas! Criando padrão...")
     _G.AimbotConfig = {
@@ -261,7 +259,7 @@ if not _G.AimbotConfig then
         FOVSize = 200,
         ShowFOV = true,
         FOVBehavior = "Center",
-        FOVNumSides = 60,
+        FOVNumSides = 10,
         FOVColor1 = Color3.fromRGB(0, 255, 255),
         FOVColor2 = Color3.fromRGB(255, 0, 255),
         GradientSpeed = 3,
@@ -273,10 +271,6 @@ if not _G.AimbotConfig then
         }
     }
 end
-
-local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
-local LocalPlayer = Players.LocalPlayer
 
 task.spawn(function()
     pcall(function() ler("silent") end)
@@ -584,19 +578,17 @@ do
         Callback = function(value) _G.AimbotConfig.FOVSize = value end
     })
 
-    -- NOVO: Slider de Pontas (Lados)
     VisualsSection:Slider({
-        Title = "Lados do FOV",
-        Desc = "Quantidade de pontas do círculo",
+        Title = "Lados",
+        Desc = "Quantidade de pontas do FOV",
         Step = 1,
-        Value = { Min = 3, Max = 100, Default = _G.AimbotConfig.FOVNumSides or 60 },
+        Value = { Min = 3, Max = 100, Default = _G.AimbotConfig.FOVNumSides or 10 },
         Flag = "LadosFOV",
         Callback = function(value) _G.AimbotConfig.FOVNumSides = value end
     })
 
     VisualsSection:Colorpicker({
-        Title = "Cor do FOV (1)",
-        Desc = "Primeira cor do gradiente",
+        Title = "Cor primária",
         Default = _G.AimbotConfig.FOVColor1,
         Transparency = 0,
         Locked = false,
@@ -604,10 +596,8 @@ do
         Callback = function(color) _G.AimbotConfig.FOVColor1 = color end
     })
 
-    -- NOVO: Picker da Cor 2
     VisualsSection:Colorpicker({
-        Title = "Cor do FOV (2)",
-        Desc = "Segunda cor do gradiente",
+        Title = "Cor secundária",
         Default = _G.AimbotConfig.FOVColor2,
         Transparency = 0,
         Locked = false,
@@ -627,7 +617,7 @@ do
 
     VisualsSection:Colorpicker({
         Title = "Cor da info",
-        Desc = "Cor do highlight e do HUD",
+        Desc = "HUD e highlight",
         Default = _G.AimbotConfig.HighlightColor,
         Transparency = 0,
         Locked = false,
@@ -713,6 +703,7 @@ _G.HitboxConfig = {
     Transparency = 0.5,
     Shape = Enum.PartType.Ball,
     HideOnShield = false,
+    TeamCheck = true, -- Adicionado: Padrão true
     TeamFilterEnabled = false,
     SelectedTeams = {}
 }
@@ -828,6 +819,18 @@ ConfigSection:Slider({
 })
 
 local TeamSection = criarsection(HitboxExpander, "Filtros", "Configuração de times", "lucide:users", false)
+
+TeamSection:Toggle({
+    Title = "Team check",
+    Desc = "Ignora jogadores do mesmo time",
+    Icon = "lucide:shield-check",
+    Value = _G.HitboxConfig.TeamCheck,
+    Flag = "TeamCheckHitbox",
+    Callback = function(v)
+        _G.HitboxConfig.TeamCheck = v
+        AtualizarValores()
+    end
+})
 
 TeamSection:Toggle({
     Title = "Filtrar por time",
