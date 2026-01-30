@@ -3,7 +3,7 @@ _G.AimbotConfig = _G.AimbotConfig or {
     TeamCheck = "Team",         
     TargetPart = {"Random"},
     TargetPriority = "Distance",
-    MaxDistance = 1000,         
+    MaxDistance = 3000,         
     SwitchThreshold = 1,
     WhitelistedUsers = {}, 
     WhitelistedTeams = {}, 
@@ -17,8 +17,8 @@ _G.AimbotConfig = _G.AimbotConfig or {
     ShowFOV = true,
     FOVBehavior = "Center",
     FOVNumSides = 10,
-    FOVColor1 = Color3.fromRGB(0, 255, 255),
-    FOVColor2 = Color3.fromRGB(255, 0, 255),
+    FOVColor1 = Color3.fromRGB(24, 24, 201),
+    FOVColor2 = Color3.fromRGB(217, 217, 217),
     GradientSpeed = 5,
     
     ShowHighlight = true,
@@ -461,31 +461,54 @@ local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
     if not checkcaller() and _G.SilentAimActive and ClosestHitPart then
         local Method = getnamecallmethod()
+        local Arguments = {...}
         
-        if MathRandom(1, 100) <= _G.AimbotConfig.HitChance then
+        local finalPosition = ClosestHitPart.Position + (getLegitOffset and getLegitOffset() or Vector3.new(0,0,0))
+        local cameraPos = workspace.CurrentCamera.CFrame.Position
+        local Direction = (finalPosition - cameraPos).Unit
+
+        if math.random(1, 100) <= (_G.AimbotConfig.HitChance or 100) then
+            
             if (Method == "FireServer" or Method == "InvokeServer") then
                 if isBulletRemote(self.Name) then
-                    local Arguments = {...}
-                    local finalPosition = ClosestHitPart.Position + getLegitOffset()
-                    local cameraPos = Camera.CFrame.Position
-                    local Direction = (finalPosition - cameraPos).Unit
-
-                    for i = 1, #Arguments do
-                        local v = Arguments[i]
+                    for i, v in pairs(Arguments) do
                         if typeof(v) == "Vector3" then
-                            Arguments[i] = (v.Magnitude <= 10) and Direction or finalPosition
+                            if v.Magnitude <= 10 then 
+                                Arguments[i] = Direction * v.Magnitude
+                            else
+                                Arguments[i] = finalPosition
+                            end
                         elseif typeof(v) == "CFrame" then
-                            Arguments[i] = CFrameNew(cameraPos, finalPosition)
+                            Arguments[i] = CFrame.new(cameraPos, finalPosition)
+                        
+                        elseif typeof(v) == "Ray" then
+                            Arguments[i] = Ray.new(v.Origin, (finalPosition - v.Origin).Unit * v.Direction.Magnitude)
+                        
+                        elseif typeof(v) == "Instance" and v:IsA("BasePart") and v.Parent and v.Parent:FindFirstChild("Humanoid") then
+                            Arguments[i] = ClosestHitPart
                         end
                     end
                     return oldNamecall(self, unpack(Arguments))
                 end
-            elseif Method == "Raycast" and self == Workspace then
-                local Arguments = {...}
+
+            elseif Method == "Raycast" and self == workspace then
                 local origin = Arguments[1]
-                local finalPosition = ClosestHitPart.Position + getLegitOffset()
-                Arguments[2] = (finalPosition - origin).Unit * 10000 
+                local distance = 10000
+                if Arguments[2] then distance = Arguments[2].Magnitude end
+                
+                Arguments[2] = (finalPosition - origin).Unit * distance
                 return oldNamecall(self, unpack(Arguments))
+            elseif (Method == "FindPartOnRay" or Method == "FindPartOnRayWithIgnoreList") and self == workspace then
+                local ray = Arguments[1]
+                if ray and typeof(ray) == "Ray" then
+                    Arguments[1] = Ray.new(ray.Origin, (finalPosition - ray.Origin).Unit * 5000)
+                    return oldNamecall(self, unpack(Arguments))
+                end
+            elseif (Method == "ScreenPointToRay" or Method == "ViewportPointToRay") and self == workspace.CurrentCamera then
+                local screenPos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(finalPosition)
+                if onScreen then
+                    return oldNamecall(self, screenPos.X, screenPos.Y)
+                end
             end
         end
     end
