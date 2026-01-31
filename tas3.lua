@@ -99,6 +99,17 @@ local function stopMovementInput()
     VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game) -- Solta o espaço ao parar
     local hum = getHumanoid()
     if hum then hum.AutoRotate = true end
+
+    -- === FIX PARA MOBILE (NOVO) ===
+    -- Força a GUI de toque (TouchGui) a reaparecer instantaneamente
+    -- assim que o script para de simular o teclado.
+    local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+    if playerGui then
+        local touchGui = playerGui:FindFirstChild("TouchGui")
+        if touchGui then
+            touchGui.Enabled = true
+        end
+    end
 end
 
 -- === VERIFICAÇÃO DE CHÃO (RAYCAST) ===
