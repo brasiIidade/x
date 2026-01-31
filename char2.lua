@@ -1,0 +1,249 @@
+local cloneref = cloneref or function(o) return o end
+
+-- Serviços definidos de forma segura
+local Players = cloneref(game:GetService("Players"))
+local RunService = cloneref(game:GetService("RunService"))
+local lp = Players.LocalPlayer
+
+-- Cria uma tabela LOCAL primeiro. Isso ajuda o obfuscator a manter as referências.
+local AvatarLib = {}
+
+-- Inicialização de variáveis
+AvatarLib.TargetInput = ""
+AvatarLib.CurrentAppliedId = (lp and lp.UserId) or 0 -- Fallback para 0 se lp falhar
+AvatarLib.SkinFolder = "michigun.xyz/fp3_Skins"
+
+-- Criação de pastas segura
+if not isfolder("michigun.xyz") then makefolder("michigun.xyz") end
+if not isfolder(AvatarLib.SkinFolder) then makefolder(AvatarLib.SkinFolder) end
+
+-- Funções Auxiliares Locais
+local function safe_tonumber(val)
+    if not val then return nil end
+    return tonumber(val)
+end
+
+local function find_player(name)
+    if not name or type(name) ~= "string" or name == "" then return nil end
+    name = name:lower()
+    
+    local playerList = Players:GetPlayers()
+    for i = 1, #playerList do
+        local p = playerList[i]
+        if p then
+            local pName = p.Name and p.Name:lower()
+            local pDisp = p.DisplayName and p.DisplayName:lower()
+            
+            if (pName and pName:sub(1, #name) == name) or (pDisp and pDisp:sub(1, #name) == name) then
+                return p
+            end
+        end
+    end
+    return nil
+end
+
+local function morphchar(char, faken, fakeid, desc)
+    if not char then return end
+    
+    -- Atualiza CurrentAppliedId se for o LocalPlayer
+    if lp and char == lp.Character then
+        AvatarLib.CurrentAppliedId = fakeid or AvatarLib.CurrentAppliedId
+    end
+    
+    task.spawn(function()
+        local success, err = pcall(function()
+            task.wait(0.3)
+            local hum = char:WaitForChild("Humanoid", 10)
+            if not hum then return end
+            
+            -- Limpeza segura
+            for _, v in ipairs(char:GetDescendants()) do
+                if v:IsA("Accessory") or v:IsA("Hat") then v:Destroy() end
+            end
+            
+            local children = char:GetChildren()
+            for i = 1, #children do
+                local v = children[i]
+                if v:IsA("Shirt") or v:IsA("Pants") or v:IsA("ShirtGraphic") or v:IsA("CharacterMesh") then 
+                    v:Destroy() 
+                end
+            end
+            
+            local bc = hum:FindFirstChildOfClass("BodyColors")
+            if bc then bc:Destroy() end
+            
+            local limbs = {"Torso","Left Arm","Right Arm","Left Leg","Right Leg"}
+            for i = 1, #limbs do
+                local pt = char:FindFirstChild(limbs[i])
+                if pt then
+                    local ptChildren = pt:GetChildren()
+                    for j = 1, #ptChildren do
+                        local v = ptChildren[j]
+                        if v:IsA("SpecialMesh") then v:Destroy() end
+                    end
+                end
+            end
+            
+            local hd = char:FindFirstChild("Head")
+            if hd then
+                local ms = hd:FindFirstChildOfClass("SpecialMesh")
+                if ms then
+                    ms.MeshId = ""
+                    ms.TextureId = ""
+                end
+            end
+            
+            task.wait(0.1)
+            if desc then
+                hum:ApplyDescriptionClientServer(desc)
+            end
+        end)
+        
+        if not success then warn("Morph Error:", err) end
+    end)
+end
+
+-- Funções da Biblioteca
+
+AvatarLib.ApplySkin = function(target)
+    if not lp or not lp.Character then return end -- Check extra para LocalPlayer
+    
+    local fakename = target or ""
+    if fakename == "" then return end
+    
+    local fakeid = safe_tonumber(fakename)
+    
+    local ok = pcall(function()
+        if fakeid then
+            fakename = Players:GetNameFromUserIdAsync(fakeid)
+        else
+            fakeid = Players:GetUserIdFromNameAsync(fakename)
+            fakename = Players:GetNameFromUserIdAsync(fakeid)
+        end
+    end)
+    
+    if ok and fakeid then
+        local s, desc = pcall(function() return Players:GetHumanoidDescriptionFromUserId(fakeid) end)
+        if s and desc then
+            morphchar(lp.Character, fakename, fakeid, desc)
+        end
+    end
+end
+
+AvatarLib.ApplySkinToOther = function(targetName, skinInput, isSavedFile)
+    local targetPlr = find_player(targetName)
+    if not targetPlr or not targetPlr.Character then return end
+    
+    local fakeid
+    local fakename = skinInput
+
+    if isSavedFile then
+        local success, savedId = pcall(function()
+            return readfile(AvatarLib.SkinFolder .. "/" .. skinInput .. ".txt")
+        end)
+        if success and savedId then
+            fakeid = safe_tonumber(savedId)
+            fakename = "SavedSkin"
+        else
+            return
+        end
+    else
+        fakeid = safe_tonumber(fakename)
+        local ok = pcall(function()
+            if fakeid then
+                fakename = Players:GetNameFromUserIdAsync(fakeid)
+            else
+                fakeid = Players:GetUserIdFromNameAsync(fakename)
+                fakename = Players:GetNameFromUserIdAsync(fakeid)
+            end
+        end)
+        if not ok then return end
+    end
+
+    if fakeid then
+        local s, desc = pcall(function()
+            return Players:GetHumanoidDescriptionFromUserId(fakeid)
+        end)
+        if s and desc then
+            morphchar(targetPlr.Character, fakename, fakeid, desc)
+        end
+    end
+end
+
+AvatarLib.RestoreOther = function(targetName)
+    local targetPlr = find_player(targetName)
+    if not targetPlr or not targetPlr.Character then return end
+    
+    local s, desc = pcall(function()
+        return Players:GetHumanoidDescriptionFromUserId(targetPlr.UserId)
+    end)
+    
+    if s and desc then
+        morphchar(targetPlr.Character, targetPlr.Name, targetPlr.UserId, desc)
+    end
+end
+
+AvatarLib.RestoreSkin = function()
+    if not lp or not lp.Character then return end
+    
+    local s, desc = pcall(function() return Players:GetHumanoidDescriptionFromUserId(lp.UserId) end)
+    
+    if s and desc then
+        morphchar(lp.Character, lp.Name, lp.UserId, desc)
+    end
+end
+
+AvatarLib.GetSavedSkins = function()
+    local success, files = pcall(listfiles, AvatarLib.SkinFolder)
+    if not success or not files then return {{Title = "Erro ao ler pasta", Icon = "lucide:alert-triangle"}} end
+    
+    local options = {}
+    for _, file in ipairs(files) do
+        local name = file:match("([^\\/]+)%.txt$")
+        if name then
+            table.insert(options, {Title = name, Icon = "lucide:user"})
+        end
+    end
+    if #options == 0 then
+        table.insert(options, {Title = "Nenhuma salva", Icon = "lucide:frown"})
+    end
+    return options
+end
+
+AvatarLib.SaveSkin = function(customName)
+    local idToSave = AvatarLib.CurrentAppliedId or 0
+    local fileName = (customName ~= "" and customName:gsub("[^%w%s]", "")) or "Skin_" .. idToSave
+    writefile(AvatarLib.SkinFolder .. "/" .. fileName .. ".txt", tostring(idToSave))
+end
+
+AvatarLib.LoadSkin = function(name)
+    if not lp or not lp.Character then return end
+    
+    local success, savedId = pcall(function()
+        return readfile(AvatarLib.SkinFolder .. "/" .. name .. ".txt")
+    end)
+    
+    if success and savedId then
+        local numId = safe_tonumber(savedId)
+        if numId then
+            local s, desc = pcall(function()
+                return Players:GetHumanoidDescriptionFromUserId(numId)
+            end)
+            if s and desc then
+                morphchar(lp.Character, name, numId, desc)
+            end
+        end
+    end
+end
+
+AvatarLib.DeleteSkin = function(name)
+    local path = AvatarLib.SkinFolder .. "/" .. name .. ".txt"
+    if isfile(path) then
+        delfile(path)
+    end
+end
+
+-- Exportação Final para Global
+-- Fazemos isso apenas no final para garantir que todas as funções internas
+-- já capturaram as variáveis locais corretamente antes da exportação.
+_G.Avatar = AvatarLib
