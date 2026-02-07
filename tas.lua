@@ -102,9 +102,12 @@ local function getHumanoid()
     return c and c:FindFirstChildOfClass("Humanoid")
 end
 
+-- === FUNÇÃO CORRIGIDA ===
 local function stopMovementInput()
-    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.W, false, game)
-    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game) 
+    -- Solta as teclas (Usando nil no final para evitar erro de tipo)
+    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.W, false, nil)
+    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, nil) 
+    
     local hum = getHumanoid()
     if hum then hum.AutoRotate = true end
 
@@ -112,13 +115,20 @@ local function stopMovementInput()
     if pg then
         local tg = pg:FindFirstChild("TouchGui")
         if tg then
-            tg.Enabled = true
-            task.delay(0.1, function()
-                if tg then tg.Enabled = true end
+            -- Força o reset do TouchGui
+            tg.Enabled = false
+            -- Usamos task.spawn com um loop curto para garantir que o TouchGui
+            -- volte mesmo se o engine tentar escondê-lo novamente por causa do VIM
+            task.spawn(function()
+                for i = 1, 5 do -- Tenta forçar por alguns frames
+                    if tg then tg.Enabled = true end
+                    task.wait(0.1)
+                end
             end)
         end
     end
 end
+-- ========================
 
 local function isGrounded(hrp)
     local params = RaycastParams.new()
@@ -154,9 +164,11 @@ local function applyFrame(f)
 
     if f.jump ~= _G.TAS.LastJumpInput then
         if f.jump then
-            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+            -- Corrigido: nil em vez de game
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, nil)
         else
-            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+            -- Corrigido: nil em vez de game
+            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, nil)
         end
         _G.TAS.LastJumpInput = f.jump
     end
