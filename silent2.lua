@@ -1,12 +1,12 @@
---[[ 
-    CÓDIGO OTIMIZADO PARA OFUSCAÇÃO 
-    Correções aplicadas:
-    1. Substituição de _G internos por variáveis locais (Local Upvalues) para evitar perda de referência.
-    2. Proteção contra argumentos nulos no hookmetamethod.
-    3. Proteção na função ShuffleTable.
+local z = false
+local k =
+[[
+    skid
 ]]
+if not getmetatable or not setmetatable or not type or not select or type(select(2, pcall(getmetatable, setmetatable({}, {__index = function(self, ...) while true do end end})))['__index']) ~= 'function' or not pcall or not debug or not rawget or not rawset or not pcall(rawset,{}," "," ") or not select or not getfenv or select(1, pcall(getfenv, 69)) == true or not select(2, pcall(rawget, debug, "info")) or #(((select(2, pcall(rawget, debug, "info")))(getfenv, "n")))<=1 or #(((select(2, pcall(rawget, debug, "info")))(print, "n")))<=1 or not (select(2, pcall(rawget, debug, "info")))(print, "s") == "[C]" or not (select(2, pcall(rawget, debug, "info")))(require, "s") == "[C]" or (select(2, pcall(rawget, debug, "info")))((function()end), "s") == "[C]" then
+  return z and tostring(k) or nil
+end
 
--- Configuração continua Global para você poder editar externamente
 _G.AimbotConfig = _G.AimbotConfig or {
     Enabled = false,
     TeamCheck = "Team",         
@@ -43,20 +43,17 @@ _G.AimbotConfig = _G.AimbotConfig or {
     }
 }
 
--- Variáveis Locais (Segurança contra Ofuscação)
 local SilentAimConnections = {}
 local FOVLines = {}
 local AimbotGuiInstance = nil
 local AimHighlightInstance = nil
 local AimFOVCircleInstance = nil
 
--- Limpeza inicial segura
 if _G.SilentAimConnections then
     for _, conn in pairs(_G.SilentAimConnections) do pcall(function() conn:Disconnect() end) end
 end
-_G.SilentAimConnections = {} -- Mantemos compatibilidade caso scripts externos usem
+_G.SilentAimConnections = {}
 
--- Services e Locals
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
@@ -144,7 +141,6 @@ local function IsPartVisible(part, character)
     return rayResult == nil or rayResult.Instance:IsDescendantOf(character)
 end
 
--- PROTEÇÃO ADICIONADA: Verifica se 't' existe
 local function ShuffleTable(t)
     if not t then return {} end
     local n = #t
@@ -236,11 +232,8 @@ end
 
 _G.StopSilentAim = function()
     _G.SilentAimActive = false
-    -- Limpa conexões locais
     for _, conn in pairs(SilentAimConnections) do if conn then conn:Disconnect() end end
     SilentAimConnections = {}
-    
-    -- Limpa Linhas Locais
     for _, line in pairs(FOVLines) do pcall(function() line:Remove() end) end
     FOVLines = {}
     
@@ -280,7 +273,6 @@ _G.StartSilentAim = function()
     local ScreenGui = Functions:Create("ScreenGui", {Parent = CoreGui, Name = "HUD"})
     AimbotGuiInstance = ScreenGui
 
-    -- Elementos de UI
     local Name = Functions:Create("TextLabel", {Parent = ScreenGui, Size = UDim2.new(0, 100, 0, 20), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundTransparency = 1, TextColor3 = Color3.fromRGB(255, 255, 255), Font = Enum.Font.Code, TextSize = ESP_SETTINGS.FontSize, TextStrokeTransparency = 0, TextStrokeColor3 = Color3.fromRGB(0, 0, 0), RichText = true, Visible = false})
     local Team = Functions:Create("TextLabel", {Parent = ScreenGui, Size = UDim2.new(0, 100, 0, 20), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundTransparency = 1, TextColor3 = Color3.fromRGB(255, 255, 255), Font = Enum.Font.Code, TextSize = ESP_SETTINGS.FontSize, TextStrokeTransparency = 0, TextStrokeColor3 = Color3.fromRGB(0, 0, 0), RichText = true, Visible = false})
     local Distance = Functions:Create("TextLabel", {Parent = ScreenGui, Size = UDim2.new(0, 100, 0, 20), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundTransparency = 1, TextColor3 = Color3.fromRGB(255, 255, 255), Font = Enum.Font.Code, TextSize = ESP_SETTINGS.FontSize, TextStrokeTransparency = 0, TextStrokeColor3 = Color3.fromRGB(0, 0, 0), RichText = true, Visible = false})
@@ -311,8 +303,7 @@ _G.StartSilentAim = function()
             local radius = config.FOVSize
             local angleStep = (math.pi * 2) / numSides
             local time = tick()
-
-            -- PROTEÇÃO ADICIONADA: Usa variavel local 'FOVLines'
+                
             for i = 1, numSides do
                 if not FOVLines[i] then
                     local l = Drawing.new("Line")
@@ -474,9 +465,8 @@ local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
     if not checkcaller() and _G.SilentAimActive and ClosestHitPart then
         local Method = getnamecallmethod()
-        local Arguments = {...} -- Captura argumentos
+        local Arguments = {...}
         
-        -- PROTEÇÃO ADICIONADA: Se argumentos forem nil, executa normal
         if not Arguments then return oldNamecall(self, ...) end
 
         if MathRandom(1, 100) <= (_G.AimbotConfig.HitChance or 100) then
