@@ -2046,6 +2046,8 @@ task.spawn(function()
     ler("player")
 end)
 
+local CharacterSection = criarsection(Player, "Personagem", "Modificar personagem", "lucide:user-cog", true)
+
 CharacterSection:Toggle({
     Title = "Invisibilidade",
     Desc = "Você ficará invisível para os outros",
@@ -2092,8 +2094,6 @@ CharacterSection:Toggle({
 })
 
 local speedValue = nil
-
-local CharacterSection = criarsection(Player, "Personagem", "Modificar personagem", "lucide:user-cog", true)
 
 CharacterSection:Input({
     Title = "Speed",
