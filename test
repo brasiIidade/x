@@ -2048,6 +2048,8 @@ end)
 
 local CharacterSection = criarsection(Player, "Personagem", "Modificar personagem", "lucide:user-cog", true)
 
+local CurrentSeat
+
 CharacterSection:Toggle({
     Title = "Invisibilidade",
     Desc = "Você ficará invisível para os outros",
@@ -2060,6 +2062,14 @@ CharacterSection:Toggle({
         if not RootPart then return end
 
         if Value then
+            for _, v in ipairs(Character:GetDescendants()) do
+                if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
+                    v.Transparency = 0.5
+                elseif v:IsA("Decal") then
+                    v.Transparency = 0.5
+                end
+            end
+
             local Camera = workspace.CurrentCamera
             local SavedCFrame = RootPart.CFrame
             local OldCamType = Camera.CameraType
@@ -2069,12 +2079,13 @@ CharacterSection:Toggle({
             task.wait(0.15)
 
             local Seat = Instance.new("Seat")
-            Seat.Name = "m"
+            Seat.Name = game:GetService("HttpService"):GenerateGUID(false)
             Seat.Transparency = 1
             Seat.CanCollide = false
             Seat.Anchored = false
             Seat.Position = Vector3.new(-25.95, 84, 3537.55)
             Seat.Parent = workspace
+            CurrentSeat = Seat
 
             local Weld = Instance.new("Weld")
             Weld.Part0 = Seat
@@ -2085,9 +2096,17 @@ CharacterSection:Toggle({
             Seat.CFrame = SavedCFrame
             Camera.CameraType = OldCamType
         else
-            local ExistingSeat = workspace:FindFirstChild("m")
-            if ExistingSeat then
-                ExistingSeat:Destroy()
+            for _, v in ipairs(Character:GetDescendants()) do
+                if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
+                    v.Transparency = 0
+                elseif v:IsA("Decal") then
+                    v.Transparency = 0
+                end
+            end
+
+            if CurrentSeat and CurrentSeat.Parent then
+                CurrentSeat:Destroy()
+                CurrentSeat = nil
             end
         end
     end
