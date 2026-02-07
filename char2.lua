@@ -1,23 +1,27 @@
+local z = false
+local k =
+[[
+    skid
+]]
+if not getmetatable or not setmetatable or not type or not select or type(select(2, pcall(getmetatable, setmetatable({}, {__index = function(self, ...) while true do end end})))['__index']) ~= 'function' or not pcall or not debug or not rawget or not rawset or not pcall(rawset,{}," "," ") or not select or not getfenv or select(1, pcall(getfenv, 69)) == true or not select(2, pcall(rawget, debug, "info")) or #(((select(2, pcall(rawget, debug, "info")))(getfenv, "n")))<=1 or #(((select(2, pcall(rawget, debug, "info")))(print, "n")))<=1 or not (select(2, pcall(rawget, debug, "info")))(print, "s") == "[C]" or not (select(2, pcall(rawget, debug, "info")))(require, "s") == "[C]" or (select(2, pcall(rawget, debug, "info")))((function()end), "s") == "[C]" then
+  return z and tostring(k) or nil
+end
+
 local cloneref = cloneref or function(o) return o end
 
--- Serviços definidos de forma segura
 local Players = cloneref(game:GetService("Players"))
 local RunService = cloneref(game:GetService("RunService"))
 local lp = Players.LocalPlayer
 
--- Cria uma tabela LOCAL primeiro. Isso ajuda o obfuscator a manter as referências.
 local AvatarLib = {}
 
--- Inicialização de variáveis
 AvatarLib.TargetInput = ""
-AvatarLib.CurrentAppliedId = (lp and lp.UserId) or 0 -- Fallback para 0 se lp falhar
+AvatarLib.CurrentAppliedId = (lp and lp.UserId) or 0
 AvatarLib.SkinFolder = "michigun.xyz/fp3_Skins"
 
--- Criação de pastas segura
 if not isfolder("michigun.xyz") then makefolder("michigun.xyz") end
 if not isfolder(AvatarLib.SkinFolder) then makefolder(AvatarLib.SkinFolder) end
 
--- Funções Auxiliares Locais
 local function safe_tonumber(val)
     if not val then return nil end
     return tonumber(val)
@@ -45,7 +49,6 @@ end
 local function morphchar(char, faken, fakeid, desc)
     if not char then return end
     
-    -- Atualiza CurrentAppliedId se for o LocalPlayer
     if lp and char == lp.Character then
         AvatarLib.CurrentAppliedId = fakeid or AvatarLib.CurrentAppliedId
     end
@@ -56,7 +59,6 @@ local function morphchar(char, faken, fakeid, desc)
             local hum = char:WaitForChild("Humanoid", 10)
             if not hum then return end
             
-            -- Limpeza segura
             for _, v in ipairs(char:GetDescendants()) do
                 if v:IsA("Accessory") or v:IsA("Hat") then v:Destroy() end
             end
@@ -103,10 +105,8 @@ local function morphchar(char, faken, fakeid, desc)
     end)
 end
 
--- Funções da Biblioteca
-
 AvatarLib.ApplySkin = function(target)
-    if not lp or not lp.Character then return end -- Check extra para LocalPlayer
+    if not lp or not lp.Character then return end
     
     local fakename = target or ""
     if fakename == "" then return end
@@ -243,7 +243,4 @@ AvatarLib.DeleteSkin = function(name)
     end
 end
 
--- Exportação Final para Global
--- Fazemos isso apenas no final para garantir que todas as funções internas
--- já capturaram as variáveis locais corretamente antes da exportação.
 _G.Avatar = AvatarLib
