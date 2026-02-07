@@ -2112,24 +2112,25 @@ CharacterSection:Toggle({
     end
 })
 
+CharacterSection:Space()
+
 local speedValue = nil
 
 CharacterSection:Input({
     Title = "Speed",
     Desc = "Muda sua velocidade",
-    Placeholder = "100",
+    Placeholder = "16",
     InputIcon = "lucide:gauge",
     Flag = "Speed",
     Callback = function(v)
         if v == "" then return end
-        local n = tonumber(v)
-        speedValue = n
+        speedValue = tonumber(v)
     end
 })
 
-local grupamento1 = CharacterSection:Group()
+local grupamentoSpeed = CharacterSection:Group()
 
-grupamento1:Button({
+grupamentoSpeed:Button({
     Title = "Aplicar velocidade",
     Icon = "lucide:check-circle",
     Callback = function()
@@ -2137,26 +2138,81 @@ grupamento1:Button({
             notificar("Informe um valor válido", 2, "lucide:alert-circle")
             return
         end
-        if _G.PlayerMod and _G.PlayerMod.SetSpeed then
-            _G.PlayerMod.SetSpeed(speedValue)
+        local Character = LocalPlayer.Character
+        local Humanoid = Character and Character:FindFirstChild("Humanoid")
+        if Humanoid then
+            Humanoid.WalkSpeed = speedValue
             notificar("Velocidade alterada", 2, "lucide:zap")
         end
     end
 })
 
-grupamento1:Space()
+grupamentoSpeed:Space()
 
-grupamento1:Button({
+grupamentoSpeed:Button({
     Title = "Resetar speed",
     Icon = "lucide:rotate-ccw",
     Callback = function()
-        if _G.PlayerMod and _G.PlayerMod.ResetSpeed then
-            _G.PlayerMod.ResetSpeed()
+        local Character = LocalPlayer.Character
+        local Humanoid = Character and Character:FindFirstChild("Humanoid")
+        if Humanoid then
+            Humanoid.WalkSpeed = 16
             notificar("Velocidade resetada", 2, "lucide:rotate-ccw")
         end
     end
 })
 
+CharacterSection:Space()
+
+local jumpValue = nil
+
+CharacterSection:Input({
+    Title = "Jump",
+    Desc = "Muda a força do pulo",
+    Placeholder = "50",
+    InputIcon = "lucide:arrow-up",
+    Flag = "Jump",
+    Callback = function(v)
+        if v == "" then return end
+        jumpValue = tonumber(v)
+    end
+})
+
+local grupamentoJump = CharacterSection:Group()
+
+grupamentoJump:Button({
+    Title = "Aplicar pulo",
+    Icon = "lucide:check-circle",
+    Callback = function()
+        if not jumpValue then
+            notificar("Informe um valor válido", 2, "lucide:alert-circle")
+            return
+        end
+        local Character = LocalPlayer.Character
+        local Humanoid = Character and Character:FindFirstChild("Humanoid")
+        if Humanoid then
+            Humanoid.UseJumpPower = true
+            Humanoid.JumpPower = jumpValue
+            notificar("Pulo alterado", 2, "lucide:zap")
+        end
+    end
+})
+
+grupamentoJump:Space()
+
+grupamentoJump:Button({
+    Title = "Resetar pulo",
+    Icon = "lucide:rotate-ccw",
+    Callback = function()
+        local Character = LocalPlayer.Character
+        local Humanoid = Character and Character:FindFirstChild("Humanoid")
+        if Humanoid then
+            Humanoid.UseJumpPower = true
+            Humanoid.JumpPower = 50
+            notificar("Pulo resetado", 2, "lucide:rotate-ccw")
+        end
+    end
+})
 CharacterSection:Space()
 
 CharacterSection:Toggle({
