@@ -2046,6 +2046,51 @@ task.spawn(function()
     ler("player")
 end)
 
+CharacterSection:Toggle({
+    Title = "Invisibilidade",
+    Desc = "Você ficará invisível para os outros",
+    Flag = "Invisivel",
+    Icon = "lucide:hat-glasses",
+    Callback = function(Value)
+        local Character = LocalPlayer.Character
+        local RootPart = Character and Character:FindFirstChild("HumanoidRootPart")
+
+        if not RootPart then return end
+
+        if Value then
+            local Camera = workspace.CurrentCamera
+            local SavedCFrame = RootPart.CFrame
+            local OldCamType = Camera.CameraType
+
+            Camera.CameraType = Enum.CameraType.Scriptable
+            RootPart.CFrame = CFrame.new(-25.95, 84, 3537.55)
+            task.wait(0.15)
+
+            local Seat = Instance.new("Seat")
+            Seat.Name = "m"
+            Seat.Transparency = 1
+            Seat.CanCollide = false
+            Seat.Anchored = false
+            Seat.Position = Vector3.new(-25.95, 84, 3537.55)
+            Seat.Parent = workspace
+
+            local Weld = Instance.new("Weld")
+            Weld.Part0 = Seat
+            Weld.Part1 = Character:FindFirstChild("Torso") or Character:FindFirstChild("UpperTorso")
+            Weld.Parent = Seat
+
+            task.wait()
+            Seat.CFrame = SavedCFrame
+            Camera.CameraType = OldCamType
+        else
+            local ExistingSeat = workspace:FindFirstChild("m")
+            if ExistingSeat then
+                ExistingSeat:Destroy()
+            end
+        end
+    end
+})
+
 local speedValue = nil
 
 local CharacterSection = criarsection(Player, "Personagem", "Modificar personagem", "lucide:user-cog", true)
