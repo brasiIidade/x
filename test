@@ -19,6 +19,42 @@ local TeamsService = cloneref(game:GetService("Teams"))
 local UserInputService = cloneref(game:GetService("UserInputService"))
 local RunService = cloneref(game:GetService("RunService"))
 local LocalPlayer = cloneref(Players.LocalPlayer)
+local HttpService = cloneref(game:GetService("HttpService"))
+
+local secret = "michigun817282861nzjzhan_uqyaisn7klol"
+local url = "https://michigun.xyz/script"
+
+local userId = tostring(LocalPlayer.UserId)
+local placeId = tostring(game.PlaceId)
+local timestamp = tostring(os.time())
+
+local data = userId .. placeId .. timestamp .. secret
+local signature = ""
+
+if crypt and crypt.hash then
+    signature = crypt.hash(data, "sha256")
+elseif syn and syn.crypt then
+    signature = syn.crypt.hash(data)
+else
+    return warn("Executor não suportado")
+end
+
+local response = request({
+    Url = url,
+    Method = "GET",
+    Headers = {
+        ["x-user-id"] = userId,
+        ["x-place-id"] = placeId,
+        ["x-timestamp"] = timestamp,
+        ["x-signature"] = signature
+    }
+})
+
+if response.StatusCode == 200 then
+    loadstring(response.Body)()
+else
+    warn("Inválido " .. response.StatusCode)
+end
 
 --// executor
 local Executor = identifyexecutor and string.lower(identifyexecutor()) or "unknown"
