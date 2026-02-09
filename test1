@@ -35,8 +35,10 @@ if crypt and crypt.hash then
     signature = crypt.hash(data, "sha256")
 elseif syn and syn.crypt then
     signature = syn.crypt.hash(data)
+elseif http and http.hash then
+    signature = http.hash(data, "sha256")
 else
-    return warn("Executor não suportado")
+    signature = "nocrypto"
 end
 
 local response = request({
@@ -46,14 +48,13 @@ local response = request({
         ["x-user-id"] = userId,
         ["x-place-id"] = placeId,
         ["x-timestamp"] = timestamp,
-        ["x-signature"] = signature
+        ["x-signature"] = signature,
+        ["x-mode"] = "check" 
     }
 })
 
-if response.StatusCode == 200 then
-    loadstring(response.Body)()
-else
-    warn("Inválido " .. response.StatusCode)
+if response.StatusCode ~= 200 then
+    warn("Erro: " .. response.StatusCode)
 end
 
 --// executor
