@@ -204,6 +204,19 @@ local function ler(key)
     end)
 end
 
+--[[ 
+uso: Title = cor({"Teste", "#FF0000"}, {" arroz"}),
+]]--
+
+local function cor(...)
+    local output = {}
+    for i, data in ipairs({...}) do
+        output[i] = "<font color='" .. (data[2] or "#ffffff") .. "'>" .. data[1] .. "</font>"
+    end
+    return table.concat(output)
+end
+
+
 
 --// tags
 main:Tag({
