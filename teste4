@@ -2165,6 +2165,77 @@ CharacterSection:Toggle({
 
 CharacterSection:Space()
 
+CharacterSection:Input({
+    Title = "Select Target",
+    Desc = cor({"O jogo "}, {"precisa", "#00ff00"}, {" ter colisões ativas"}),
+    Placeholder = "sanctuary",
+    InputIcon = "lucide:user",
+    Callback = function(v)
+        usuario = nil
+        if v == "" then return end
+        v = v:lower()
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer then
+                if p.Name:lower():sub(1, #v) == v or p.DisplayName:lower():sub(1, #v) == v then
+                    usuario = p
+                    notificar("Alvo: " .. p.Name, 2, "lucide:check")
+                    break
+                end
+            end
+        end
+    end
+})
+
+CharacterSection:Button({
+    Title = "Fling",
+    Icon = "lucide:swords",
+    Callback = function()
+        if not usuario then
+            notificar("Selecione um usuário primeiro", 2, "lucide:alert-circle")
+            return
+        end
+
+        local Target = usuario
+        if Target and Target.Character and LocalPlayer.Character then
+            local TargetRoot = Target.Character:FindFirstChild("HumanoidRootPart")
+            local LocalRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            
+            if TargetRoot and LocalRoot then
+                local OldPosition = LocalRoot.CFrame
+                local StartTime = tick()
+                local Duration = 1.5 
+                
+                local Connection
+                Connection = RunService.Heartbeat:Connect(function()
+                    if tick() - StartTime >= Duration or not Target or not Target.Character or not Target.Character:FindFirstChild("HumanoidRootPart") or not LocalPlayer.Character then
+                        if Connection then Connection:Disconnect() end
+                        LocalRoot.Velocity = Vector3.new(0, 0, 0)
+                        LocalRoot.RotVelocity = Vector3.new(0, 0, 0)
+                        LocalRoot.CFrame = OldPosition
+                        return
+                    end
+
+                    local CurrentTargetRoot = Target.Character.HumanoidRootPart
+                    
+                    LocalRoot.CFrame = (CFrame.new(CurrentTargetRoot.Position + Vector3.new(0, -1, 0)) * CFrame.Angles(-1.5707963267948966, 0, 0))
+                    
+                    local GodspeedForce = Vector3.new(0, 10000, 0)
+                    LocalRoot.Velocity = GodspeedForce
+                    LocalRoot.RotVelocity = GodspeedForce
+                    
+                    pcall(function()
+                        sethiddenproperty(LocalRoot, 'PhysicsRepRootPart', CurrentTargetRoot)
+                    end)
+                end)
+            else
+                notificar("O alvo ou você não tem personagem", 2, "lucide:x-octagon")
+            end
+        end
+    end
+})
+
+CharacterSection:Space()
+
 local speedValue = nil
 
 CharacterSection:Input({
