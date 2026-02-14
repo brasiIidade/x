@@ -131,7 +131,7 @@ end
 --// discord
 main:CreateTopbarButton("Discord", "geist:logo-discord", function()
     setclipboard("https://discord.gg/G5vEkrAXnF")
-    notificar("Link copiado para a área de transferência!", 5, "geist:logo-discord")
+    notificar("Link do Discord copiado!", 5, "geist:logo-discord")
 end, 990)
 
 --// links
