@@ -2592,7 +2592,7 @@ InterfaceSection:Toggle({
     main:EditOpenButton({
     Title = "",
     Icon = "rbxthumb://type=Asset&id=88026679106109&w=420&h=420",
-    CornerRadius = UDim.new(0, 5),
+    CornerRadius = UDim.new(10, 10),
     StrokeThickness = 1,
     Color = ColorSequence.new(
         Color3.fromHex("#282828"), 
