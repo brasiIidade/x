@@ -225,12 +225,6 @@ local function cor(...)
 end
 
 --// tags
-main:Tag({
-    Title = "fp3",
-    Icon = "geist:logo-discord",
-    Color = Color3.fromHex("#7289da"),
-    Radius = 20
-})
 
 local fps = main:Tag({
   Title = "0 FPS",
