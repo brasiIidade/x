@@ -2920,7 +2920,7 @@ if tevez then
     LocalSection:Button({
         Title = "Enviar",
         Desc = cor({"Manda", "#00FF00"}, {" a mensagem atual"}),
-        Color = Color3.fromHex("#8D8F91"),
+        Color = "Green",
         Icon = "lucide:send",
         Callback = function()
             if _G.TevezMods and _G.TevezMods.SendMessage then _G.TevezMods.SendMessage() end
@@ -2930,11 +2930,11 @@ if tevez then
     local SpooferSection = criarsection(TevezTab, "Spoofer", "Alterar dispositivo", "lucide:smartphone", false)
     SpooferSection:Paragraph({
         Title = "Spoofer",
-        Desc = cor({"O "}, {"spoofer", "#00AAFF"}, {" permite você alterar o dispositivo visual"})
+        Desc = cor({"O "}, {"spoofer", "#00AAFF"}, {" permite você alterar o dispositivo para todos"})
     })
     SpooferSection:Dropdown({
         Title = "Dispositivo",
-        Desc = cor({"Selecione o "}, {"aparelho", "#FFFFFF"}, {" que deseja simular"}),
+        Desc = cor({"Selecione o "}, {"dispositivo", "#FFFFFF"}),
         Icon = "lucide:laptop",
         Values = { "Mobile", "Computer" },
         Value = "Computer",
@@ -2984,7 +2984,7 @@ if tevez then
 
     FarmSection:Toggle({
         Title = "Ativar",
-        Desc = cor({"Inicia", "#00FF00"}, {" o autofarm de dinheiro"}),
+        Desc = cor({"Inicia", "#00FF00"}, {" o autofarm"}),
         Icon = "lucide:play",
         Value = false,
         Callback = function(v)
@@ -3005,7 +3005,7 @@ if tevez then
     
     FarmSection:Input({
         Title = "Raio de segurança",
-        Desc = cor({"Distância para "}, {"parar", "#FF0000"}, {" o farm"}),
+        Desc = cor({"Distância para "}, {"detectar", "#FF0000"}, {" se há alguém por perto"}),
         Placeholder = "60",
         InputIcon = "lucide:radio",
         Flag = "RaioDeSegurancaAutofarmTevez",
@@ -3019,12 +3019,12 @@ if tevez then
     CombatSection:Paragraph({
         Title = "Kill aura",
         Color = Color3.fromHex("#FF1D0D"),
-        Desc = cor({"Ataca", "#FF0000"}, {" inimigos ao redor automaticamente"})
+        Desc = cor({"RISCO", "#FF0000"}, {" Você será banido caso alguém te denuncie"})
     })
     local KillAuraToggle
     CombatSection:Toggle({
         Title = "Permitir",
-        Desc = cor({"Libera", "#00FF00"}, {" o uso das funções de combate"}),
+        Desc = cor({"Libera", "#00FF00"}, {" o uso do kill-aura"}),
         Icon = "lucide:lock-open",
         Value = false,
         Callback = function(state)
@@ -3064,7 +3064,7 @@ if tevez then
     end
     ShopSection:Dropdown({
         Title = "Comprar itens",
-        Desc = cor({"Seleciona um "}, {"item", "#FFFFFF"}, {" na loja civil"}),
+        Desc = cor({"Seleciona um "}, {"item", "#FFFFFF"}, {" na loja"}),
         Icon = "lucide:tag",
         Values = DropdownValues,
         Value = "GLOCK 18 - $4300",
@@ -3133,7 +3133,7 @@ if delta then
         if ler then ler("delta") end
     end)
 
-    local JJSection = criarsection(DeltaTab, "Polichinelos", "Modificar status", "lucide:activity", true)
+    local JJSection = criarsection(DeltaTab, "Polichinelos", "Modificar", "lucide:activity", true)
     
     JJSection:Input({
         Title = "Quantidade",
@@ -3157,8 +3157,8 @@ if delta then
     local EcoSection = criarsection(DeltaTab, "Economia", "Dinheiro", "lucide:coins", false)
 
     EcoSection:Button({
-        Title = "Ficar rico",
-        Desc = cor({"Pega", "#00FF00"}, {" 1M de dinheiro instantaneamente"}),
+        Title = "Money",
+        Desc = cor({"Pega", "#00FF00"}, {" 1M de dinheiro"}),
         Icon = "lucide:gem",
         Callback = function()
             if _G.DeltaLogic and _G.DeltaLogic.GetRich then _G.DeltaLogic.GetRich() end
@@ -3167,7 +3167,7 @@ if delta then
 
     EcoSection:Paragraph({
         Title = "Observação",
-        Desc = cor({"Money all faz uma transferência automática"})
+        Desc = cor({"Money all faz transferências a cada 15 segundos"})
     })
 
     EcoSection:Toggle({
@@ -3207,7 +3207,7 @@ if soucre then
 
     FarmSection:Toggle({
         Title = "Autofarm",
-        Desc = cor({"Inicia", "#00FF00"}, {" as entregas automáticas"}),
+        Desc = cor({"Inicia", "#00FF00"}, {" o autofarm"}),
         Icon = "lucide:circle-play",
         Value = false,
         Callback = function(v)
