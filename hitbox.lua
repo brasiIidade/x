@@ -1,5 +1,3 @@
--- anti
-
 local function Finalizar(Mensagem)
     print(Mensagem)
     task.wait(0.5)
@@ -82,6 +80,8 @@ end
 local cloneref = cloneref or function(o) return o end
 
 local Players = cloneref(game:GetService("Players"))
+local HttpService = cloneref(game:GetService("HttpService"))
+local CoreGui = cloneref(game:GetService("CoreGui"))
 local LocalPlayer = cloneref(Players.LocalPlayer)
 
 _G.HitboxConnections = {}
@@ -97,6 +97,7 @@ _G.HitboxConfig = _G.HitboxConfig or {
 }
 
 local OriginalHRP = {}
+local PlayerHighlights = {}
 
 local function SaveOriginal(plr, hrp)
     if not OriginalHRP[plr] then
@@ -123,9 +124,9 @@ local function ResetHitbox(plr)
         hrp.Material = data.Material
     end
     
-    if char then
-        local hl = char:FindFirstChild("HitboxHighlight")
-        if hl then hl:Destroy() end
+    if PlayerHighlights[plr] then
+        PlayerHighlights[plr]:Destroy()
+        PlayerHighlights[plr] = nil
     end
 end
 
@@ -145,11 +146,9 @@ local function ApplyHitbox(plr)
     
     if plr.Name == LocalPlayer.Name then return end
     
-    -- [[ CORREÇÃO AQUI ]] --
-    -- Se TeamCheck estiver ligado e for do mesmo time, RESETA a hitbox antes de sair
     if Config.TeamCheck then
         if plr.Team ~= nil and LocalPlayer.Team ~= nil and plr.Team.Name == LocalPlayer.Team.Name then 
-            ResetHitbox(plr) -- Isso remove a hitbox se ela já estiver aplicada
+            ResetHitbox(plr)
             return 
         end
     end
@@ -181,18 +180,28 @@ local function ApplyHitbox(plr)
     hrp.CanCollide = false
     hrp.Material = Enum.Material.ForceField
 
-    local old = char:FindFirstChild("HitboxHighlight")
-    if old then old:Destroy() end
+    if PlayerHighlights[plr] then
+        PlayerHighlights[plr]:Destroy()
+        PlayerHighlights[plr] = nil
+    end
 
     if Config.Transparency < 1 then
         local hl = Instance.new("Highlight")
-        hl.Name = "HitboxHighlight"
-        hl.Parent = char
+        hl.Name = HttpService:GenerateGUID(false)
         hl.Adornee = char
         hl.FillColor = plr.TeamColor.Color
         hl.OutlineColor = Color3.new(1,1,1)
         hl.FillTransparency = Config.Transparency
         hl.OutlineTransparency = Config.Transparency
+
+        local success, target = pcall(function() return gethui() end)
+        if success and target then
+            hl.Parent = target
+        else
+            pcall(function() hl.Parent = CoreGui end)
+        end
+
+        PlayerHighlights[plr] = hl
     end
 end
 
