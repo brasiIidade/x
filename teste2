@@ -11,7 +11,7 @@ end
 uso: Title = cor({"Teste", "#FF0000"}, {" arroz"}),
 ]]--
 
-local function cor(...)
+function cor(...)
     local output = {}
     for i, data in ipairs({...}) do
         output[i] = "<font color='" .. (data[2] or "#ffffff") .. "'>" .. data[1] .. "</font>"
@@ -326,6 +326,10 @@ local Player = criartab("Player", "solar:user-bold", false)
 
 --// tab "config"
 local Configs = criartab("Configurações", "lucide:settings", false)
+
+
+
+algo errado aqui?
 
 --// tab silent
 if not _G.AimbotConfig then
