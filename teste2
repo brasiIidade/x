@@ -2260,7 +2260,7 @@ CharacterSection:Input({
 
 CharacterSection:Button({
     Title = "Fling",
-    Icon = "lucide:swords",
+    Icon = "lucide:earth",
     Callback = function()
         if not usuario then
             notificar("Selecione um usuário primeiro", 2, "lucide:alert-circle")
