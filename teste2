@@ -1498,14 +1498,14 @@ Extras:Toggle({
 
 --// tab ChatGPT
 task.spawn(function()
-    if ler then ler("chatgpt") end
+    ler("chatgpt")
 end)
 
 local currentPrompt = ""
 
 ChatGPT:Paragraph({
     Title = "Observação",
-    Desc = cor({"O prompt usado para a IA está na pasta '", "#AAAAAA"}, {"fp3_ChatGPT.txt", "#00AAFF"}, {"' dentro de '", "#AAAAAA"}, {"michigun.xyz", "#00AAFF"}, {"'.", "#AAAAAA"}),
+    Desc = "O prompt usado para a IA está localizado na pasta 'fp3_ChatGPT.txt' dentro da pasta 'michigun.xyz'. Você pode colocar todas as leis no arquivo e a IA saberá",
     Color = "Blue",
     Image = "lucide:info",
     ImageSize = 30
@@ -1522,12 +1522,12 @@ ChatGPT:Input({
 
 local SendBtn
 SendBtn = ChatGPT:Button({
-    Title = cor({"Enviar prompt", "#00FF00"}),
+    Title = "Enviar prompt",
     Icon = "lucide:send",
     Justify = "Center",
     Callback = function()
         if not _G.ChatGPT or not _G.ChatGPT.Ask then 
-            notificar(cor({"Aguarde...", "#FFAA00"}), 2, "lucide:loader")
+            notificar("Aguarde...", 2, "lucide:loader")
             return 
         end
         if currentPrompt == "" then return end
@@ -1542,7 +1542,7 @@ SendBtn = ChatGPT:Button({
         ChatGPT:Paragraph({
             Title = timestamp .. " Você:",
             Color = "Blue",
-            Desc = cor({currentPrompt, "#FFFFFF"}),
+            Desc = currentPrompt,
             Image = "lucide:user-round",
             ImageSize = 25
         })
@@ -1552,7 +1552,7 @@ SendBtn = ChatGPT:Button({
             
             ChatGPT:Paragraph({
                 Title = timestamp .. " Resposta:",
-                Desc = cor({cleanMsg, "#00FF00"}),
+                Desc = cleanMsg,
                 Color = "Green",
                 Image = "geist:logo-open-ai",
                 ImageSize = 28
@@ -1568,37 +1568,36 @@ SendBtn = ChatGPT:Button({
 })
 
 ChatGPT:Button({
-    Title = cor({"Enviar resposta no chat", "#00AAFF"}),
+    Title = "Enviar resposta no chat",
     Icon = "lucide:message-circle",
     Justify = "Center",
     Callback = function()
         if _G.ChatGPT and _G.ChatGPT.SendToChat and _G.ChatGPT.LastMessage then
             _G.ChatGPT.SendToChat(_G.ChatGPT.LastMessage)
-            notificar(cor({"Enviado no chat", "#00FF00"}), 2, "lucide:message-square")
+            notificar("Enviado no chat", 2, "lucide:message-square")
         else
-            notificar(cor({"Erro: Nada para enviar", "#FF0000"}), 2, "lucide:x")
+            notificar("Erro: Nada para enviar", 2, "lucide:x")
         end
     end
 })
 
 ChatGPT:Button({
-    Title = cor({"Copiar resposta", "#FFAA00"}),
+    Title = "Copiar resposta",
     Icon = "lucide:copy",
     Justify = "Center",
     Callback = function()
         if _G.ChatGPT and _G.ChatGPT.LastMessage then
             if setclipboard then
                 setclipboard(_G.ChatGPT.LastMessage)
-                notificar(cor({"Copiado!", "#00FF00"}), 2, "lucide:copy")
+                notificar("Copiado!", 2, "lucide:copy")
             else
-                notificar(cor({"Executor sem 'setclipboard'", "#FF0000"}), 2, "lucide:x")
+                notificar("Executor sem 'setclipboard'", 2, "lucide:x")
             end
         else
-            notificar(cor({"Nada para copiar", "#FF0000"}), 2, "lucide:x")
+            notificar("Nada para copiar", 2, "lucide:x")
         end
     end
 })
-
 
 --// tab F3X
 task.spawn(function()
