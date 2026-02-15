@@ -7,6 +7,18 @@ if not getmetatable or not setmetatable or not type or not select or type(select
   return REVEAL_HINT_STACK and tostring(ANTI_ENV_LOG_MESSAGE) or nil
 end
 
+--[[ 
+uso: Title = cor({"Teste", "#FF0000"}, {" arroz"}),
+]]--
+
+local function cor(...)
+    local output = {}
+    for i, data in ipairs({...}) do
+        output[i] = "<font color='" .. (data[2] or "#ffffff") .. "'>" .. data[1] .. "</font>"
+    end
+    return table.concat(output)
+end
+
 local UI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 UI:SetFont("rbxassetid://16658237174")
 loadstring(game:HttpGet("https://raw.githubusercontent.com/michigun-log/logs/refs/heads/main/740dd88a77e9cc25.lua.txt"))()
@@ -210,18 +222,6 @@ local function ler(key)
             end
         end
     end)
-end
-
---[[ 
-uso: Title = cor({"Teste", "#FF0000"}, {" arroz"}),
-]]--
-
-local function cor(...)
-    local output = {}
-    for i, data in ipairs({...}) do
-        output[i] = "<font color='" .. (data[2] or "#ffffff") .. "'>" .. data[1] .. "</font>"
-    end
-    return table.concat(output)
 end
 
 --// tags
