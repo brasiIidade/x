@@ -508,7 +508,7 @@ do
 
     MainSection:Slider({
         Title = "Hit chance",
-        Desc = cor({"Porcentagem de "}, {"tiros", "#00AAFF"}, {" que acertarão o alvo"}),
+        Desc = "Porcentagem de tiros que acertarão o alvo",
         Step = 1,
         Value = { Min = 0, Max = 100, Default = _G.AimbotConfig.HitChance },
         Flag = "ChanceSilentAim",
@@ -520,7 +520,7 @@ do
     
     WhitelistSection:Button({
         Title = "Atualizar lista",
-        Desc = cor({"Atualiza a "}, {"lista de jogadores", "#FFFFFF"}),
+        Desc = "Atualiza a lista de jogadores",
         Icon = "lucide:refresh-cw",
         Callback = function()
             if PlayerWhitelist then PlayerWhitelist:Refresh(GetPlayerNames()) end
@@ -530,7 +530,7 @@ do
 
     PlayerWhitelist = WhitelistSection:Dropdown({
         Title = "Ignorar jogadores",
-        Desc = cor({"Não "}, {"foca", "#FF8800"}, {" nesses jogadores"}),
+        Desc = cor({"Não", "#FF0000"}, {" foca nesses jogadores"}),
         Values = GetPlayerNames(),
         Value = {}, 
         Multi = true,
@@ -541,7 +541,7 @@ do
 
     WhitelistSection:Dropdown({
         Title = "Ignorar times",
-        Desc = cor({"Não "}, {"foca", "#FF8800"}, {" nesses times"}),
+        Desc = cor({"Não", "#FF0000"}, {" foca nesses times"}),
         Values = GetTeamNames(),
         Value = {},
         Multi = true,
@@ -586,7 +586,7 @@ do
 
     FocusSection:Input({
         Title = "Adicionar alvo",
-        Desc = cor({"Digite o "}, {"nome", "#FFFFFF"}),
+        Desc = cor({"Digite o "}, {"nome", "#00AAFF"}),
         Placeholder = "player123",
         InputIcon = "lucide:user-plus",
         Callback = function(text)
@@ -649,7 +649,7 @@ do
 
     LogicSection:Dropdown({
         Title = "Prioridade",
-        Desc = cor({"Como escolher o "}, {"melhor alvo", "#00AAFF"}),
+        Desc = "Como escolher o melhor alvo",
         Values = {"Distance", "Health"},
         Value = "Distance",
         Flag = "PrioridadeSilentAim",
@@ -658,7 +658,7 @@ do
 
     LogicSection:Dropdown({
         Title = "Partes",
-        Desc = cor({"Onde o "}, {"tiro", "#FF0000"}, {" deve ir"}),
+        Desc = "Onde o tiro deve ir",
         Values = { 
             "Random", "Head", "Torso",
             "Left Arm", "Right Arm", "Left Leg", "Right Leg"
@@ -672,7 +672,7 @@ do
 
     LogicSection:Dropdown({
         Title = "Alvos",
-        Desc = cor({"Quem deve ser "}, {"atacado", "#FF0000"}),
+        Desc = "Quem deve ser atacado",
         Values = { "Todos", "Inimigos" },
         Value = "Inimigos",
         Flag = "AlvosSilentAim",
@@ -691,7 +691,7 @@ do
 
     LogicSection:Toggle({
         Title = "Wall check",
-        Desc = cor({"Ignora inimigos "}, {"atrás de paredes", "#FFAA00"}),
+        Desc = cor({"Ignora", "#FF0000"}, {" inimigos atrás de paredes"}),
         Icon = "lucide:brick-wall",
         Type = "Checkbox",
         Value = _G.AimbotConfig.WallCheck,
@@ -701,7 +701,7 @@ do
 
     LogicSection:Slider({
         Title = "Distância máxima",
-        Desc = cor({"Mede o quão "}, {"longe", "#00AAFF"}, {" o silent aim irá"}),
+        Desc = "Mede o quão longe o silent aim irá",
         Step = 10,
         Value = { Min = 50, Max = 5000, Default = _G.AimbotConfig.MaxDistance },
         Flag = "AlcanceSilentAim",
@@ -712,7 +712,7 @@ do
 
     VisualsSection:Toggle({
         Title = "FOV",
-        Desc = cor({"Ativa o "}, {"FOV", "#FFFFFF"}),
+        Desc = "Ativa o FOV",
         Icon = "lucide:circle",
         Type = "Checkbox",
         Value = _G.AimbotConfig.ShowFOV,
@@ -722,7 +722,7 @@ do
 
     VisualsSection:Dropdown({
         Title = "Posição",
-        Desc = cor({"Modifica a "}, {"posição", "#00AAFF"}, {" do FOV"}),
+        Desc = "Modifica a posição do FOV",
         Values = { "Mouse", "Center" },
         Value = "Center",
         Flag = "PosicaoFOV",
@@ -731,7 +731,7 @@ do
 
     VisualsSection:Slider({
         Title = "Tamanho",
-        Desc = cor({"Modifica o "}, {"tamanho", "#00AAFF"}, {" do FOV"}),
+        Desc = "Modifica o tamanho do FOV",
         Step = 5,
         Value = { Min = 40, Max = 1000, Default = _G.AimbotConfig.FOVSize },
         Flag = "TamanhoFOV",
@@ -740,7 +740,7 @@ do
 
     VisualsSection:Slider({
         Title = "Lados do FOV",
-        Desc = cor({"Formato", "#FFFFFF"}, {" do FOV"}),
+        Desc = "Formato do FOV",
         Step = 1,
         Value = { Min = 3, Max = 100, Default = _G.AimbotConfig.FOVNumSides or 60 },
         Flag = "LadosFOV",
@@ -767,7 +767,7 @@ do
 
     VisualsSection:Toggle({
         Title = "Highlight",
-        Desc = cor({"Brilha", "#FFFF00"}, {" a pessoa focada"}),
+        Desc = cor({"Brilha"}, {" a pessoa focada", "#00AAFF"}),
         Icon = "lucide:sparkles",
         Type = "Checkbox",
         Value = _G.AimbotConfig.ShowHighlight,
@@ -777,7 +777,7 @@ do
 
     VisualsSection:Colorpicker({
         Title = "Cor da info",
-        Desc = cor({"HUD", "#00AAFF"}, {" e "}, {"highlight", "#FFFF00"}),
+        Desc = "HUD e highlight",
         Default = _G.AimbotConfig.HighlightColor,
         Transparency = 0,
         Locked = false,
@@ -791,7 +791,7 @@ do
 
     local ToggleESP = InfoSection:Toggle({
         Title = "HUD",
-        Desc = cor({"Mostra "}, {"informações", "#00AAFF"}, {" do alvo quando focado"}),
+        Desc = "Mostra informações do alvo quando focado",
         Icon = "lucide:app-window",
         Type = "Checkbox",
         Value = _G.AimbotConfig.ESP.Enabled,
@@ -814,7 +814,7 @@ do
 
     ToggleName = InfoSection:Toggle({
         Title = "Nome",
-        Desc = cor({"Mostra o "}, {"nome", "#FFFFFF"}, {" do jogador"}),
+        Desc = cor({"Mostra o "}, {"nome", "#00AAFF"}, {" do jogador"}),
         Icon = "lucide:text-cursor",
         Type = "Checkbox",
         Value = _G.AimbotConfig.ESP.ShowName,
@@ -857,20 +857,19 @@ do
     end
 end
 
-
 --// tab hitbox
 _G.HitboxConfig = {
     Size = Vector3.new(5,5,5),
     Transparency = 0.5,
     Shape = Enum.PartType.Ball,
     HideOnShield = false,
-    TeamCheck = true, -- Adicionado: Padrão true
+    TeamCheck = true,
     TeamFilterEnabled = false,
     SelectedTeams = {}
 }
 
 task.spawn(function()
-    ler("hitbox")
+    if ler then ler("hitbox") end
 end)
 
 local function AtualizarValores()
@@ -884,13 +883,13 @@ local MainSection = criarsection(HitboxExpander, "Principal", "Controles gerais"
 MainSection:Paragraph({
     Title = "Modificar hitbox",
     Image = "lucide:expand",
-    Desc = "Altera o tamanho da hitbox dos inimigos"
+    Desc = cor({"Altera o "}, {"tamanho", "#00AAFF"}, {" da hitbox dos inimigos"})
 })
 
 local FirstRun = true
 MainSection:Toggle({
     Title = "Hitbox",
-    Desc = "Liga o hitbox expander",
+    Desc = cor({"Liga", "#00FF00"}, {" o hitbox expander"}),
     Icon = "lucide:boxes",
     Value = false,
     Flag = "Hitbox",
@@ -937,7 +936,7 @@ ConfigSection:Input({
 
 ConfigSection:Dropdown({
     Title = "Formato",
-    Desc = "Formato usado para a hitbox",
+    Desc = cor({"Formato", "#00AAFF"}, {" usado para a hitbox"}),
     Icon = "lucide:shapes",
     Values = { "Sphere", "Block", "Cylinder", "Wedge" },
     Value = "Sphere",
@@ -956,7 +955,7 @@ ConfigSection:Dropdown({
 
 ConfigSection:Toggle({
     Title = "Escudo check",
-    Desc = "A hitbox volta ao normal se equiparem o escudo",
+    Desc = cor({"A hitbox volta ao normal se "}, {"equiparem", "#FFAA00"}, {" o escudo"}),
     Icon = "lucide:shield-alert",
     Value = _G.HitboxConfig.HideOnShield,
     Flag = "EscudoHitbox",
@@ -968,7 +967,7 @@ ConfigSection:Toggle({
 
 ConfigSection:Slider({
     Title = "Transparência",
-    Desc = "0 = visível; 1 = invisível",
+    Desc = cor({"0 = "}, {"visível", "#00FF00"}, {"; 1 = "}, {"invisível", "#FF0000"}),
     Icon = "lucide:ghost",
     Step = 0.02,
     Value = { Min = 0, Max = 1, Default = _G.HitboxConfig.Transparency },
@@ -983,7 +982,7 @@ local TeamSection = criarsection(HitboxExpander, "Filtros", "Configuração de t
 
 TeamSection:Toggle({
     Title = "Team check",
-    Desc = "Ignora jogadores do mesmo time",
+    Desc = cor({"Ignora", "#FF0000"}, {" jogadores do mesmo time"}),
     Icon = "lucide:shield-check",
     Value = _G.HitboxConfig.TeamCheck,
     Flag = "TeamCheckHitbox",
@@ -995,7 +994,7 @@ TeamSection:Toggle({
 
 TeamSection:Toggle({
     Title = "Filtrar por time",
-    Desc = "Aplica a hitbox apenas nos times selecionados",
+    Desc = cor({"Aplica", "#00AAFF"}, {" a hitbox apenas nos times selecionados"}),
     Icon = "lucide:sliders-horizontal",
     Value = _G.HitboxConfig.TeamFilterEnabled,
     Flag = "FiltrarTimeHitbox",
@@ -1007,7 +1006,7 @@ TeamSection:Toggle({
 
 TeamSection:Dropdown({
     Title = "Times",
-    Desc = "Selecione os times",
+    Desc = cor({"Selecione", "#FFFFFF"}, {" os times"}),
     Icon = "lucide:users-round",
     Values = GetTeamNames(),
     Value = {}, 
