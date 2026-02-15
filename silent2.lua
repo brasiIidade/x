@@ -1,5 +1,3 @@
--- anti
-
 local function Finalizar(Mensagem)
     print(Mensagem)
     task.wait(0.5)
@@ -79,6 +77,8 @@ if #game:GetChildren() <= 4 then
     Finalizar("skid de EB :(")
 end
 
+local cloneref = cloneref or function(o) return o end
+
 _G.AimbotConfig = _G.AimbotConfig or {
     Enabled = false,
     TeamCheck = "Team",         
@@ -102,8 +102,6 @@ _G.AimbotConfig = _G.AimbotConfig or {
     FOVColor2 = Color3.fromRGB(217, 217, 217),
     GradientSpeed = 5,
     
-    ShowHighlight = true,
-    HighlightColor = Color3.fromRGB(255, 60, 60),
     ESP = {
         Enabled = true,
         ShowName = true,
@@ -117,9 +115,7 @@ _G.AimbotConfig = _G.AimbotConfig or {
 
 local SilentAimConnections = {}
 local FOVLines = {}
-local AimbotGuiInstance = nil
-local AimHighlightInstance = nil
-local AimFOVCircleInstance = nil
+local ESPDrawings = {}
 
 if _G.SilentAimConnections then
     for _, conn in pairs(_G.SilentAimConnections) do pcall(function() conn:Disconnect() end) end
@@ -129,7 +125,6 @@ _G.SilentAimConnections = {}
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
-local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
 local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
@@ -149,16 +144,6 @@ local Raycast = Workspace.Raycast
 _G.SilentAimActive = false
 local ClosestHitPart = nil
 local CurrentTargetCharacter = nil
-local RotationAngle, Tick = -45, tick();
-
-local Functions = {}
-function Functions:Create(Class, Properties)
-    local _Instance = typeof(Class) == 'string' and Instance.new(Class) or Class
-    for Property, Value in pairs(Properties) do
-        _Instance[Property] = Value
-    end
-    return _Instance;
-end
 
 local PartMapping = {
     ["Head"] = {"Head"},
@@ -207,7 +192,6 @@ local function IsPartVisible(part, character)
     local origin = Camera.CFrame.Position
     local direction = part.Position - origin
     FilterCache[1] = LocalPlayer.Character; FilterCache[2] = character; FilterCache[3] = Camera
-    if AimbotGuiInstance then FilterCache[4] = AimbotGuiInstance end
     RayParams.FilterDescendantsInstances = FilterCache
     local rayResult = Raycast(Workspace, origin, direction, RayParams)
     return rayResult == nil or rayResult.Instance:IsDescendantOf(character)
@@ -309,30 +293,19 @@ _G.StopSilentAim = function()
     for _, line in pairs(FOVLines) do pcall(function() line:Remove() end) end
     FOVLines = {}
     
-    if AimFOVCircleInstance then pcall(function() AimFOVCircleInstance:Remove() end) AimFOVCircleInstance = nil end
-    if AimbotGuiInstance then AimbotGuiInstance:Destroy() AimbotGuiInstance = nil end
-    if AimHighlightInstance then AimHighlightInstance:Destroy() AimHighlightInstance = nil end
+    for _, drawing in pairs(ESPDrawings) do pcall(function() drawing:Remove() end) end
+    ESPDrawings = {}
+    
     ClosestHitPart = nil
     CurrentTargetCharacter = nil
 end
 
-local ESP_SETTINGS = {
-    Enabled = true,
-    FontSize = 11,
-    Drawing = {
-        Boxes = {
-            Animate = true, RotationSpeed = 300,
-            Gradient = false, GradientRGB1 = Color3.fromRGB(119, 120, 255), GradientRGB2 = Color3.fromRGB(0, 0, 0), 
-            GradientFill = true, GradientFillRGB1 = Color3.fromRGB(119, 120, 255), GradientFillRGB2 = Color3.fromRGB(0, 0, 0), 
-            Corner = { Enabled = true, RGB = Color3.fromRGB(255, 255, 255) },
-        },
-        Healthbar = {
-            Enabled = true, Gradient = true, 
-            GradientRGB1 = Color3.fromRGB(200, 0, 0), GradientRGB2 = Color3.fromRGB(60, 60, 125), GradientRGB3 = Color3.fromRGB(119, 120, 255), 
-            Width = 2.5
-        }
-    }
-}
+local function CreateDrawing(class, props)
+    local d = Drawing.new(class)
+    for k, v in pairs(props) do d[k] = v end
+    table.insert(ESPDrawings, d)
+    return d
+end
 
 _G.StartSilentAim = function()
     _G.StopSilentAim()
@@ -342,31 +315,17 @@ _G.StartSilentAim = function()
 
     FOVLines = {} 
 
-    local ScreenGui = Functions:Create("ScreenGui", {Parent = CoreGui, Name = "HUD"})
-    AimbotGuiInstance = ScreenGui
-
-    local Name = Functions:Create("TextLabel", {Parent = ScreenGui, Size = UDim2.new(0, 100, 0, 20), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundTransparency = 1, TextColor3 = Color3.fromRGB(255, 255, 255), Font = Enum.Font.Code, TextSize = ESP_SETTINGS.FontSize, TextStrokeTransparency = 0, TextStrokeColor3 = Color3.fromRGB(0, 0, 0), RichText = true, Visible = false})
-    local Team = Functions:Create("TextLabel", {Parent = ScreenGui, Size = UDim2.new(0, 100, 0, 20), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundTransparency = 1, TextColor3 = Color3.fromRGB(255, 255, 255), Font = Enum.Font.Code, TextSize = ESP_SETTINGS.FontSize, TextStrokeTransparency = 0, TextStrokeColor3 = Color3.fromRGB(0, 0, 0), RichText = true, Visible = false})
-    local Distance = Functions:Create("TextLabel", {Parent = ScreenGui, Size = UDim2.new(0, 100, 0, 20), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundTransparency = 1, TextColor3 = Color3.fromRGB(255, 255, 255), Font = Enum.Font.Code, TextSize = ESP_SETTINGS.FontSize, TextStrokeTransparency = 0, TextStrokeColor3 = Color3.fromRGB(0, 0, 0), RichText = true, Visible = false})
-    local Weapon = Functions:Create("TextLabel", {Parent = ScreenGui, Size = UDim2.new(0, 100, 0, 20), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundTransparency = 1, TextColor3 = Color3.fromRGB(255, 255, 255), Font = Enum.Font.Code, TextSize = ESP_SETTINGS.FontSize, TextStrokeTransparency = 0, TextStrokeColor3 = Color3.fromRGB(0, 0, 0), RichText = true, Visible = false})
-    local Box = Functions:Create("Frame", {Parent = ScreenGui, BackgroundColor3 = Color3.fromRGB(0, 0, 0), BackgroundTransparency = 0.75, BorderSizePixel = 0, Visible = false})
-    local Gradient1 = Functions:Create("UIGradient", {Parent = Box, Enabled = ESP_SETTINGS.Drawing.Boxes.GradientFill, Color = ColorSequence.new{ColorSequenceKeypoint.new(0, ESP_SETTINGS.Drawing.Boxes.GradientFillRGB1), ColorSequenceKeypoint.new(1, ESP_SETTINGS.Drawing.Boxes.GradientFillRGB2)}})
-    local Outline = Functions:Create("UIStroke", {Parent = Box, Enabled = ESP_SETTINGS.Drawing.Boxes.Gradient, Transparency = 0, Color = Color3.fromRGB(255, 255, 255), LineJoinMode = Enum.LineJoinMode.Miter})
-    local Gradient2 = Functions:Create("UIGradient", {Parent = Outline, Enabled = ESP_SETTINGS.Drawing.Boxes.Gradient, Color = ColorSequence.new{ColorSequenceKeypoint.new(0, ESP_SETTINGS.Drawing.Boxes.GradientRGB1), ColorSequenceKeypoint.new(1, ESP_SETTINGS.Drawing.Boxes.GradientRGB2)}})
-    local Healthbar = Functions:Create("Frame", {Parent = ScreenGui, BackgroundColor3 = Color3.fromRGB(255, 255, 255), BackgroundTransparency = 0, Visible = false})
-    local BehindHealthbar = Functions:Create("Frame", {Parent = ScreenGui, ZIndex = -1, BackgroundColor3 = Color3.fromRGB(0, 0, 0), BackgroundTransparency = 0, Visible = false})
-    local HealthbarGradient = Functions:Create("UIGradient", {Parent = Healthbar, Enabled = ESP_SETTINGS.Drawing.Healthbar.Gradient, Rotation = -90, Color = ColorSequence.new{ColorSequenceKeypoint.new(0, ESP_SETTINGS.Drawing.Healthbar.GradientRGB1), ColorSequenceKeypoint.new(0.5, ESP_SETTINGS.Drawing.Healthbar.GradientRGB2), ColorSequenceKeypoint.new(1, ESP_SETTINGS.Drawing.Healthbar.GradientRGB3)}})
-    local HealthText = Functions:Create("TextLabel", {Parent = ScreenGui, Size = UDim2.new(0, 100, 0, 20), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundTransparency = 1, TextColor3 = Color3.fromRGB(255, 255, 255), Font = Enum.Font.Code, TextSize = ESP_SETTINGS.FontSize, TextStrokeTransparency = 0, TextStrokeColor3 = Color3.fromRGB(0, 0, 0), Visible = false})
-    local Chams = Functions:Create("Highlight", {Parent = ScreenGui, FillTransparency = 1, OutlineTransparency = 0, OutlineColor = Color3.fromRGB(119, 120, 255), DepthMode = "AlwaysOnTop", Enabled = false})
-
-    local LeftTop = Functions:Create("Frame", {Parent = ScreenGui, BackgroundColor3 = ESP_SETTINGS.Drawing.Boxes.Corner.RGB, Visible = false})
-    local LeftSide = Functions:Create("Frame", {Parent = ScreenGui, BackgroundColor3 = ESP_SETTINGS.Drawing.Boxes.Corner.RGB, Visible = false})
-    local RightTop = Functions:Create("Frame", {Parent = ScreenGui, BackgroundColor3 = ESP_SETTINGS.Drawing.Boxes.Corner.RGB, Visible = false})
-    local RightSide = Functions:Create("Frame", {Parent = ScreenGui, BackgroundColor3 = ESP_SETTINGS.Drawing.Boxes.Corner.RGB, Visible = false})
-    local BottomSide = Functions:Create("Frame", {Parent = ScreenGui, BackgroundColor3 = ESP_SETTINGS.Drawing.Boxes.Corner.RGB, Visible = false})
-    local BottomDown = Functions:Create("Frame", {Parent = ScreenGui, BackgroundColor3 = ESP_SETTINGS.Drawing.Boxes.Corner.RGB, Visible = false})
-    local BottomRightSide = Functions:Create("Frame", {Parent = ScreenGui, BackgroundColor3 = ESP_SETTINGS.Drawing.Boxes.Corner.RGB, Visible = false})
-    local BottomRightDown = Functions:Create("Frame", {Parent = ScreenGui, BackgroundColor3 = ESP_SETTINGS.Drawing.Boxes.Corner.RGB, Visible = false})
+    local DrawBoxOutline = CreateDrawing("Square", {Thickness = 3, Filled = false, Color = Color3.fromRGB(0, 0, 0), Visible = false})
+    local DrawBox = CreateDrawing("Square", {Thickness = 1, Filled = false, Color = Color3.fromRGB(255, 255, 255), Visible = false})
+    
+    local DrawHealthBg = CreateDrawing("Square", {Thickness = 1, Filled = true, Color = Color3.fromRGB(0, 0, 0), Visible = false})
+    local DrawHealth = CreateDrawing("Square", {Thickness = 1, Filled = true, Color = Color3.fromRGB(0, 255, 0), Visible = false})
+    
+    local DrawName = CreateDrawing("Text", {Size = 13, Center = true, Outline = true, Color = Color3.fromRGB(255, 255, 255), Visible = false})
+    local DrawTeam = CreateDrawing("Text", {Size = 13, Center = true, Outline = true, Color = Color3.fromRGB(255, 255, 255), Visible = false})
+    local DrawWeapon = CreateDrawing("Text", {Size = 13, Center = true, Outline = true, Color = Color3.fromRGB(255, 255, 255), Visible = false})
+    local DrawDistance = CreateDrawing("Text", {Size = 13, Center = true, Outline = true, Color = Color3.fromRGB(255, 255, 255), Visible = false})
+    local DrawHealthText = CreateDrawing("Text", {Size = 11, Center = true, Outline = true, Color = Color3.fromRGB(255, 255, 255), Visible = false})
 
     local c1 = RunService.RenderStepped:Connect(function()
         if _G.SilentAimActive and config.ShowFOV then
@@ -432,101 +391,93 @@ _G.StartSilentAim = function()
                     local Size = HRP.Size.Y
                     local scaleFactor = (Size * Camera.ViewportSize.Y) / (Pos.Z * 2)
                     local w, h = 3 * scaleFactor, 4.5 * scaleFactor
+                    local x, y = Pos.X - w / 2, Pos.Y - h / 2
 
-                    if config.ShowHighlight then
-                        Chams.Enabled = true
-                        Chams.Adornee = Character
-                        Chams.OutlineColor = config.HighlightColor
-                        local breathe_effect = math.atan(math.sin(tick() * 2)) * 2 / math.pi
-                        Chams.OutlineTransparency = 0 * breathe_effect * 0.01
-                    else
-                        Chams.Enabled = false
-                    end
+                    DrawBoxOutline.Position = Vector2New(x, y)
+                    DrawBoxOutline.Size = Vector2New(w, h)
+                    DrawBoxOutline.Visible = true
 
-                    RotationAngle = RotationAngle + (tick() - Tick) * ESP_SETTINGS.Drawing.Boxes.RotationSpeed * math.cos(math.pi / 4 * tick() - math.pi / 2)
-                    Gradient1.Rotation = RotationAngle; Gradient2.Rotation = RotationAngle; Tick = tick()
-
-                    Box.Visible = true; Box.Position = UDim2.new(0, Pos.X - w / 2, 0, Pos.Y - h / 2); Box.Size = UDim2.new(0, w, 0, h)
-                    LeftTop.Visible = true; LeftTop.Position = UDim2.new(0, Pos.X - w / 2, 0, Pos.Y - h / 2); LeftTop.Size = UDim2.new(0, w / 5, 0, 1)
-                    LeftSide.Visible = true; LeftSide.Position = UDim2.new(0, Pos.X - w / 2, 0, Pos.Y - h / 2); LeftSide.Size = UDim2.new(0, 1, 0, h / 5)
-                    BottomSide.Visible = true; BottomSide.Position = UDim2.new(0, Pos.X - w / 2, 0, Pos.Y + h / 2); BottomSide.Size = UDim2.new(0, 1, 0, h / 5); BottomSide.AnchorPoint = Vector2.new(0, 5)
-                    BottomDown.Visible = true; BottomDown.Position = UDim2.new(0, Pos.X - w / 2, 0, Pos.Y + h / 2); BottomDown.Size = UDim2.new(0, w / 5, 0, 1); BottomDown.AnchorPoint = Vector2.new(0, 1)
-                    RightTop.Visible = true; RightTop.Position = UDim2.new(0, Pos.X + w / 2, 0, Pos.Y - h / 2); RightTop.Size = UDim2.new(0, w / 5, 0, 1); RightTop.AnchorPoint = Vector2.new(1, 0)
-                    RightSide.Visible = true; RightSide.Position = UDim2.new(0, Pos.X + w / 2 - 1, 0, Pos.Y - h / 2); RightSide.Size = UDim2.new(0, 1, 0, h / 5); RightSide.AnchorPoint = Vector2.new(0, 0)
-                    BottomRightSide.Visible = true; BottomRightSide.Position = UDim2.new(0, Pos.X + w / 2, 0, Pos.Y + h / 2); BottomRightSide.Size = UDim2.new(0, 1, 0, h / 5); BottomRightSide.AnchorPoint = Vector2.new(1, 1)
-                    BottomRightDown.Visible = true; BottomRightDown.Position = UDim2.new(0, Pos.X + w / 2, 0, Pos.Y + h / 2); BottomRightDown.Size = UDim2.new(0, w / 5, 0, 1); BottomRightDown.AnchorPoint = Vector2.new(1, 1)
+                    DrawBox.Position = Vector2New(x, y)
+                    DrawBox.Size = Vector2New(w, h)
+                    DrawBox.Visible = true
 
                     if config.ESP.ShowHealth then
-                        local health = Humanoid.Health / Humanoid.MaxHealth
-                        Healthbar.Visible = true; BehindHealthbar.Visible = true
-                        Healthbar.Position = UDim2.new(0, Pos.X - w / 2 - 6, 0, Pos.Y - h / 2 + h * (1 - health))
-                        Healthbar.Size = UDim2.new(0, ESP_SETTINGS.Drawing.Healthbar.Width, 0, h * health)
-                        BehindHealthbar.Position = UDim2.new(0, Pos.X - w / 2 - 6, 0, Pos.Y - h / 2)
-                        BehindHealthbar.Size = UDim2.new(0, ESP_SETTINGS.Drawing.Healthbar.Width, 0, h)
-                        HealthText.Visible = true
-                        local healthPercentage = math.floor(Humanoid.Health / Humanoid.MaxHealth * 100)
-                        HealthText.Position = UDim2.new(0, Pos.X - w / 2 - 6, 0, Pos.Y - h / 2 + h * (1 - healthPercentage / 100) + 3)
-                        HealthText.Text = tostring(healthPercentage)
+                        local health = math.clamp(Humanoid.Health / Humanoid.MaxHealth, 0, 1)
+                        local healthHeight = h * health
+                        
+                        DrawHealthBg.Position = Vector2New(x - 6, y)
+                        DrawHealthBg.Size = Vector2New(4, h)
+                        DrawHealthBg.Visible = true
+                        
+                        DrawHealth.Position = Vector2New(x - 5, y + (h - healthHeight))
+                        DrawHealth.Size = Vector2New(2, healthHeight)
+                        DrawHealth.Color = Color3.fromRGB(255, 0, 0):Lerp(Color3.fromRGB(0, 255, 0), health)
+                        DrawHealth.Visible = true
+
+                        local healthPercentage = math.floor(health * 100)
+                        DrawHealthText.Position = Vector2New(x - 15, y + (h - healthHeight) - 5)
+                        DrawHealthText.Text = tostring(healthPercentage)
+                        DrawHealthText.Visible = true
                     else
-                        Healthbar.Visible = false; BehindHealthbar.Visible = false; HealthText.Visible = false
+                        DrawHealthBg.Visible = false
+                        DrawHealth.Visible = false
+                        DrawHealthText.Visible = false
                     end
 
                     local OffsetY = 0
                     if config.ESP.ShowName then
-                        Name.Visible = true
                         local plr = Players:GetPlayerFromCharacter(Character)
-                        local statusText = "inimigo"
-                        local statusColor = "255, 0, 0"
+                        local statusText = "Inimigo"
+                        local statusColor = Color3.fromRGB(255, 0, 0)
+                        
                         if plr and LocalPlayer.Team and plr.Team == LocalPlayer.Team then
-                            statusText = "aliado"
-                            statusColor = "0, 255, 0"
+                            statusText = "Aliado"
+                            statusColor = Color3.fromRGB(0, 255, 0)
                         end
-                        Name.Text = string.format('(<font color="rgb(%s)">%s</font>) %s', statusColor, statusText, Character.Name)
-                        Name.Position = UDim2.new(0, Pos.X, 0, Pos.Y + h / 2 + 8)
-                        OffsetY = OffsetY + 11
+                        
+                        DrawName.Text = string.format("(%s) %s", statusText, Character.Name)
+                        DrawName.Color = statusColor
+                        DrawName.Position = Vector2New(Pos.X, y + h + 5)
+                        DrawName.Visible = true
+                        OffsetY = OffsetY + 13
                     else
-                        Name.Visible = false
+                        DrawName.Visible = false
                     end
 
                     if config.ESP.ShowTeam then
-                        Team.Visible = true
                         local plr = Players:GetPlayerFromCharacter(Character)
                         local tName = plr and plr.Team and plr.Team.Name or "Sem time"
                         local tColor = plr and plr.TeamColor and plr.TeamColor.Color or Color3.fromRGB(255, 255, 255)
-                        Team.Text = string.format('<font color="rgb(%d, %d, %d)">%s</font>', tColor.R*255, tColor.G*255, tColor.B*255, tName)
-                        Team.Position = UDim2.new(0, Pos.X, 0, Pos.Y + h / 2 + 8 + OffsetY)
-                        OffsetY = OffsetY + 11
+                        
+                        DrawTeam.Text = tName
+                        DrawTeam.Color = tColor
+                        DrawTeam.Position = Vector2New(Pos.X, y + h + 5 + OffsetY)
+                        DrawTeam.Visible = true
+                        OffsetY = OffsetY + 13
                     else
-                        Team.Visible = false
+                        DrawTeam.Visible = false
                     end
 
                     if config.ESP.ShowWeapon then
-                        Weapon.Visible = true
                         local tool = Character:FindFirstChildWhichIsA("Tool")
-                        Weapon.Text = tool and string.upper(tool.Name) or "Nada equipado"
-                        Weapon.Position = UDim2.new(0, Pos.X, 0, Pos.Y + h / 2 + 8 + OffsetY)
-                        OffsetY = OffsetY + 11
+                        DrawWeapon.Text = tool and string.upper(tool.Name) or "Nada equipado"
+                        DrawWeapon.Position = Vector2New(Pos.X, y + h + 5 + OffsetY)
+                        DrawWeapon.Visible = true
+                        OffsetY = OffsetY + 13
                     else
-                        Weapon.Visible = false
+                        DrawWeapon.Visible = false
                     end
 
                     local Dist = (Camera.CFrame.Position - HRP.Position).Magnitude
-                    Distance.Visible = true
-                    Distance.Text = string.format("[%d m]", math.floor(Dist))
-                    Distance.Position = UDim2.new(0, Pos.X, 0, Pos.Y + h / 2 + 8 + OffsetY)
+                    DrawDistance.Text = string.format("[%d m]", math.floor(Dist))
+                    DrawDistance.Position = Vector2New(Pos.X, y + h + 5 + OffsetY)
+                    DrawDistance.Visible = true
 
                 else
-                    Box.Visible = false; Name.Visible = false; Team.Visible = false; Distance.Visible = false; Weapon.Visible = false
-                    Healthbar.Visible = false; BehindHealthbar.Visible = false; HealthText.Visible = false
-                    LeftTop.Visible = false; LeftSide.Visible = false; BottomSide.Visible = false; BottomDown.Visible = false
-                    RightTop.Visible = false; RightSide.Visible = false; BottomRightSide.Visible = false; BottomRightDown.Visible = false
+                    for _, d in pairs(ESPDrawings) do d.Visible = false end
                 end
             else
-                Box.Visible = false; Name.Visible = false; Team.Visible = false; Distance.Visible = false; Weapon.Visible = false
-                Healthbar.Visible = false; BehindHealthbar.Visible = false; HealthText.Visible = false
-                Chams.Enabled = false
-                LeftTop.Visible = false; LeftSide.Visible = false; BottomSide.Visible = false; BottomDown.Visible = false
-                RightTop.Visible = false; RightSide.Visible = false; BottomRightSide.Visible = false; BottomRightDown.Visible = false
+                for _, d in pairs(ESPDrawings) do d.Visible = false end
             end
         end
     end)
