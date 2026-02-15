@@ -459,7 +459,7 @@ do
 
     local ToggleAim = MainSection:Toggle({
         Title = "Silent aim",
-        Desc = cor({"Permite matar "}, {"alvos", "#00FF00"}, {" com facilidade"}),
+        Desc = cor({"Redireciona os "}, {"tiros", "#00FF00"}, {" para o alvo"}),
         Icon = "lucide:power",
         Type = "Checkbox",
         Value = false,
@@ -587,7 +587,7 @@ do
     FocusSection:Input({
         Title = "Adicionar alvo",
         Desc = cor({"Digite o "}, {"nome", "#00AAFF"}),
-        Placeholder = "player123",
+        Placeholder = "sanctuaryangels",
         InputIcon = "lucide:user-plus",
         Callback = function(text)
             if not text or text == "" then return end
@@ -1021,7 +1021,6 @@ TeamSection:Dropdown({
     end
 })
 
-
 --// tab esp
 _G.ESPConfig = {
     Enabled = false,
@@ -1034,7 +1033,7 @@ _G.ESPConfig = {
 }
 
 task.spawn(function()
-    ler("esp")
+    if ler then ler("esp") end
 end)
 
 local MainSection = criarsection(ESP, "Principal", "Controles gerais", "lucide:eye", true)
@@ -1042,13 +1041,13 @@ local MainSection = criarsection(ESP, "Principal", "Controles gerais", "lucide:e
 MainSection:Paragraph({
     Title = "ESP",
     Image = "lucide:scan-eye",
-    Desc = "Permite ver jogadores através das paredes"
+    Desc = cor({"Permite ver "}, {"jogadores", "#FFFFFF"}, {" através das "}, {"paredes", "#FF0000"})
 })
 
 local FirstRunESP = true
 MainSection:Toggle({
     Title = "ESP",
-    Desc = "Liga o ESP",
+    Desc = cor({"Liga", "#00FF00"}, {" o ESP"}),
     Icon = "lucide:power",
     Value = false,
     Flag = "ESP",
@@ -1079,7 +1078,7 @@ MainSection:Toggle({
 
 MainSection:Toggle({
     Title = "Team check",
-    Desc = "Não mostra o ESP se o jogador for do seu time",
+    Desc = cor({"Não", "#FF0000"}, {" mostra se o jogador for do seu "}, {"time", "#00FF00"}),
     Icon = "lucide:shield-check",
     Value = _G.ESPConfig.TeamCheck,
     Flag = "TimeESP",
@@ -1090,11 +1089,50 @@ MainSection:Toggle({
 
 local VisualsSection = criarsection(ESP, "Visualização", "Elementos visuais", "lucide:monitor", true)
 
-VisualsSection:Toggle({ Title = "Highlight", Icon = "lucide:sparkles", Value = _G.ESPConfig.Chams, Flag = "ChamsESP", Callback = function(v) _G.ESPConfig.Chams = v end })
-VisualsSection:Toggle({ Title = "Nome", Icon = "lucide:user", Value = _G.ESPConfig.Name, Flag = "NomeESP", Callback = function(v) _G.ESPConfig.Name = v end })
-VisualsSection:Toggle({ Title = "Distância", Icon = "lucide:ruler", Value = _G.ESPConfig.Studs, Flag = "DistanciaESP", Callback = function(v) _G.ESPConfig.Studs = v end })
-VisualsSection:Toggle({ Title = "Vida", Icon = "lucide:heart", Value = _G.ESPConfig.Health, Flag = "VidaESP", Callback = function(v) _G.ESPConfig.Health = v end })
-VisualsSection:Toggle({ Title = "Item", Icon = "lucide:sword", Value = _G.ESPConfig.WeaponN, Flag = "ItemESP", Callback = function(v) _G.ESPConfig.WeaponN = v end })
+VisualsSection:Toggle({ 
+    Title = "Highlight", 
+    Desc = cor({"Ativa o "}, {"brilho", "#FFAA00"}),
+    Icon = "lucide:sparkles", 
+    Value = _G.ESPConfig.Chams, 
+    Flag = "ChamsESP", 
+    Callback = function(v) _G.ESPConfig.Chams = v end 
+})
+
+VisualsSection:Toggle({ 
+    Title = "Nome", 
+    Desc = cor({"Exibe o "}, {"nome", "#FFFFFF"}),
+    Icon = "lucide:user", 
+    Value = _G.ESPConfig.Name, 
+    Flag = "NomeESP", 
+    Callback = function(v) _G.ESPConfig.Name = v end 
+})
+
+VisualsSection:Toggle({ 
+    Title = "Distância", 
+    Desc = cor({"Mostra a "}, {"distância", "#00AAFF"}),
+    Icon = "lucide:ruler", 
+    Value = _G.ESPConfig.Studs, 
+    Flag = "DistanciaESP", 
+    Callback = function(v) _G.ESPConfig.Studs = v end 
+})
+
+VisualsSection:Toggle({ 
+    Title = "Vida", 
+    Desc = cor({"Exibe "}, {"a barra de vida", "#FF0000"}),
+    Icon = "lucide:heart", 
+    Value = _G.ESPConfig.Health, 
+    Flag = "VidaESP", 
+    Callback = function(v) _G.ESPConfig.Health = v end 
+})
+
+VisualsSection:Toggle({ 
+    Title = "Item", 
+    Desc = cor({"Mostra o "}, {"item", "#FFAA00"}, {" que o jogador está segurando"}),
+    Icon = "lucide:sword", 
+    Value = _G.ESPConfig.WeaponN, 
+    Flag = "ItemESP", 
+    Callback = function(v) _G.ESPConfig.WeaponN = v end 
+})
 
 --// tab tas
 task.spawn(function()
@@ -1130,7 +1168,7 @@ PlaybackSection:Toggle({
 
 StopButton = PlaybackSection:Button({
     Title = "Parar",
-    Desc = cor({"Interrompe", "#FF0000"}, {" o TAS"}),
+    Desc = cor({"Interrompe o ", "#FF0000"}, {" TAS"}),
     Icon = "lucide:circle-stop",
     Locked = true,
     Flag = "PararTAS",
@@ -1152,7 +1190,7 @@ PlaybackSection:Paragraph({
 TASDropdown = PlaybackSection:Dropdown({
     Title = "Selecionar TAS",
     Icon = "lucide:list",
-    Desc = cor({"Escolha os "}, {"arquivos", "#FFFFFF"}, {" para rodar"}),
+    Desc = cor({"Escolha os "}, {"arquivos", "#FFFFFF"}),
     Values = {},
     Value = {},
     Multi = true,
@@ -1227,7 +1265,7 @@ RecordSection:Paragraph({
     Color = Color3.fromHex("#800080"),
     Image = "lucide:message-square",
     ImageSize = 30,
-    Desc = cor({"Use "}, {"/e gravar", "#00FF00"}, {" ou "}, {"/e parar", "#FF0000"}, {" no chat"}),
+    Desc = cor({"Também é possível usar "}, {"/e gravar", "#00FF00"}, {" e "}, {"/e parar", "#FF0000"}, {" no chat"}),
 })
 
 RecordSection:Input({
@@ -1270,12 +1308,12 @@ RecordSection:Paragraph({
     Color = Color3.fromHex("#800080"),
     Image = "lucide:hard-drive",
     ImageSize = 30,
-    Desc = cor({"O arquivo será enviado para a pasta "}, {"fp3_Parkours", "#00AAFF"})
+    Desc = cor({"O arquivo será salvo para a pasta "}, {"fp3_Parkours", "#00AAFF"})
 })
 
 RecordSection:Button({ 
     Title = "Salvar", 
-    Desc = cor({"Gera", "#FFAA00"}, {" o arquivo na Workspace"}),
+    Desc = cor({"Salva", "#FFAA00"}, {" o arquivo"}),
     Icon = "lucide:save",
     Flag = "SalvarTAS",
     Callback = function()
@@ -1415,8 +1453,8 @@ JJsMain:Toggle({
 })
 
 JJsMain:Input({
-    Title = "Tempo (segundos)",
-    Placeholder = "60",
+    Title = "Tempo",
+    Placeholder = "60 (segundos)",
     InputIcon = "lucide:hourglass",
     Callback = function(v)
         if _G.JJs and v ~= "" then _G.JJs.Config.FinishTotalTime = tonumber(v) or 60 end
@@ -1460,8 +1498,8 @@ intervalos:Toggle({
 })
 
 intervalos:Input({
-    Title = "Intervalo fixo (segundos)",
-    Placeholder = "1.5",
+    Title = "Intervalo fixo",
+    Placeholder = "1.5 (segundos)",
     InputIcon = "lucide:watch",
     Flag = "JJsIntervaloFixoTempo",
     Callback = function(v)
@@ -1517,14 +1555,14 @@ Extras:Toggle({
 
 --// tab ChatGPT
 task.spawn(function()
-    if ler then ler("chatgpt") end
+    ler("chatgpt")
 end)
 
 local currentPrompt = ""
 
 ChatGPT:Paragraph({
     Title = "Observação",
-    Desc = cor({"O prompt usado para a IA está na pasta '"}, {"fp3_ChatGPT.txt", "#00AAFF"}, {"' dentro de '"}, {"michigun.xyz", "#00AAFF"}, {"'."}),
+    Desc = "O prompt usado para a IA está localizado na pasta 'fp3_ChatGPT.txt' dentro da pasta 'michigun.xyz'. Você pode colocar todas as leis no arquivo e a IA saberá",
     Color = "Blue",
     Image = "lucide:info",
     ImageSize = 30
@@ -1532,7 +1570,6 @@ ChatGPT:Paragraph({
 
 ChatGPT:Input({
     Title = "Prompt",
-    Desc = cor({"Digite sua "}, {"pergunta", "#FFFFFF"}, {" para a IA"}),
     Placeholder = "Pergunte aqui",
     InputIcon = "lucide:message-square",
     Callback = function(text)
@@ -1543,7 +1580,6 @@ ChatGPT:Input({
 local SendBtn
 SendBtn = ChatGPT:Button({
     Title = "Enviar prompt",
-    Desc = cor({"Envia", "#00FF00"}, {" a pergunta para processamento"}),
     Icon = "lucide:send",
     Justify = "Center",
     Callback = function()
@@ -1590,7 +1626,6 @@ SendBtn = ChatGPT:Button({
 
 ChatGPT:Button({
     Title = "Enviar resposta no chat",
-    Desc = cor({"Manda a resposta "}, {"direto no chat", "#00AAFF"}, {" do jogo"}),
     Icon = "lucide:message-circle",
     Justify = "Center",
     Callback = function()
@@ -1605,7 +1640,6 @@ ChatGPT:Button({
 
 ChatGPT:Button({
     Title = "Copiar resposta",
-    Desc = cor({"Copia", "#FFAA00"}, {" o texto para a sua área de transferência"}),
     Icon = "lucide:copy",
     Justify = "Center",
     Callback = function()
@@ -2114,7 +2148,7 @@ end)
 
 --// tab anti-lag
 task.spawn(function()
-    if ler then ler("antilag") end
+    ler("antilag")
 end)
 
 local confirmStep = false
@@ -2124,14 +2158,12 @@ AntiLag:Paragraph({
     Color = "Red",
     Image = "lucide:triangle-alert",
     ImageSize = 30,
-    Desc = cor({"Só é possível "}, {"remover", "#FF0000"}, {" o anti-lag dando "}, {"rejoin", "#00AAFF"})
+    Desc = "Só é possível tirar o anti-lag dando rejoin"
 })
-
 AntiLag:Space()
 
 local OptButton = AntiLag:Button({
     Title = "Anti-lag",
-    Desc = cor({"Clique para "}, {"otimizar", "#A2FF30"}, {" o desempenho"}),
     Color = Color3.fromHex("#a2ff30"),
     Justify = "Center",
     Icon = "lucide:zap",
@@ -2143,7 +2175,7 @@ OptButton.Callback = function()
     if not confirmStep then
         confirmStep = true
         OptButton:SetTitle("Confirmação")
-        OptButton:SetDesc(cor({"Clique novamente para "}, {"aplicar", "#00FF00"}))
+        OptButton:SetDesc("Clique novamente para aplicar")
     else
         OptButton:Lock()
         OptButton:SetTitle("Otimizando...")
@@ -2153,7 +2185,6 @@ OptButton.Callback = function()
             if _G.AntiLag and _G.AntiLag.Start then
                 _G.AntiLag.Start()
                 OptButton:SetTitle("Anti-lag ativado")
-                OptButton:SetDesc(cor({"O jogo foi "}, {"otimizado", "#00FF00"}))
                 notificar("Sucesso", 4, "lucide:check")
             end
         end)
