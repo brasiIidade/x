@@ -2261,7 +2261,7 @@ CharacterSection:Input({
 local grupamentoSpeed = CharacterSection:Group()
 
 grupamentoSpeed:Button({
-    Title = cor({"Aplicar ", "#00FF00"}, {"velocidade"}),
+    Title = cor({"Aplicar", "#00FF00"}),
     Icon = "lucide:check-circle",
     Callback = function()
         if not speedValue then
@@ -2280,7 +2280,7 @@ grupamentoSpeed:Button({
 grupamentoSpeed:Space()
 
 grupamentoSpeed:Button({
-    Title = cor({"Resetar ", "#FF0000"}, {"speed"}),
+    Title = cor({"Resetar", "#FF0000"}),
     Icon = "lucide:rotate-ccw",
     Callback = function()
         local Character = LocalPlayer.Character
@@ -2311,7 +2311,7 @@ CharacterSection:Input({
 local grupamentoJump = CharacterSection:Group()
 
 grupamentoJump:Button({
-    Title = cor({"Aplicar ", "#00FF00"}, {"pulo"}),
+    Title = cor({"Aplicar", "#00FF00"}),
     Icon = "lucide:check-circle",
     Callback = function()
         if not jumpValue then
@@ -2331,7 +2331,7 @@ grupamentoJump:Button({
 grupamentoJump:Space()
 
 grupamentoJump:Button({
-    Title = cor({"Resetar ", "#FF0000"}, {"pulo"}),
+    Title = cor({"Resetar", "#FF0000"}),
     Icon = "lucide:rotate-ccw",
     Callback = function()
         local Character = LocalPlayer.Character
@@ -2346,9 +2346,9 @@ grupamentoJump:Button({
 CharacterSection:Space()
 
 CharacterSection:Toggle({
-    Title = cor({"Anti-spawn", "#FFAA00"}),
+    Title = cor({"Respawn", "#FFAA00"}),
     Desc = cor({"O personagem automaticamente ", "#AAAAAA"}, {"teleportará", "#00FF00"}, {" ao local onde você morreu", "#AAAAAA"}),
-    Flag = "AntiSpawn",
+    Flag = "Respawn",
     Icon = "lucide:map-pin",
     Callback = function(v)
         if _G.PlayerMod and _G.PlayerMod.ToggleAntiSpawn then
