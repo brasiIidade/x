@@ -212,17 +212,24 @@ local function ler(key)
     end)
 end
 
+
 --[[ 
 uso: Title = cor({"Teste", "#FF0000"}, {" arroz"}),
 ]]--
 
-local function cor(...)
+function cor(...)
     local output = {}
-    for i, data in ipairs({...}) do
-        output[i] = "<font color='" .. (data[2] or "#ffffff") .. "'>" .. data[1] .. "</font>"
+    local args = {...}
+    for i, data in ipairs(args) do
+        local texto = tostring(data[1] or "")
+        local corHex = data[2] or "#ffffff"
+        output[i] = "<font color='" .. corHex .. "'>" .. texto .. "</font>"
     end
     return table.concat(output)
 end
+
+getgenv().cor = cor
+
 
 --// tags
 
@@ -2094,16 +2101,17 @@ end
 
 --// tab local
 task.spawn(function()
-    ler("player")
+    if ler then ler("player") end
 end)
 
 local CharacterSection = criarsection(Player, "Personagem", "Modificar personagem", "lucide:user-cog", true)
 
 local CurrentSeat
+local usuario = nil
 
 CharacterSection:Toggle({
-    Title = "Invisibilidade",
-    Desc = "Você ficará invisível para os outros",
+    Title = cor({"Invisibilidade", "#AAAAAA"}),
+    Desc = cor({"Você ficará ", "#AAAAAA"}, {"invisível", "#00AAFF"}, {" para os outros", "#AAAAAA"}),
     Flag = "Invisivel",
     Icon = "lucide:hat-glasses",
     Callback = function(Value)
@@ -2166,7 +2174,7 @@ CharacterSection:Toggle({
 CharacterSection:Space()
 
 CharacterSection:Input({
-    Title = "Alvo",
+    Title = cor({"Alvo", "#FFFFFF"}),
     Desc = cor({"O jogo "}, {"precisa", "#00ff00"}, {" ter colisões ativas"}),
     Placeholder = "Nome / Display",
     InputIcon = "lucide:user",
@@ -2178,7 +2186,7 @@ CharacterSection:Input({
             if p ~= LocalPlayer then
                 if p.Name:lower():sub(1, #v) == v or p.DisplayName:lower():sub(1, #v) == v then
                     usuario = p
-                    notificar("Alvo: " .. p.Name, 2, "lucide:check")
+                    notificar(cor({"Alvo: ", "#AAAAAA"}, {p.Name, "#00FF00"}), 2, "lucide:check")
                     break
                 end
             end
@@ -2187,11 +2195,11 @@ CharacterSection:Input({
 })
 
 CharacterSection:Button({
-    Title = "Fling",
-    Icon = "lucide:swords",
+    Title = cor({"Fling", "#FF0000"}),
+    Icon = "lucide:earth",
     Callback = function()
         if not usuario then
-            notificar("Selecione um usuário primeiro", 2, "lucide:alert-circle")
+            notificar(cor({"Selecione um usuário primeiro", "#FF8800"}), 2, "lucide:alert-circle")
             return
         end
 
@@ -2228,7 +2236,7 @@ CharacterSection:Button({
                     end)
                 end)
             else
-                notificar("O alvo ou você não tem personagem", 2, "lucide:x-octagon")
+                notificar(cor({"O alvo ou você não tem personagem", "#FF0000"}), 2, "lucide:x-octagon")
             end
         end
     end
@@ -2239,8 +2247,8 @@ CharacterSection:Space()
 local speedValue = nil
 
 CharacterSection:Input({
-    Title = "Speed",
-    Desc = "Muda sua velocidade",
+    Title = cor({"Speed", "#FFAA00"}),
+    Desc = cor({"Muda sua ", "#AAAAAA"}, {"velocidade", "#FFAA00"}),
     Placeholder = "16",
     InputIcon = "lucide:gauge",
     Flag = "Speed",
@@ -2253,18 +2261,18 @@ CharacterSection:Input({
 local grupamentoSpeed = CharacterSection:Group()
 
 grupamentoSpeed:Button({
-    Title = "Aplicar velocidade",
+    Title = cor({"Aplicar ", "#00FF00"}, {"velocidade"}),
     Icon = "lucide:check-circle",
     Callback = function()
         if not speedValue then
-            notificar("Informe um valor válido", 2, "lucide:alert-circle")
+            notificar(cor({"Informe um valor válido", "#FF8800"}), 2, "lucide:alert-circle")
             return
         end
         local Character = LocalPlayer.Character
         local Humanoid = Character and Character:FindFirstChild("Humanoid")
         if Humanoid then
             Humanoid.WalkSpeed = speedValue
-            notificar("Velocidade alterada", 2, "lucide:zap")
+            notificar(cor({"Velocidade alterada", "#00FF00"}), 2, "lucide:zap")
         end
     end
 })
@@ -2272,14 +2280,14 @@ grupamentoSpeed:Button({
 grupamentoSpeed:Space()
 
 grupamentoSpeed:Button({
-    Title = "Resetar speed",
+    Title = cor({"Resetar ", "#FF0000"}, {"speed"}),
     Icon = "lucide:rotate-ccw",
     Callback = function()
         local Character = LocalPlayer.Character
         local Humanoid = Character and Character:FindFirstChild("Humanoid")
         if Humanoid then
             Humanoid.WalkSpeed = 16
-            notificar("Velocidade resetada", 2, "lucide:rotate-ccw")
+            notificar(cor({"Velocidade resetada", "#FF8800"}), 2, "lucide:rotate-ccw")
         end
     end
 })
@@ -2289,8 +2297,8 @@ CharacterSection:Space()
 local jumpValue = nil
 
 CharacterSection:Input({
-    Title = "Jump",
-    Desc = "Muda a força do pulo",
+    Title = cor({"Jump", "#00AAFF"}),
+    Desc = cor({"Muda a ", "#AAAAAA"}, {"força do pulo", "#00AAFF"}),
     Placeholder = "50",
     InputIcon = "lucide:arrow-up",
     Flag = "Jump",
@@ -2303,11 +2311,11 @@ CharacterSection:Input({
 local grupamentoJump = CharacterSection:Group()
 
 grupamentoJump:Button({
-    Title = "Aplicar pulo",
+    Title = cor({"Aplicar ", "#00FF00"}, {"pulo"}),
     Icon = "lucide:check-circle",
     Callback = function()
         if not jumpValue then
-            notificar("Informe um valor válido", 2, "lucide:alert-circle")
+            notificar(cor({"Informe um valor válido", "#FF8800"}), 2, "lucide:alert-circle")
             return
         end
         local Character = LocalPlayer.Character
@@ -2315,7 +2323,7 @@ grupamentoJump:Button({
         if Humanoid then
             Humanoid.UseJumpPower = true
             Humanoid.JumpPower = jumpValue
-            notificar("Pulo alterado", 2, "lucide:zap")
+            notificar(cor({"Pulo alterado", "#00FF00"}), 2, "lucide:zap")
         end
     end
 })
@@ -2323,7 +2331,7 @@ grupamentoJump:Button({
 grupamentoJump:Space()
 
 grupamentoJump:Button({
-    Title = "Resetar pulo",
+    Title = cor({"Resetar ", "#FF0000"}, {"pulo"}),
     Icon = "lucide:rotate-ccw",
     Callback = function()
         local Character = LocalPlayer.Character
@@ -2331,39 +2339,39 @@ grupamentoJump:Button({
         if Humanoid then
             Humanoid.UseJumpPower = true
             Humanoid.JumpPower = 50
-            notificar("Pulo resetado", 2, "lucide:rotate-ccw")
+            notificar(cor({"Pulo resetado", "#FF8800"}), 2, "lucide:rotate-ccw")
         end
     end
 })
 CharacterSection:Space()
 
 CharacterSection:Toggle({
-    Title = "Anti-spawn",
-    Desc = "O personagem automaticamente teleportará ao local onde você morreu",
+    Title = cor({"Anti-spawn", "#FFAA00"}),
+    Desc = cor({"O personagem automaticamente ", "#AAAAAA"}, {"teleportará", "#00FF00"}, {" ao local onde você morreu", "#AAAAAA"}),
     Flag = "AntiSpawn",
     Icon = "lucide:map-pin",
     Callback = function(v)
         if _G.PlayerMod and _G.PlayerMod.ToggleAntiSpawn then
             _G.PlayerMod.ToggleAntiSpawn(v)
             if v then
-                notificar("Anti-spawn ativado", 2, "lucide:map-pin")
+                notificar(cor({"Anti-spawn ativado", "#00FF00"}), 2, "lucide:map-pin")
             end
         end
     end
 })
 
 CharacterSection:Toggle({
-    Title = "Noclip",
-    Desc = "Permite atravessar paredes",
+    Title = cor({"Noclip", "#AAAAAA"}),
+    Desc = cor({"Permite ", "#AAAAAA"}, {"atravessar paredes", "#00AAFF"}),
     Flag = "Noclip",
     Icon = "lucide:ghost",
     Callback = function(state)
         if _G.PlayerMod and _G.PlayerMod.ToggleNoclip then
             _G.PlayerMod.ToggleNoclip(state)
             if state then
-                notificar("Ativado", 2, "lucide:ghost")
+                notificar(cor({"Ativado", "#00FF00"}), 2, "lucide:ghost")
             else
-                notificar("Desativado", 2, "lucide:ban")
+                notificar(cor({"Desativado", "#FF0000"}), 2, "lucide:ban")
             end
         end
     end
@@ -2372,8 +2380,8 @@ CharacterSection:Toggle({
 local SystemSection = criarsection(Player, "Sistema", "Modificar sistema", "lucide:settings", false)
 
 SystemSection:Toggle({
-    Title = "Habilitar chat",
-    Desc = "Permite você ver o histórico de mensagens no chat",
+    Title = cor({"Habilitar chat", "#00FF00"}),
+    Desc = cor({"Permite você ver o ", "#AAAAAA"}, {"histórico", "#00AAFF"}, {" de mensagens no chat", "#AAAAAA"}),
     Flag = "ChatHabilitado",
     Icon = "lucide:message-square",
     Callback = function(v)
@@ -2390,7 +2398,7 @@ local isSpectating = false
 local ActionDropdown = nil
 
 InteractionSection:Input({
-    Title = "Jogador",
+    Title = cor({"Jogador", "#FFFFFF"}),
     Desc = "Digite o nome do jogador",
     Placeholder = "Nome",
     InputIcon = "lucide:search",
@@ -2409,7 +2417,7 @@ CreateActionsDropdown = function()
 
     local actions = {
         {
-            Title = isSpectating and "Parar de espectar" or "Espectar jogador",
+            Title = isSpectating and cor({"Parar de espectar", "#FF0000"}) or cor({"Espectar jogador", "#00FF00"}),
             Desc = isSpectating and "Volta a câmera para você" or "Especta o jogador alvo",
             Icon = isSpectating and "lucide:eye-off" or "lucide:eye",
             Callback = function()
@@ -2419,7 +2427,7 @@ CreateActionsDropdown = function()
                     local result = _G.PlayerMod.ToggleView(newState, TargetName)
                     
                     if newState and not result then
-                        notificar("Jogador não encontrado", 2, "lucide:search-x")
+                        notificar(cor({"Jogador não encontrado", "#FF0000"}), 2, "lucide:search-x")
                         CreateActionsDropdown() 
                         return 
                     end
@@ -2427,9 +2435,9 @@ CreateActionsDropdown = function()
                     isSpectating = newState
                     
                     if isSpectating then
-                        notificar("Espectando: " .. (result or TargetName), 3, "lucide:eye")
+                        notificar(cor({"Espectando: ", "#AAAAAA"}, {result or TargetName, "#00FF00"}), 3, "lucide:eye")
                     else
-                        notificar("Câmera restaurada", 2, "lucide:eye-off")
+                        notificar(cor({"Câmera restaurada", "#FFAA00"}), 2, "lucide:eye-off")
                     end
 
                     CreateActionsDropdown()
@@ -2437,31 +2445,31 @@ CreateActionsDropdown = function()
             end
         },
         {
-            Title = "Teleportar",
+            Title = cor({"Teleportar", "#00AAFF"}),
             Desc = "Teleporta ao jogador",
             Icon = "lucide:plane",
             Callback = function()
                 if _G.PlayerMod and _G.PlayerMod.TeleportTo then
                     local result = _G.PlayerMod.TeleportTo(TargetName)
                     if result then
-                        notificar("Teleportado para: " .. result, 3, "lucide:plane")
+                        notificar(cor({"Teleportado para: ", "#AAAAAA"}, {result, "#00AAFF"}), 3, "lucide:plane")
                     else
-                        notificar("Jogador não encontrado", 2, "lucide:search-x")
+                        notificar(cor({"Jogador não encontrado", "#FF0000"}), 2, "lucide:search-x")
                     end
                 end
                 CreateActionsDropdown()
             end
         },
         {
-            Title = "Voltar posição",
+            Title = cor({"Voltar posição", "#FFAA00"}),
             Desc = "Retorna para a última posição antes do teleport",
             Icon = "lucide:undo-2",
             Callback = function()
                 if _G.PlayerMod and _G.PlayerMod.ReturnPos then
                     if _G.PlayerMod.ReturnPos() then
-                        notificar("Retornado", 2, "lucide:undo-2")
+                        notificar(cor({"Retornado", "#00FF00"}), 2, "lucide:undo-2")
                     else
-                        notificar("Nenhuma posição salva", 2, "lucide:x")
+                        notificar(cor({"Nenhuma posição salva", "#FF0000"}), 2, "lucide:x")
                     end
                 end
                 CreateActionsDropdown()
@@ -2470,7 +2478,7 @@ CreateActionsDropdown = function()
     }
 
     ActionDropdown = InteractionSection:Dropdown({
-        Title = "Ações",
+        Title = cor({"Ações", "#FFFFFF"}),
         Desc = "Ações disponíveis para o alvo",
         Icon = "lucide:mouse-pointer-click",
         Values = actions,
