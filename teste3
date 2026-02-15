@@ -7,17 +7,20 @@ if not getmetatable or not setmetatable or not type or not select or type(select
   return REVEAL_HINT_STACK and tostring(ANTI_ENV_LOG_MESSAGE) or nil
 end
 
---[[ 
-uso: Title = cor({"Teste", "#FF0000"}, {" arroz"}),
-]]--
-
 function cor(...)
     local output = {}
-    for i, data in ipairs({...}) do
-        output[i] = "<font color='" .. (data[2] or "#ffffff") .. "'>" .. data[1] .. "</font>"
+    local args = {...}
+    for i, data in ipairs(args) do
+        -- data[1] é o texto, data[2] é a cor hex
+        local texto = tostring(data[1] or "")
+        local corHex = data[2] or "#ffffff"
+        output[i] = "<font color='" .. corHex .. "'>" .. texto .. "</font>"
     end
     return table.concat(output)
 end
+
+getgenv().cor = cor
+
 
 local UI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 UI:SetFont("rbxassetid://16658237174")
