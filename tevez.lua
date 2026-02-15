@@ -1,5 +1,3 @@
--- anti
-
 local function Finalizar(Mensagem)
     print(Mensagem)
     task.wait(0.5)
@@ -18,27 +16,11 @@ until RanTimes >= 2
 
 Connection:Disconnect()
 
-if not getmetatable or not setmetatable or not type or not select or type(select(2, pcall(getmetatable, setmetatable({}, {__index = function(self, ...) while true do end end})))['__index']) ~= 'function' or not pcall or not debug or not rawget or not rawset or not pcall(rawset,{}," "," ") or getmetatable(require) or getmetatable(print) or getmetatable(error) or ({debug.info(print,'a')})[1]~=0 or ({debug.info(tostring,'a')})[1]~=0 or ({debug.info(print,'a')})[2]~=true or not select or not getfenv or select(1, pcall(getfenv, 69)) == true or not select(2, pcall(rawget, debug, "info")) or #(((select(2, pcall(rawget, debug, "info")))(getfenv, "n")))<=1 or #(((select(2, pcall(rawget, debug, "info")))(print, "n")))<=1 or not (select(2, pcall(rawget, debug, "info")))(print, "s") == "[C]" or not (select(2, pcall(rawget, debug, "info")))(require, "s") == "[C]" or (select(2, pcall(rawget, debug, "info")))((function()end), "s") == "[C]" or not select(1, pcall(debug.info, coroutine.wrap(function() end)(), 's')) == false then
+if not getmetatable or not setmetatable or not type or not select or not pcall or not debug or not rawget or not rawset or getmetatable(require) or getmetatable(print) or getmetatable(error) or ({debug.info(print,'a')})[1]~=0 or ({debug.info(tostring,'a')})[1]~=0 or ({debug.info(print,'a')})[2]~=true or not select or not getfenv or select(1, pcall(getfenv, 69)) == true or not select(2, pcall(rawget, debug, "info")) or #(((select(2, pcall(rawget, debug, "info")))(getfenv, "n")))<=1 or #(((select(2, pcall(rawget, debug, "info")))(print, "n")))<=1 or not (select(2, pcall(rawget, debug, "info")))(print, "s") == "[C]" or not (select(2, pcall(rawget, debug, "info")))(require, "s") == "[C]" or (select(2, pcall(rawget, debug, "info")))((function()end), "s") == "[C]" or not select(1, pcall(debug.info, coroutine.wrap(function() end)(), 's')) == false then
     Finalizar("skid de EB :(")
 end
 
 if not game.ServiceAdded then
-    Finalizar("skid de EB :(")
-end
-
-if getfenv()[Instance.new("Part")] then
-    Finalizar("skid de EB :(")
-end
-
-if getmetatable(__call) then
-    Finalizar("skid de EB :(")
-end
-
-local Success = pcall(function()
-    Instance.new("Part"):BananaPeelSlipper("a")
-end)
-
-if Success then
     Finalizar("skid de EB :(")
 end
 
@@ -59,11 +41,7 @@ local Success, Result = pcall(function()
     ]=])
 end)
 
-if not Success then
-    Finalizar("skid de EB :(")
-end
-
-if Result[6][3] ~= nil then
+if not Success or Result[6][3] ~= nil then
     Finalizar("skid de EB :(")
 end
 
@@ -169,21 +147,12 @@ local function HasGun()
     return false
 end
 
--- Função otimizada para modificação
 local function ModifyGunProp(prop, val)
     local count = 0
-    -- Varre o Garbage Collector procurando tabelas
     for _, v in pairs(getgc(true)) do
         if type(v) == "table" then
-            -- Verifica se parece uma tabela de arma (tem Spread OU Bullets)
-            -- Isso é menos restrito e acha mais tabelas
             if rawget(v, "Spread") or rawget(v, "Bullets") or rawget(v, "FireRate") then
-                
-                -- Tenta desbloquear a tabela caso seja Read-Only
                 if setreadonly then setreadonly(v, false) end
-                
-                -- Se a propriedade existe ou queremos forçar ela na tabela
-                -- (Usamos rawget para ver se existe, mas se quiser forçar criação, pode tirar o check)
                 if rawget(v, prop) ~= nil then
                     rawset(v, prop, val)
                     count = count + 1
@@ -199,25 +168,16 @@ function TevezLogic.ApplyGunMods()
         Notify("Equipe uma arma primeiro")
         return
     end
-    
     local changes = 0
-    
     if TevezLogic.GunConfig.Bullets then 
         changes = changes + ModifyGunProp("Bullets", TevezLogic.GunConfig.Bullets) 
     end
-    
     if TevezLogic.GunConfig.Spread then 
         changes = changes + ModifyGunProp("Spread", TevezLogic.GunConfig.Spread) 
     end
-    
     if TevezLogic.GunConfig.Range then 
         changes = changes + ModifyGunProp("Range", TevezLogic.GunConfig.Range) 
     end
-    
-    -- Se quiser Forçar Infinite Ammo, descomente abaixo:
-    -- ModifyGunProp("MaxAmmo", math.huge)
-    -- ModifyGunProp("StoredAmmo", math.huge)
-
     Notify("Alterações aplicadas em: " .. tostring(changes) .. " tabelas")
 end
 
@@ -348,7 +308,6 @@ local function CheckSafe()
     if not Player.Character then return false end
     local root = Player.Character:FindFirstChild("HumanoidRootPart")
     if not root then return false end
-
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= Player and p.Character then
             local hrp = p.Character:FindFirstChild("HumanoidRootPart")
@@ -411,21 +370,17 @@ end
 local function SellMoney(force)
     UpdateStatus("Entregando dinheiro...")
     if not force and (CheckSafe() or IsClosed()) then return end
-    
     Teleport(VENDER_POS)
     task.wait(0.5)
-    
     while GetMoneyBag() > 0 and FarmLogic.Enabled do
         if CheckSafe() then break end
         if not force and IsClosed() then break end
         Robbery:FireServer("Payment")
         task.wait(1)
     end
-    
     if not FarmLogic.Enabled then return end
     task.wait(0.5)
     Teleport(CollectPos)
-    
     if Player.leaderstats and Player.leaderstats:FindFirstChild("Dinheiro") then
         FarmLogic.MoneyFarmed = Player.leaderstats.Dinheiro.Value - FarmLogic.InitialMoney
     end
@@ -434,38 +389,30 @@ end
 
 local function MainLoop()
     if Running or not FarmLogic.Enabled then return end
-    
     if Player.leaderstats.Dinheiro.Value < MIN_MONEY then
         UpdateStatus("Erro: Precisa de R$" .. MIN_MONEY)
         FarmLogic.Enabled = false
         return
     end
-
     Running = true
     FarmLogic.InitialMoney = Player.leaderstats.Dinheiro.Value
-
     task.spawn(function()
         if not IsOpen() then
             UpdateStatus("Aguardando banco abrir...")
             repeat task.wait(0.5) until IsOpen() or not FarmLogic.Enabled
             if not FarmLogic.Enabled then Running = false return end
         end
-
         UpdateStatus("Iniciando rotina...")
-        
         if not BuyC4() or not FarmLogic.Enabled or IsClosed() then
             UpdateStatus("Falha ao comprar C4")
             Running = false
             return
         end
-
         local c4 = GetItem("C4")
         if c4 then Player.Character.Humanoid:EquipTool(c4) end
-
         local prompt = Bank.BankVault.C4.Handle:FindFirstChildOfClass("ProximityPrompt")
         Teleport(Bank.BankVault.Vault.Front.Position)
         task.wait(0.5)
-
         UpdateStatus("Plantando C4...")
         while FarmLogic.Enabled and IsOpen() do
             if CheckSafe() then task.wait(0.1) continue end
@@ -473,14 +420,10 @@ local function MainLoop()
             fireproximityprompt(prompt)
             task.wait(0.15)
         end
-
         if not FarmLogic.Enabled or IsClosed() then Running = false return end
-        
         DynamicWait(11)
-
         while FarmLogic.Enabled and IsOpen() do
             if CheckSafe() then task.wait(0.1) continue end
-            
             if GetMoneyBag() >= 4000 then
                 task.wait(8)
                 SellMoney(false)
@@ -494,11 +437,9 @@ local function MainLoop()
                    Teleport(AFK_LEFT_POS + Vector3.new(0,4,0))
                    repeat task.wait(0.5) until Player.Character.Humanoid.Health > 90
                 end
-                
                 if Player.Character then
                     Player.Character:PivotTo(Player.Character.HumanoidRootPart.CFrame * CFrame.Angles(0, math.rad(30), 0))
                 end
-                
                 DynamicWait(0.5)
             end
         end
