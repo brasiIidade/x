@@ -368,7 +368,7 @@ if not _G.AimbotConfig then
 end
 
 task.spawn(function()
-    pcall(function() if ler then ler("silent") end end)
+    pcall(function() ler("silent") end)
 end)
 
 local function GetPlayerNames()
@@ -394,7 +394,7 @@ do
 
     local ToggleAim = MainSection:Toggle({
         Title = "Silent aim",
-        Desc = cor({"Permite ", "#AAAAAA"}, {"matar alvos", "#FF0000"}, {" com facilidade", "#AAAAAA"}),
+        Desc = "Permite matar alvos com facilidade",
         Icon = "lucide:power",
         Type = "Checkbox",
         Value = false,
@@ -412,10 +412,10 @@ do
 
             if state then
                 if _G.StartSilentAim then _G.StartSilentAim() end
-                notificar(cor({"Silent Aim ", "#AAAAAA"}, {"Ativado", "#00FF00"}), 2, "lucide:circle-check")
+                notificar("Ativado", 2, "lucide:circle-check")
             else
                 if _G.StopSilentAim then _G.StopSilentAim() end
-                notificar(cor({"Silent Aim ", "#AAAAAA"}, {"Desativado", "#FF0000"}), 2, "lucide:circle-x")
+                notificar("Desativado", 2, "lucide:circle-x")
             end
         end
     })
@@ -424,7 +424,7 @@ do
 
     MainSection:Keybind({
         Title = "Keybind",
-        Desc = cor({"Tecla para ", "#AAAAAA"}, {"ativar / desativar", "#FFFFFF"}, {" o silent aim", "#AAAAAA"}),
+        Desc = "Tecla para ativar / desativar o silent aim",
         Value = "Q",
         Flag = "KeybindSilentAim",
         Callback = function(v)
@@ -443,7 +443,7 @@ do
 
     MainSection:Slider({
         Title = "Hit chance",
-        Desc = cor({"Porcentagem de ", "#AAAAAA"}, {"tiros", "#00AAFF"}, {" que acertarão o alvo", "#AAAAAA"}),
+        Desc = "Porcentagem de tiros que acertarão o alvo",
         Step = 1,
         Value = { Min = 0, Max = 100, Default = _G.AimbotConfig.HitChance },
         Flag = "ChanceSilentAim",
@@ -454,8 +454,8 @@ do
     local PlayerWhitelist
     
     WhitelistSection:Button({
-        Title = cor({"Atualizar lista", "#00AAFF"}),
-        Desc = cor({"Atualiza a lista de jogadores", "#AAAAAA"}),
+        Title = "Atualizar lista",
+        Desc = "Atualiza a lista de jogadores",
         Icon = "lucide:refresh-cw",
         Callback = function()
             if PlayerWhitelist then PlayerWhitelist:Refresh(GetPlayerNames()) end
@@ -465,7 +465,7 @@ do
 
     PlayerWhitelist = WhitelistSection:Dropdown({
         Title = "Ignorar jogadores",
-        Desc = cor({"Não foca nesses ", "#AAAAAA"}, {"jogadores", "#FFAA00"}),
+        Desc = "Não foca nesses jogadores",
         Values = GetPlayerNames(),
         Value = {}, 
         Multi = true,
@@ -476,7 +476,7 @@ do
 
     WhitelistSection:Dropdown({
         Title = "Ignorar times",
-        Desc = cor({"Não foca nesses ", "#AAAAAA"}, {"times", "#00AAFF"}),
+        Desc = "Não foca nesses times",
         Values = GetTeamNames(),
         Value = {},
         Multi = true,
@@ -490,7 +490,7 @@ do
     local FocusFirstRun = true
     FocusSection:Toggle({
         Title = "Modo foco",
-        Desc = cor({"Foca ", "#AAAAAA"}, {"apenas", "#FFAA00"}, {" em quem está na lista", "#AAAAAA"}),
+        Desc = "Foca apenas em quem está na lista",
         Icon = "lucide:focus",
         Type = "Checkbox",
         Value = _G.AimbotConfig.FocusMode,
@@ -501,7 +501,7 @@ do
                 FocusFirstRun = false
                 return
             end
-            notificar("Modo foco alterado", 2, "lucide:circle-alert")
+            notificar("Modo foco: " .. (state and "Ativado" or "Desativado"), 2, "lucide:circle-alert")
         end
     })
 
@@ -512,7 +512,7 @@ do
         if FocusListParagraph then
             local listStr = table.concat(_G.AimbotConfig.FocusList, ", ")
             if listStr == "" then listStr = "Nenhum alvo definido." end
-            FocusListParagraph:SetDesc(cor({listStr, "#FFAA00"}))
+            FocusListParagraph:SetDesc(listStr)
         end
         if RemoveDropdown then
             RemoveDropdown:Refresh(_G.AimbotConfig.FocusList)
@@ -521,7 +521,7 @@ do
 
     FocusSection:Input({
         Title = "Adicionar alvo",
-        Desc = cor({"Digite o ", "#AAAAAA"}, {"nome", "#FFFFFF"}, {" do jogador", "#AAAAAA"}),
+        Desc = "Digite o nome",
         Placeholder = "player123",
         InputIcon = "lucide:user-plus",
         Callback = function(text)
@@ -537,7 +537,7 @@ do
                 if not table.find(_G.AimbotConfig.FocusList, foundName) then
                     table.insert(_G.AimbotConfig.FocusList, foundName)
                     UpdateFocusUI()
-                    notificar("Alvo adicionado", 2, "lucide:check")
+                    notificar("Alvo adicionado: " .. foundName, 2, "lucide:check")
                 end
             else
                 notificar("Jogador não encontrado", 2, "lucide:search-x")
@@ -547,7 +547,7 @@ do
 
     RemoveDropdown = FocusSection:Dropdown({
         Title = "Remover da lista",
-        Desc = cor({"Selecione para ", "#AAAAAA"}, {"excluir", "#FF0000"}),
+        Desc = "Selecione para excluir",
         Values = {},
         Value = nil,
         Multi = false,
@@ -566,11 +566,11 @@ do
 
     FocusListParagraph = FocusSection:Paragraph({
         Title = "Jogadores focados",
-        Desc = cor({"Nenhum alvo", "#AAAAAA"}),
+        Desc = "Nenhum alvo",
         Buttons = {
             {
                 Icon = "lucide:trash-2",
-                Title = cor({"Limpar", "#FF0000"}),
+                Title = "Limpar",
                 Callback = function()
                     _G.AimbotConfig.FocusList = {}
                     UpdateFocusUI()
@@ -584,7 +584,7 @@ do
 
     LogicSection:Dropdown({
         Title = "Prioridade",
-        Desc = cor({"Como escolher o ", "#AAAAAA"}, {"melhor alvo", "#00AAFF"}),
+        Desc = "Como escolher o melhor alvo",
         Values = {"Distance", "Health"},
         Value = "Distance",
         Flag = "PrioridadeSilentAim",
@@ -593,7 +593,7 @@ do
 
     LogicSection:Dropdown({
         Title = "Partes",
-        Desc = cor({"Onde o ", "#AAAAAA"}, {"tiro", "#FF0000"}, {" deve ir", "#AAAAAA"}),
+        Desc = "Onde o tiro deve ir",
         Values = { 
             "Random", "Head", "Torso",
             "Left Arm", "Right Arm", "Left Leg", "Right Leg"
@@ -607,7 +607,7 @@ do
 
     LogicSection:Dropdown({
         Title = "Alvos",
-        Desc = cor({"Quem deve ser ", "#AAAAAA"}, {"atacado", "#FF0000"}),
+        Desc = "Quem deve ser atacado",
         Values = { "Todos", "Inimigos" },
         Value = "Inimigos",
         Flag = "AlvosSilentAim",
@@ -616,7 +616,7 @@ do
 
     LogicSection:Toggle({
         Title = "Humanizar",
-        Desc = cor({"O tiro sairá mais ", "#AAAAAA"}, {"legit", "#00FF00"}),
+        Desc = "O tiro sairá mais legit",
         Icon = "lucide:user-check",
         Type = "Checkbox",
         Value = _G.AimbotConfig.UseLegitOffset,
@@ -626,7 +626,7 @@ do
 
     LogicSection:Toggle({
         Title = "Wall check",
-        Desc = cor({"Ignora inimigos ", "#AAAAAA"}, {"atrás de paredes", "#FFAA00"}),
+        Desc = "Ignora inimigos atrás de paredes",
         Icon = "lucide:brick-wall",
         Type = "Checkbox",
         Value = _G.AimbotConfig.WallCheck,
@@ -636,7 +636,7 @@ do
 
     LogicSection:Slider({
         Title = "Distância máxima",
-        Desc = cor({"Mede o quão ", "#AAAAAA"}, {"longe", "#00AAFF"}, {" o silent aim irá", "#AAAAAA"}),
+        Desc = "Mede o quão longe o silent aim irá",
         Step = 10,
         Value = { Min = 50, Max = 5000, Default = _G.AimbotConfig.MaxDistance },
         Flag = "AlcanceSilentAim",
@@ -647,7 +647,7 @@ do
 
     VisualsSection:Toggle({
         Title = "FOV",
-        Desc = cor({"Ativa o ", "#AAAAAA"}, {"círculo de mira", "#FFFFFF"}),
+        Desc = "Ativa o FOV",
         Icon = "lucide:circle",
         Type = "Checkbox",
         Value = _G.AimbotConfig.ShowFOV,
@@ -657,7 +657,7 @@ do
 
     VisualsSection:Dropdown({
         Title = "Posição",
-        Desc = cor({"Modifica a ", "#AAAAAA"}, {"posição", "#00AAFF"}, {" do FOV", "#AAAAAA"}),
+        Desc = "Modifica a posição do FOV",
         Values = { "Mouse", "Center" },
         Value = "Center",
         Flag = "PosicaoFOV",
@@ -666,7 +666,7 @@ do
 
     VisualsSection:Slider({
         Title = "Tamanho",
-        Desc = cor({"Modifica o ", "#AAAAAA"}, {"raio", "#00AAFF"}, {" do FOV", "#AAAAAA"}),
+        Desc = "Modifica o tamanho do FOV",
         Step = 5,
         Value = { Min = 40, Max = 1000, Default = _G.AimbotConfig.FOVSize },
         Flag = "TamanhoFOV",
@@ -675,7 +675,7 @@ do
 
     VisualsSection:Slider({
         Title = "Lados do FOV",
-        Desc = cor({"Qualidade do ", "#AAAAAA"}, {"formato", "#FFFFFF"}, {" do FOV", "#AAAAAA"}),
+        Desc = "Formato do FOV",
         Step = 1,
         Value = { Min = 3, Max = 100, Default = _G.AimbotConfig.FOVNumSides or 60 },
         Flag = "LadosFOV",
@@ -702,7 +702,7 @@ do
 
     VisualsSection:Toggle({
         Title = "Highlight",
-        Desc = cor({"Brilha", "#FFFF00"}, {" a pessoa focada", "#AAAAAA"}),
+        Desc = "Brilha a pessoa focada",
         Icon = "lucide:sparkles",
         Type = "Checkbox",
         Value = _G.AimbotConfig.ShowHighlight,
@@ -712,7 +712,7 @@ do
 
     VisualsSection:Colorpicker({
         Title = "Cor da info",
-        Desc = cor({"HUD e highlight", "#AAAAAA"}),
+        Desc = "HUD e highlight",
         Default = _G.AimbotConfig.HighlightColor,
         Transparency = 0,
         Locked = false,
@@ -726,7 +726,7 @@ do
 
     local ToggleESP = InfoSection:Toggle({
         Title = "HUD",
-        Desc = cor({"Mostra ", "#AAAAAA"}, {"informações", "#00AAFF"}, {" do alvo quando focado", "#AAAAAA"}),
+        Desc = "Mostra informações do alvo quando focado",
         Icon = "lucide:app-window",
         Type = "Checkbox",
         Value = _G.AimbotConfig.ESP.Enabled,
@@ -749,7 +749,7 @@ do
 
     ToggleName = InfoSection:Toggle({
         Title = "Nome",
-        Desc = cor({"Mostra o ", "#AAAAAA"}, {"nome", "#FFFFFF"}, {" do jogador", "#AAAAAA"}),
+        Desc = "Mostra o nome do jogador",
         Icon = "lucide:text-cursor",
         Type = "Checkbox",
         Value = _G.AimbotConfig.ESP.ShowName,
@@ -759,7 +759,7 @@ do
 
     ToggleTeam = InfoSection:Toggle({
         Title = "Time",
-        Desc = cor({"Mostra o ", "#AAAAAA"}, {"time", "#00FF00"}, {" do jogador", "#AAAAAA"}),
+        Desc = "Mostra o time do jogador",
         Icon = "lucide:users",
         Type = "Checkbox",
         Value = _G.AimbotConfig.ESP.ShowTeam,
@@ -769,7 +769,7 @@ do
 
     ToggleHP = InfoSection:Toggle({
         Title = "Vida",
-        Desc = cor({"Mostra a ", "#AAAAAA"}, {"vida", "#FF0000"}, {" do alvo", "#AAAAAA"}),
+        Desc = "Mostra a vida do alvo",
         Icon = "lucide:heart-pulse",
         Type = "Checkbox",
         Value = _G.AimbotConfig.ESP.ShowHealth,
@@ -779,7 +779,7 @@ do
 
     ToggleWeapon = InfoSection:Toggle({
         Title = "Item",
-        Desc = cor({"Mostra o que o alvo está ", "#AAAAAA"}, {"segurando", "#00AAFF"}),
+        Desc = "Mostra o que o alvo está segurando",
         Icon = "lucide:sword",
         Type = "Checkbox",
         Value = _G.AimbotConfig.ESP.ShowWeapon,
@@ -791,7 +791,6 @@ do
         ToggleName:Lock(); ToggleTeam:Lock(); ToggleHP:Lock(); ToggleWeapon:Lock()
     end
 end
-
 
 --// tab hitbox
 _G.HitboxConfig = {
