@@ -1,0 +1,252 @@
+local function Finalizar(Mensagem)
+    print(Mensagem)
+    task.wait(0.5)
+    local function Crash() return Crash() end
+    Crash()
+end
+
+local RanTimes = 0
+local Connection = game:GetService("RunService").Heartbeat:Connect(function()
+    RanTimes = RanTimes + 1
+end)
+
+repeat
+    task.wait()
+until RanTimes >= 2
+
+Connection:Disconnect()
+
+if not getmetatable or not setmetatable or not type or not select or type(select(2, pcall(getmetatable, setmetatable({}, {__index = function(self, ...) while true do end end})))['__index']) ~= 'function' or not pcall or not debug or not rawget or not rawset or not pcall(rawset,{}," "," ") or getmetatable(require) or getmetatable(print) or getmetatable(error) or ({debug.info(print,'a')})[1]~=0 or ({debug.info(tostring,'a')})[1]~=0 or ({debug.info(print,'a')})[2]~=true or not select or not getfenv or select(1, pcall(getfenv, 69)) == true or not select(2, pcall(rawget, debug, "info")) or #(((select(2, pcall(rawget, debug, "info")))(getfenv, "n")))<=1 or #(((select(2, pcall(rawget, debug, "info")))(print, "n")))<=1 or not (select(2, pcall(rawget, debug, "info")))(print, "s") == "[C]" or not (select(2, pcall(rawget, debug, "info")))(require, "s") == "[C]" or (select(2, pcall(rawget, debug, "info")))((function()end), "s") == "[C]" or not select(1, pcall(debug.info, coroutine.wrap(function() end)(), 's')) == false then
+    Finalizar("skid de EB :(")
+end
+
+if not game.ServiceAdded then
+    Finalizar("skid de EB :(")
+end
+
+if getfenv()[Instance.new("Part")] then
+    Finalizar("skid de EB :(")
+end
+
+if getmetatable(__call) then
+    Finalizar("skid de EB :(")
+end
+
+local Success = pcall(function()
+    Instance.new("Part"):BananaPeelSlipper("a")
+end)
+
+if Success then
+    Finalizar("skid de EB :(")
+end
+
+local Success, Result = pcall(function()
+    return game:GetService("HttpService"):JSONDecode([=[
+        [
+            42,
+            "deworming tablets",
+            false,
+            987,
+            true,
+            [555, "shimmer", null],
+            null,
+            ["x", 77, true],
+            {"key": "value", "num": 101},
+            [null, ["nested", 999, false]]
+        ]
+    ]=])
+end)
+
+if not Success then
+    Finalizar("skid de EB :(")
+end
+
+if Result[6][3] ~= nil then
+    Finalizar("skid de EB :(")
+end
+
+local _, Message = pcall(function()
+    game()
+end)
+
+if not Message:find("attempt to call a Instance value") then
+    Finalizar("skid de EB :(")
+end
+
+if #game:GetChildren() <= 4 then
+    Finalizar("skid de EB :(")
+end
+
+local cloneref = cloneref or function(o) return o end
+
+local Players = cloneref(game:GetService("Players"))
+local Workspace = cloneref(game:GetService("Workspace"))
+local HttpService = cloneref(game:GetService("HttpService"))
+local Teams = cloneref(game:GetService("Teams"))
+
+local Config = {
+    AlvoUser = "roblox", 
+
+    PesquisaTime = "BFE",
+    Patente = "Soldado",
+    
+    EmDivisao = true, 
+    PesquisaDivisao = "BFE",
+    GraduacaoDivisao = "Operador"
+}
+
+local function getTeam(search)
+    if not search or search == "" then return nil end
+    local s = search:lower()
+    for _, t in ipairs(Teams:GetTeams()) do
+        if t.Name:lower():find(s, 1, true) then return t end
+    end
+    return nil
+end
+
+local Player = Players.LocalPlayer
+local Character = Player.Character
+
+if not Character then return end
+
+Character.Archivable = true
+local Clone = Character:Clone()
+Character.Archivable = false
+
+if not Clone then return end
+
+Clone.Name = HttpService:GenerateGUID(false)
+
+local Camera = Workspace.CurrentCamera
+Clone.Parent = Camera
+
+local originalHRP = Character:FindFirstChild("HumanoidRootPart")
+local cloneHRP = Clone:FindFirstChild("HumanoidRootPart")
+local originalHumanoid = Character:FindFirstChildOfClass("Humanoid")
+local cloneHumanoid = Clone:FindFirstChildOfClass("Humanoid")
+
+if originalHRP and cloneHRP and originalHumanoid and cloneHumanoid then
+    local success, userId = pcall(function() return Players:GetUserIdFromNameAsync(Config.AlvoUser) end)
+    if success then
+        local descSuccess, desc = pcall(function() return Players:GetHumanoidDescriptionFromUserId(userId) end)
+        if descSuccess and desc then
+            desc.Head = 0
+            desc.LeftArm = 0
+            desc.RightArm = 0
+            desc.LeftLeg = 0
+            desc.RightLeg = 0
+            desc.Torso = 0
+
+            pcall(function() cloneHumanoid:ApplyDescription(desc) end)
+            
+            for _, v in ipairs(Clone:GetDescendants()) do
+                if v:IsA("Accessory") or v:IsA("Hat") then v:Destroy() end
+            end
+            
+            local children = Clone:GetChildren()
+            for i = 1, #children do
+                local v = children[i]
+                if v:IsA("CharacterMesh") then 
+                    v:Destroy() 
+                end
+            end
+            
+            local limbs = {"Torso","Left Arm","Right Arm","Left Leg","Right Leg"}
+            for i = 1, #limbs do
+                local pt = Clone:FindFirstChild(limbs[i])
+                if pt then
+                    local ptChildren = pt:GetChildren()
+                    for j = 1, #ptChildren do
+                        local v = ptChildren[j]
+                        if v:IsA("SpecialMesh") then v:Destroy() end
+                    end
+                end
+            end
+            
+            local hd = Clone:FindFirstChild("Head")
+            if hd then
+                local ms = hd:FindFirstChildOfClass("SpecialMesh")
+                if ms then
+                    ms.MeshType = Enum.MeshType.Head
+                    ms.MeshId = ""
+                    ms.TextureId = ""
+                    ms.Scale = Vector3.new(1.25, 1.25, 1.25)
+                end
+            end
+        end
+    end
+
+    local tPrincipal = getTeam(Config.PesquisaTime)
+    local tDiv = getTeam(Config.PesquisaDivisao)
+
+    local corNome = tPrincipal and tPrincipal.TeamColor.Color or Color3.fromRGB(255, 255, 255)
+    
+    local siglaPrincipal = Config.PesquisaTime
+    if tPrincipal then 
+        siglaPrincipal = tPrincipal.Name:match("%[(.-)%]") or Config.PesquisaTime 
+    end
+    
+    local siglaDivisao = Config.PesquisaDivisao
+    if tDiv then 
+        siglaDivisao = tDiv.Name:match("%[(.-)%]") or Config.PesquisaDivisao 
+    end
+
+    local head = Clone:FindFirstChild("Head")
+    if head then
+        local overhead = head:FindFirstChild("Overhead")
+        if overhead then
+            local playerNameLbl = overhead:FindFirstChild("PlayerName")
+            local patenteLbl = overhead:FindFirstChild("Patente")
+            local divisaoLbl = overhead:FindFirstChild("Divis\195\163o") or overhead:FindFirstChild("Divisão")
+
+            if playerNameLbl then
+                playerNameLbl.Text = "@" .. Config.AlvoUser
+                playerNameLbl.TextColor3 = corNome
+            end
+            
+            if patenteLbl then
+                patenteLbl.Text = "[" .. siglaPrincipal .. "] " .. Config.Patente
+            end
+            
+            if divisaoLbl then
+                if Config.EmDivisao then
+                    divisaoLbl.Text = "[" .. siglaDivisao .. "] " .. Config.GraduacaoDivisao
+                else
+                    divisaoLbl.Text = "N/A"
+                end
+            end
+        end
+    end
+
+    Clone:PivotTo(originalHRP.CFrame)
+
+    cloneHumanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+    cloneHumanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
+    cloneHumanoid.PlatformStand = true
+    cloneHumanoid:ChangeState(Enum.HumanoidStateType.Physics)
+    
+    for _, part in ipairs(Clone:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = false
+            part.Massless = true
+            if part.Name == "HumanoidRootPart" then
+                part.Anchored = true
+            else
+                part.Anchored = false
+            end
+        end
+    end
+    
+    local origAnimator = originalHumanoid:FindFirstChildOfClass("Animator")
+    local cloneAnimator = cloneHumanoid:FindFirstChildOfClass("Animator")
+    
+    if origAnimator and cloneAnimator then
+        for _, track in ipairs(origAnimator:GetPlayingAnimationTracks()) do
+            local cloneTrack = cloneAnimator:LoadAnimation(track.Animation)
+            cloneTrack:Play()
+            cloneTrack:AdjustSpeed(track.Speed)
+            cloneTrack.TimePosition = track.TimePosition
+            cloneTrack:AdjustWeight(track.WeightTarget, 0)
+        end
+    end
+end
