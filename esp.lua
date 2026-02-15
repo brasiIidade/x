@@ -1,5 +1,3 @@
--- anti
-
 local function Finalizar(Mensagem)
     print(Mensagem)
     task.wait(0.5)
@@ -84,13 +82,14 @@ local cloneref = cloneref or function(o) return o end
 local Players = cloneref(game:GetService("Players"))
 local CoreGui = cloneref(game:GetService("CoreGui"))
 local RunService = cloneref(game:GetService("RunService"))
+local HttpService = cloneref(game:GetService("HttpService"))
 local LocalPlayer = cloneref(Players.LocalPlayer)
 
-_G.ESPConnections = _G.ESPConnections or {}
-_G.ESPStorage = _G.ESPStorage or {}
-_G.ESPHolder = nil
+local ESPConnections = {}
+local ESPStorage = {}
+local ESPHolder = nil
 
-_G.ESPConfig = _G.ESPConfig or {
+local ESPConfig = {
     Enabled = false,
     TeamCheck = false,
     Chams = false,
@@ -101,22 +100,21 @@ _G.ESPConfig = _G.ESPConfig or {
 }
 
 local function GetHolder()
-    if not _G.ESPHolder then
+    if not ESPHolder then
         local h = Instance.new("ScreenGui")
-        h.Name = "esp"
+        h.Name = HttpService:GenerateGUID(false)
         h.IgnoreGuiInset = true
         h.ResetOnSpawn = false
         
-        local success = pcall(function()
-            h.Parent = CoreGui
-        end)
-        
-        if not success then
-            h.Parent = LocalPlayer:WaitForChild("PlayerGui")
+        local success, target = pcall(function() return gethui() end)
+        if success and target then
+            h.Parent = target
+        else
+            pcall(function() h.Parent = CoreGui end)
         end
-        _G.ESPHolder = h
+        ESPHolder = h
     end
-    return _G.ESPHolder
+    return ESPHolder
 end
 
 local function MakeLabel(parent, order, color, size)
@@ -135,7 +133,7 @@ local function MakeLabel(parent, order, color, size)
 end
 
 local function CreateESP(plr)
-    if plr.Name == LocalPlayer.Name or _G.ESPStorage[plr] then return end
+    if plr.Name == LocalPlayer.Name or ESPStorage[plr] then return end
 
     local Holder = GetHolder()
     
@@ -146,7 +144,7 @@ local function CreateESP(plr)
     }
 
     local hl = Instance.new("Highlight")
-    hl.Name = "Glow"
+    hl.Name = HttpService:GenerateGUID(false)
     hl.FillColor = Color3.fromRGB(255, 0, 0)
     hl.OutlineColor = Color3.fromRGB(255, 255, 255)
     hl.FillTransparency = 0.6
@@ -157,7 +155,7 @@ local function CreateESP(plr)
     cache.Highlight = hl
 
     local bb = Instance.new("BillboardGui")
-    bb.Name = "Tag"
+    bb.Name = HttpService:GenerateGUID(false)
     bb.Adornee = nil
     bb.Size = UDim2.new(0, 200, 0, 60)
     bb.StudsOffset = Vector3.new(0, 2, 0)
@@ -177,21 +175,21 @@ local function CreateESP(plr)
     cache.Labels.Studs = MakeLabel(bb, 4, Color3.fromRGB(255, 220, 0), 11)
 
     cache.Billboard = bb
-    _G.ESPStorage[plr] = cache
+    ESPStorage[plr] = cache
 end
 
 local function RemoveESP(plr)
-    local cache = _G.ESPStorage[plr]
+    local cache = ESPStorage[plr]
     if cache then
         if cache.Highlight then cache.Highlight:Destroy() end
         if cache.Billboard then cache.Billboard:Destroy() end
-        _G.ESPStorage[plr] = nil
+        ESPStorage[plr] = nil
     end
 end
 
 local function UpdateESP()
-    for plr, cache in pairs(_G.ESPStorage) do
-        local config = _G.ESPConfig
+    for plr, cache in pairs(ESPStorage) do
+        local config = ESPConfig
         
         if not plr or not plr.Parent then
             RemoveESP(plr)
@@ -274,25 +272,25 @@ local function UpdateESP()
     end
 end
 
-_G.StopESP = function()
-    for _, conn in pairs(_G.ESPConnections) do
+local function StopESP()
+    for _, conn in pairs(ESPConnections) do
         conn:Disconnect()
     end
-    _G.ESPConnections = {}
+    table.clear(ESPConnections)
 
-    for plr, _ in pairs(_G.ESPStorage) do
+    for plr, _ in pairs(ESPStorage) do
         RemoveESP(plr)
     end
-    _G.ESPStorage = {}
+    table.clear(ESPStorage)
     
-    if _G.ESPHolder then
-        _G.ESPHolder:Destroy()
-        _G.ESPHolder = nil
+    if ESPHolder then
+        ESPHolder:Destroy()
+        ESPHolder = nil
     end
 end
 
-_G.StartESP = function()
-    _G.StopESP()
+local function StartESP()
+    StopESP()
     GetHolder() 
 
     for _, plr in ipairs(Players:GetPlayers()) do
@@ -305,7 +303,7 @@ _G.StartESP = function()
     local removed = Players.PlayerRemoving:Connect(RemoveESP)
     local loop = RunService.RenderStepped:Connect(UpdateESP)
 
-    table.insert(_G.ESPConnections, added)
-    table.insert(_G.ESPConnections, removed)
-    table.insert(_G.ESPConnections, loop)
+    table.insert(ESPConnections, added)
+    table.insert(ESPConnections, removed)
+    table.insert(ESPConnections, loop)
 end
