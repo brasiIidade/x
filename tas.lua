@@ -402,7 +402,6 @@ local function activateTAS(name)
         return p
     end
 
-    local basePad = marker("BasePad", Vector2.new(3, 0.2), cf * CFrame.new(0, -2.8, 0) * CFrame.Angles(0,0,math.rad(90)), BASE_COLOR_POS, 0.3, true)
     local torso = marker("Torso", Vector3.new(2, 2, 1), cf * CFrame.new(0, 0, 0), BASE_COLOR_POS, 0.02, false)
     local lLeg = marker("LLeg", Vector3.new(1, 2, 1), cf * CFrame.new(-0.5, -2, 0), BASE_COLOR_POS, 0.02, false)
     local rLeg = marker("RLeg", Vector3.new(1, 2, 1), cf * CFrame.new(0.5, -2, 0), BASE_COLOR_POS, 0.02, false)
@@ -424,9 +423,6 @@ local function activateTAS(name)
         local hrp = getHRP()
         if not hrp then return end
         
-        local t = tick()
-        basePad.Transparency = 0.5 + math.sin(t * 3) * 0.2
-
         local delta = hrp.Position - cf.Position
         local flatDist = Vector3.new(delta.X,0,delta.Z).Magnitude
         local dot = hrp.CFrame.LookVector:Dot(cf.LookVector)
