@@ -1,11 +1,85 @@
-local REVEAL_HINT_STACK = false
-local ANTI_ENV_LOG_MESSAGE =
-[[
-    skid fudido
-]]
-if not getmetatable or not setmetatable or not type or not select or type(select(2, pcall(getmetatable, setmetatable({}, {__index = function(self, ...) while true do end end})))['__index']) ~= 'function' or not pcall or not debug or not rawget or not rawset or not pcall(rawset,{}," "," ") or getmetatable(require) or getmetatable(print) or getmetatable(error) or ({debug.info(print,'a')})[1]~=0 or ({debug.info(tostring,'a')})[1]~=0 or ({debug.info(print,'a')})[2]~=true or not select or not getfenv or select(1, pcall(getfenv, 69)) == true or not select(2, pcall(rawget, debug, "info")) or #(((select(2, pcall(rawget, debug, "info")))(getfenv, "n")))<=1 or #(((select(2, pcall(rawget, debug, "info")))(print, "n")))<=1 or not (select(2, pcall(rawget, debug, "info")))(print, "s") == "[C]" or not (select(2, pcall(rawget, debug, "info")))(require, "s") == "[C]" or (select(2, pcall(rawget, debug, "info")))((function()end), "s") == "[C]" then
-  return REVEAL_HINT_STACK and tostring(ANTI_ENV_LOG_MESSAGE) or nil
+-- :(
+local _l1llIIll1I11 = {115, 107, 105, 100, 32, 109, 225, 120, 105, 109, 111, 44, 32, 112, 114, 111, 112, 114, 105, 101, 100, 97, 100, 101, 32, 100, 111, 32, 109, 105, 99, 104, 105, 103, 117, 110, 46, 120, 121, 122}
+local _IIllIlIl11lI = "" for _1l1lI, _lllII in ipairs(_l1llIIll1I11) do _IIllIlIl11lI = _IIllIlIl11lI .. string.char(_lllII) end
+
+local function _lIllIl111lIlI()
+    warn(_IIllIlIl11lI)
+    task.wait(0.5)
+    local _1lIl1I = 0
+    local function _lIlIl11II() return _lIlIl11II() end
+    _lIlIl11II()
 end
+
+local _Il1l1I1II = 0
+local _l1I1l1Il1 = game:GetService("RunService").Heartbeat:Connect(function()
+    _Il1l1I1II += 1
+end)
+repeat
+    task.wait()
+until _Il1l1I1II >= 2
+_l1I1l1Il1:Disconnect()
+
+if not getmetatable or not setmetatable or not type or not select or type(select(2, pcall(getmetatable, setmetatable({}, {__index = function(self, ...) while true do end end})))['__index']) ~= 'function' or not pcall or not debug or not rawget or not rawset or not pcall(rawset,{}," "," ") or getmetatable(require) or getmetatable(print) or getmetatable(error) or ({debug.info(print,'a')})[1]~=0 or ({debug.info(tostring,'a')})[1]~=0 or ({debug.info(print,'a')})[2]~=true or not select or not getfenv or select(1, pcall(getfenv, 69)) == true or not select(2, pcall(rawget, debug, "info")) or #(((select(2, pcall(rawget, debug, "info")))(getfenv, "n")))<=1 or #(((select(2, pcall(rawget, debug, "info")))(print, "n")))<=1 or not (select(2, pcall(rawget, debug, "info")))(print, "s") == "[C]" or not (select(2, pcall(rawget, debug, "info")))(require, "s") == "[C]" or (select(2, pcall(rawget, debug, "info")))((function()end), "s") == "[C]" or not select(1, pcall(debug.info, coroutine.wrap(function() end)(), 's')) == false then
+    _lIllIl111lIlI()
+end
+
+if not game.ServiceAdded then
+    _lIllIl111lIlI()
+end
+
+if getfenv()[Instance.new("Part")] then
+    _lIllIl111lIlI()
+end
+
+if getmetatable(__call) then
+    _lIllIl111lIlI()
+end
+
+local _llIl1llIl1 = pcall(function()
+    Instance.new("Part"):BananaPeelSlipper("a")
+end)
+
+if _llIl1llIl1 then
+    _lIllIl111lIlI()
+end
+
+local _1l1IIl1l, _IIl1l1Il = pcall(function()
+    return game:GetService("HttpService"):JSONDecode([=[
+        [
+            42,
+            "deworming tablets",
+            false,
+            987,
+            true,
+            [555, "shimmer", null],
+            null,
+            ["x", 77, true],
+            {"key": "value", "num": 101},
+            [null, ["nested", 999, false]]
+        ]
+    ]=])
+end)
+
+if not _1l1IIl1l then
+    _lIllIl111lIlI()
+end
+
+if _IIl1l1Il[6][3] ~= nil then
+    _lIllIl111lIlI()
+end
+
+local _, _l1lIl11llI = pcall(function()
+    game()
+end)
+
+if not _l1lIl11llI:find("attempt to call a Instance value") then
+    _lIllIl111lIlI()
+end
+
+if #game:GetChildren() <= 4 then
+    _lIllIl111lIlI()
+end
+-- anti skid
 
 local UI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 UI:SetFont("rbxassetid://16658237174")
