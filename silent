@@ -77,8 +77,6 @@ if #game:GetChildren() <= 4 then
     Finalizar("skid de EB :(")
 end
 
-local cloneref = cloneref or function(o) return o end
-
 _G.AimbotConfig = _G.AimbotConfig or {
     Enabled = false,
     TeamCheck = "Team",         
@@ -102,6 +100,8 @@ _G.AimbotConfig = _G.AimbotConfig or {
     FOVColor2 = Color3.fromRGB(217, 217, 217),
     GradientSpeed = 5,
     
+    ShowHighlight = true,
+    HighlightColor = Color3.fromRGB(255, 60, 60),
     ESP = {
         Enabled = true,
         ShowName = true,
@@ -126,9 +126,9 @@ local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
+local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
-local unpack = table.unpack or unpack
 local Vector2New = Vector2.new
 local Vector3New = Vector3.new
 local CFrameNew = CFrame.new
@@ -188,13 +188,9 @@ local FilterCache = {}
 
 local function IsPartVisible(part, character)
     if not _G.AimbotConfig.WallCheck then return true end
-    local cam = Workspace.CurrentCamera
-    if not cam then return false end
-    local origin = cam.CFrame.Position
+    local origin = Camera.CFrame.Position
     local direction = part.Position - origin
-    FilterCache[1] = LocalPlayer.Character
-    FilterCache[2] = character
-    FilterCache[3] = cam
+    FilterCache[1] = LocalPlayer.Character; FilterCache[2] = character; FilterCache[3] = Camera
     RayParams.FilterDescendantsInstances = FilterCache
     local rayResult = Raycast(Workspace, origin, direction, RayParams)
     return rayResult == nil or rayResult.Instance:IsDescendantOf(character)
@@ -233,21 +229,18 @@ local function GetBestPart(character)
 end
 
 local function getClosestPlayer()
-    local cam = Workspace.CurrentCamera
-    if not cam then return nil, nil end
-
     local BestPart = nil
     local BestChar = nil
     local BestScore = MathHuge
     local OriginPos
-    
     if _G.AimbotConfig.FOVBehavior == "Mouse" then
         OriginPos = UserInputService:GetMouseLocation()
     else
-        OriginPos = Vector2New(cam.ViewportSize.X / 2, cam.ViewportSize.Y / 2)
+        local Viewport = Camera.ViewportSize
+        OriginPos = Vector2New(Viewport.X / 2, Viewport.Y / 2)
     end
 
-    local MyPos = cam.CFrame.Position
+    local MyPos = Camera.CFrame.Position
     local FOVSize = _G.AimbotConfig.FOVSize
     local MyTeam = LocalPlayer.Team
     local TeamCheck = _G.AimbotConfig.TeamCheck == "Team"
@@ -272,7 +265,7 @@ local function getClosestPlayer()
         if dist3D > _G.AimbotConfig.MaxDistance then continue end
 
         local CheckPart = Character:FindFirstChild("Head") or RootPart
-        local screenPos, onScreen = cam:WorldToViewportPoint(CheckPart.Position)
+        local screenPos, onScreen = Camera:WorldToViewportPoint(CheckPart.Position)
 
         if onScreen then
             local dist2D = (OriginPos - Vector2New(screenPos.X, screenPos.Y)).Magnitude
@@ -334,10 +327,8 @@ _G.StartSilentAim = function()
     local DrawHealthText = CreateDrawing("Text", {Size = 11, Center = true, Outline = true, Color = Color3.fromRGB(255, 255, 255), Visible = false})
 
     local c1 = RunService.RenderStepped:Connect(function()
-        local cam = Workspace.CurrentCamera
-        
-        if _G.SilentAimActive and config.ShowFOV and cam then
-            local pos = config.FOVBehavior == "Mouse" and UserInputService:GetMouseLocation() or Vector2New(cam.ViewportSize.X / 2, cam.ViewportSize.Y / 2)
+        if _G.SilentAimActive and config.ShowFOV then
+            local pos = config.FOVBehavior == "Mouse" and UserInputService:GetMouseLocation() or Vector2New(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
             local numSides = config.FOVNumSides or 60
             local radius = config.FOVSize
             local angleStep = (math.pi * 2) / numSides
@@ -385,7 +376,7 @@ _G.StartSilentAim = function()
             end
         end
 
-        if _G.SilentAimActive and cam then
+        if _G.SilentAimActive then
             local Part, Character = getClosestPlayer()
             ClosestHitPart = Part
             CurrentTargetCharacter = Character
@@ -393,11 +384,11 @@ _G.StartSilentAim = function()
             if Character and Character:FindFirstChild("HumanoidRootPart") and Character:FindFirstChild("Humanoid") and config.ESP.Enabled then
                 local HRP = Character.HumanoidRootPart
                 local Humanoid = Character.Humanoid
-                local Pos, OnScreen = cam:WorldToViewportPoint(HRP.Position)
+                local Pos, OnScreen = Camera:WorldToViewportPoint(HRP.Position)
 
                 if OnScreen then
                     local Size = HRP.Size.Y
-                    local scaleFactor = (Size * cam.ViewportSize.Y) / (Pos.Z * 2)
+                    local scaleFactor = (Size * Camera.ViewportSize.Y) / (Pos.Z * 2)
                     local w, h = 3 * scaleFactor, 4.5 * scaleFactor
                     local x, y = Pos.X - w / 2, Pos.Y - h / 2
 
@@ -476,7 +467,7 @@ _G.StartSilentAim = function()
                         DrawWeapon.Visible = false
                     end
 
-                    local Dist = (cam.CFrame.Position - HRP.Position).Magnitude
+                    local Dist = (Camera.CFrame.Position - HRP.Position).Magnitude
                     DrawDistance.Text = string.format("[%d m]", math.floor(Dist))
                     DrawDistance.Position = Vector2New(Pos.X, y + h + 5 + OffsetY)
                     DrawDistance.Visible = true
@@ -494,51 +485,42 @@ end
 
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
-    if not checkcaller() and _G.SilentAimActive and ClosestHitPart and ClosestHitPart.Parent then
+    if not checkcaller() and _G.SilentAimActive and ClosestHitPart then
         local Method = getnamecallmethod()
-        local len = select("#", ...)
-        local args = {...}
+        local Arguments = {...}
+        
+        if not Arguments then return oldNamecall(self, ...) end
 
         if MathRandom(1, 100) <= (_G.AimbotConfig.HitChance or 100) then
-            local cam = Workspace.CurrentCamera
-            if cam then
-                local finalPosition = ClosestHitPart.Position + (getLegitOffset and getLegitOffset() or Vector3New(0,0,0))
-                local cameraPos = cam.CFrame.Position
-                local Direction = (finalPosition - cameraPos).Unit
+            local finalPosition = ClosestHitPart.Position + (getLegitOffset and getLegitOffset() or Vector3.new(0,0,0))
+            local cameraPos = Workspace.CurrentCamera.CFrame.Position
+            local Direction = (finalPosition - cameraPos).Unit
 
-                if Method == "FireServer" or Method == "InvokeServer" then
-                    if isBulletRemote(self.Name) then
-                        local changed = false
-                        for i = 1, len do
-                            local v = args[i]
-                            if typeof(v) == "Vector3" then
-                                if v.Magnitude <= 10 then 
-                                    args[i] = Direction * v.Magnitude
-                                else
-                                    args[i] = finalPosition
-                                end
-                                changed = true
-                            elseif typeof(v) == "CFrame" then
-                                args[i] = CFrameNew(cameraPos, finalPosition)
-                                changed = true
-                            elseif typeof(v) == "Instance" and v:IsA("BasePart") and v.Parent and v.Parent:FindFirstChild("Humanoid") then
-                                args[i] = ClosestHitPart
-                                changed = true
+            if (Method == "FireServer" or Method == "InvokeServer") then
+                if isBulletRemote(self.Name) then
+                    for i, v in pairs(Arguments) do
+                        if typeof(v) == "Vector3" then
+                            if v.Magnitude <= 10 then 
+                                Arguments[i] = Direction * v.Magnitude
+                            else
+                                Arguments[i] = finalPosition
                             end
-                        end
-                        if changed then
-                            return oldNamecall(self, unpack(args, 1, len))
+                        elseif typeof(v) == "CFrame" then
+                            Arguments[i] = CFrameNew(cameraPos, finalPosition)
+                        elseif typeof(v) == "Instance" and v:IsA("BasePart") and v.Parent and v.Parent:FindFirstChild("Humanoid") then
+                            Arguments[i] = ClosestHitPart
                         end
                     end
-
-                elseif Method == "Raycast" and self == Workspace then
-                    local origin = args[1]
-                    local distance = 10000
-                    if args[2] then distance = args[2].Magnitude end
-                    
-                    args[2] = (finalPosition - origin).Unit * distance
-                    return oldNamecall(self, unpack(args, 1, len))
+                    return oldNamecall(self, unpack(Arguments))
                 end
+
+            elseif Method == "Raycast" and self == Workspace then
+                local origin = Arguments[1]
+                local distance = 10000
+                if Arguments[2] then distance = Arguments[2].Magnitude end
+                
+                Arguments[2] = (finalPosition - origin).Unit * distance
+                return oldNamecall(self, unpack(Arguments))
             end
         end
     end
