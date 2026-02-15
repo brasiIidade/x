@@ -85,11 +85,11 @@ local RunService = cloneref(game:GetService("RunService"))
 local HttpService = cloneref(game:GetService("HttpService"))
 local LocalPlayer = cloneref(Players.LocalPlayer)
 
-local ESPConnections = {}
-local ESPStorage = {}
-local ESPHolder = nil
+_G.ESPConnections = _G.ESPConnections or {}
+_G.ESPStorage = _G.ESPStorage or {}
+_G.ESPHolder = _G.ESPHolder or nil
 
-local ESPConfig = {
+_G.ESPConfig = _G.ESPConfig or {
     Enabled = false,
     TeamCheck = false,
     Chams = false,
@@ -100,11 +100,9 @@ local ESPConfig = {
 }
 
 local function GetHolder()
-    if not ESPHolder then
-        local h = Instance.new("ScreenGui")
+    if not _G.ESPHolder then
+        local h = Instance.new("Folder")
         h.Name = HttpService:GenerateGUID(false)
-        h.IgnoreGuiInset = true
-        h.ResetOnSpawn = false
         
         local success, target = pcall(function() return gethui() end)
         if success and target then
@@ -112,9 +110,9 @@ local function GetHolder()
         else
             pcall(function() h.Parent = CoreGui end)
         end
-        ESPHolder = h
+        _G.ESPHolder = h
     end
-    return ESPHolder
+    return _G.ESPHolder
 end
 
 local function MakeLabel(parent, order, color, size)
@@ -133,7 +131,7 @@ local function MakeLabel(parent, order, color, size)
 end
 
 local function CreateESP(plr)
-    if plr.Name == LocalPlayer.Name or ESPStorage[plr] then return end
+    if plr.Name == LocalPlayer.Name or _G.ESPStorage[plr] then return end
 
     local Holder = GetHolder()
     
@@ -175,21 +173,21 @@ local function CreateESP(plr)
     cache.Labels.Studs = MakeLabel(bb, 4, Color3.fromRGB(255, 220, 0), 11)
 
     cache.Billboard = bb
-    ESPStorage[plr] = cache
+    _G.ESPStorage[plr] = cache
 end
 
 local function RemoveESP(plr)
-    local cache = ESPStorage[plr]
+    local cache = _G.ESPStorage[plr]
     if cache then
         if cache.Highlight then cache.Highlight:Destroy() end
         if cache.Billboard then cache.Billboard:Destroy() end
-        ESPStorage[plr] = nil
+        _G.ESPStorage[plr] = nil
     end
 end
 
 local function UpdateESP()
-    for plr, cache in pairs(ESPStorage) do
-        local config = ESPConfig
+    for plr, cache in pairs(_G.ESPStorage) do
+        local config = _G.ESPConfig
         
         if not plr or not plr.Parent then
             RemoveESP(plr)
@@ -207,7 +205,7 @@ local function UpdateESP()
             continue
         end
 
-        if config.TeamCheck and plr.TeamColor == LocalPlayer.TeamColor then
+        if config.TeamCheck and LocalPlayer.Team and plr.Team == LocalPlayer.Team then
             cache.Highlight.Enabled = false
             cache.Billboard.Enabled = false
             continue
@@ -215,7 +213,7 @@ local function UpdateESP()
 
         if config.Chams then
             cache.Highlight.Adornee = char
-            cache.Highlight.FillColor = plr.TeamColor.Color
+            cache.Highlight.FillColor = plr.TeamColor and plr.TeamColor.Color or Color3.fromRGB(255, 0, 0)
             cache.Highlight.Enabled = true
         else
             cache.Highlight.Enabled = false
@@ -272,25 +270,25 @@ local function UpdateESP()
     end
 end
 
-local function StopESP()
-    for _, conn in pairs(ESPConnections) do
+_G.StopESP = function()
+    for _, conn in pairs(_G.ESPConnections) do
         conn:Disconnect()
     end
-    table.clear(ESPConnections)
+    table.clear(_G.ESPConnections)
 
-    for plr, _ in pairs(ESPStorage) do
+    for plr, _ in pairs(_G.ESPStorage) do
         RemoveESP(plr)
     end
-    table.clear(ESPStorage)
+    table.clear(_G.ESPStorage)
     
-    if ESPHolder then
-        ESPHolder:Destroy()
-        ESPHolder = nil
+    if _G.ESPHolder then
+        _G.ESPHolder:Destroy()
+        _G.ESPHolder = nil
     end
 end
 
-local function StartESP()
-    StopESP()
+_G.StartESP = function()
+    _G.StopESP()
     GetHolder() 
 
     for _, plr in ipairs(Players:GetPlayers()) do
@@ -303,7 +301,7 @@ local function StartESP()
     local removed = Players.PlayerRemoving:Connect(RemoveESP)
     local loop = RunService.RenderStepped:Connect(UpdateESP)
 
-    table.insert(ESPConnections, added)
-    table.insert(ESPConnections, removed)
-    table.insert(ESPConnections, loop)
+    table.insert(_G.ESPConnections, added)
+    table.insert(_G.ESPConnections, removed)
+    table.insert(_G.ESPConnections, loop)
 end
