@@ -138,8 +138,10 @@ local Pairs = pairs
 local StringLower = string.lower
 local StringFind = string.find
 local MathHuge = math.huge
-local WorldToScreenPoint = Camera.WorldToScreenPoint
+-- CORREÇÃO: Usando ViewportPoint em vez de ScreenPoint para alinhar perfeitamente com a Drawing API
+local WorldToViewportPoint = Camera.WorldToViewportPoint
 local Raycast = Workspace.Raycast
+local unpack = table.unpack or unpack
 
 _G.SilentAimActive = false
 local ClosestHitPart = nil
@@ -266,7 +268,8 @@ local function getClosestPlayer()
         if dist3D > _G.AimbotConfig.MaxDistance then continue end
 
         local CheckPart = Character:FindFirstChild("Head") or RootPart
-        local screenPos, onScreen = WorldToScreenPoint(Camera, CheckPart.Position)
+        -- Usando ViewportPoint para alinhar com a Drawing API
+        local screenPos, onScreen = WorldToViewportPoint(Camera, CheckPart.Position)
 
         if onScreen then
             local dist2D = (OriginPos - Vector2New(screenPos.X, screenPos.Y)).Magnitude
@@ -385,7 +388,8 @@ _G.StartSilentAim = function()
             if Character and Character:FindFirstChild("HumanoidRootPart") and Character:FindFirstChild("Humanoid") and config.ESP.Enabled then
                 local HRP = Character.HumanoidRootPart
                 local Humanoid = Character.Humanoid
-                local Pos, OnScreen = WorldToScreenPoint(Camera, HRP.Position)
+                -- Usando ViewportPoint para alinhar com a Drawing API
+                local Pos, OnScreen = WorldToViewportPoint(Camera, HRP.Position)
 
                 if OnScreen then
                     local Size = HRP.Size.Y
