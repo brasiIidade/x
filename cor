@@ -2373,7 +2373,7 @@ grupamentoSpeed:Button({
 grupamentoSpeed:Space()
 
 grupamentoSpeed:Button({
-    Title = "Resetar speed",
+    Title = "Resetar velocidade",
     Desc = cor({"Retorna para a velocidade "}, {"padrão", "#FFFFFF"}),
     Icon = "lucide:rotate-ccw",
     Callback = function()
