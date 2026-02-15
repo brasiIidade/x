@@ -397,7 +397,7 @@ local AntiLag = criartab("Anti-lag", "solar:wi-fi-router-minimalistic-bold", fal
 local Player = criartab("Player", "solar:user-bold", false)
 
 --// tab "config"
-Local Configs = criartab("Configurações", "lucide:settings", false)
+local Configs = criartab("Configurações", "lucide:settings", false)
 
 --// tab silent
 
