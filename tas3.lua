@@ -1,5 +1,3 @@
--- anti
-
 local function Finalizar(Mensagem)
     print(Mensagem)
     task.wait(0.5)
@@ -95,7 +93,6 @@ local unpack = table.unpack or unpack
 local BASE_COLOR_POS = Color3.fromRGB(0, 255, 255)
 local BASE_COLOR_LOOK = Color3.fromRGB(255, 50, 100)
 local PATH_COLOR = Color3.fromRGB(0, 200, 255)
-local MATERIAL_INDICATOR = Enum.Material.ForceField
 local TRANSPARENCY_INDICATOR = 0.1
 local VIEWPORT_SIZE = UDim2.new(0, 150, 0, 150)
 local PATH_THICKNESS = 0.1
@@ -177,7 +174,7 @@ local function stopMovementInput()
     local hum = getHumanoid()
     if hum then 
         hum.AutoRotate = true 
-        hum:Move(Vector3.zero) -- Para qualquer movimento forçado
+        hum:Move(Vector3.zero) 
     end
 
     local pg = LocalPlayer:FindFirstChild("PlayerGui")
@@ -229,19 +226,13 @@ local function applyFrame(f)
         local v = Vector3.new(f.vel[1], f.vel[2], f.vel[3])
         hrp.AssemblyLinearVelocity = v
         
-        -- === LÓGICA DE MOVER PARA FRENTE (Corrigida) ===
-        -- Se a velocidade for relevante (> 0.5), forçamos o Humanoid a "andar"
         if v.Magnitude > 0.5 then
-            -- Move na direção que o personagem está olhando (LookVector)
-            -- 'false' no segundo argumento significa que é coordenadas do mundo, não da câmera
             hum:Move(hrp.CFrame.LookVector, false)
         else
             hum:Move(Vector3.zero)
         end
-        -- ===============================================
     end
 
-    -- Lógica de Pulo
     if f.jump ~= _G.TAS.LastJumpInput then
         if f.jump then
             hum:ChangeState(Enum.HumanoidStateType.Jumping)
@@ -296,7 +287,7 @@ local function createViewportMarker(partToTrack)
         CFrame.Angles(math.rad(-20), math.rad(180), 0)
 
     local conn = RunService.Stepped:Connect(function()
-        if not partToTrack or not partToTrack.Parent then return end
+        if not partToTrack then return end
         
         local pos, visible = CurrentCamera:WorldToScreenPoint(partToTrack.Position)
         viewportFrame.Position = UDim2.fromOffset(
@@ -347,12 +338,9 @@ local function clearSingleTAS(name)
     checkPlaybackState()
 end
 
-local function buildPathLine(frames)
+local function buildPathLine(frames, parentFolder)
     local parts = {}
     if not frames or #frames < 2 then return parts end
-
-    local parentFolder = Instance.new("Folder", Workspace)
-    parentFolder.Name = "2"
 
     for i = 1, #frames - 1 do
         if frames[i].cf and frames[i+1].cf then
@@ -361,21 +349,20 @@ local function buildPathLine(frames)
             local dist = (endPos - startPos).Magnitude
 
             if dist > 0.05 then
-                local part = Instance.new("Part")
-                part.Anchored = true
-                part.CanCollide = false
-                part.Material = Enum.Material.Neon
-                part.Color = PATH_COLOR
-                part.Transparency = 0.1
-                part.Size = Vector3.new(PATH_THICKNESS, PATH_THICKNESS, dist)
+                local part = Instance.new("CylinderHandleAdornment")
+                part.Radius = PATH_THICKNESS / 2
+                part.Height = dist
                 part.CFrame = CFrame.new(startPos:Lerp(endPos, 0.5), endPos)
+                part.Color3 = PATH_COLOR
+                part.Transparency = 0.1
+                part.Adornee = Workspace.Terrain
+                part.ZIndex = 0
                 part.Parent = parentFolder
                 table.insert(parts, part)
             end
         end
     end
     
-    table.insert(parts, parentFolder) 
     return parts
 end
 
@@ -390,36 +377,48 @@ local function activateTAS(name)
     local startFrame = data.Frames[1]
     local cf = CFrame.new(unpack(startFrame.cf))
 
-    local container = Instance.new("Folder", Workspace)
+    local container = Instance.new("Folder")
     container.Name = "_" .. name
+    container.Parent = gethui_func()
     data.VisualFolder = container
 
-    local function marker(n, shape, size, cframe, color, mat, transp)
-        local p = Instance.new("Part")
+    local function marker(n, size, cframe, color, transp, isCylinder)
+        local p
+        if isCylinder then
+            p = Instance.new("CylinderHandleAdornment")
+            p.Radius = size.X
+            p.Height = size.Y
+        else
+            p = Instance.new("BoxHandleAdornment")
+            p.Size = size
+        end
         p.Name = n
-        p.Shape = shape
-        p.Size = size
         p.CFrame = cframe
-        p.Anchored = true
-        p.CanCollide = false
-        p.Material = mat or MATERIAL_INDICATOR
-        p.Color = color
+        p.Color3 = color
         p.Transparency = transp or TRANSPARENCY_INDICATOR
-        p.CastShadow = false
+        p.Adornee = Workspace.Terrain
+        p.ZIndex = 1
         p.Parent = container
         return p
     end
 
-    local basePad = marker("BasePad", Enum.PartType.Cylinder, Vector3.new(0.2, 6, 6), cf * CFrame.new(0, -2.8, 0) * CFrame.Angles(0,0,math.rad(90)), BASE_COLOR_POS, Enum.Material.Neon, 0.3)
-    local torso = marker("Torso", Enum.PartType.Block, Vector3.new(2, 2, 1), cf * CFrame.new(0, 0, 0), BASE_COLOR_POS, Enum.Material.ForceField, 0.02)
-    local lLeg = marker("LLeg", Enum.PartType.Block, Vector3.new(1, 2, 1), cf * CFrame.new(-0.5, -2, 0), BASE_COLOR_POS, Enum.Material.ForceField, 0.02)
-    local rLeg = marker("RLeg", Enum.PartType.Block, Vector3.new(1, 2, 1), cf * CFrame.new(0.5, -2, 0), BASE_COLOR_POS, Enum.Material.ForceField, 0.02)
-    local lArm = marker("LArm", Enum.PartType.Block, Vector3.new(1, 2, 1), cf * CFrame.new(-1.5, 0, 0), BASE_COLOR_POS, Enum.Material.ForceField, 0.02)
-    local rArm = marker("RArm", Enum.PartType.Block, Vector3.new(1, 2, 1), cf * CFrame.new(1.5, 0.5, -1) * CFrame.Angles(math.rad(90), 0, 0), BASE_COLOR_POS, Enum.Material.ForceField, 0.02)
+    local basePad = marker("BasePad", Vector2.new(3, 0.2), cf * CFrame.new(0, -2.8, 0) * CFrame.Angles(0,0,math.rad(90)), BASE_COLOR_POS, 0.3, true)
+    local torso = marker("Torso", Vector3.new(2, 2, 1), cf * CFrame.new(0, 0, 0), BASE_COLOR_POS, 0.02, false)
+    local lLeg = marker("LLeg", Vector3.new(1, 2, 1), cf * CFrame.new(-0.5, -2, 0), BASE_COLOR_POS, 0.02, false)
+    local rLeg = marker("RLeg", Vector3.new(1, 2, 1), cf * CFrame.new(0.5, -2, 0), BASE_COLOR_POS, 0.02, false)
+    local lArm = marker("LArm", Vector3.new(1, 2, 1), cf * CFrame.new(-1.5, 0, 0), BASE_COLOR_POS, 0.02, false)
+    local rArm = marker("RArm", Vector3.new(1, 2, 1), cf * CFrame.new(1.5, 0.5, -1) * CFrame.Angles(math.rad(90), 0, 0), BASE_COLOR_POS, 0.02, false)
     
-    table.insert(data.Viewports, createViewportMarker(torso))
+    local dummyPart = Instance.new("Part")
+    dummyPart.Size = Vector3.new(2, 2, 1)
+    dummyPart.CFrame = cf
+    dummyPart.Transparency = 1
+    dummyPart.Anchored = true
+    dummyPart.CanCollide = false
+    
+    table.insert(data.Viewports, createViewportMarker(dummyPart))
 
-    data.PathParts = buildPathLine(data.Frames)
+    data.PathParts = buildPathLine(data.Frames, container)
 
     data.MarkerConn = RunService.Heartbeat:Connect(function()
         local hrp = getHRP()
