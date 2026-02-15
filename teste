@@ -328,7 +328,6 @@ local Player = criartab("Player", "solar:user-bold", false)
 local Configs = criartab("Configurações", "lucide:settings", false)
 
 --// tab silent
-
 if not _G.AimbotConfig then
     _G.AimbotConfig = {
         Enabled = false,
@@ -791,13 +790,14 @@ _G.HitboxConfig = {
     Transparency = 0.5,
     Shape = Enum.PartType.Ball,
     HideOnShield = false,
-    TeamCheck = true, -- Adicionado: Padrão true
+    TeamCheck = true,
     TeamFilterEnabled = false,
     SelectedTeams = {}
 }
 
 task.spawn(function()
-    ler("hitbox")
+    -- Certifique-se que a função 'ler' existe
+    if ler then ler("hitbox") end
 end)
 
 local function AtualizarValores()
@@ -936,7 +936,7 @@ TeamSection:Dropdown({
     Title = cor({"Times", "#00AAFF"}),
     Desc = "Selecione os times",
     Icon = "lucide:users-round",
-    Values = GetTeamNames(),
+    Values = GetTeamNames(), -- Certifique-se que esta função existe antes deste bloco
     Value = {}, 
     Multi = true,
     AllowNone = true,
@@ -949,20 +949,22 @@ TeamSection:Dropdown({
     end
 })
 
-
 --// tab esp
-_G.ESPConfig = {
-    Enabled = false,
-    TeamCheck = false,
-    Chams = false,
-    Name = false,
-    Studs = false,
-    Health = false,
-    WeaponN = false
-}
+if not _G.ESPConfig then
+    _G.ESPConfig = {
+        Enabled = false,
+        TeamCheck = false,
+        Chams = false,
+        Name = false,
+        Studs = false,
+        Health = false,
+        WeaponN = false
+    }
+end
 
 task.spawn(function()
-    ler("esp")
+    -- Certifique-se de que a função 'ler' existe
+    if ler then ler("esp") end
 end)
 
 local MainSection = criarsection(ESP, "Principal", "Controles gerais", "lucide:eye", true)
@@ -1018,16 +1020,50 @@ MainSection:Toggle({
 
 local VisualsSection = criarsection(ESP, "Visualização", "Elementos visuais", "lucide:monitor", true)
 
-VisualsSection:Toggle({ Title = cor({"Highlight", "#FFFF00"}), Icon = "lucide:sparkles", Value = _G.ESPConfig.Chams, Flag = "ChamsESP", Callback = function(v) _G.ESPConfig.Chams = v end })
-VisualsSection:Toggle({ Title = cor({"Nome", "#FFFFFF"}), Icon = "lucide:user", Value = _G.ESPConfig.Name, Flag = "NomeESP", Callback = function(v) _G.ESPConfig.Name = v end })
-VisualsSection:Toggle({ Title = cor({"Distância", "#00AAFF"}), Icon = "lucide:ruler", Value = _G.ESPConfig.Studs, Flag = "DistanciaESP", Callback = function(v) _G.ESPConfig.Studs = v end })
-VisualsSection:Toggle({ Title = cor({"Vida", "#FF0000"}), Icon = "lucide:heart", Value = _G.ESPConfig.Health, Flag = "VidaESP", Callback = function(v) _G.ESPConfig.Health = v end })
-VisualsSection:Toggle({ Title = cor({"Item", "#FFAA00"}), Icon = "lucide:sword", Value = _G.ESPConfig.WeaponN, Flag = "ItemESP", Callback = function(v) _G.ESPConfig.WeaponN = v end })
+VisualsSection:Toggle({ 
+    Title = cor({"Highlight", "#FFFF00"}), 
+    Icon = "lucide:sparkles", 
+    Value = _G.ESPConfig.Chams, 
+    Flag = "ChamsESP", 
+    Callback = function(v) _G.ESPConfig.Chams = v end 
+})
+
+VisualsSection:Toggle({ 
+    Title = cor({"Nome", "#FFFFFF"}), 
+    Icon = "lucide:user", 
+    Value = _G.ESPConfig.Name, 
+    Flag = "NomeESP", 
+    Callback = function(v) _G.ESPConfig.Name = v end 
+})
+
+VisualsSection:Toggle({ 
+    Title = cor({"Distância", "#00AAFF"}), 
+    Icon = "lucide:ruler", 
+    Value = _G.ESPConfig.Studs, 
+    Flag = "DistanciaESP", 
+    Callback = function(v) _G.ESPConfig.Studs = v end 
+})
+
+VisualsSection:Toggle({ 
+    Title = cor({"Vida", "#FF0000"}), 
+    Icon = "lucide:heart", 
+    Value = _G.ESPConfig.Health, 
+    Flag = "VidaESP", 
+    Callback = function(v) _G.ESPConfig.Health = v end 
+})
+
+VisualsSection:Toggle({ 
+    Title = cor({"Item", "#FFAA00"}), 
+    Icon = "lucide:sword", 
+    Value = _G.ESPConfig.WeaponN, 
+    Flag = "ItemESP", 
+    Callback = function(v) _G.ESPConfig.WeaponN = v end 
+})
 
 
 --// tab tas
 task.spawn(function()
-    ler("tas")
+    if ler then ler("tas") end
 end)
 
 local TASDropdown
@@ -1036,7 +1072,7 @@ local DeleteButton
 local IsConfirmingDelete = false
 
 local function RefreshTASList(list)
-    if TASDropdown then
+    if TASDropdown and list then
         table.sort(list, function(a, b) return a:lower() < b:lower() end)
         TASDropdown:Refresh(list)
     end
@@ -1225,7 +1261,7 @@ RecordSection:Button({
 
 --// tab JJs
 task.spawn(function()
-    ler("jj")
+    if ler then ler("jj") end
 end)
 
 local ETAParagraph = JJs:Paragraph({
@@ -1443,7 +1479,7 @@ Extras:Toggle({
 
 --// tab ChatGPT
 task.spawn(function()
-    ler("chatgpt")
+    if ler then ler("chatgpt") end
 end)
 
 local currentPrompt = ""
@@ -1547,7 +1583,7 @@ ChatGPT:Button({
 
 --// tab F3X
 task.spawn(function()
-    ler("f3x")
+    if ler then ler("f3x") end
 end)
 
 local InfoParagraph
@@ -1670,11 +1706,7 @@ local ActionDropdown = nil
 local CreateConfigActions
 
 CreateConfigActions = function()
-    -- Esta parte do código parece incompleta no snippet original para a lógica de dropdown recursivo, 
-    -- mas ajustei as strings internas conforme o padrão.
-    -- (Nota: Em muitas libs, criar dropdowns dentro de callbacks pode ser complexo, 
-    -- mantive a estrutura visual apenas).
-    
+
     local actions = {
         "Salvar novo F3X",
         "Carregar F3X",
@@ -1682,7 +1714,6 @@ CreateConfigActions = function()
         "Atualizar lista"
     }
 
-    -- Se sua UI Library suportar Dropdown com callback único:
     ActionDropdown = ConfigSection:Dropdown({
         Title = cor({"Ações", "#FFAA00"}),
         Desc = "Gerenciar configurações",
@@ -1750,7 +1781,7 @@ end)
 
 --// tab char
 task.spawn(function()
-    ler("char")
+    if ler then ler("char") end
 end)
 
 local targetInput = ""
@@ -2068,7 +2099,7 @@ end
 
 --// tab local
 task.spawn(function()
-    ler("player")
+    if ler then ler("player") end
 end)
 
 local CharacterSection = criarsection(Player, "Personagem", "Modificar personagem", "lucide:user-cog", true)
@@ -2077,8 +2108,8 @@ local CurrentSeat
 local usuario = nil
 
 CharacterSection:Toggle({
-    Title = "Invisibilidade",
-    Desc = "Você ficará invisível para os outros",
+    Title = cor({"Invisibilidade", "#AAAAAA"}),
+    Desc = cor({"Você ficará ", "#AAAAAA"}, {"invisível", "#00AAFF"}, {" para os outros", "#AAAAAA"}),
     Flag = "Invisivel",
     Icon = "lucide:hat-glasses",
     Callback = function(Value)
@@ -2141,7 +2172,7 @@ CharacterSection:Toggle({
 CharacterSection:Space()
 
 CharacterSection:Input({
-    Title = "Alvo",
+    Title = cor({"Alvo", "#FFFFFF"}),
     Desc = cor({"O jogo "}, {"precisa", "#00ff00"}, {" ter colisões ativas"}),
     Placeholder = "sanctuary",
     InputIcon = "lucide:user",
@@ -2162,7 +2193,7 @@ CharacterSection:Input({
 })
 
 CharacterSection:Button({
-    Title = "Fling",
+    Title = cor({"Fling", "#FF0000"}),
     Icon = "lucide:swords",
     Callback = function()
         if not usuario then
@@ -2214,8 +2245,8 @@ CharacterSection:Space()
 local speedValue = nil
 
 CharacterSection:Input({
-    Title = "Speed",
-    Desc = "Muda sua velocidade",
+    Title = cor({"Speed", "#FFAA00"}),
+    Desc = cor({"Muda sua ", "#AAAAAA"}, {"velocidade", "#FFAA00"}),
     Placeholder = "16",
     InputIcon = "lucide:gauge",
     Flag = "Speed",
@@ -2228,7 +2259,7 @@ CharacterSection:Input({
 local grupamentoSpeed = CharacterSection:Group()
 
 grupamentoSpeed:Button({
-    Title = "Aplicar velocidade",
+    Title = cor({"Aplicar ", "#00FF00"}, {"velocidade"}),
     Icon = "lucide:check-circle",
     Callback = function()
         if not speedValue then
@@ -2247,7 +2278,7 @@ grupamentoSpeed:Button({
 grupamentoSpeed:Space()
 
 grupamentoSpeed:Button({
-    Title = "Resetar speed",
+    Title = cor({"Resetar ", "#FF0000"}, {"speed"}),
     Icon = "lucide:rotate-ccw",
     Callback = function()
         local Character = LocalPlayer.Character
@@ -2264,8 +2295,8 @@ CharacterSection:Space()
 local jumpValue = nil
 
 CharacterSection:Input({
-    Title = "Jump",
-    Desc = "Muda a força do pulo",
+    Title = cor({"Jump", "#00AAFF"}),
+    Desc = cor({"Muda a ", "#AAAAAA"}, {"força do pulo", "#00AAFF"}),
     Placeholder = "50",
     InputIcon = "lucide:arrow-up",
     Flag = "Jump",
@@ -2278,7 +2309,7 @@ CharacterSection:Input({
 local grupamentoJump = CharacterSection:Group()
 
 grupamentoJump:Button({
-    Title = "Aplicar pulo",
+    Title = cor({"Aplicar ", "#00FF00"}, {"pulo"}),
     Icon = "lucide:check-circle",
     Callback = function()
         if not jumpValue then
@@ -2298,7 +2329,7 @@ grupamentoJump:Button({
 grupamentoJump:Space()
 
 grupamentoJump:Button({
-    Title = "Resetar pulo",
+    Title = cor({"Resetar ", "#FF0000"}, {"pulo"}),
     Icon = "lucide:rotate-ccw",
     Callback = function()
         local Character = LocalPlayer.Character
@@ -2313,8 +2344,8 @@ grupamentoJump:Button({
 CharacterSection:Space()
 
 CharacterSection:Toggle({
-    Title = "Anti-spawn",
-    Desc = "O personagem automaticamente teleportará ao local onde você morreu",
+    Title = cor({"Anti-spawn", "#FFAA00"}),
+    Desc = cor({"O personagem automaticamente ", "#AAAAAA"}, {"teleportará", "#00FF00"}, {" ao local onde você morreu", "#AAAAAA"}),
     Flag = "AntiSpawn",
     Icon = "lucide:map-pin",
     Callback = function(v)
@@ -2328,8 +2359,8 @@ CharacterSection:Toggle({
 })
 
 CharacterSection:Toggle({
-    Title = "Noclip",
-    Desc = "Permite atravessar paredes",
+    Title = cor({"Noclip", "#AAAAAA"}),
+    Desc = cor({"Permite ", "#AAAAAA"}, {"atravessar paredes", "#00AAFF"}),
     Flag = "Noclip",
     Icon = "lucide:ghost",
     Callback = function(state)
@@ -2347,8 +2378,8 @@ CharacterSection:Toggle({
 local SystemSection = criarsection(Player, "Sistema", "Modificar sistema", "lucide:settings", false)
 
 SystemSection:Toggle({
-    Title = "Habilitar chat",
-    Desc = "Permite você ver o histórico de mensagens no chat",
+    Title = cor({"Habilitar chat", "#00FF00"}),
+    Desc = cor({"Permite você ver o ", "#AAAAAA"}, {"histórico", "#00AAFF"}, {" de mensagens no chat", "#AAAAAA"}),
     Flag = "ChatHabilitado",
     Icon = "lucide:message-square",
     Callback = function(v)
@@ -2365,7 +2396,7 @@ local isSpectating = false
 local ActionDropdown = nil
 
 InteractionSection:Input({
-    Title = "Jogador",
+    Title = cor({"Jogador", "#FFFFFF"}),
     Desc = "Digite o nome do jogador",
     Placeholder = "Nome",
     InputIcon = "lucide:search",
@@ -2384,7 +2415,7 @@ CreateActionsDropdown = function()
 
     local actions = {
         {
-            Title = isSpectating and "Parar de espectar" or "Espectar jogador",
+            Title = isSpectating and cor({"Parar de espectar", "#FF0000"}) or cor({"Espectar jogador", "#00FF00"}),
             Desc = isSpectating and "Volta a câmera para você" or "Especta o jogador alvo",
             Icon = isSpectating and "lucide:eye-off" or "lucide:eye",
             Callback = function()
@@ -2412,7 +2443,7 @@ CreateActionsDropdown = function()
             end
         },
         {
-            Title = "Teleportar",
+            Title = cor({"Teleportar", "#00AAFF"}),
             Desc = "Teleporta ao jogador",
             Icon = "lucide:plane",
             Callback = function()
@@ -2428,7 +2459,7 @@ CreateActionsDropdown = function()
             end
         },
         {
-            Title = "Voltar posição",
+            Title = cor({"Voltar posição", "#FFAA00"}),
             Desc = "Retorna para a última posição antes do teleport",
             Icon = "lucide:undo-2",
             Callback = function()
@@ -2445,7 +2476,7 @@ CreateActionsDropdown = function()
     }
 
     ActionDropdown = InteractionSection:Dropdown({
-        Title = "Ações",
+        Title = cor({"Ações", "#FFFFFF"}),
         Desc = "Ações disponíveis para o alvo",
         Icon = "lucide:mouse-pointer-click",
         Values = actions,
@@ -2461,7 +2492,6 @@ end)
 
 
 --// tab configs
-
 --// manager das config
 local GerenciadorConfig = main.ConfigManager
 local NomeConfig = ""
@@ -2636,19 +2666,19 @@ InterfaceSection:Toggle({
     Type = "Checkbox",
     Value = true,
     Callback = function(state)
-    main:EditOpenButton({
-    Title = "",
-    Icon = "rbxthumb://type=Asset&id=88026679106109&w=420&h=420",
-    CornerRadius = UDim.new(10, 10),
-    StrokeThickness = 1,
-    Color = ColorSequence.new(
-        Color3.fromHex("#282828"), 
-        Color3.fromHex("#FFFFFF")
-    ),
-    OnlyMobile = false,
-    Enabled = state,
-    Draggable = true,
-})
+        main:EditOpenButton({
+            Title = "",
+            Icon = "rbxthumb://type=Asset&id=88026679106109&w=420&h=420",
+            CornerRadius = UDim.new(10, 10),
+            StrokeThickness = 1,
+            Color = ColorSequence.new(
+                Color3.fromHex("#282828"), 
+                Color3.fromHex("#FFFFFF")
+            ),
+            OnlyMobile = false,
+            Enabled = state,
+            Draggable = true,
+        })
     end
 })
 
@@ -2710,12 +2740,7 @@ local function GetThemeList()
     local list = {}
     
     for k, v in pairs(themes) do
-        local themeName
-        if type(k) == "string" then
-            themeName = k 
-        elseif type(v) == "string" then
-            themeName = v
-        end
+        local themeName = (type(k) == "string" and k) or (type(v) == "string" and v)
         
         if themeName then
             table.insert(list, {
@@ -2748,10 +2773,10 @@ ThemeSection:Dropdown({
 
 
 --// mapas 
-
 local TevezTab = nil
 local DeltaTab = nil
 local SoucreTab = nil
+local usuario = nil
 
 local tevez = game.PlaceId == 13132367906
 local delta = game.PlaceId == 14511049
@@ -2759,13 +2784,12 @@ local soucre = game.PlaceId == 129890257340707
 
 criarsection(main, "Mapa", "Exclusivos do mapa", "lucide:map", true)
 
-
 --// tab tevez
 if tevez then
     TevezTab = criartab("Tevez", "https://tr.rbxcdn.com/180DAY-84c7c1edcc63c7dfab5712b1ad377133/768/432/Image/Webp/noFilter")
     
     task.spawn(function()
-        ler("tevez")
+        if ler then ler("tevez") end
     end)
 
     local LocalSection = criarsection(TevezTab, "Local", "Chat", "lucide:message-circle", true)
@@ -2989,14 +3013,14 @@ if tevez then
             if _G.TevezMods and _G.TevezMods.ApplyGunMods then _G.TevezMods.ApplyGunMods() end
         end
     })
-
+end
 
 --// tab delta
 if delta then
-    local DeltaTab = criartab("Delta", "https://tr.rbxcdn.com/180DAY-8952e9d8abbff8104b22356f8b66f962/768/432/Image/Webp/noFilter")
+    DeltaTab = criartab("Delta", "https://tr.rbxcdn.com/180DAY-8952e9d8abbff8104b22356f8b66f962/768/432/Image/Webp/noFilter")
 
     task.spawn(function()
-        ler("delta")
+        if ler then ler("delta") end
     end)
 
    local JJSection = criarsection(DeltaTab, "Polichinelos", "Modificar status", "lucide:activity", true)
@@ -3048,13 +3072,12 @@ if delta then
     })
 end
 
-
 --// tab soucre
 if soucre then
     SoucreTab = criartab("Soucre", "https://tr.rbxcdn.com/180DAY-9b65f927dea36f98c1a720694fd00fd3/768/432/Image/Webp/noFilter")
 
     task.spawn(function()
-        ler("soucre")
+        if ler then ler("soucre") end
     end)
 
     local FarmSection = criarsection(SoucreTab, "Entregador", "Autofarm", "lucide:banknote-arrow-up", true)
