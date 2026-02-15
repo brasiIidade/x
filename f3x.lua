@@ -1,5 +1,3 @@
--- anti
-
 local function Finalizar(Mensagem)
     print(Mensagem)
     task.wait(0.5)
@@ -84,6 +82,7 @@ local cloneref = cloneref or function(o) return o end
 local Players = cloneref(game:GetService("Players"))
 local Workspace = cloneref(game:GetService("Workspace"))
 local HttpService = cloneref(game:GetService("HttpService"))
+local CoreGui = cloneref(game:GetService("CoreGui"))
 
 local Player = cloneref(Players.LocalPlayer)
 local Mouse = cloneref(Player:GetMouse())
@@ -132,10 +131,19 @@ end
 
 local function highlight(part)
     local h = Instance.new("Highlight")
+    h.Name = HttpService:GenerateGUID(false)
     h.FillTransparency = 1
     h.OutlineTransparency = 0
     h.OutlineColor = Color3.fromRGB(0, 255, 255)
-    h.Parent = part
+    h.Adornee = part
+    
+    local success, target = pcall(function() return gethui() end)
+    if success and target then
+        h.Parent = target
+    else
+        pcall(function() h.Parent = CoreGui end)
+    end
+    
     table.insert(_G.F3X.Highlights, h)
 end
 
