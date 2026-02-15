@@ -2110,7 +2110,7 @@ local CurrentSeat
 local usuario = nil
 
 CharacterSection:Toggle({
-    Title = cor({"Invisibilidade", "#AAAAAA"}),
+    Title = "Invisibilidade",
     Desc = cor({"Você ficará ", "#AAAAAA"}, {"invisível", "#00AAFF"}, {" para os outros", "#AAAAAA"}),
     Flag = "Invisivel",
     Icon = "lucide:hat-glasses",
@@ -2174,7 +2174,7 @@ CharacterSection:Toggle({
 CharacterSection:Space()
 
 CharacterSection:Input({
-    Title = cor({"Alvo", "#FFFFFF"}),
+    Title = "Alvo",
     Desc = cor({"O jogo "}, {"precisa", "#00ff00"}, {" ter colisões ativas"}),
     Placeholder = "Nome / Display",
     InputIcon = "lucide:user",
@@ -2247,7 +2247,7 @@ CharacterSection:Space()
 local speedValue = nil
 
 CharacterSection:Input({
-    Title = cor({"Speed", "#FFAA00"}),
+    Title = "Speed",
     Desc = cor({"Muda sua ", "#AAAAAA"}, {"velocidade", "#FFAA00"}),
     Placeholder = "16",
     InputIcon = "lucide:gauge",
@@ -2280,7 +2280,7 @@ grupamentoSpeed:Button({
 grupamentoSpeed:Space()
 
 grupamentoSpeed:Button({
-    Title = cor({"Resetar", "#FF0000"}),
+    Title = cor({"Restaurar", "#FF0000"}),
     Icon = "lucide:rotate-ccw",
     Callback = function()
         local Character = LocalPlayer.Character
@@ -2297,7 +2297,7 @@ CharacterSection:Space()
 local jumpValue = nil
 
 CharacterSection:Input({
-    Title = cor({"Jump", "#00AAFF"}),
+    Title = "Jump",
     Desc = cor({"Muda a ", "#AAAAAA"}, {"força do pulo", "#00AAFF"}),
     Placeholder = "50",
     InputIcon = "lucide:arrow-up",
@@ -2331,7 +2331,7 @@ grupamentoJump:Button({
 grupamentoJump:Space()
 
 grupamentoJump:Button({
-    Title = cor({"Resetar", "#FF0000"}),
+    Title = cor({"Restaurar", "#FF0000"}),
     Icon = "lucide:rotate-ccw",
     Callback = function()
         local Character = LocalPlayer.Character
@@ -2346,7 +2346,7 @@ grupamentoJump:Button({
 CharacterSection:Space()
 
 CharacterSection:Toggle({
-    Title = cor({"Respawn", "#FFAA00"}),
+    Title = "Respawn",
     Desc = cor({"O personagem automaticamente ", "#AAAAAA"}, {"teleportará", "#00FF00"}, {" ao local onde você morreu", "#AAAAAA"}),
     Flag = "Respawn",
     Icon = "lucide:map-pin",
@@ -2361,7 +2361,7 @@ CharacterSection:Toggle({
 })
 
 CharacterSection:Toggle({
-    Title = cor({"Noclip", "#AAAAAA"}),
+    Title = "Noclip",
     Desc = cor({"Permite ", "#AAAAAA"}, {"atravessar paredes", "#00AAFF"}),
     Flag = "Noclip",
     Icon = "lucide:ghost",
@@ -2380,7 +2380,7 @@ CharacterSection:Toggle({
 local SystemSection = criarsection(Player, "Sistema", "Modificar sistema", "lucide:settings", false)
 
 SystemSection:Toggle({
-    Title = cor({"Habilitar chat", "#00FF00"}),
+    Title = "Habilitar chat",
     Desc = cor({"Permite você ver o ", "#AAAAAA"}, {"histórico", "#00AAFF"}, {" de mensagens no chat", "#AAAAAA"}),
     Flag = "ChatHabilitado",
     Icon = "lucide:message-square",
@@ -2398,7 +2398,7 @@ local isSpectating = false
 local ActionDropdown = nil
 
 InteractionSection:Input({
-    Title = cor({"Jogador", "#FFFFFF"}),
+    Title = "Jogador",
     Desc = "Digite o nome do jogador",
     Placeholder = "Nome",
     InputIcon = "lucide:search",
@@ -2461,7 +2461,7 @@ CreateActionsDropdown = function()
             end
         },
         {
-            Title = cor({"Voltar posição", "#FFAA00"}),
+            Title = cor({"Restaurar posição", "#FFAA00"}),
             Desc = "Retorna para a última posição antes do teleport",
             Icon = "lucide:undo-2",
             Callback = function()
@@ -2478,7 +2478,7 @@ CreateActionsDropdown = function()
     }
 
     ActionDropdown = InteractionSection:Dropdown({
-        Title = cor({"Ações", "#FFFFFF"}),
+        Title = "Ações",
         Desc = "Ações disponíveis para o alvo",
         Icon = "lucide:mouse-pointer-click",
         Values = actions,
@@ -2494,6 +2494,7 @@ end)
 
 --// tab configs
 
+--// manager das config
 --// manager das config
 local GerenciadorConfig = main.ConfigManager
 local NomeConfig = ""
@@ -2511,7 +2512,7 @@ local CreationSection = criarsection(Configs, "Criação", "Criar configuração
 
 CreationSection:Input({
     Title = "Nome da configuração",
-    Desc = "Dê um nome para a configuração",
+    Desc = cor({"Dê um ", "#AAAAAA"}, {"nome", "#FFFFFF"}, {" para a ", "#AAAAAA"}, {"configuração", "#FFFFFF"}),
     Value = "",
     Placeholder = "Digite aqui...",
     InputIcon = "lucide:pencil",
@@ -2522,8 +2523,8 @@ CreationSection:Input({
 })
 
 CreationSection:Button({
-    Title = "Criar configuração",
-    Desc = "Salva a configuração atual",
+    Title = cor({"Criar configuração", "#00FF00"}),
+    Desc = cor({"Salva a configuração atual", "#AAAAAA"}),
     Icon = "lucide:save-all",
     Callback = function()
         if NomeConfig ~= "" then
@@ -2541,7 +2542,7 @@ local ManagementSection = criarsection(Configs, "Gerenciamento", "Gerenciar conf
 
 DropdownListaConfig = ManagementSection:Dropdown({
     Title = "Selecionar arquivo",
-    Desc = "Escolha a configuração alvo",
+    Desc = cor({"Escolha a configuração alvo", "#AAAAAA"}),
     Icon = "lucide:folder",
     Values = GerenciadorConfig:AllConfigs(),
     Value = "Nenhuma",
@@ -2552,11 +2553,11 @@ DropdownListaConfig = ManagementSection:Dropdown({
 
 ManagementSection:Dropdown({
     Title = "Ações",
-    Desc = "Executar ação na configuração selecionada",
+    Desc = cor({"Executar ação na configuração selecionada", "#AAAAAA"}),
     Icon = "lucide:settings-2",
     Values = {
         {
-            Title = "Carregar",
+            Title = cor({"Carregar", "#00FF00"}),
             Desc = "Carrega as configurações do arquivo",
             Icon = "lucide:upload",
             Callback = function()
@@ -2570,7 +2571,7 @@ ManagementSection:Dropdown({
             end
         },
         {
-            Title = "Sobrescrever",
+            Title = cor({"Sobrescrever", "#FFAA00"}),
             Desc = "Salva o estado atual neste arquivo",
             Icon = "lucide:refresh-cw",
             Callback = function()
@@ -2587,7 +2588,7 @@ ManagementSection:Dropdown({
             Type = "Divider",
         },
         {
-            Title = "Deletar arquivo",
+            Title = cor({"Deletar arquivo", "#FF0000"}),
             Desc = "Apaga permanentemente a configuração",
             Icon = "lucide:trash-2",
             Callback = function()
@@ -2604,7 +2605,7 @@ ManagementSection:Dropdown({
             end
         },
         {
-            Title = "Atualizar lista",
+            Title = cor({"Atualizar lista", "#00AAFF"}),
             Desc = "Recarrega a lista de arquivos",
             Icon = "lucide:rotate-ccw",
             Callback = function()
@@ -2614,7 +2615,6 @@ ManagementSection:Dropdown({
         }
     }
 })
-
 
 --// ativar e desativar UI
 local SecretWord = "/e" 
@@ -2662,31 +2662,31 @@ local InterfaceSection = criarsection(Configs, "Interface", "Opções da UI", "l
 
 InterfaceSection:Toggle({
     Title = "Botão UI",
-    Desc = "Ativa o botão flutuante ao minimizar a UI",
+    Desc = cor({"Ativa o ", "#AAAAAA"}, {"botão flutuante", "#FFFFFF"}, {" ao minimizar a UI", "#AAAAAA"}),
     Icon = "lucide:check",
     IconColor = "Green",
     Type = "Checkbox",
     Value = true,
     Callback = function(state)
-    main:EditOpenButton({
-    Title = "",
-    Icon = "rbxthumb://type=Asset&id=88026679106109&w=420&h=420",
-    CornerRadius = UDim.new(10, 10),
-    StrokeThickness = 1,
-    Color = ColorSequence.new(
-        Color3.fromHex("#282828"), 
-        Color3.fromHex("#FFFFFF")
-    ),
-    OnlyMobile = false,
-    Enabled = state,
-    Draggable = true,
-})
+        main:EditOpenButton({
+            Title = "",
+            Icon = "rbxthumb://type=Asset&id=88026679106109&w=420&h=420",
+            CornerRadius = UDim.new(10, 10),
+            StrokeThickness = 1,
+            Color = ColorSequence.new(
+                Color3.fromHex("#282828"), 
+                Color3.fromHex("#FFFFFF")
+            ),
+            OnlyMobile = false,
+            Enabled = state,
+            Draggable = true,
+        })
     end
 })
 
 InterfaceSection:Input({
     Title = "Palavra secreta",
-    Desc = "Palavra para abrir/fechar a UI. Padrão: /e",
+    Desc = cor({"Palavra para ", "#AAAAAA"}, {"abrir/fechar", "#FFFFFF"}, {" a UI. Padrão: /e", "#AAAAAA"}),
     Placeholder = "/e",
     InputIcon = "lucide:message-square",
     Flag = "PalavraSecreta",
@@ -2711,7 +2711,7 @@ InterfaceSection:Input({
 
 InterfaceSection:Input({
     Title = "Keybind",
-    Desc = "Tecla para abrir e fechar a UI (Padrão: Z)",
+    Desc = cor({"Tecla para ", "#AAAAAA"}, {"abrir e fechar", "#FFFFFF"}, {" a UI (Padrão: Z)", "#AAAAAA"}),
     Flag = "KeybindUI",
     InputIcon = "lucide:keyboard",
     Placeholder = "Z",
@@ -2742,17 +2742,12 @@ local function GetThemeList()
     local list = {}
     
     for k, v in pairs(themes) do
-        local themeName
-        if type(k) == "string" then
-            themeName = k 
-        elseif type(v) == "string" then
-            themeName = v
-        end
+        local themeName = (type(k) == "string" and k) or (type(v) == "string" and v)
         
         if themeName then
             table.insert(list, {
                 Title = themeName,
-                Desc = "Aplicar o tema " .. themeName,
+                Desc = cor({"Aplicar o tema ", "#AAAAAA"}, {themeName, "#00AAFF"}),
                 Icon = "lucide:paintbrush",
             })
         end
@@ -2765,7 +2760,7 @@ end
 
 ThemeSection:Dropdown({
     Title = "Temas",
-    Desc = "Escolha o estilo da UI",
+    Desc = cor({"Escolha o ", "#AAAAAA"}, {"estilo", "#FFFFFF"}, {" da UI", "#AAAAAA"}),
     Icon = "lucide:palette",
     Values = GetThemeList(),
     Flag = "Tema",
@@ -2791,19 +2786,18 @@ local soucre = game.PlaceId == 129890257340707
 
 criarsection(main, "Mapa", "Exclusivos do mapa", "lucide:map", true)
 
-
 --// tab tevez
 if tevez then
     TevezTab = criartab("Tevez", "https://tr.rbxcdn.com/180DAY-84c7c1edcc63c7dfab5712b1ad377133/768/432/Image/Webp/noFilter")
     
     task.spawn(function()
-        ler("tevez")
+        if ler then ler("tevez") end
     end)
 
     local LocalSection = criarsection(TevezTab, "Local", "Chat", "lucide:message-circle", true)
     LocalSection:Input({
         Title = "Mensagem",
-        Desc = "Digite a mensagem para enviar no chat",
+        Desc = cor({"Digite a ", "#AAAAAA"}, {"mensagem", "#FFFFFF"}, {" para enviar no ", "#AAAAAA"}, {"chat", "#00AAFF"}),
         Value = "",
         InputIcon = "lucide:text-cursor",
         Placeholder = "Digite aqui...",
@@ -2813,7 +2807,7 @@ if tevez then
     })
     LocalSection:Toggle({
         Title = "Spam",
-        Desc = "Envia a mensagem várias vezes",
+        Desc = cor({"Envia a mensagem ", "#AAAAAA"}, {"várias vezes", "#FF0000"}),
         Icon = "lucide:repeat",
         Value = false,
         Callback = function(state) 
@@ -2821,7 +2815,7 @@ if tevez then
         end
     })
     LocalSection:Button({
-        Title = "Enviar",
+        Title = cor({"Enviar", "#00FF00"}),
         Color = Color3.fromHex("#8D8F91"),
         Icon = "lucide:send",
         Callback = function()
@@ -2832,11 +2826,11 @@ if tevez then
     local SpooferSection = criarsection(TevezTab, "Spoofer", "Alterar dispositivo", "lucide:smartphone", false)
     SpooferSection:Paragraph({
         Title = "Spoofer",
-        Desc = "O spoofer permite você alterar o dispositivo. Isso mostra para todos"
+        Desc = cor({"O ", "#AAAAAA"}, {"spoofer", "#FFAA00"}, {" permite você alterar o ", "#AAAAAA"}, {"dispositivo", "#00AAFF"}, {". Isso mostra para ", "#AAAAAA"}, {"todos", "#FF0000"})
     })
     SpooferSection:Dropdown({
         Title = "Dispositivo",
-        Desc = "Selecione o dispositivo",
+        Desc = cor({"Selecione o ", "#AAAAAA"}, {"dispositivo", "#00AAFF"}),
         Icon = "lucide:laptop",
         Values = { "Mobile", "Computer" },
         Value = "Computer",
@@ -2846,7 +2840,7 @@ if tevez then
     })
     SpooferSection:Toggle({
         Title = "Ativar",
-        Desc = "Quando ativo, altera o dispositivo. Reseta o personagem",
+        Desc = cor({"Quando ativo, altera o ", "#AAAAAA"}, {"dispositivo", "#00AAFF"}, {". Reseta o ", "#AAAAAA"}, {"personagem", "#FF0000"}),
         Icon = "lucide:power",
         Value = false,
         Callback = function(v)
@@ -2856,7 +2850,7 @@ if tevez then
 
 	SpooferSection:Dropdown({
         Title = "AFK",
-        Desc = "Permite ativar ou desativar o 'AFK'",
+        Desc = cor({"Permite ativar ou desativar o '", "#AAAAAA"}, {"AFK", "#FFAA00"}, {"'", "#AAAAAA"}),
         Icon = "lucide:coffee",
         Values = { "Ativar", "Desativar" },
         Value = "Desativar",
@@ -2870,7 +2864,7 @@ if tevez then
     
     local StatusParagraph = FarmSection:Paragraph({
         Title = "Status",
-        Desc = "Aguardando...",
+        Desc = cor({"Aguardando...", "#AAAAAA"}),
         Color = "Green",
         Image = "lucide:activity"
     })
@@ -2886,7 +2880,7 @@ if tevez then
 
     FarmSection:Toggle({
         Title = "Ativar",
-        Desc = "Inicia o autofarm",
+        Desc = cor({"Inicia o ", "#AAAAAA"}, {"autofarm", "#00FF00"}),
         Icon = "lucide:play",
         Value = false,
         Callback = function(v)
@@ -2896,7 +2890,7 @@ if tevez then
     
     FarmSection:Toggle({
         Title = "Modo seguro",
-        Desc = "Pausa se houver jogadores por perto",
+        Desc = cor({"Pausa se houver ", "#AAAAAA"}, {"jogadores", "#FF0000"}, {" por perto", "#AAAAAA"}),
         Icon = "lucide:shield-check",
         Value = false,
         Flag = "ModoSeguroAutofarmTevez",
@@ -2907,6 +2901,7 @@ if tevez then
     
     FarmSection:Input({
         Title = "Raio de segurança",
+        Desc = cor({"Distância para ", "#AAAAAA"}, {"pausar", "#FF8800"}, {" o farm", "#AAAAAA"}),
         Placeholder = "60",
         InputIcon = "lucide:radio",
         Flag = "RaioDeSegurancaAutofarmTevez",
@@ -2920,12 +2915,12 @@ if tevez then
     CombatSection:Paragraph({
         Title = "Kill aura",
         Color = Color3.fromHex("#FF1D0D"),
-        Desc = "Mata inimigos ao redor. Não funciona em safezones",
+        Desc = cor({"Mata ", "#AAAAAA"}, {"inimigos", "#FF0000"}, {" ao redor. Não funciona em ", "#AAAAAA"}, {"safezones", "#00FF00"}),
     })
     local KillAuraToggle
     CombatSection:Toggle({
         Title = "Permitir",
-        Desc = "Libera o uso do kill aura",
+        Desc = cor({"Libera o uso do ", "#AAAAAA"}, {"kill aura", "#FF0000"}),
         Icon = "lucide:lock-open",
         Value = false,
         Callback = function(state)
@@ -2964,7 +2959,7 @@ if tevez then
     end
     ShopSection:Dropdown({
         Title = "Comprar itens",
-        Desc = "Compra um item na loja de civil",
+        Desc = cor({"Compra um item na ", "#AAAAAA"}, {"loja de civil", "#FFAA00"}),
         Icon = "lucide:tag",
         Values = DropdownValues,
         Value = "GLOCK 18 - $4300",
@@ -2973,7 +2968,7 @@ if tevez then
         end
     })
     ShopSection:Button({
-        Title = "Comprar",
+        Title = cor({"Comprar", "#00FF00"}),
         Icon = "lucide:credit-card",
         Callback = function()
             if _G.TevezMods and _G.TevezMods.BuyItem then _G.TevezMods.BuyItem() end
@@ -2983,7 +2978,7 @@ if tevez then
     local ModsSection = criarsection(TevezTab, "Mods", "Modifica a arma", "lucide:hammer", false)
     ModsSection:Input({
         Title = "Bullets",
-		Desc = "Quantidade de balas por disparo",
+		Desc = cor({"Quantidade de ", "#AAAAAA"}, {"balas", "#FFFF00"}, {" por disparo", "#AAAAAA"}),
         Placeholder = "Valor",
         InputIcon = "lucide:hash",
         Flag = "BalasTevez",
@@ -2994,7 +2989,7 @@ if tevez then
     })
     ModsSection:Input({
         Title = "Spread",
-		Desc = "Espalhamento das balas",
+		Desc = cor({"Espalhamento das ", "#AAAAAA"}, {"balas", "#FFFF00"}),
         Placeholder = "Valor",
         InputIcon = "lucide:expand",
         Flag = "SpreadTevez",
@@ -3005,7 +3000,7 @@ if tevez then
     })
     ModsSection:Input({
         Title = "Range",
-		Desc = "O quão longe as balas vão",
+		Desc = cor({"O quão ", "#AAAAAA"}, {"longe", "#00FF00"}, {" as balas vão", "#AAAAAA"}),
         Placeholder = "Valor",
         InputIcon = "lucide:target",
         Flag = "RangeTevez",
@@ -3015,7 +3010,7 @@ if tevez then
         end
     })
     ModsSection:Button({
-        Title = "Aplicar mods",
+        Title = cor({"Aplicar mods", "#FFAA00"}),
         Icon = "lucide:check-circle",
         Callback = function()
             if _G.TevezMods and _G.TevezMods.ApplyGunMods then _G.TevezMods.ApplyGunMods() end
@@ -3025,17 +3020,17 @@ end
 
 --// tab delta
 if delta then
-    local DeltaTab = criartab("Delta", "https://tr.rbxcdn.com/180DAY-8952e9d8abbff8104b22356f8b66f962/768/432/Image/Webp/noFilter")
+    DeltaTab = criartab("Delta", "https://tr.rbxcdn.com/180DAY-8952e9d8abbff8104b22356f8b66f962/768/432/Image/Webp/noFilter")
 
     task.spawn(function()
-        ler("delta")
+        if ler then ler("delta") end
     end)
 
     local JJSection = criarsection(DeltaTab, "Polichinelos", "Modificar status", "lucide:activity", true)
     
     JJSection:Input({
         Title = "Quantidade",
-        Desc = "Valor para adicionar ou remover",
+        Desc = cor({"Valor para ", "#AAAAAA"}, {"adicionar", "#00FF00"}, {" ou ", "#AAAAAA"}, {"remover", "#FF0000"}),
         Placeholder = "10",
         InputIcon = "lucide:hash",
         Callback = function(v)
@@ -3044,7 +3039,7 @@ if delta then
     })
 
     JJSection:Button({
-        Title = "Modificar",
+        Title = cor({"Modificar", "#FFAA00"}),
         Icon = "lucide:edit-2",
         Callback = function()
             if _G.DeltaLogic and _G.DeltaLogic.SetJJ then _G.DeltaLogic.SetJJ() end
@@ -3054,8 +3049,8 @@ if delta then
     local EcoSection = criarsection(DeltaTab, "Economia", "Dinheiro", "lucide:coins", false)
 
     EcoSection:Button({
-        Title = "Ficar rico",
-        Desc = "Pega 1M de dinheiro",
+        Title = cor({"Ficar rico", "#00FF00"}),
+        Desc = cor({"Pega ", "#AAAAAA"}, {"1M", "#00FF00"}, {" de dinheiro", "#AAAAAA"}),
         Icon = "lucide:gem",
         Callback = function()
             if _G.DeltaLogic and _G.DeltaLogic.GetRich then _G.DeltaLogic.GetRich() end
@@ -3064,14 +3059,14 @@ if delta then
 
     EcoSection:Paragraph({
         Title = "Observação",
-        Desc = "Money all faz uma transferência a cada 15 segundos",
+        Desc = cor({"Money all", "#00FF00"}, {" faz uma transferência a cada ", "#AAAAAA"}, {"15 segundos", "#00AAFF"}),
         Color = "Blue",
         Image = "lucide:info"
     })
 
     EcoSection:Toggle({
         Title = "Money all",
-        Desc = "Envia dinheiro infinito para todos",
+        Desc = cor({"Envia ", "#AAAAAA"}, {"dinheiro infinito", "#00FF00"}, {" para ", "#AAAAAA"}, {"todos", "#FFFFFF"}),
         Icon = "lucide:users",
         Value = false,
         Callback = function(v)
@@ -3085,14 +3080,14 @@ if soucre then
     SoucreTab = criartab("Soucre", "https://tr.rbxcdn.com/180DAY-9b65f927dea36f98c1a720694fd00fd3/768/432/Image/Webp/noFilter")
 
     task.spawn(function()
-        ler("soucre")
+        if ler then ler("soucre") end
     end)
 
     local FarmSection = criarsection(SoucreTab, "Entregador", "Autofarm", "lucide:banknote-arrow-up", true)
 
     local MoneyPara = FarmSection:Paragraph({
         Title = "Status",
-        Desc = "Dinheiro farmado: $0",
+        Desc = cor({"Dinheiro farmado: ", "#AAAAAA"}, {"$0", "#00FF00"}),
         Color = "Green",
         Image = "lucide:coins"
     })
@@ -3100,13 +3095,13 @@ if soucre then
     task.spawn(function()
         repeat task.wait(0.5) until _G.SoucreLogic
         _G.SoucreLogic.UpdateCallback = function(val)
-            if MoneyPara then MoneyPara:SetDesc("Dinheiro farmado: $" .. tostring(val)) end
+            if MoneyPara then MoneyPara:SetDesc(cor({"Dinheiro farmado: ", "#AAAAAA"}, {"$" .. tostring(val), "#00FF00"})) end
         end
     end)
 
     FarmSection:Toggle({
         Title = "Autofarm",
-        Desc = "Inicia o autofarm",
+        Desc = cor({"Inicia o ", "#AAAAAA"}, {"autofarm", "#00FF00"}),
         Icon = "lucide:circle-play",
         Value = false,
         Callback = function(v)
