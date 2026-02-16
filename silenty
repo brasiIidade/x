@@ -575,7 +575,7 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
                     end
                 end
 
-                -- Mantém o suporte para outros remotes genéricos usando isBulletRemote
+                -- Mantém o suporte para outros remotes genéricos
                 if isBulletRemote(self.Name) then
                     local function processTable(tbl)
                         for i, v in pairs(tbl) do
@@ -604,26 +604,33 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
 
             elseif Method == "Raycast" and self == Workspace then
                 local origin = Arguments[1]
-                local distance = 10000
-                if Arguments[2] then distance = Arguments[2].Magnitude end
+                local direction = Arguments[2]
                 
-                Arguments[2] = (finalPosition - origin).Unit * distance
-                return oldNamecall(self, unpack(Arguments))
+                -- IGNORA raycasts muito curtos (como o Wall Check da arma que impedia o tiro)
+                if direction and typeof(direction) == "Vector3" and direction.Magnitude > 20 then
+                    local distance = direction.Magnitude
+                    Arguments[2] = (finalPosition - origin).Unit * distance
+                    return oldNamecall(self, unpack(Arguments))
+                end
 
             elseif (Method == "FindPartOnRayWithIgnoreList" or Method == "FindPartOnRayWithWhitelist" or Method == "FindPartOnRay") and self == Workspace then
                 if type(Arguments[1]) == "userdata" and typeof(Arguments[1]) == "Ray" then
                     local origin = Arguments[1].Origin
-                    local distance = Arguments[1].Direction.Magnitude
-                    if distance < 10 then distance = 10000 end
+                    local direction = Arguments[1].Direction
                     
-                    Arguments[1] = Ray.new(origin, (finalPosition - origin).Unit * distance)
+                    -- IGNORA raycasts muito curtos (como o Wall Check da arma que impedia o tiro)
+                    if direction.Magnitude > 20 then
+                        local distance = direction.Magnitude
+                        Arguments[1] = Ray.new(origin, (finalPosition - origin).Unit * distance)
+                        return oldNamecall(self, unpack(Arguments))
+                    end
                 end
-                return oldNamecall(self, unpack(Arguments))
             end
         end
     end
     return oldNamecall(self, ...)
 end))
+
 
 
 if _G.AimbotConfig and _G.AimbotConfig.Enabled then
