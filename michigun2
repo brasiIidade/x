@@ -394,7 +394,6 @@ local F3X = criartab("F3X", "lucide:hammer", false)
 --// tabs "locais"
 criarsection(main, "Local", "Seção local", nil, true)
 local Char = criartab("Char", "solar:user-hands-bold", false)
-local AntiLag = criartab("Anti-lag", "solar:wi-fi-router-minimalistic-bold", false)
 local Player = criartab("Player", "solar:user-bold", false)
 
 --// tab "config"
@@ -2259,51 +2258,6 @@ task.spawn(function()
     repeat task.wait(0.5) until _G.Avatar and _G.Avatar.GetSavedSkins
     RefreshList()
 end)
-
---// tab anti-lag
-task.spawn(function()
-    ler("antilag")
-end)
-
-local confirmStep = false
-
-AntiLag:Paragraph({
-    Title = "Observação",
-    Color = "Red",
-    Image = "lucide:triangle-alert",
-    ImageSize = 30,
-    Desc = "Só é possível tirar o anti-lag dando rejoin"
-})
-AntiLag:Space()
-
-local OptButton = AntiLag:Button({
-    Title = "Anti-lag",
-    Color = Color3.fromHex("#a2ff30"),
-    Justify = "Center",
-    Icon = "lucide:zap",
-    Callback = function()
-    end
-})
-
-OptButton.Callback = function()
-    if not confirmStep then
-        confirmStep = true
-        OptButton:SetTitle("Confirmação")
-        OptButton:SetDesc("Clique novamente para aplicar")
-    else
-        OptButton:Lock()
-        OptButton:SetTitle("Otimizando...")
-        notificar("Aplicando...", 2, "lucide:loader")
-
-        task.spawn(function()
-            if _G.AntiLag and _G.AntiLag.Start then
-                _G.AntiLag.Start()
-                OptButton:SetTitle("Anti-lag ativado")
-                notificar("Sucesso", 4, "lucide:check")
-            end
-        end)
-    end
-end
 
 --// tab local
 task.spawn(function()
