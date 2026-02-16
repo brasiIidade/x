@@ -382,13 +382,14 @@ criarsection(main, "Combate", "Seção de combate", nil, true)
 local SilentAim = criartab("Silent aim", "lucide:crosshair", false)
 local HitboxExpander = criartab("Hitbox expander", "lucide:codesandbox", false)
 local ESP = criartab("ESP", "lucide:view", false)
+local X1 = criartab("1v1", "lucide:person-standing", false)
 
 --// tabs "parkour"
 criarsection(main, "Parkour", "Seção de parkour", nil, true)
 local TAS = criartab("TAS", "solar:running-outline", false)
 local JJs = criartab("JJ's", "lucide:space", false)
 local ChatGPT = criartab("ChatGPT", "geist:logo-open-ai", false)
-local F3X = criartab("F3X", "lucide:pencil-ruler", false)
+local F3X = criartab("F3X", "lucide:hammer", false)
 
 --// tabs "locais"
 criarsection(main, "Local", "Seção local", nil, true)
@@ -1133,6 +1134,101 @@ VisualsSection:Toggle({
     Flag = "ItemESP", 
     Callback = function(v) _G.ESPConfig.WeaponN = v end 
 })
+
+--// tab X1
+
+local EscudoSL = {
+    Enabled = false,
+    Loop = nil,
+    Conns = {}
+}
+
+local function ToggleShiftLock(state, char)
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+    
+    if state then
+        hum.CameraOffset = Vector3.new(1.75, 0, 0)
+        hum.AutoRotate = false
+        if not EscudoSL.Loop then
+            EscudoSL.Loop = RunService.RenderStepped:Connect(function()
+                local root = char:FindFirstChild("HumanoidRootPart")
+                local cam = workspace.CurrentCamera
+                if root and cam then
+                    local look = cam.CFrame.LookVector
+                    root.CFrame = CFrame.new(root.Position, root.Position + Vector3.new(look.X, 0, look.Z))
+                end
+            end)
+        end
+    else
+        if EscudoSL.Loop then
+            EscudoSL.Loop:Disconnect()
+            EscudoSL.Loop = nil
+        end
+        hum.CameraOffset = Vector3.new(0, 0, 0)
+        hum.AutoRotate = true
+    end
+end
+
+local function HasEscudo(char)
+    if not char then return false end
+    for _, v in ipairs(char:GetChildren()) do
+        if v:IsA("Tool") and v.Name:lower():find("escudo") then
+            return true
+        end
+    end
+    return false
+end
+
+local function InitEscudoSL(char)
+    if not EscudoSL.Enabled or not char then return end
+    
+    ToggleShiftLock(HasEscudo(char), char)
+    
+    local c1 = char.ChildAdded:Connect(function(child)
+        if child:IsA("Tool") and child.Name:lower():find("escudo") then
+            ToggleShiftLock(true, char)
+        end
+    end)
+    
+    local c2 = char.ChildRemoved:Connect(function(child)
+        if child:IsA("Tool") and child.Name:lower():find("escudo") then
+            ToggleShiftLock(HasEscudo(char), char)
+        end
+    end)
+    
+    table.insert(EscudoSL.Conns, c1)
+    table.insert(EscudoSL.Conns, c2)
+end
+
+X1:Toggle({
+    Title = "Escudo -> shiftlock",
+    Desc = cor({"Ativa", "#00FF00"}, {" o"}, {" shiftlock", "#00FF00"}, {" ao equipar o escudo"}),
+    Icon = "lucide:brick-wall-shield",
+    Value = false,
+    Flag = "ShiftlockEscudo",
+    Callback = function(v)
+        EscudoSL.Enabled = v
+        
+        for _, conn in ipairs(EscudoSL.Conns) do 
+            conn:Disconnect() 
+        end
+        table.clear(EscudoSL.Conns)
+        
+        local char = LocalPlayer.Character
+        
+        if not v then
+            if char then ToggleShiftLock(false, char) end
+            return
+        end
+        
+        if char then InitEscudoSL(char) end
+        
+        local c3 = LocalPlayer.CharacterAdded:Connect(InitEscudoSL)
+        table.insert(EscudoSL.Conns, c3)
+    end
+})
+
 
 --// tab tas
 task.spawn(function()
