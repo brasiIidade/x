@@ -1137,7 +1137,40 @@ VisualsSection:Toggle({
 
 --// tab X1
 
-local UserGameSettings = cloneref(UserSettings():GetService("UserGameSettings"))
+local UserGameSettings_upvr = cloneref(UserSettings():GetService("UserGameSettings"))
+local GameSettings_upvr = UserSettings().GameSettings
+
+local function isShiftLockMode()
+	local DevEnableMouseLock = LocalPlayer.DevEnableMouseLock
+	if DevEnableMouseLock then
+		DevEnableMouseLock = false
+		if GameSettings_upvr.ControlMode == Enum.ControlMode.MouseLockSwitch then
+			DevEnableMouseLock = false
+			if LocalPlayer.DevComputerMovementMode ~= Enum.DevComputerMovementMode.ClickToMove then
+				DevEnableMouseLock = false
+				if LocalPlayer.DevComputerMovementMode ~= Enum.DevComputerMovementMode.Scriptable then
+					if GameSettings_upvr.ComputerMovementMode == Enum.ComputerMovementMode.ClickToMove then
+						DevEnableMouseLock = false
+					else
+						DevEnableMouseLock = true
+					end
+				end
+			end
+		end
+	end
+	return DevEnableMouseLock
+end
+
+local function isMobileWithKeyboard()
+	local TouchEnabled = UserInputService.TouchEnabled
+	if TouchEnabled then
+		TouchEnabled = UserInputService.KeyboardEnabled
+		if not TouchEnabled then
+			TouchEnabled = UserInputService.MouseEnabled
+		end
+	end
+	return TouchEnabled
+end
 
 local EscudoSL = {
     Enabled = false,
@@ -1149,14 +1182,14 @@ local EscudoSL = {
 local function SetShiftlockState(state)
     EscudoSL.State = state
     if not state then
-        UserGameSettings.RotationType = Enum.RotationType.MovementRelative
+        UserGameSettings_upvr.RotationType = Enum.RotationType.MovementRelative
     end
 end
 
-local function HasEscudo(char)
+local function HasE(char)
     if not char then return false end
     for _, v in ipairs(char:GetChildren()) do
-        if v:IsA("Tool") and string.find(string.lower(v.Name), "e") then
+        if v:IsA("Tool") and string.lower(v.Name) == "e" then
             return true
         end
     end
@@ -1166,7 +1199,7 @@ end
 local function CheckEquip(char)
     if not EscudoSL.Enabled then return end
     task.defer(function()
-        SetShiftlockState(HasEscudo(char))
+        SetShiftlockState(HasE(char))
     end)
 end
 
@@ -1198,7 +1231,7 @@ local function ManageRenderStep(enable)
                 if EscudoSL.State then
                     local cam = workspace.CurrentCamera
                     if cam then
-                        UserGameSettings.RotationType = Enum.RotationType.CameraRelative
+                        UserGameSettings_upvr.RotationType = Enum.RotationType.CameraRelative
                         if 0.99 <= (cam.Focus.Position - cam.CFrame.Position).Magnitude then
                             cam.CFrame *= CFrame.new(1.75, 0, 0)
                             cam.Focus = CFrame.fromMatrix(cam.Focus.Position, cam.CFrame.RightVector, cam.CFrame.UpVector) * CFrame.new(1.75, 0, 0)
@@ -1217,11 +1250,11 @@ local function ManageRenderStep(enable)
 end
 
 X1:Toggle({
-    Title = "Escudo x shiftlock",
-    Desc = cor({"Ativa", "#00FF00"}, {" o"}, {" shiftlock", "#00FF00"}, {" ao equipar o escudo"}),
+    Title = "E x shiftlock",
+    Desc = cor({"Ativa", "#00FF00"}, {" o"}, {" shiftlock", "#00FF00"}, {" ao equipar o E"}),
     Icon = "lucide:brick-wall-shield",
     Value = false,
-    Flag = "ShiftlockEscudo",
+    Flag = "ShiftlockE",
     Callback = function(v)
         EscudoSL.Enabled = v
         
