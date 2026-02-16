@@ -1140,6 +1140,8 @@ VisualsSection:Toggle({
 local UserGameSettings_upvr = cloneref(UserSettings():GetService("UserGameSettings"))
 local GameSettings_upvr = UserSettings().GameSettings
 
+local OFFSET_X = 2.5
+
 local function isShiftLockMode()
 	local DevEnableMouseLock = LocalPlayer.DevEnableMouseLock
 	if DevEnableMouseLock then
@@ -1233,8 +1235,8 @@ local function ManageRenderStep(enable)
                     if cam then
                         UserGameSettings_upvr.RotationType = Enum.RotationType.CameraRelative
                         if 0.99 <= (cam.Focus.Position - cam.CFrame.Position).Magnitude then
-                            cam.CFrame *= CFrame.new(1.75, 0, 0)
-                            cam.Focus = CFrame.fromMatrix(cam.Focus.Position, cam.CFrame.RightVector, cam.CFrame.UpVector) * CFrame.new(1.75, 0, 0)
+                            cam.CFrame *= CFrame.new(OFFSET_X, 0, 0)
+                            cam.Focus = CFrame.fromMatrix(cam.Focus.Position, cam.CFrame.RightVector, cam.CFrame.UpVector) * CFrame.new(OFFSET_X, 0, 0)
                         end
                     end
                 end
