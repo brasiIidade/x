@@ -1216,7 +1216,7 @@ end
 local function HasEscudo(char)
     if not char then return false end
     for _, v in ipairs(char:GetChildren()) do
-        if v:IsA("Tool") and string.find(string.lower(v.Name), "escudo") then
+        if v:IsA("Tool") and string.find(string.lower(v.Name), "descansar") then
             return true
         end
     end
