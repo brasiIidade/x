@@ -2882,10 +2882,12 @@ ThemeSection:Dropdown({
 local TevezTab = nil
 local DeltaTab = nil
 local SoucreTab = nil
+local NovaEraTab = nil
 
 local tevez = game.PlaceId == 13132367906
 local delta = game.PlaceId == 14511049
 local soucre = game.PlaceId == 129890257340707
+local novaera = game.PlaceId == 134858056613772
 
 criarsection(main, "Mapa", "Exclusivos do mapa", "lucide:map", true)
 
@@ -3212,6 +3214,41 @@ if soucre then
         Value = false,
         Callback = function(v)
             if _G.SoucreLogic then _G.SoucreLogic.Toggle(v) end
+        end
+    })
+end
+
+--// tab Nova Era
+if novaera then
+    NovaEraTab = criartab("Nova Era", "https://tr.rbxcdn.com/180DAY-9b65f927dea36f98c1a720694fd00fd3/768/432/Image/Webp/noFilter")
+
+    task.spawn(function()
+        if ler then ler("novaera") end
+    end)
+
+    local FarmSection = criarsection(NovaEraTab, "Dinheiro", "Autofarm", "lucide:coins", true)
+
+    local MoneyPara = FarmSection:Paragraph({
+        Title = "Status",
+        Desc = "Dinheiro farmado: $0",
+        Color = "Green",
+        Image = "lucide:coins"
+    })
+
+    task.spawn(function()
+        repeat task.wait(0.5) until _G.NovaEraLogic
+        _G.NovaEraLogic.UpdateCallback = function(val)
+            if MoneyPara then MoneyPara:SetDesc(cor({"Dinheiro farmado: ", "#AAAAAA"}, {"$", "#00FF00"}, {tostring(val), "#00FF00"})) end
+        end
+    end)
+
+    FarmSection:Toggle({
+        Title = "Autofarm",
+        Desc = cor({"Inicia", "#00FF00"}, {" o autofarm de coleta"}),
+        Icon = "lucide:circle-play",
+        Value = false,
+        Callback = function(v)
+            if _G.NovaEraLogic then _G.NovaEraLogic.Toggle(v) end
         end
     })
 end
