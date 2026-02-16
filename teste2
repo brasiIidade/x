@@ -1135,8 +1135,8 @@ VisualsSection:Toggle({
     Callback = function(v) _G.ESPConfig.WeaponN = v end 
 })
 
---// tab X1
 
+--// tab X1
 local ugs = UserSettings():GetService("UserGameSettings")
 
 local slData = {
@@ -1159,7 +1159,7 @@ local function check(char)
     if not slData.on or not char then return end
     local found = false
     for _, v in ipairs(char:GetChildren()) do
-        if v:IsA("Tool") and string.find(string.lower(v.Name), "e") then
+        if v:IsA("Tool") and string.find(string.lower(v.Name), "escudo") then
             found = true
             break
         end
