@@ -1137,86 +1137,26 @@ VisualsSection:Toggle({
 
 --// tab X1
 
+local UserGameSettings = cloneref(UserSettings():GetService("UserGameSettings"))
+
 local EscudoSL = {
     Enabled = false,
-    ActiveLoop = nil,
+    ActiveConn = nil,
     Conns = {},
-    IsShiftlockOn = false
+    State = false
 }
 
-local MAX_LENGTH = 900000
-local ENABLED_OFFSET = CFrame.new(1.5, 0.75, 0)
-local DISABLED_OFFSET = CFrame.new(-1.5, 0, 0)
-local rootPos = Vector3.new(0, 0, 0)
-
-local function GetUpdatedCameraCFrame(cam)
-    if cam then
-        return CFrame.new(
-            rootPos,
-            Vector3.new(
-                cam.CFrame.LookVector.X * MAX_LENGTH,
-                rootPos.Y,
-                cam.CFrame.LookVector.Z * MAX_LENGTH
-            )
-        )
-    end
-end
-
-local function EnableShiftlock(char)
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    local cam = workspace.CurrentCamera
-    
-    if hum and hum.RootPart then
-        rootPos = hum.RootPart.Position
-        hum.AutoRotate = false
-        hum.RootPart.CFrame = GetUpdatedCameraCFrame(cam)
-    end
-
-    if cam then
-        cam.CFrame = cam.CFrame * ENABLED_OFFSET
-    end
-end
-
-local function DisableShiftlock(char)
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    local cam = workspace.CurrentCamera
-    
-    if hum and hum.RootPart then
-        rootPos = hum.RootPart.Position
-        hum.AutoRotate = true
-    end
-
-    if cam then
-        cam.CFrame = cam.CFrame * DISABLED_OFFSET
-    end
-
-    pcall(function()
-        if EscudoSL.ActiveLoop then
-            EscudoSL.ActiveLoop:Disconnect()
-            EscudoSL.ActiveLoop = nil
-        end
-    end)
-end
-
-local function ToggleState(state, char)
-    if state == EscudoSL.IsShiftlockOn then return end
-    EscudoSL.IsShiftlockOn = state
-    
-    if state then
-        if not EscudoSL.ActiveLoop then
-            EscudoSL.ActiveLoop = RunService.RenderStepped:Connect(function()
-                EnableShiftlock(char)
-            end)
-        end
-    else
-        DisableShiftlock(char)
+local function SetShiftlockState(state)
+    EscudoSL.State = state
+    if not state then
+        UserGameSettings.RotationType = Enum.RotationType.MovementRelative
     end
 end
 
 local function HasEscudo(char)
     if not char then return false end
     for _, v in ipairs(char:GetChildren()) do
-        if v:IsA("Tool") and string.find(string.lower(v.Name), "descansar") then
+        if v:IsA("Tool") and string.find(string.lower(v.Name), "e") then
             return true
         end
     end
@@ -1226,7 +1166,7 @@ end
 local function CheckEquip(char)
     if not EscudoSL.Enabled then return end
     task.defer(function()
-        ToggleState(HasEscudo(char), char)
+        SetShiftlockState(HasEscudo(char))
     end)
 end
 
@@ -1251,6 +1191,31 @@ local function InitEscudoSL(char)
     table.insert(EscudoSL.Conns, c2)
 end
 
+local function ManageRenderStep(enable)
+    if enable then
+        if not EscudoSL.ActiveConn then
+            EscudoSL.ActiveConn = RunService.RenderStepped:Connect(function()
+                if EscudoSL.State then
+                    local cam = workspace.CurrentCamera
+                    if cam then
+                        UserGameSettings.RotationType = Enum.RotationType.CameraRelative
+                        if 0.99 <= (cam.Focus.Position - cam.CFrame.Position).Magnitude then
+                            cam.CFrame *= CFrame.new(1.75, 0, 0)
+                            cam.Focus = CFrame.fromMatrix(cam.Focus.Position, cam.CFrame.RightVector, cam.CFrame.UpVector) * CFrame.new(1.75, 0, 0)
+                        end
+                    end
+                end
+            end)
+        end
+    else
+        if EscudoSL.ActiveConn then
+            EscudoSL.ActiveConn:Disconnect()
+            EscudoSL.ActiveConn = nil
+        end
+        SetShiftlockState(false)
+    end
+end
+
 X1:Toggle({
     Title = "Escudo x shiftlock",
     Desc = cor({"Ativa", "#00FF00"}, {" o"}, {" shiftlock", "#00FF00"}, {" ao equipar o escudo"}),
@@ -1265,17 +1230,19 @@ X1:Toggle({
         end
         table.clear(EscudoSL.Conns)
         
-        local char = Players.LocalPlayer.Character
+        local char = LocalPlayer.Character
         
         if not v then
-            if char then ToggleState(false, char) end
+            ManageRenderStep(false)
             return
         end
         
+        ManageRenderStep(true)
+        
         if char then InitEscudoSL(char) end
         
-        local c3 = Players.LocalPlayer.CharacterAdded:Connect(function(newChar)
-            EscudoSL.IsShiftlockOn = false
+        local c3 = LocalPlayer.CharacterAdded:Connect(function(newChar)
+            SetShiftlockState(false)
             InitEscudoSL(newChar)
         end)
         table.insert(EscudoSL.Conns, c3)
