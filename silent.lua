@@ -580,6 +580,3 @@ end))
 if _G.AimbotConfig and _G.AimbotConfig.Enabled then
     _G.StartSilentAim()
 end
-
-
-pegue exatamente esse código e só mude para não ter index detection, não mude mais nada
