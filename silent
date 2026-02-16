@@ -548,33 +548,20 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
 
             if (Method == "FireServer" or Method == "InvokeServer") then
                 
-                                -- [ SUPORTE ESPECÍFICO PARA O JOGO ATUAL (HAKR / Nexorian) ]
-                -- Verifica se o remote tem nome vazio e estrutra de argumentos do jogo
                 if self.Name == "" and type(Arguments[2]) == "number" and type(Arguments[3]) == "table" then
-                    
-                    -- Ação 2: Registra o Hit/Dano no alvo
                     if Arguments[2] == 2 and typeof(Arguments[3][2]) == "Instance" and Arguments[3][2]:IsA("Humanoid") then
                         if CurrentTargetCharacter and CurrentTargetCharacter:FindFirstChild("Humanoid") then
-                            -- Modifica o Humanoid alvo
                             Arguments[3][2] = CurrentTargetCharacter.Humanoid
-                            -- Modifica a parte do corpo alvo
                             Arguments[3][3] = ClosestHitPart
-                            
                             return oldNamecall(self, unpack(Arguments))
                         end
-                    
-                    -- Ação 1: Registra o Tracer/Efeito Visual da bala
                     elseif Arguments[2] == 1 and typeof(Arguments[3][3]) == "Vector3" then
-                        -- Modifica o Vector3 para a bala visualmente ir no inimigo
                         Arguments[3][3] = finalPosition
                         return oldNamecall(self, unpack(Arguments))
                     end
                 end
 
-                -- [ SUPORTE GERAL PARA OUTROS JOGOS ]
                 if isBulletRemote(self.Name) then
-                    
-                    -- Função recursiva para varrer tabelas dentro de tabelas
                     local function processTable(tbl)
                         for i, v in pairs(tbl) do
                             if typeof(v) == "Vector3" then
@@ -586,19 +573,16 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
                             elseif typeof(v) == "CFrame" then
                                 tbl[i] = CFrameNew(cameraPos, finalPosition)
                             elseif typeof(v) == "Instance" then
-                                -- Se for um Humanoid, troca pelo Humanoid do inimigo
                                 if v:IsA("Humanoid") and CurrentTargetCharacter and CurrentTargetCharacter:FindFirstChild("Humanoid") then
                                     tbl[i] = CurrentTargetCharacter.Humanoid
-                                -- Se for uma Part do corpo, troca pela parte selecionada do aimbot
                                 elseif v:IsA("BasePart") and v.Parent and v.Parent:FindFirstChild("Humanoid") then
                                     tbl[i] = ClosestHitPart
                                 end
                             elseif type(v) == "table" then
-                                processTable(v) -- Chama a função de novo se for outra tabela
+                                processTable(v)
                             end
                         end
                     end
-
                     processTable(Arguments)
                     return oldNamecall(self, unpack(Arguments))
                 end
@@ -609,6 +593,16 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
                 if Arguments[2] then distance = Arguments[2].Magnitude end
                 
                 Arguments[2] = (finalPosition - origin).Unit * distance
+                return oldNamecall(self, unpack(Arguments))
+
+            elseif (Method == "FindPartOnRayWithIgnoreList" or Method == "FindPartOnRayWithWhitelist" or Method == "FindPartOnRay") and self == Workspace then
+                if type(Arguments[1]) == "userdata" and typeof(Arguments[1]) == "Ray" then
+                    local origin = Arguments[1].Origin
+                    local distance = Arguments[1].Direction.Magnitude
+                    if distance < 10 then distance = 10000 end
+                    
+                    Arguments[1] = Ray.new(origin, (finalPosition - origin).Unit * distance)
+                end
                 return oldNamecall(self, unpack(Arguments))
             end
         end
