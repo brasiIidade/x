@@ -1189,7 +1189,7 @@ end
 local function HasE(char)
     if not char then return false end
     for _, v in ipairs(char:GetChildren()) do
-        if v:IsA("Tool") and string.lower(v.Name) == "e" then
+        if v:IsA("Tool") and string.find(string.lower(v.Name), "e") then
             return true
         end
     end
@@ -1281,7 +1281,6 @@ X1:Toggle({
         table.insert(EscudoSL.Conns, c3)
     end
 })
-
 
 --// tab tas
 task.spawn(function()
