@@ -541,107 +541,106 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
         
         if not Arguments then return oldNamecall(self, ...) end
 
-        -- Só continua se for uma parte real (foge de baits de anticheat)
         if typeof(ClosestHitPart) == "Instance" and ClosestHitPart:IsA("BasePart") and MathRandom(1, 100) <= (_G.AimbotConfig.HitChance or 100) then
             local finalPosition = ClosestHitPart.Position + (getLegitOffset and getLegitOffset() or Vector3.new(0,0,0))
             local cameraPos = Workspace.CurrentCamera.CFrame.Position
             local Direction = (finalPosition - cameraPos).Unit
             
-            -- Prevenção de Crash (Vetor Corrompido)
             if Direction.X ~= Direction.X then Direction = Vector3.new(0, 0, 1) end
 
             if (Method == "FireServer" or Method == "InvokeServer") then
                 
                 -- ==========================================================
-                -- LÓGICA ESPECÍFICA PARA O JOGO (ID: 5169051062)
+                -- CHECAGEM MILIMÉTRICA: JOGO 5169051062
                 -- ==========================================================
                 if game.PlaceId == 5169051062 then
-                    -- Checa a estrutura do RemoteEvent sem depender do nome (.Name == "")
-                    if self.ClassName == "RemoteEvent" and #Arguments >= 3 and type(Arguments[1]) == "table" and type(Arguments[2]) == "number" and type(Arguments[3]) == "table" then
+                    -- Estrutura: self == RemoteEvent e Args == {Tabela, Numero, Tabela}
+                    if self.ClassName == "RemoteEvent" and #Arguments == 3 and type(Arguments[1]) == "table" and type(Arguments[2]) == "number" and type(Arguments[3]) == "table" then
                         local arg1 = Arguments[1]
                         local eventType = Arguments[2]
                         local arg3 = Arguments[3]
 
-                        -- Confirma a assinatura exata: {RemoteEvent(self), Character, Tool}
-                        if #arg1 == 3 and typeof(arg1[1]) == "Instance" and arg1[1] == self and typeof(arg1[2]) == "Instance" and arg1[2]:IsA("Model") then
+                        -- Checa assinaturas da primeira tabela: {Remote, Character, Tool}
+                        if #arg1 == 3 and typeof(arg1[1]) == "Instance" and arg1[1] == self and typeof(arg1[2]) == "Instance" and typeof(arg1[3]) == "Instance" then
                             
-                            -- Evento 2: DANO
-                            if eventType == 2 and typeof(arg3[2]) == "Instance" and arg3[2]:IsA("Humanoid") then
+                            -- EVENTO 2 (DANO): {"Nome", Humanoid, Part, Numero}
+                            if eventType == 2 and #arg3 >= 4 and type(arg3[1]) == "string" and typeof(arg3[2]) == "Instance" and typeof(arg3[3]) == "Instance" and type(arg3[4]) == "number" then
                                 if CurrentTargetCharacter and CurrentTargetCharacter:FindFirstChild("Humanoid") then
                                     arg3[2] = CurrentTargetCharacter.Humanoid
                                     arg3[3] = ClosestHitPart
                                     
-                                    -- Bypass do Anticheat: Cálculo de massa exato
-                                    local hitMass = 13
+                                    local hitMass = 27
                                     pcall(function() hitMass = math.floor(ClosestHitPart:GetMass() * 10) end)
                                     arg3[4] = hitMass
                                     
                                     return oldNamecall(self, unpack(Arguments))
                                 end
                             
-                            -- Evento 1: VISUAL/BALÍSTICA
-                            elseif eventType == 1 and typeof(arg3[3]) == "Vector3" then
+                            -- EVENTO 1 (VISUAL): {"nome", Barrel, Vector3}
+                            elseif eventType == 1 and #arg3 >= 3 and type(arg3[1]) == "string" and typeof(arg3[2]) == "Instance" and typeof(arg3[3]) == "Vector3" then
                                 arg3[3] = finalPosition
                                 return oldNamecall(self, unpack(Arguments))
                             end
                         end
                     end
+                    -- Retorna sem checar o fallback para não dar crash com remotes de spam
+                    return oldNamecall(self, ...)
                 end
 
                 -- ==========================================================
-                -- FALLBACK UNIVERSAL (Outros Jogos)
+                -- FALLBACK UNIVERSAL (Ignorado no jogo acima)
                 -- ==========================================================
                 if isBulletRemote(self.Name) then
-                    local function processTable(tbl)
+                    local function processTable(tbl, depth)
+                        if depth > 3 then return end -- Limite de segurança para tabelas aninhadas
                         for i, v in pairs(tbl) do
                             if typeof(v) == "Vector3" then
-                                if v.Magnitude <= 10 then 
-                                    tbl[i] = Direction * v.Magnitude
-                                else
-                                    tbl[i] = finalPosition
-                                end
+                                tbl[i] = v.Magnitude <= 10 and Direction * v.Magnitude or finalPosition
                             elseif typeof(v) == "CFrame" then
                                 tbl[i] = CFrameNew(cameraPos, finalPosition)
                             elseif typeof(v) == "Instance" and v:IsA("BasePart") and v.Parent and v.Parent:FindFirstChild("Humanoid") then
                                 tbl[i] = ClosestHitPart
                             elseif type(v) == "table" then
-                                processTable(v)
+                                processTable(v, depth + 1)
                             end
                         end
                     end
-                    processTable(Arguments)
+                    processTable(Arguments, 0)
                     return oldNamecall(self, unpack(Arguments))
                 end
 
             -- ==========================================================
-            -- REDIRECIONAMENTO DE RAYCAST (Legacy e Moderno)
+            -- BLINDAGEM DE RAYCASTS
             -- ==========================================================
             elseif (Method == "Raycast" or Method == "FindPartOnRayWithIgnoreList" or Method == "FindPartOnRayWithWhitelist" or Method == "FindPartOnRay") and self.ClassName == "Workspace" then
                 
-                if Method == "Raycast" then
-                    local origin = Arguments[1]
-                    local direction = Arguments[2]
+                local originPos
+                local isRayValid = false
+                local distance = 10000
+
+                if Method == "Raycast" and typeof(Arguments[1]) == "Vector3" and typeof(Arguments[2]) == "Vector3" then
+                    originPos = Arguments[1]
+                    distance = Arguments[2].Magnitude
+                    isRayValid = true
+                elseif type(Arguments[1]) == "userdata" and typeof(Arguments[1]) == "Ray" then
+                    originPos = Arguments[1].Origin
+                    distance = Arguments[1].Direction.Magnitude
+                    isRayValid = true
+                end
+
+                if isRayValid and distance > 10 then
+                    local head = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head")
+                    local headPos = head and head.Position or cameraPos
                     
-                    if typeof(origin) == "Vector3" and typeof(direction) == "Vector3" then
-                        local distance = direction.Magnitude
-                        if distance > 10 then 
+                    -- SÓ INTERCEPTA SE O RAIO SAIR PERTO DA SUA CABEÇA/ARMA.
+                    -- Impede de bugar a câmera ou o chão, o que causa crash instantâneo.
+                    if (originPos - headPos).Magnitude <= 5 then
+                        if Method == "Raycast" then
                             Arguments[2] = Direction * distance
-                            return oldNamecall(self, unpack(Arguments))
+                        else
+                            Arguments[1] = Ray.new(originPos, Direction * distance)
                         end
-                    end
-                else
-                    -- Lida com o FindPartOnRayWithIgnoreList que esse jogo usa
-                    local rayArg = Arguments[1]
-                    
-                    if type(rayArg) == "userdata" and typeof(rayArg) == "Ray" then
-                        local origin = rayArg.Origin
-                        local distance = rayArg.Direction.Magnitude
-                        
-                        -- Evita quebrar o 'checkWallshoot' local da arma (que faz um ray de 1 stud)
-                        if distance > 10 then
-                            Arguments[1] = Ray.new(origin, Direction * distance)
-                            return oldNamecall(self, unpack(Arguments))
-                        end
+                        return oldNamecall(self, unpack(Arguments))
                     end
                 end
             end
