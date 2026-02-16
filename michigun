@@ -203,7 +203,7 @@ end
 --// discord
 main:CreateTopbarButton("Discord", "geist:logo-discord", function()
     setclipboard("https://discord.gg/G5vEkrAXnF")
-    notificar("Link do Discord copiado!", 5, "geist:logo-discord")
+    notificar("Link copiado!", 5, "geist:logo-discord")
 end, 990)
 
 --// links
@@ -228,7 +228,7 @@ local function DownloadSafe(url, tentativas)
         task.wait(1)
     end
     
-    return nil, lastResponse -- Retorna nil se falhar todas
+    return nil, lastResponse
 end
 
 local function LoadPathMap()
@@ -382,17 +382,19 @@ criarsection(main, "Combate", "Seção de combate", nil, true)
 local SilentAim = criartab("Silent aim", "lucide:crosshair", false)
 local HitboxExpander = criartab("Hitbox expander", "lucide:codesandbox", false)
 local ESP = criartab("ESP", "lucide:view", false)
+local X1 = criartab("1v1", "lucide:person-standing", false)
 
 --// tabs "parkour"
 criarsection(main, "Parkour", "Seção de parkour", nil, true)
 local TAS = criartab("TAS", "solar:running-outline", false)
 local JJs = criartab("JJ's", "lucide:space", false)
 local ChatGPT = criartab("ChatGPT", "geist:logo-open-ai", false)
-local F3X = criartab("F3X", "lucide:pencil-ruler", false)
+local F3X = criartab("F3X", "lucide:hammer", false)
 
 --// tabs "locais"
 criarsection(main, "Local", "Seção local", nil, true)
 local Char = criartab("Char", "solar:user-hands-bold", false)
+local AntiLag = criartab("Anti-lag", "solar:wi-fi-router-minimalistic-bold", false)
 local Player = criartab("Player", "solar:user-bold", false)
 
 --// tab "config"
@@ -1132,6 +1134,119 @@ VisualsSection:Toggle({
     Flag = "ItemESP", 
     Callback = function(v) _G.ESPConfig.WeaponN = v end 
 })
+
+
+--// tab X1
+local ugs = UserSettings():GetService("UserGameSettings")
+
+local slData = {
+    on = false,
+    loop = false,
+    binds = {},
+    active = false
+}
+
+local function setSL(state)
+    slData.active = state
+    if not state then
+        pcall(function()
+            ugs.RotationType = Enum.RotationType.MovementRelative
+        end)
+    end
+end
+
+local function check(char)
+    if not slData.on or not char then return end
+    local found = false
+    for _, v in ipairs(char:GetChildren()) do
+        if v:IsA("Tool") and string.find(string.lower(v.Name), "escudo") then
+            found = true
+            break
+        end
+    end
+    setSL(found)
+end
+
+local function init(char)
+    if not char then return end
+    
+    check(char)
+    
+    local b1 = char.ChildAdded:Connect(function(child)
+        if child:IsA("Tool") then
+            check(char)
+        end
+    end)
+    
+    local b2 = char.ChildRemoved:Connect(function(child)
+        if child:IsA("Tool") then
+            check(char)
+        end
+    end)
+    
+    table.insert(slData.binds, b1)
+    table.insert(slData.binds, b2)
+end
+
+local function mgrLoop(enable)
+    if enable then
+        if not slData.loop then
+            slData.loop = true
+            RunService:BindToRenderStep("SL_E", 201, function()
+                if slData.active then
+                    local cam = workspace.CurrentCamera
+                    if cam then
+                        ugs.RotationType = Enum.RotationType.CameraRelative
+                        if 0.99 <= (cam.Focus.Position - cam.CFrame.Position).Magnitude then
+                            cam.CFrame *= CFrame.new(2.5, 0, 0)
+                            cam.Focus = CFrame.fromMatrix(cam.Focus.Position, cam.CFrame.RightVector, cam.CFrame.UpVector) * CFrame.new(2.5, 0, 0)
+                        end
+                    end
+                end
+            end)
+        end
+    else
+        if slData.loop then
+            slData.loop = false
+            RunService:UnbindFromRenderStep("SL_E")
+        end
+        setSL(false)
+    end
+end
+
+X1:Toggle({
+    Title = "Escudo -> shiftlock",
+    Desc = cor({"Ativa", "#00FF00"}, {" o"}, {" shiftlock", "#00FF00"}, {" ao equipar o escudo"}),
+    Icon = "lucide:brick-wall-shield",
+    Value = false,
+    Flag = "EscudoShiftlock",
+    Callback = function(v)
+        slData.on = v
+        
+        for _, b in ipairs(slData.binds) do 
+            b:Disconnect() 
+        end
+        table.clear(slData.binds)
+        
+        local char = LocalPlayer.Character
+        
+        if not v then
+            mgrLoop(false)
+            return
+        end
+        
+        mgrLoop(true)
+        
+        if char then init(char) end
+        
+        local b3 = LocalPlayer.CharacterAdded:Connect(function(newChar)
+            setSL(false)
+            init(newChar)
+        end)
+        table.insert(slData.binds, b3)
+    end
+})
+
 
 --// tab tas
 task.spawn(function()
@@ -2144,6 +2259,51 @@ task.spawn(function()
     repeat task.wait(0.5) until _G.Avatar and _G.Avatar.GetSavedSkins
     RefreshList()
 end)
+
+--// tab anti-lag
+task.spawn(function()
+    ler("antilag")
+end)
+
+local confirmStep = false
+
+AntiLag:Paragraph({
+    Title = "Observação",
+    Color = "Red",
+    Image = "lucide:triangle-alert",
+    ImageSize = 30,
+    Desc = "Só é possível tirar o anti-lag dando rejoin"
+})
+AntiLag:Space()
+
+local OptButton = AntiLag:Button({
+    Title = "Anti-lag",
+    Color = Color3.fromHex("#a2ff30"),
+    Justify = "Center",
+    Icon = "lucide:zap",
+    Callback = function()
+    end
+})
+
+OptButton.Callback = function()
+    if not confirmStep then
+        confirmStep = true
+        OptButton:SetTitle("Confirmação")
+        OptButton:SetDesc("Clique novamente para aplicar")
+    else
+        OptButton:Lock()
+        OptButton:SetTitle("Otimizando...")
+        notificar("Aplicando...", 2, "lucide:loader")
+
+        task.spawn(function()
+            if _G.AntiLag and _G.AntiLag.Start then
+                _G.AntiLag.Start()
+                OptButton:SetTitle("Anti-lag ativado")
+                notificar("Sucesso", 4, "lucide:check")
+            end
+        end)
+    end
+end
 
 --// tab local
 task.spawn(function()
@@ -3172,10 +3332,9 @@ if soucre then
     })
 end
 
---// tab nova era
-
+--// tab Nova Era
 if novaera then
-    NovaEraTab = criartab("Nova Era", "https://tr.rbxcdn.com/180DAY-c2aa25a2b7a9e0556e93c63927cae5cc/384/216/Image/Webp/noFilter")
+    NovaEraTab = criartab("Nova Era", "https://tr.rbxcdn.com/180DAY-9b65f927dea36f98c1a720694fd00fd3/768/432/Image/Webp/noFilter")
 
     task.spawn(function()
         if ler then ler("novaera") end
