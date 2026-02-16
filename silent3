@@ -541,34 +541,54 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
         if not Arguments then return oldNamecall(self, ...) end
 
         if MathRandom(1, 100) <= (_G.AimbotConfig.HitChance or 100) then
+            -- Prevenção extra: Só continua se o ClosestHitPart for uma BasePart real (foge de baits do anticheat)
+            if typeof(ClosestHitPart) ~= "Instance" or not ClosestHitPart:IsA("BasePart") then
+                return oldNamecall(self, unpack(Arguments))
+            end
+
             local finalPosition = ClosestHitPart.Position + (getLegitOffset and getLegitOffset() or Vector3.new(0,0,0))
             local cameraPos = Workspace.CurrentCamera.CFrame.Position
             local Direction = (finalPosition - cameraPos).Unit
 
-            if (Method == "FireServer" or Method == "InvokeServer") then
-                
-                -- Tratamento específico do Remote desta arma
-                if self.Name == "" and type(Arguments[2]) == "number" and type(Arguments[3]) == "table" then
-                    -- Evento 2: Dano
-                    if Arguments[2] == 2 and typeof(Arguments[3][2]) == "Instance" and Arguments[3][2]:IsA("Humanoid") then
-                        if CurrentTargetCharacter and CurrentTargetCharacter:FindFirstChild("Humanoid") then
-                            Arguments[3][2] = CurrentTargetCharacter.Humanoid
-                            Arguments[3][3] = ClosestHitPart
-                            
-                            -- A CHAVE DO PROBLEMA: Enviar a massa correta da parte redirecionada
-                            Arguments[3][4] = math.floor(ClosestHitPart:GetMass() * 10)
-                            
+            if Method == "FireServer" or Method == "InvokeServer" then
+                local isSpecificGameRemote = false
+
+                -- 1. CHECAGEM RESTRITA PARA O JOGO ESPECÍFICO
+                -- Verifica se o self é um RemoteEvent e se os 3 argumentos correspondem exatamente às tabelas capturadas
+                if self:IsA("RemoteEvent") and type(Arguments[1]) == "table" and type(Arguments[2]) == "number" and type(Arguments[3]) == "table" then
+                    local arg1 = Arguments[1]
+                    local arg2 = Arguments[2]
+                    local arg3 = Arguments[3]
+
+                    -- Validação de assinatura: {RemoteEvent(self), Character, Tool}
+                    if #arg1 == 3 and typeof(arg1[1]) == "Instance" and arg1[1] == self and typeof(arg1[2]) == "Instance" and arg1[2]:IsA("Model") then
+                        isSpecificGameRemote = true
+                        
+                        if arg2 == 2 and typeof(arg3[2]) == "Instance" and arg3[2]:IsA("Humanoid") then
+                            -- Evento 2: DANO
+                            if CurrentTargetCharacter and CurrentTargetCharacter:FindFirstChild("Humanoid") then
+                                arg3[2] = CurrentTargetCharacter.Humanoid
+                                arg3[3] = ClosestHitPart
+                                
+                                -- Puxando a massa com segurança absoluta (Fallback para 13 se algo der errado)
+                                local hitMass = 13 
+                                pcall(function()
+                                    hitMass = math.floor(ClosestHitPart:GetMass() * 10)
+                                end)
+                                arg3[4] = hitMass
+                                
+                                return oldNamecall(self, unpack(Arguments))
+                            end
+                        elseif arg2 == 1 and typeof(arg3[3]) == "Vector3" then
+                            -- Evento 1: VISUAL/BALÍSTICA
+                            arg3[3] = finalPosition
                             return oldNamecall(self, unpack(Arguments))
                         end
-                    -- Evento 1: Visual / Balística
-                    elseif Arguments[2] == 1 and typeof(Arguments[3][3]) == "Vector3" then
-                        Arguments[3][3] = finalPosition
-                        return oldNamecall(self, unpack(Arguments))
                     end
                 end
 
-                -- Tratamento fallback genérico
-                if isBulletRemote(self.Name) then
+                -- 2. FALLBACK GENÉRICO (Para outros jogos/armas continuarem funcionando)
+                if not isSpecificGameRemote and isBulletRemote(self.Name) then
                     local function processTable(tbl)
                         for i, v in pairs(tbl) do
                             if typeof(v) == "Vector3" then
@@ -594,25 +614,21 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
                     return oldNamecall(self, unpack(Arguments))
                 end
 
-            elseif Method == "Raycast" and self == Workspace then
-                local origin = Arguments[1]
-                local distance = 10000
-                if Arguments[2] then distance = Arguments[2].Magnitude end
-                
-                -- Ignora raycasts curtos para não quebrar o checkWallshoot da arma localmente
-                if distance > 10 then
-                    Arguments[2] = Direction * distance
-                end
-                return oldNamecall(self, unpack(Arguments))
-
-            elseif (Method == "FindPartOnRayWithIgnoreList" or Method == "FindPartOnRayWithWhitelist" or Method == "FindPartOnRay") and self == Workspace then
-                if type(Arguments[1]) == "userdata" and typeof(Arguments[1]) == "Ray" then
-                    local origin = Arguments[1].Origin
-                    local distance = Arguments[1].Direction.Magnitude
-                    
-                    -- Mesmo filtro aqui para proteger as lógicas locais da arma
-                    if distance > 10 then 
-                        Arguments[1] = Ray.new(origin, Direction * distance)
+            elseif (Method == "Raycast" or Method == "FindPartOnRayWithIgnoreList" or Method == "FindPartOnRayWithWhitelist" or Method == "FindPartOnRay") and self == Workspace then
+                -- Correção dos Raycasts locais da arma
+                if Method == "Raycast" then
+                    local origin = Arguments[1]
+                    local distance = Arguments[2] and Arguments[2].Magnitude or 10000
+                    if distance > 10 then -- Ignora raycasts curtos de "checkWallshoot"
+                        Arguments[2] = Direction * distance
+                    end
+                else
+                    if type(Arguments[1]) == "userdata" and typeof(Arguments[1]) == "Ray" then
+                        local origin = Arguments[1].Origin
+                        local distance = Arguments[1].Direction.Magnitude
+                        if distance > 10 then 
+                            Arguments[1] = Ray.new(origin, Direction * distance)
+                        end
                     end
                 end
                 return oldNamecall(self, unpack(Arguments))
@@ -621,6 +637,7 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
     end
     return oldNamecall(self, ...)
 end))
+
 
 
 if _G.AimbotConfig and _G.AimbotConfig.Enabled then
