@@ -11,5 +11,6 @@ return {
     player = "player.lua",
     tevez = "tevez.lua",
     delta = "delta.lua",
-    soucre = "soucre.lua"
+    soucre = "soucre.lua",
+    novaera = "novaera.lua"
 }
