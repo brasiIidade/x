@@ -1137,69 +1137,66 @@ VisualsSection:Toggle({
 
 --// tab X1
 
-local UserGameSettings_upvr = UserSettings():GetService("UserGameSettings")
+local ugs = UserSettings():GetService("UserGameSettings")
 
-local EscudoSL = {
-    Enabled = false,
-    ActiveConn = false,
-    Conns = {},
-    State = false
+local slData = {
+    on = false,
+    loop = false,
+    binds = {},
+    active = false
 }
 
-local function SetShiftlockState(state)
-    EscudoSL.State = state
+local function setSL(state)
+    slData.active = state
     if not state then
         pcall(function()
-            UserGameSettings_upvr.RotationType = Enum.RotationType.MovementRelative
+            ugs.RotationType = Enum.RotationType.MovementRelative
         end)
     end
 end
 
-local function HasE(char)
-    if not char then return false end
+local function check(char)
+    if not slData.on or not char then return end
+    local found = false
     for _, v in ipairs(char:GetChildren()) do
         if v:IsA("Tool") and string.find(string.lower(v.Name), "e") then
-            return true
+            found = true
+            break
         end
     end
-    return false
+    setSL(found)
 end
 
-local function CheckEquip(char)
-    if not EscudoSL.Enabled then return end
-    SetShiftlockState(HasE(char))
-end
-
-local function InitEscudoSL(char)
+local function init(char)
     if not char then return end
     
-    CheckEquip(char)
+    check(char)
     
-    local c1 = char.ChildAdded:Connect(function(child)
+    local b1 = char.ChildAdded:Connect(function(child)
         if child:IsA("Tool") then
-            CheckEquip(char)
+            check(char)
         end
     end)
     
-    local c2 = char.ChildRemoved:Connect(function(child)
+    local b2 = char.ChildRemoved:Connect(function(child)
         if child:IsA("Tool") then
-            CheckEquip(char)
+            check(char)
         end
     end)
     
-    table.insert(EscudoSL.Conns, c1)
-    table.insert(EscudoSL.Conns, c2)
+    table.insert(slData.binds, b1)
+    table.insert(slData.binds, b2)
 end
 
-local function ManageRenderStep(enable)
+local function mgrLoop(enable)
     if enable then
-        if not EscudoSL.ActiveConn then
-            EscudoSL.ActiveConn = true
-            RunService:BindToRenderStep("ShiftlockE_Loop", 201, function()
-                if EscudoSL.State then
+        if not slData.loop then
+            slData.loop = true
+            RunService:BindToRenderStep("SL_E", 201, function()
+                if slData.active then
                     local cam = workspace.CurrentCamera
                     if cam then
-                        UserGameSettings_upvr.RotationType = Enum.RotationType.CameraRelative
+                        ugs.RotationType = Enum.RotationType.CameraRelative
                         if 0.99 <= (cam.Focus.Position - cam.CFrame.Position).Magnitude then
                             cam.CFrame *= CFrame.new(2.5, 0, 0)
                             cam.Focus = CFrame.fromMatrix(cam.Focus.Position, cam.CFrame.RightVector, cam.CFrame.UpVector) * CFrame.new(2.5, 0, 0)
@@ -1209,44 +1206,44 @@ local function ManageRenderStep(enable)
             end)
         end
     else
-        if EscudoSL.ActiveConn then
-            EscudoSL.ActiveConn = false
-            RunService:UnbindFromRenderStep("ShiftlockE_Loop")
+        if slData.loop then
+            slData.loop = false
+            RunService:UnbindFromRenderStep("SL_E")
         end
-        SetShiftlockState(false)
+        setSL(false)
     end
 end
 
 X1:Toggle({
-    Title = "E x shiftlock",
-    Desc = cor({"Ativa", "#00FF00"}, {" o"}, {" shiftlock", "#00FF00"}, {" ao equipar o E"}),
+    Title = "Escudo -> shiftlock",
+    Desc = cor({"Ativa", "#00FF00"}, {" o"}, {" shiftlock", "#00FF00"}, {" ao equipar o escudo"}),
     Icon = "lucide:brick-wall-shield",
     Value = false,
-    Flag = "ShiftlockE",
+    Flag = "EscudoShiftlock",
     Callback = function(v)
-        EscudoSL.Enabled = v
+        slData.on = v
         
-        for _, conn in ipairs(EscudoSL.Conns) do 
-            conn:Disconnect() 
+        for _, b in ipairs(slData.binds) do 
+            b:Disconnect() 
         end
-        table.clear(EscudoSL.Conns)
+        table.clear(slData.binds)
         
         local char = LocalPlayer.Character
         
         if not v then
-            ManageRenderStep(false)
+            mgrLoop(false)
             return
         end
         
-        ManageRenderStep(true)
+        mgrLoop(true)
         
-        if char then InitEscudoSL(char) end
+        if char then init(char) end
         
-        local c3 = LocalPlayer.CharacterAdded:Connect(function(newChar)
-            SetShiftlockState(false)
-            InitEscudoSL(newChar)
+        local b3 = LocalPlayer.CharacterAdded:Connect(function(newChar)
+            setSL(false)
+            init(newChar)
         end)
-        table.insert(EscudoSL.Conns, c3)
+        table.insert(slData.binds, b3)
     end
 })
 
