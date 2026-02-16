@@ -535,83 +535,40 @@ end
 
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
-    -- Ignora qualquer chamada que não seja do jogo, ou se o silent aim estiver desativado
     if not checkcaller() and _G.SilentAimActive and ClosestHitPart then
         local Method = getnamecallmethod()
+        local Arguments = {...}
         
-        -- SÓ VAMOS INTERCEPTAR REMOTES. 
-        -- Isso resolve 100% o bug de câmera quebrando e crash por raycast local.
-        if Method == "FireServer" or Method == "InvokeServer" then
-            local Arguments = {...}
-            if not Arguments then return oldNamecall(self, ...) end
+        if not Arguments then return oldNamecall(self, ...) end
 
-            -- Verifica se o alvo é válido para evitar crash com referências nulas
-            if typeof(ClosestHitPart) == "Instance" and ClosestHitPart:IsA("BasePart") and CurrentTargetCharacter then
+        if MathRandom(1, 100) <= (_G.AimbotConfig.HitChance or 100) then
+            local finalPosition = ClosestHitPart.Position + (getLegitOffset and getLegitOffset() or Vector3.new(0,0,0))
+            local cameraPos = Workspace.CurrentCamera.CFrame.Position
+            local Direction = (finalPosition - cameraPos).Unit
+
+                        if (Method == "FireServer" or Method == "InvokeServer") then
                 
-                -- Sistema de Hit Chance
-                if MathRandom(1, 100) > (_G.AimbotConfig.HitChance or 100) then
-                    return oldNamecall(self, ...) -- Deixa o tiro passar normal se falhar a chance
-                end
-
-                local finalPosition = ClosestHitPart.Position + (getLegitOffset and getLegitOffset() or Vector3.new(0,0,0))
-                local cameraPos = Workspace.CurrentCamera.CFrame.Position
-                local Direction = (finalPosition - cameraPos).Unit
-                
-                -- Prevenção de vetor NaN (que crasha o C++ do Roblox)
-                if Direction.X ~= Direction.X then Direction = Vector3.new(0, 0, 1) end
-
-                -- ==========================================================
-                -- JOGO ESPECÍFICO (ID: 5169051062)
-                -- ==========================================================
-                if game.PlaceId == 5169051062 then
-                    -- Verifica as tabelas extamente como você enviou
-                    if self.ClassName == "RemoteEvent" and #Arguments == 3 and type(Arguments[1]) == "table" and type(Arguments[2]) == "number" and type(Arguments[3]) == "table" then
-                        local arg1 = Arguments[1]
-                        local eventType = Arguments[2]
-                        local arg3 = Arguments[3]
-
-                        -- Checa se arg1[1] é o RemoteEvent da arma
-                        if #arg1 == 3 and typeof(arg1[1]) == "Instance" and arg1[1] == self then
+                if self.Name == "" and type(Arguments[2]) == "number" and type(Arguments[3]) == "table" then
+                    if Arguments[2] == 2 and typeof(Arguments[3][2]) == "Instance" and Arguments[3][2]:IsA("Humanoid") then
+                        if CurrentTargetCharacter and CurrentTargetCharacter:FindFirstChild("Humanoid") then
+                            Arguments[3][2] = CurrentTargetCharacter.Humanoid
+                            Arguments[3][3] = ClosestHitPart
                             
-                            local targetHumanoid = CurrentTargetCharacter:FindFirstChild("Humanoid")
-                            
-                            -- EVENTO 2 (DANO)
-                            if eventType == 2 and #arg3 >= 4 and type(arg3[1]) == "string" and typeof(arg3[2]) == "Instance" and typeof(arg3[3]) == "Instance" and type(arg3[4]) == "number" then
-                                if targetHumanoid then
-                                    arg3[2] = targetHumanoid
-                                    arg3[3] = ClosestHitPart
-                                    
-                                    -- Atualizando a massa da parte para passar no anti-cheat
-                                    local hitMass = 27 -- Valor base se o pcall falhar
-                                    pcall(function() hitMass = math.floor(ClosestHitPart:GetMass() * 10) end)
-                                    arg3[4] = hitMass
-                                    
-                                    return oldNamecall(self, unpack(Arguments))
-                                end
-                            
-                            -- EVENTO 1 (BALÍSTICA/TRACER)
-                            elseif eventType == 1 and #arg3 >= 3 and type(arg3[1]) == "string" and typeof(arg3[2]) == "Instance" and typeof(arg3[3]) == "Vector3" then
-                                arg3[3] = finalPosition
-                                return oldNamecall(self, unpack(Arguments))
+                            -- CORREÇÃO: Atualizando a massa da nova parte para passar no check do servidor
+                            if ClosestHitPart:IsA("BasePart") then
+                                Arguments[3][4] = math.floor(ClosestHitPart:GetMass() * 10)
                             end
+                            
+                            return oldNamecall(self, unpack(Arguments))
                         end
+                    elseif Arguments[2] == 1 and typeof(Arguments[3][3]) == "Vector3" then
+                        Arguments[3][3] = finalPosition
+                        return oldNamecall(self, unpack(Arguments))
                     end
-                    
-                    -- Se estamos no jogo 5169051062 mas o remote não é o da arma,
-                    -- repassa a chamada sem passar pelo fallback para evitar crash com remotes de spam.
-                    return oldNamecall(self, ...)
                 end
 
-                -- ==========================================================
-                -- FALLBACK UNIVERSAL (Outros Jogos)
-                -- ==========================================================
                 if isBulletRemote(self.Name) then
-                    local targetHumanoid = CurrentTargetCharacter:FindFirstChild("Humanoid")
-                    
-                    local function processTable(tbl, depth)
-                        -- Trava de profundidade para tabelas cíclicas (Evita Stack Overflow)
-                        if depth > 3 then return end 
-                        
+                    local function processTable(tbl)
                         for i, v in pairs(tbl) do
                             if typeof(v) == "Vector3" then
                                 if v.Magnitude <= 10 then 
@@ -622,27 +579,42 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
                             elseif typeof(v) == "CFrame" then
                                 tbl[i] = CFrameNew(cameraPos, finalPosition)
                             elseif typeof(v) == "Instance" then
-                                if v:IsA("BasePart") and v.Parent and v.Parent:FindFirstChild("Humanoid") then
+                                if v:IsA("Humanoid") and CurrentTargetCharacter and CurrentTargetCharacter:FindFirstChild("Humanoid") then
+                                    tbl[i] = CurrentTargetCharacter.Humanoid
+                                elseif v:IsA("BasePart") and v.Parent and v.Parent:FindFirstChild("Humanoid") then
                                     tbl[i] = ClosestHitPart
-                                elseif v:IsA("Humanoid") and targetHumanoid then
-                                    tbl[i] = targetHumanoid
                                 end
                             elseif type(v) == "table" then
-                                processTable(v, depth + 1)
+                                processTable(v)
                             end
                         end
                     end
-                    
-                    processTable(Arguments, 0)
+                    processTable(Arguments)
                     return oldNamecall(self, unpack(Arguments))
                 end
+
+            elseif Method == "Raycast" and self == Workspace then
+                local origin = Arguments[1]
+                local distance = 10000
+                if Arguments[2] then distance = Arguments[2].Magnitude end
+                
+                Arguments[2] = (finalPosition - origin).Unit * distance
+                return oldNamecall(self, unpack(Arguments))
+
+            elseif (Method == "FindPartOnRayWithIgnoreList" or Method == "FindPartOnRayWithWhitelist" or Method == "FindPartOnRay") and self == Workspace then
+                if type(Arguments[1]) == "userdata" and typeof(Arguments[1]) == "Ray" then
+                    local origin = Arguments[1].Origin
+                    local distance = Arguments[1].Direction.Magnitude
+                    if distance < 10 then distance = 10000 end
+                    
+                    Arguments[1] = Ray.new(origin, (finalPosition - origin).Unit * distance)
+                end
+                return oldNamecall(self, unpack(Arguments))
             end
         end
     end
-    
     return oldNamecall(self, ...)
 end))
-
 
 if _G.AimbotConfig and _G.AimbotConfig.Enabled then
     _G.StartSilentAim()
