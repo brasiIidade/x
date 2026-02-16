@@ -532,7 +532,6 @@ _G.StartSilentAim = function()
     end)
     table.insert(SilentAimConnections, c1)
 end
-
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
     if not checkcaller() and _G.SilentAimActive and ClosestHitPart then
@@ -543,86 +542,51 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
 
         if MathRandom(1, 100) <= (_G.AimbotConfig.HitChance or 100) then
             local finalPosition = ClosestHitPart.Position + (getLegitOffset and getLegitOffset() or Vector3.new(0,0,0))
-            local cameraPos = Workspace.CurrentCamera.CFrame.Position
-            local Direction = (finalPosition - cameraPos).Unit
 
             if (Method == "FireServer" or Method == "InvokeServer") then
                 
                 -- Detecta a estrutura de tabela do módulo {script, character, tool}
                 if type(Arguments[1]) == "table" and Arguments[1][2] == LocalPlayer.Character then
                     
-                    -- Caso 2: Registro de Dano (Hit)
-                    if Arguments[2] == 2 and type(Arguments[3]) == "table" then
-                        if CurrentTargetCharacter and CurrentTargetCharacter:FindFirstChild("Humanoid") then
-                            -- Redireciona o Humanoid e a Parte
-                            Arguments[3][2] = CurrentTargetCharacter.Humanoid
-                            Arguments[3][3] = ClosestHitPart
-                            
-                            -- CORREÇÃO CRÍTICA: Envia a massa da parte correta
-                            if ClosestHitPart:IsA("BasePart") then
-                                Arguments[3][4] = math.floor(ClosestHitPart:GetMass() * 10)
-                            end
-                            
-                            return oldNamecall(self, unpack(Arguments))
-                        end
-                        
-                    -- Caso 1: Efeito Visual do Tiro (Bullet Trail)
-                    elseif Arguments[2] == 1 and type(Arguments[3]) == "table" then
+                    -- CASO 1: Tiro Visual (Bullet Trail)
+                    if Arguments[2] == 1 and type(Arguments[3]) == "table" then
+                        -- Redireciona a bala visual para o inimigo
                         if typeof(Arguments[3][3]) == "Vector3" then
                             Arguments[3][3] = finalPosition
+                        end
+                        
+                        -- INJEÇÃO DE DANO SECRETA:
+                        -- Já que a arma de fato atirou, forçamos o envio de um pacote de Dano (Hit), 
+                        -- garantindo que o dano conte mesmo se o raycast local disser que bateu na parede!
+                        if CurrentTargetCharacter and CurrentTargetCharacter:FindFirstChild("Humanoid") and ClosestHitPart:IsA("BasePart") then
+                            local tool = Arguments[1][3]
+                            -- Pega o nome real da arma para passar no anticheat
+                            local weaponName = (typeof(tool) == "Instance") and tool.Name or Arguments[3][1]
+                            
+                            local targetHumanoid = CurrentTargetCharacter.Humanoid
+                            local mass = math.floor(ClosestHitPart:GetMass() * 10)
+                            
+                            local damageArgs = {
+                                Arguments[1], -- Tabela base do modulo
+                                2, -- Remote Type (2 = Dano)
+                                {weaponName, targetHumanoid, ClosestHitPart, mass} -- Dados perfeitos
+                            }
+                            
+                            -- Dispara o dano antes da bala visual para registrar instântaneamente
+                            oldNamecall(self, unpack(damageArgs))
+                        end
+                        
+                        -- Libera a bala visual para ir
+                        return oldNamecall(self, unpack(Arguments))
+                        
+                    -- CASO 2: Pacote de Dano Nativo (Se você acertou legitimo)
+                    elseif Arguments[2] == 2 and type(Arguments[3]) == "table" then
+                        if CurrentTargetCharacter and CurrentTargetCharacter:FindFirstChild("Humanoid") and ClosestHitPart:IsA("BasePart") then
+                            Arguments[3][2] = CurrentTargetCharacter.Humanoid
+                            Arguments[3][3] = ClosestHitPart
+                            Arguments[3][4] = math.floor(ClosestHitPart:GetMass() * 10)
                             return oldNamecall(self, unpack(Arguments))
                         end
-                    end
-                end
-
-                -- Mantém o suporte para outros remotes genéricos
-                if isBulletRemote(self.Name) then
-                    local function processTable(tbl)
-                        for i, v in pairs(tbl) do
-                            if typeof(v) == "Vector3" then
-                                if v.Magnitude <= 10 then 
-                                    tbl[i] = Direction * v.Magnitude
-                                else
-                                    tbl[i] = finalPosition
-                                end
-                            elseif typeof(v) == "CFrame" then
-                                tbl[i] = CFrameNew(cameraPos, finalPosition)
-                            elseif typeof(v) == "Instance" then
-                                if v:IsA("Humanoid") and CurrentTargetCharacter and CurrentTargetCharacter:FindFirstChild("Humanoid") then
-                                    tbl[i] = CurrentTargetCharacter.Humanoid
-                                elseif v:IsA("BasePart") and v.Parent and v.Parent:FindFirstChild("Humanoid") then
-                                    tbl[i] = ClosestHitPart
-                                end
-                            elseif type(v) == "table" then
-                                processTable(v)
-                            end
-                        end
-                    end
-                    processTable(Arguments)
-                    return oldNamecall(self, unpack(Arguments))
-                end
-
-            elseif Method == "Raycast" and self == Workspace then
-                local origin = Arguments[1]
-                local direction = Arguments[2]
-                
-                -- IGNORA raycasts muito curtos (como o Wall Check da arma que impedia o tiro)
-                if direction and typeof(direction) == "Vector3" and direction.Magnitude > 20 then
-                    local distance = direction.Magnitude
-                    Arguments[2] = (finalPosition - origin).Unit * distance
-                    return oldNamecall(self, unpack(Arguments))
-                end
-
-            elseif (Method == "FindPartOnRayWithIgnoreList" or Method == "FindPartOnRayWithWhitelist" or Method == "FindPartOnRay") and self == Workspace then
-                if type(Arguments[1]) == "userdata" and typeof(Arguments[1]) == "Ray" then
-                    local origin = Arguments[1].Origin
-                    local direction = Arguments[1].Direction
-                    
-                    -- IGNORA raycasts muito curtos (como o Wall Check da arma que impedia o tiro)
-                    if direction.Magnitude > 20 then
-                        local distance = direction.Magnitude
-                        Arguments[1] = Ray.new(origin, (finalPosition - origin).Unit * distance)
-                        return oldNamecall(self, unpack(Arguments))
                     end
                 end
             end
@@ -630,6 +594,7 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
     end
     return oldNamecall(self, ...)
 end))
+
 
 
 
