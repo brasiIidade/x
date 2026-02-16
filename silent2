@@ -546,27 +546,36 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
             local cameraPos = Workspace.CurrentCamera.CFrame.Position
             local Direction = (finalPosition - cameraPos).Unit
 
-                        if (Method == "FireServer" or Method == "InvokeServer") then
+            if (Method == "FireServer" or Method == "InvokeServer") then
                 
-                if self.Name == "" and type(Arguments[2]) == "number" and type(Arguments[3]) == "table" then
-                    if Arguments[2] == 2 and typeof(Arguments[3][2]) == "Instance" and Arguments[3][2]:IsA("Humanoid") then
+                -- Detecta a estrutura de tabela do módulo {script, character, tool}
+                if type(Arguments[1]) == "table" and Arguments[1][2] == LocalPlayer.Character then
+                    
+                    -- Caso 2: Registro de Dano (Hit)
+                    if Arguments[2] == 2 and type(Arguments[3]) == "table" then
                         if CurrentTargetCharacter and CurrentTargetCharacter:FindFirstChild("Humanoid") then
+                            -- Redireciona o Humanoid e a Parte
                             Arguments[3][2] = CurrentTargetCharacter.Humanoid
                             Arguments[3][3] = ClosestHitPart
                             
-                            -- CORREÇÃO: Atualizando a massa da nova parte para passar no check do servidor
+                            -- CORREÇÃO CRÍTICA: Envia a massa da parte correta
                             if ClosestHitPart:IsA("BasePart") then
                                 Arguments[3][4] = math.floor(ClosestHitPart:GetMass() * 10)
                             end
                             
                             return oldNamecall(self, unpack(Arguments))
                         end
-                    elseif Arguments[2] == 1 and typeof(Arguments[3][3]) == "Vector3" then
-                        Arguments[3][3] = finalPosition
-                        return oldNamecall(self, unpack(Arguments))
+                        
+                    -- Caso 1: Efeito Visual do Tiro (Bullet Trail)
+                    elseif Arguments[2] == 1 and type(Arguments[3]) == "table" then
+                        if typeof(Arguments[3][3]) == "Vector3" then
+                            Arguments[3][3] = finalPosition
+                            return oldNamecall(self, unpack(Arguments))
+                        end
                     end
                 end
 
+                -- Mantém o suporte para outros remotes genéricos usando isBulletRemote
                 if isBulletRemote(self.Name) then
                     local function processTable(tbl)
                         for i, v in pairs(tbl) do
@@ -615,6 +624,7 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
     end
     return oldNamecall(self, ...)
 end))
+
 
 if _G.AimbotConfig and _G.AimbotConfig.Enabled then
     _G.StartSilentAim()
