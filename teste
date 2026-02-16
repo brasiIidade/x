@@ -1139,37 +1139,46 @@ VisualsSection:Toggle({
 
 local EscudoSL = {
     Enabled = false,
-    LoopName = "EscudoShiftlockForce",
+    ActiveConn = nil,
     Conns = {}
 }
 
 local function ToggleShiftLock(state, char)
     local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if not hum then return end
+    local root = char and char:FindFirstChild("HumanoidRootPart")
     
-    pcall(function() RunService:UnbindFromRenderStep(EscudoSL.LoopName) end)
+    if not hum or not root then return end
+    
+    if EscudoSL.ActiveConn then
+        EscudoSL.ActiveConn:Disconnect()
+        EscudoSL.ActiveConn = nil
+    end
     
     if state then
-        hum.CameraOffset = Vector3.new(1.75, 0, 0)
         hum.AutoRotate = false
-        RunService:BindToRenderStep(EscudoSL.LoopName, 201, function()
-            if not char or not char.Parent or hum.Health <= 0 then
-                pcall(function() RunService:UnbindFromRenderStep(EscudoSL.LoopName) end)
-                return
-            end
-            local root = char:FindFirstChild("HumanoidRootPart")
+        hum.CameraOffset = Vector3.new(1.5, 0.75, 0)
+        
+        EscudoSL.ActiveConn = RunService.RenderStepped:Connect(function()
             local cam = workspace.CurrentCamera
-            if root and cam then
-                local look = cam.CFrame.LookVector
-                local flatLook = Vector3.new(look.X, 0, look.Z)
-                if flatLook.Magnitude > 0.001 then
-                    root.CFrame = CFrame.lookAt(root.Position, root.Position + flatLook)
+            if char and char.Parent and hum.Health > 0 and root and cam then
+                root.CFrame = CFrame.new(
+                    root.Position,
+                    Vector3.new(
+                        cam.CFrame.LookVector.X * 900000,
+                        root.Position.Y,
+                        cam.CFrame.LookVector.Z * 900000
+                    )
+                )
+            else
+                if EscudoSL.ActiveConn then
+                    EscudoSL.ActiveConn:Disconnect()
+                    EscudoSL.ActiveConn = nil
                 end
             end
         end)
     else
-        hum.CameraOffset = Vector3.new(0, 0, 0)
         hum.AutoRotate = true
+        hum.CameraOffset = Vector3.new(0, 0, 0)
     end
 end
 
