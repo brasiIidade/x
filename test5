@@ -1137,46 +1137,11 @@ VisualsSection:Toggle({
 
 --// tab X1
 
-local UserGameSettings_upvr = cloneref(UserSettings():GetService("UserGameSettings"))
-local GameSettings_upvr = UserSettings().GameSettings
-
-local OFFSET_X = 2.5
-
-local function isShiftLockMode()
-	local DevEnableMouseLock = LocalPlayer.DevEnableMouseLock
-	if DevEnableMouseLock then
-		DevEnableMouseLock = false
-		if GameSettings_upvr.ControlMode == Enum.ControlMode.MouseLockSwitch then
-			DevEnableMouseLock = false
-			if LocalPlayer.DevComputerMovementMode ~= Enum.DevComputerMovementMode.ClickToMove then
-				DevEnableMouseLock = false
-				if LocalPlayer.DevComputerMovementMode ~= Enum.DevComputerMovementMode.Scriptable then
-					if GameSettings_upvr.ComputerMovementMode == Enum.ComputerMovementMode.ClickToMove then
-						DevEnableMouseLock = false
-					else
-						DevEnableMouseLock = true
-					end
-				end
-			end
-		end
-	end
-	return DevEnableMouseLock
-end
-
-local function isMobileWithKeyboard()
-	local TouchEnabled = UserInputService.TouchEnabled
-	if TouchEnabled then
-		TouchEnabled = UserInputService.KeyboardEnabled
-		if not TouchEnabled then
-			TouchEnabled = UserInputService.MouseEnabled
-		end
-	end
-	return TouchEnabled
-end
+local UserGameSettings_upvr = UserSettings():GetService("UserGameSettings")
 
 local EscudoSL = {
     Enabled = false,
-    ActiveConn = nil,
+    ActiveConn = false,
     Conns = {},
     State = false
 }
@@ -1184,7 +1149,9 @@ local EscudoSL = {
 local function SetShiftlockState(state)
     EscudoSL.State = state
     if not state then
-        UserGameSettings_upvr.RotationType = Enum.RotationType.MovementRelative
+        pcall(function()
+            UserGameSettings_upvr.RotationType = Enum.RotationType.MovementRelative
+        end)
     end
 end
 
@@ -1200,9 +1167,7 @@ end
 
 local function CheckEquip(char)
     if not EscudoSL.Enabled then return end
-    task.defer(function()
-        SetShiftlockState(HasE(char))
-    end)
+    SetShiftlockState(HasE(char))
 end
 
 local function InitEscudoSL(char)
@@ -1229,14 +1194,15 @@ end
 local function ManageRenderStep(enable)
     if enable then
         if not EscudoSL.ActiveConn then
-            EscudoSL.ActiveConn = RunService.RenderStepped:Connect(function()
+            EscudoSL.ActiveConn = true
+            RunService:BindToRenderStep("ShiftlockE_Loop", 201, function()
                 if EscudoSL.State then
                     local cam = workspace.CurrentCamera
                     if cam then
                         UserGameSettings_upvr.RotationType = Enum.RotationType.CameraRelative
                         if 0.99 <= (cam.Focus.Position - cam.CFrame.Position).Magnitude then
-                            cam.CFrame *= CFrame.new(OFFSET_X, 0, 0)
-                            cam.Focus = CFrame.fromMatrix(cam.Focus.Position, cam.CFrame.RightVector, cam.CFrame.UpVector) * CFrame.new(OFFSET_X, 0, 0)
+                            cam.CFrame *= CFrame.new(2.5, 0, 0)
+                            cam.Focus = CFrame.fromMatrix(cam.Focus.Position, cam.CFrame.RightVector, cam.CFrame.UpVector) * CFrame.new(2.5, 0, 0)
                         end
                     end
                 end
@@ -1244,8 +1210,8 @@ local function ManageRenderStep(enable)
         end
     else
         if EscudoSL.ActiveConn then
-            EscudoSL.ActiveConn:Disconnect()
-            EscudoSL.ActiveConn = nil
+            EscudoSL.ActiveConn = false
+            RunService:UnbindFromRenderStep("ShiftlockE_Loop")
         end
         SetShiftlockState(false)
     end
@@ -1283,6 +1249,7 @@ X1:Toggle({
         table.insert(EscudoSL.Conns, c3)
     end
 })
+
 
 --// tab tas
 task.spawn(function()
