@@ -532,7 +532,6 @@ _G.StartSilentAim = function()
     end)
     table.insert(SilentAimConnections, c1)
 end
-
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
     if not checkcaller() and _G.SilentAimActive and ClosestHitPart then
@@ -548,19 +547,27 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
 
             if (Method == "FireServer" or Method == "InvokeServer") then
                 
+                -- Tratamento específico do Remote desta arma
                 if self.Name == "" and type(Arguments[2]) == "number" and type(Arguments[3]) == "table" then
+                    -- Evento 2: Dano
                     if Arguments[2] == 2 and typeof(Arguments[3][2]) == "Instance" and Arguments[3][2]:IsA("Humanoid") then
                         if CurrentTargetCharacter and CurrentTargetCharacter:FindFirstChild("Humanoid") then
                             Arguments[3][2] = CurrentTargetCharacter.Humanoid
                             Arguments[3][3] = ClosestHitPart
+                            
+                            -- A CHAVE DO PROBLEMA: Enviar a massa correta da parte redirecionada
+                            Arguments[3][4] = math.floor(ClosestHitPart:GetMass() * 10)
+                            
                             return oldNamecall(self, unpack(Arguments))
                         end
+                    -- Evento 1: Visual / Balística
                     elseif Arguments[2] == 1 and typeof(Arguments[3][3]) == "Vector3" then
                         Arguments[3][3] = finalPosition
                         return oldNamecall(self, unpack(Arguments))
                     end
                 end
 
+                -- Tratamento fallback genérico
                 if isBulletRemote(self.Name) then
                     local function processTable(tbl)
                         for i, v in pairs(tbl) do
@@ -592,16 +599,21 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
                 local distance = 10000
                 if Arguments[2] then distance = Arguments[2].Magnitude end
                 
-                Arguments[2] = (finalPosition - origin).Unit * distance
+                -- Ignora raycasts curtos para não quebrar o checkWallshoot da arma localmente
+                if distance > 10 then
+                    Arguments[2] = Direction * distance
+                end
                 return oldNamecall(self, unpack(Arguments))
 
             elseif (Method == "FindPartOnRayWithIgnoreList" or Method == "FindPartOnRayWithWhitelist" or Method == "FindPartOnRay") and self == Workspace then
                 if type(Arguments[1]) == "userdata" and typeof(Arguments[1]) == "Ray" then
                     local origin = Arguments[1].Origin
                     local distance = Arguments[1].Direction.Magnitude
-                    if distance < 10 then distance = 10000 end
                     
-                    Arguments[1] = Ray.new(origin, (finalPosition - origin).Unit * distance)
+                    -- Mesmo filtro aqui para proteger as lógicas locais da arma
+                    if distance > 10 then 
+                        Arguments[1] = Ray.new(origin, Direction * distance)
+                    end
                 end
                 return oldNamecall(self, unpack(Arguments))
             end
@@ -609,6 +621,7 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
     end
     return oldNamecall(self, ...)
 end))
+
 
 if _G.AimbotConfig and _G.AimbotConfig.Enabled then
     _G.StartSilentAim()
