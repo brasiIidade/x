@@ -2668,9 +2668,9 @@ local isSpectating = false
 local ActionDropdown = nil
 
 InteractionSection:Input({
-    Title = "Jogador / alvo",
-    Desc = cor({"Digite o "}, {"nome", "#FFFFFF"}, {" do jogador"}),
-    Placeholder = "Nome / Display",
+    Title = "Jogador",
+    Desc = cor({"Digite o"}, {" nome", "#FFFFFF"}, {" ou"}, {" display", "#FFFFFF"}, {" do jogador"}),
+    Placeholder = "nome123",
     InputIcon = "lucide:search",
     Callback = function(text)
         TargetName = text
