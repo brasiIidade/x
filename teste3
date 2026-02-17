@@ -2407,10 +2407,16 @@ local function ForceUpdateAll()
             end
         end)
     end
+    
     for _, v in ipairs(LocalPlayer:WaitForChild("PlayerGui"):GetDescendants()) do ProcessNode(v) end
+    
     pcall(function() 
         for _, v in ipairs(CoreGui:GetDescendants()) do ProcessNode(v) end 
     end)
+    
+    if LocalPlayer.Character then
+        for _, v in ipairs(LocalPlayer.Character:GetDescendants()) do ProcessNode(v) end
+    end
 end
 
 local function RevertAll()
@@ -2845,10 +2851,6 @@ CreateActionsDropdown = function()
 end
 
 CreateActionsDropdown()
-
-task.spawn(function()
-    repeat task.wait(0.5) until _G.PlayerMod and _G.PlayerMod.IsReady
-end)
 
 
 --// tab configs
