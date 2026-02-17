@@ -1,4 +1,3 @@
--- anti
 local function Finalizar(Mensagem)
     print(Mensagem)
     task.wait(0.5)
@@ -374,8 +373,7 @@ _G.StartSilentAim = function()
                 if not FOVLines[i] then
                     local l = Drawing.new("Line")
                     l.Thickness = 2
-                    l.Transparency = 1
-                    l.Visible = true
+                    l.ZIndex = 999
                     FOVLines[i] = l
                 end
             end
@@ -388,6 +386,7 @@ _G.StartSilentAim = function()
                 local line = FOVLines[i]
                 if line then
                     line.Visible = true
+                    line.Transparency = 1
                     line.Thickness = 2
                     local currentRad = angleStep * (i - 1)
                     local nextRad = angleStep * i
@@ -432,7 +431,6 @@ _G.StartSilentAim = function()
                         Chams.Enabled = false
                     end
                     
-                    -- Garante que Tick e RotationAngle nunca sejam nil antes da conta
                     Tick = Tick or tick()
                     RotationAngle = RotationAngle or -45
 
