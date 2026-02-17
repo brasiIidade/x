@@ -2266,148 +2266,64 @@ task.spawn(function()
     RefreshList()
 end)
 
---// tab player
+--//tab player
 task.spawn(function()
     if ler then ler("player") end
 end)
 
-local S = {
-    Enabled = false,
-    FakeName = "Anônimo",
-    FakeDisplay = "Anônimo",
-    RealName = LocalPlayer.Name,
-    RealDisplay = LocalPlayer.DisplayName
-}
+local AnonEnabled = false
+local AnonName = "Anônimo"
+local RealName = LocalPlayer.Name
+local RealDisplay = LocalPlayer.DisplayName
+local SafeRealName = RealName:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
+local SafeRealDisplay = RealDisplay:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
 
-S.SafeName = S.RealName:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
-S.SafeDisplay = S.RealDisplay:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
-
-local function SpoofString(text)
-    if not S.Enabled or type(text) ~= "string" then return text end
-    local spoofed = text
-    if spoofed:find(S.RealName) then
-        spoofed = spoofed:gsub(S.SafeName, S.FakeName)
-    end
-    if spoofed:find(S.RealDisplay) then
-        spoofed = spoofed:gsub(S.SafeDisplay, S.FakeDisplay)
-    end
-    return spoofed
-end
-
-local function HookUI(obj)
-    if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
-        local function UpdateText()
-            if not S.Enabled then return end
-            local currentText = obj.Text
-            if currentText ~= "" then
-                local spoofed = SpoofString(currentText)
-                if currentText ~= spoofed then
-                    obj.Text = spoofed
-                end
+local function ProcessNode(node, reverting)
+    pcall(function()
+        if (node:IsA("TextLabel") or node:IsA("TextButton") or node:IsA("TextBox")) and node.Text ~= "" then
+            if reverting then
+                local safeAnon = AnonName:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
+                node.Text = node.Text:gsub(safeAnon, RealDisplay)
+            else
+                local txt = node.Text:gsub(SafeRealName, AnonName)
+                txt = txt:gsub(SafeRealDisplay, AnonName)
+                if node.Text ~= txt then node.Text = txt end
             end
         end
-        UpdateText()
-        obj:GetPropertyChangedSignal("Text"):Connect(UpdateText)
-    end
+    end)
 end
 
-local function ScanHierarchy(parent)
-    task.spawn(function()
-        for _, obj in ipairs(parent:GetDescendants()) do
-            pcall(HookUI, cloneref(obj))
-        end
-        parent.DescendantAdded:Connect(function(obj)
-            pcall(HookUI, cloneref(obj))
-        end)
+local function UpdateAnonVisuals(reverting)
+    for _, v in ipairs(LocalPlayer:WaitForChild("PlayerGui"):GetDescendants()) do ProcessNode(v, reverting) end
+    pcall(function() 
+        for _, v in ipairs(game:GetService("CoreGui"):GetDescendants()) do ProcessNode(v, reverting) end 
     end)
+    if LocalPlayer.Character then
+        for _, v in ipairs(LocalPlayer.Character:GetDescendants()) do ProcessNode(v, reverting) end
+    end
 end
 
 local oldNewIndex
 oldNewIndex = hookmetamethod(game, "__newindex", newcclosure(function(self, index, value)
-    if not checkcaller() and index == "Text" and type(value) == "string" and S.Enabled then
-        value = SpoofString(value)
+    if not checkcaller() and AnonEnabled and index == "Text" and type(value) == "string" then
+        local txt = value:gsub(SafeRealName, AnonName)
+        txt = txt:gsub(SafeRealDisplay, AnonName)
+        value = txt
     end
     return oldNewIndex(self, index, value)
 end))
 
-local oldNamecall
-oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
-    local method = getnamecallmethod()
-    local args = {...}
-    
-    if not checkcaller() and S.Enabled then
-        if method == "SetCore" and args[1] == "SendNotification" and type(args[2]) == "table" then
-            if type(args[2].Title) == "string" then args[2].Title = SpoofString(args[2].Title) end
-            if type(args[2].Text) == "string" then args[2].Text = SpoofString(args[2].Text) end
-            return oldNamecall(self, unpack(args))
-        end
-    end
-    
-    return oldNamecall(self, ...)
-end))
-
-local function SetupChatSpoof()
-    if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
-        TextChatService.OnIncomingMessage = function(message)
-            local props = cloneref(Instance.new("TextChatMessageProperties"))
-            if S.Enabled and message.TextSource and message.TextSource.UserId == LocalPlayer.UserId then
-                props.PrefixText = "<font color='#F5CD30'>[" .. S.FakeDisplay .. "]</font>"
-            else
-                props.PrefixText = SpoofString(message.PrefixText)
-            end
-            return props
-        end
-    end
-end
-
-local function SpoofCharacter(char)
-    if not char then return end
-    
-    local humanoid = char:WaitForChild("Humanoid", 5)
-    if humanoid then
-        local safeHumanoid = cloneref(humanoid)
-        if S.Enabled then safeHumanoid.DisplayName = S.FakeDisplay end
-        safeHumanoid:GetPropertyChangedSignal("DisplayName"):Connect(function()
-            if S.Enabled and safeHumanoid.DisplayName ~= S.FakeDisplay then
-                safeHumanoid.DisplayName = S.FakeDisplay
-            end
-        end)
-    end
-    ScanHierarchy(char)
-end
-
-ScanHierarchy(cloneref(LocalPlayer:WaitForChild("PlayerGui")))
-pcall(function() ScanHierarchy(game:GetService("CoreGui")) end)
-SetupChatSpoof()
-
-if LocalPlayer.Character then
-    SpoofCharacter(cloneref(LocalPlayer.Character))
-end
 LocalPlayer.CharacterAdded:Connect(function(char)
-    SpoofCharacter(cloneref(char))
-end)
-
-local function UpdateAnonVisuals(reverting)
-    local function ProcessNode(node)
-        pcall(function()
-            if (node:IsA("TextLabel") or node:IsA("TextButton") or node:IsA("TextBox")) and node.Text ~= "" then
-                if reverting then
-                    local safeAnon = S.FakeName:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
-                    node.Text = node.Text:gsub(safeAnon, S.RealDisplay)
-                else
-                    local txt = node.Text:gsub(S.SafeName, S.FakeName)
-                    txt = txt:gsub(S.SafeDisplay, S.FakeDisplay)
-                    if node.Text ~= txt then node.Text = txt end
-                end
-            end
+    if AnonEnabled then
+        local hum = char:WaitForChild("Humanoid", 5)
+        if hum then hum.DisplayName = AnonName end
+        char.DescendantAdded:Connect(function(v)
+            task.wait()
+            ProcessNode(v, false)
         end)
+        for _, v in ipairs(char:GetDescendants()) do ProcessNode(v, false) end
     end
-    
-    for _, v in ipairs(LocalPlayer:WaitForChild("PlayerGui"):GetDescendants()) do ProcessNode(v) end
-    pcall(function() 
-        for _, v in ipairs(game:GetService("CoreGui"):GetDescendants()) do ProcessNode(v) end 
-    end)
-end
+end)
 
 local CharacterSection = criarsection(Player, "Personagem", "Modificar personagem", "lucide:user-cog", true)
 
@@ -2419,12 +2335,12 @@ CharacterSection:Toggle({
     Flag = "Anonimo",
     Icon = "lucide:square-user-round",
     Callback = function(state)
-        S.Enabled = state
+        AnonEnabled = state
         
         local char = LocalPlayer.Character
         local hum = char and char:FindFirstChild("Humanoid")
         if hum then
-            hum.DisplayName = state and S.FakeDisplay or S.RealDisplay
+            hum.DisplayName = state and AnonName or RealDisplay
         end
 
         UpdateAnonVisuals(not state)
@@ -2438,8 +2354,7 @@ CharacterSection:Input({
     InputIcon = "lucide:user-pen",
     Callback = function(v)
         if v ~= "" then
-            S.FakeName = v
-            S.FakeDisplay = v
+            AnonName = v
         end
     end
 })
@@ -2721,6 +2636,7 @@ CreateActionsDropdown = function()
                         local Duration = 1.5 
                         
                         local Connection
+                        local RunService = game:GetService("RunService")
                         Connection = RunService.Heartbeat:Connect(function()
                             if tick() - StartTime >= Duration or not Target or not Target.Character or not Target.Character:FindFirstChild("HumanoidRootPart") or not LocalPlayer.Character then
                                 if Connection then Connection:Disconnect() end
