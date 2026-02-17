@@ -2260,59 +2260,85 @@ task.spawn(function()
     RefreshList()
 end)
 
---// tab anti-lag
-task.spawn(function()
-    ler("antilag")
-end)
-
-local confirmStep = false
-
-AntiLag:Paragraph({
-    Title = "Observação",
-    Color = "Red",
-    Image = "lucide:triangle-alert",
-    ImageSize = 30,
-    Desc = "Só é possível tirar o anti-lag dando rejoin"
-})
-AntiLag:Space()
-
-local OptButton = AntiLag:Button({
-    Title = "Anti-lag",
-    Color = Color3.fromHex("#a2ff30"),
-    Justify = "Center",
-    Icon = "lucide:zap",
-    Callback = function()
-    end
-})
-
-OptButton.Callback = function()
-    if not confirmStep then
-        confirmStep = true
-        OptButton:SetTitle("Confirmação")
-        OptButton:SetDesc("Clique novamente para aplicar")
-    else
-        OptButton:Lock()
-        OptButton:SetTitle("Otimizando...")
-        notificar("Aplicando...", 2, "lucide:loader")
-
-        task.spawn(function()
-            if _G.AntiLag and _G.AntiLag.Start then
-                _G.AntiLag.Start()
-                OptButton:SetTitle("Anti-lag ativado")
-                notificar("Sucesso", 4, "lucide:check")
-            end
-        end)
-    end
-end
-
---// tab local
+--// tab player
 task.spawn(function()
     if ler then ler("player") end
 end)
 
+local AnonEnabled = false
+local AnonName = "Anônimo"
+local RealName = LocalPlayer.Name
+local RealDisplay = LocalPlayer.DisplayName
+local SafeRealName = RealName:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
+local SafeRealDisplay = RealDisplay:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
+
+local function UpdateAnonVisuals(reverting)
+    local function ProcessNode(node)
+        pcall(function()
+            if (node:IsA("TextLabel") or node:IsA("TextButton") or node:IsA("TextBox")) and node.Text ~= "" then
+                if reverting then
+                    local safeAnon = AnonName:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
+                    node.Text = node.Text:gsub(safeAnon, RealDisplay)
+                else
+                    local txt = node.Text:gsub(SafeRealName, AnonName)
+                    txt = txt:gsub(SafeRealDisplay, AnonName)
+                    if node.Text ~= txt then node.Text = txt end
+                end
+            end
+        end)
+    end
+    
+    for _, v in ipairs(LocalPlayer:WaitForChild("PlayerGui"):GetDescendants()) do ProcessNode(v) end
+    pcall(function() 
+        for _, v in ipairs(game:GetService("CoreGui"):GetDescendants()) do ProcessNode(v) end 
+    end)
+end
+
+local oldNewIndex
+oldNewIndex = hookmetamethod(game, "__newindex", newcclosure(function(self, index, value)
+    if not checkcaller() and AnonEnabled and index == "Text" and type(value) == "string" then
+        local txt = value:gsub(SafeRealName, AnonName)
+        txt = txt:gsub(SafeRealDisplay, AnonName)
+        value = txt
+    end
+    return oldNewIndex(self, index, value)
+end))
+
 local CharacterSection = criarsection(Player, "Personagem", "Modificar personagem", "lucide:user-cog", true)
 
 local CurrentSeat
+
+CharacterSection:Toggle({
+    Title = "Anônimo",
+    Desc = cor({"Altera o seu nome"}, {" visualmente", "#00AAFF"}),
+    Flag = "Anonimo",
+    Icon = "lucide:square-user-round",
+    Callback = function(state)
+        AnonEnabled = state
+        
+        local char = LocalPlayer.Character
+        local hum = char and char:FindFirstChild("Humanoid")
+        if hum then
+            hum.DisplayName = state and AnonName or RealDisplay
+        end
+
+        UpdateAnonVisuals(not state)
+    end
+})
+
+CharacterSection:Input({
+    Title = "Nome",
+    Desc = cor({"Escolha o "}, {"nome", "#00AAFF"}, {" para o modo anônimo"}),
+    Placeholder = "nome123",
+    InputIcon = "lucide:user-pen",
+    Callback = function(v)
+        if v ~= "" then
+            AnonName = v
+        end
+    end
+})
+
+CharacterSection:Space()
 
 CharacterSection:Toggle({
     Title = "Invisibilidade",
@@ -2371,78 +2397,6 @@ CharacterSection:Toggle({
             if CurrentSeat and CurrentSeat.Parent then
                 CurrentSeat:Destroy()
                 CurrentSeat = nil
-            end
-        end
-    end
-})
-
-CharacterSection:Space()
-
-CharacterSection:Input({
-    Title = "Alvo",
-    Desc = cor({"O jogo "}, {"precisa", "#00FF00"}, {" ter "}, {"colisões ativas", "#FFAA00"}),
-    Placeholder = "Nome / Display",
-    InputIcon = "lucide:user",
-    Callback = function(v)
-        usuario = nil
-        if v == "" then return end
-        v = v:lower()
-        for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer then
-                if p.Name:lower():sub(1, #v) == v or p.DisplayName:lower():sub(1, #v) == v then
-                    usuario = p
-                    notificar("Alvo: " .. p.Name, 2, "lucide:check")
-                    break
-                end
-            end
-        end
-    end
-})
-
-CharacterSection:Button({
-    Title = "Fling",
-    Desc = cor({"Arremessa o alvo para "}, {"longe.", "#FF0000"}, {" VOCÊ SERÁ TELEPORTADO"}),
-    Icon = "lucide:earth",
-    Callback = function()
-        if not usuario then
-            notificar("Selecione um usuário primeiro", 2, "lucide:alert-circle")
-            return
-        end
-
-        local Target = usuario
-        if Target and Target.Character and LocalPlayer.Character then
-            local TargetRoot = Target.Character:FindFirstChild("HumanoidRootPart")
-            local LocalRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            
-            if TargetRoot and LocalRoot then
-                local OldPosition = LocalRoot.CFrame
-                local StartTime = tick()
-                local Duration = 1.5 
-                
-                local Connection
-                Connection = RunService.Heartbeat:Connect(function()
-                    if tick() - StartTime >= Duration or not Target or not Target.Character or not Target.Character:FindFirstChild("HumanoidRootPart") or not LocalPlayer.Character then
-                        if Connection then Connection:Disconnect() end
-                        LocalRoot.Velocity = Vector3.new(0, 0, 0)
-                        LocalRoot.RotVelocity = Vector3.new(0, 0, 0)
-                        LocalRoot.CFrame = OldPosition
-                        return
-                    end
-
-                    local CurrentTargetRoot = Target.Character.HumanoidRootPart
-                    
-                    LocalRoot.CFrame = (CFrame.new(CurrentTargetRoot.Position + Vector3.new(0, -1, 0)) * CFrame.Angles(-1.5707963267948966, 0, 0))
-                    
-                    local GodspeedForce = Vector3.new(0, 10000, 0)
-                    LocalRoot.Velocity = GodspeedForce
-                    LocalRoot.RotVelocity = GodspeedForce
-                    
-                    pcall(function()
-                        sethiddenproperty(LocalRoot, 'PhysicsRepRootPart', CurrentTargetRoot)
-                    end)
-                end)
-            else
-                notificar("O alvo ou você não tem personagem", 2, "lucide:x-octagon")
             end
         end
     end
@@ -2588,33 +2542,33 @@ CharacterSection:Toggle({
     end
 })
 
-local SystemSection = criarsection(Player, "Sistema", "Modificar sistema", "lucide:settings", false)
-
-SystemSection:Toggle({
-    Title = "Habilitar chat",
-    Desc = cor({"Permite "}, {"ver", "#00AAFF"}, {" o histórico de mensagens no "}, {"chat", "#FFFFFF"}),
-    Flag = "ChatHabilitado",
-    Icon = "lucide:message-square",
-    Callback = function(v)
-        if _G.PlayerMod and _G.PlayerMod.ToggleChat then
-            _G.PlayerMod.ToggleChat(v)
-        end
-    end
-})
-
 local InteractionSection = criarsection(Player, "Interação", "Outros jogadores", "lucide:users", false)
 
 local TargetName = ""
+local usuario = nil
 local isSpectating = false
 local ActionDropdown = nil
 
 InteractionSection:Input({
-    Title = "Jogador",
+    Title = "Jogador / alvo",
     Desc = cor({"Digite o "}, {"nome", "#FFFFFF"}, {" do jogador"}),
-    Placeholder = "Nome",
+    Placeholder = "Nome / Display",
     InputIcon = "lucide:search",
     Callback = function(text)
         TargetName = text
+        usuario = nil
+        if text == "" then return end
+        local v = text:lower()
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer then
+                if p.Name:lower():sub(1, #v) == v or p.DisplayName:lower():sub(1, #v) == v then
+                    usuario = p
+                    TargetName = p.Name
+                    notificar("Alvo: " .. p.Name, 2, "lucide:check")
+                    break
+                end
+            end
+        end
     end
 })
 
@@ -2627,6 +2581,56 @@ CreateActionsDropdown = function()
     end
 
     local actions = {
+        {
+            Title = "Fling",
+            Desc = cor({"Arremessa o alvo para "}, {"longe.", "#FF0000"}, {" VOCÊ SERÁ TELEPORTADO"}),
+            Icon = "lucide:earth",
+            Callback = function()
+                if not usuario then
+                    notificar("Selecione um usuário primeiro", 2, "lucide:alert-circle")
+                    CreateActionsDropdown()
+                    return
+                end
+
+                local Target = usuario
+                if Target and Target.Character and LocalPlayer.Character then
+                    local TargetRoot = Target.Character:FindFirstChild("HumanoidRootPart")
+                    local LocalRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                    
+                    if TargetRoot and LocalRoot then
+                        local OldPosition = LocalRoot.CFrame
+                        local StartTime = tick()
+                        local Duration = 1.5 
+                        
+                        local Connection
+                        Connection = RunService.Heartbeat:Connect(function()
+                            if tick() - StartTime >= Duration or not Target or not Target.Character or not Target.Character:FindFirstChild("HumanoidRootPart") or not LocalPlayer.Character then
+                                if Connection then Connection:Disconnect() end
+                                LocalRoot.Velocity = Vector3.new(0, 0, 0)
+                                LocalRoot.RotVelocity = Vector3.new(0, 0, 0)
+                                LocalRoot.CFrame = OldPosition
+                                return
+                            end
+
+                            local CurrentTargetRoot = Target.Character.HumanoidRootPart
+                            
+                            LocalRoot.CFrame = (CFrame.new(CurrentTargetRoot.Position + Vector3.new(0, -1, 0)) * CFrame.Angles(-1.5707963267948966, 0, 0))
+                            
+                            local GodspeedForce = Vector3.new(0, 10000, 0)
+                            LocalRoot.Velocity = GodspeedForce
+                            LocalRoot.RotVelocity = GodspeedForce
+                            
+                            pcall(function()
+                                sethiddenproperty(LocalRoot, 'PhysicsRepRootPart', CurrentTargetRoot)
+                            end)
+                        end)
+                    else
+                        notificar("O alvo ou você não tem personagem", 2, "lucide:x-octagon")
+                    end
+                end
+                CreateActionsDropdown()
+            end
+        },
         {
             Title = isSpectating and "Parar de espectar" or "Espectar jogador",
             Desc = isSpectating and cor({"Parar", "#FF0000"}, {" de seguir a câmera do alvo"}) or cor({"Especta", "#00AAFF"}, {" o jogador selecionado"}),
@@ -2690,7 +2694,7 @@ CreateActionsDropdown = function()
 
     ActionDropdown = InteractionSection:Dropdown({
         Title = "Ações",
-        Desc = cor({"Gerenciar o alvo"}),
+        Desc = cor({"Funções para o alvo"}),
         Icon = "lucide:mouse-pointer-click",
         Values = actions,
         Value = "Nenhuma"
@@ -2702,6 +2706,21 @@ CreateActionsDropdown()
 task.spawn(function()
     repeat task.wait(0.5) until _G.PlayerMod and _G.PlayerMod.IsReady
 end)
+
+
+local SystemSection = criarsection(Player, "Sistema", "Modificar sistema", "lucide:settings", false)
+
+SystemSection:Toggle({
+    Title = "Habilitar chat",
+    Desc = cor({"Permite "}, {"ver", "#00AAFF"}, {" o histórico de mensagens no "}, {"chat", "#FFFFFF"}),
+    Flag = "ChatHabilitado",
+    Icon = "lucide:message-square",
+    Callback = function(v)
+        if _G.PlayerMod and _G.PlayerMod.ToggleChat then
+            _G.PlayerMod.ToggleChat(v)
+        end
+    end
+})
 
 
 --// tab configs
