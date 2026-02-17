@@ -22,7 +22,6 @@ if #game:GetChildren() <= 4 then Finalizar("skid de EB :(") end
 _G.AimbotCallbacks = {
     OnTargetFound = function(Part, Character) 
         -- Executa quando um alvo é encontrado
-        -- print("Alvo encontrado:", Character.Name)
     end,
     OnTargetLost = function()
         -- Executa quando perde o alvo
@@ -49,7 +48,7 @@ _G.AimbotConfig = _G.AimbotConfig or {
     FOVSize = 200, 
     ShowFOV = true, 
     FOVBehavior = "Center", 
-    FOVNumSides = 60, -- Aumentei para ficar mais redondo
+    FOVNumSides = 60, 
     FOVColor1 = Color3.fromRGB(24, 24, 201), 
     FOVColor2 = Color3.fromRGB(217, 217, 217), 
     GradientSpeed = 5, 
@@ -73,7 +72,6 @@ local AimbotGuiInstance = nil
 local AimHighlightInstance = nil 
 local AimFOVCircleInstance = nil 
 
--- Limpeza de conexões antigas
 if _G.SilentAimConnections then 
     for _, conn in pairs(_G.SilentAimConnections) do 
         pcall(function() conn:Disconnect() end) 
@@ -105,7 +103,7 @@ local ClosestHitPart = nil
 local CurrentTargetCharacter = nil 
 local RotationAngle, Tick = -45, tick(); 
 local Functions = {} 
-local LastTarget = nil -- Para callback de troca de alvo
+local LastTarget = nil 
 
 function Functions:Create(Class, Properties) 
     local _Instance = typeof(Class) == 'string' and Instance.new(Class) or Class 
@@ -146,20 +144,24 @@ local function isWhitelisted(player)
     return false 
 end 
 
+-- Movi o RayParams para dentro da função para segurança ou garantir que a tabela seja limpa
 local RayParams = RaycastParams.new() 
 RayParams.FilterType = Enum.RaycastFilterType.Exclude 
 RayParams.IgnoreWater = true 
-local FilterCache = {} 
 
+-- [[ CORREÇÃO AQUI ]] --
 local function IsPartVisible(part, character) 
     if not _G.AimbotConfig.WallCheck then return true end 
     local origin = Camera.CFrame.Position 
     local direction = part.Position - origin 
-    FilterCache[1] = LocalPlayer.Character; 
-    FilterCache[2] = character; 
-    FilterCache[3] = Camera 
-    if AimbotGuiInstance then FilterCache[4] = AimbotGuiInstance end 
-    RayParams.FilterDescendantsInstances = FilterCache 
+    
+    -- Cria uma tabela NOVA a cada verificação para garantir que seja um Array sequencial e limpo
+    local FilterList = {LocalPlayer.Character, character, Camera}
+    if AimbotGuiInstance then 
+        table.insert(FilterList, AimbotGuiInstance) 
+    end 
+    
+    RayParams.FilterDescendantsInstances = FilterList 
     local rayResult = Raycast(Workspace, origin, direction, RayParams) 
     return rayResult == nil or rayResult.Instance:IsDescendantOf(character) 
 end 
@@ -257,7 +259,6 @@ _G.StopSilentAim = function()
     end 
     SilentAimConnections = {} 
     
-    -- Limpa as linhas do FOV corretamente
     for _, line in pairs(FOVLines) do 
         pcall(function() line:Remove() end) 
     end 
@@ -313,10 +314,7 @@ _G.StartSilentAim = function()
     local BottomRightDown = Functions:Create("Frame", {Parent = ScreenGui, BackgroundColor3 = ESP_SETTINGS.Drawing.Boxes.Corner.RGB, Visible = false}) 
     
     local c1 = RunService.RenderStepped:Connect(function() 
-        -- Callback de iteração
         if _G.AimbotCallbacks.OnIteration then _G.AimbotCallbacks.OnIteration() end
-
-        -- [[ LÓGICA DO FOV ]] --
         if _G.SilentAimActive and config.ShowFOV then 
             local pos = config.FOVBehavior == "Mouse" and UserInputService:GetMouseLocation() or Vector2New(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2) 
             local numSides = config.FOVNumSides or 60 
@@ -326,7 +324,6 @@ _G.StartSilentAim = function()
             
             for i = 1, numSides do 
                 if not FOVLines[i] then 
-                    -- Tenta criar apenas se a API Drawing existir
                     local success, l = pcall(function() return Drawing.new("Line") end)
                     if success then
                         l.Thickness = 2 
@@ -364,11 +361,9 @@ _G.StartSilentAim = function()
             end 
         end 
 
-        -- [[ LÓGICA DO SILENT AIM E ESP ]] --
         if _G.SilentAimActive then 
             local Part, Character = getClosestPlayer() 
             
-            -- Callbacks de Alvo
             if Character ~= LastTarget then
                 if Character then
                     if _G.AimbotCallbacks.OnTargetFound then _G.AimbotCallbacks.OnTargetFound(Part, Character) end
@@ -477,14 +472,12 @@ _G.StartSilentAim = function()
                     Distance.Text = string.format("[%d m]", math.floor(Dist)) 
                     Distance.Position = UDim2.new(0, Pos.X, 0, Pos.Y + h / 2 + 8 + OffsetY) 
                 else 
-                    -- Limpar UI se não estiver na tela
                     Box.Visible = false; Name.Visible = false; Team.Visible = false; Distance.Visible = false; Weapon.Visible = false 
                     Healthbar.Visible = false; BehindHealthbar.Visible = false; HealthText.Visible = false 
                     LeftTop.Visible = false; LeftSide.Visible = false; BottomSide.Visible = false; BottomDown.Visible = false 
                     RightTop.Visible = false; RightSide.Visible = false; BottomRightSide.Visible = false; BottomRightDown.Visible = false 
                 end 
             else 
-                -- Limpar UI se não houver alvo válido
                 Box.Visible = false; Name.Visible = false; Team.Visible = false; Distance.Visible = false; Weapon.Visible = false 
                 Healthbar.Visible = false; BehindHealthbar.Visible = false; HealthText.Visible = false 
                 Chams.Enabled = false 
@@ -496,7 +489,6 @@ _G.StartSilentAim = function()
     table.insert(SilentAimConnections, c1) 
 end 
 
--- [[ HOOK ORIGINAL (NÃO ALTERADO) ]] --
 local oldNamecall 
 oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...) 
     if not checkcaller() and _G.SilentAimActive and ClosestHitPart then 
