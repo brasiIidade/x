@@ -1,5 +1,3 @@
--- anti
-
 local function Finalizar(Mensagem)
     print(Mensagem)
     task.wait(0.5)
@@ -541,30 +539,41 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
         
         if not Arguments then return oldNamecall(self, ...) end
 
-        if MathRandom(1, 100) <= (_G.AimbotConfig.HitChance or 100) then
-            local finalPosition = ClosestHitPart.Position + (getLegitOffset and getLegitOffset() or Vector3.new(0,0,0))
-            local cameraPos = Workspace.CurrentCamera.CFrame.Position
-            local Direction = (finalPosition - cameraPos).Unit
+        if (Method == "FireServer" or Method == "InvokeServer") then
+            if self and self.Name and typeof(self.Name) == "string" and isBulletRemote(self.Name) then
+                if MathRandom(1, 100) <= (_G.AimbotConfig.HitChance or 100) then
+                    local finalPosition = ClosestHitPart.Position + (getLegitOffset and getLegitOffset() or Vector3.new(0,0,0))
+                    local cameraPos = Workspace.CurrentCamera.CFrame.Position
+                    local Direction = (finalPosition - cameraPos).Unit
 
-            if (Method == "FireServer" or Method == "InvokeServer") then
-                if isBulletRemote(self.Name) then
-                    for i, v in pairs(Arguments) do
-                        if typeof(v) == "Vector3" then
-                            if v.Magnitude <= 10 then 
-                                Arguments[i] = Direction * v.Magnitude
-                            else
-                                Arguments[i] = finalPosition
+                    local function DeepSanitize(tbl)
+                        for k, v in pairs(tbl) do
+                            if typeof(v) == "Vector3" then
+                                if v.Magnitude <= 50 then 
+                                    tbl[k] = Direction * v.Magnitude
+                                else
+                                    tbl[k] = finalPosition
+                                end
+                            elseif typeof(v) == "CFrame" then
+                                tbl[k] = CFrameNew(cameraPos, finalPosition)
+                            elseif typeof(v) == "Instance" and v:IsA("BasePart") then
+                                if v.Parent and (v.Parent:FindFirstChild("Humanoid") or v.Parent:FindFirstChild("HumanoidRootPart")) then
+                                    tbl[k] = ClosestHitPart
+                                end
+                            elseif typeof(v) == "table" then
+                                DeepSanitize(v)
                             end
-                        elseif typeof(v) == "CFrame" then
-                            Arguments[i] = CFrameNew(cameraPos, finalPosition)
-                        elseif typeof(v) == "Instance" and v:IsA("BasePart") and v.Parent and v.Parent:FindFirstChild("Humanoid") then
-                            Arguments[i] = ClosestHitPart
                         end
                     end
+
+                    DeepSanitize(Arguments)
                     return oldNamecall(self, unpack(Arguments))
                 end
+            end
 
-            elseif Method == "Raycast" and self == Workspace then
+        elseif Method == "Raycast" and self == Workspace then
+            if MathRandom(1, 100) <= (_G.AimbotConfig.HitChance or 100) then
+                local finalPosition = ClosestHitPart.Position + (getLegitOffset and getLegitOffset() or Vector3.new(0,0,0))
                 local origin = Arguments[1]
                 local distance = 10000
                 if Arguments[2] then distance = Arguments[2].Magnitude end
