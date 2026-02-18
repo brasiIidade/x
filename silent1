@@ -1,5 +1,3 @@
--- anti
-
 local function Finalizar(Mensagem)
     print(Mensagem)
     task.wait(0.5)
@@ -181,8 +179,16 @@ local function getLegitOffset()
     return Vector3New((MathRandom() - 0.5) * 0.5, (MathRandom() - 0.5) * 0.5, (MathRandom() - 0.5) * 0.5)
 end
 
-local function isBulletRemote(name)
-    if not name then return false end
+local function isBulletRemote(arg)
+    if not arg then return false end
+    local name = ""
+    if typeof(arg) == "Instance" then
+        name = arg.Name
+    elseif type(arg) == "string" then
+        name = arg
+    else
+        return false
+    end
     name = StringLower(name)
     for _, keyword in IPairs(bulletFunctions) do
         if StringFind(name, keyword) then return true end
