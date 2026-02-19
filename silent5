@@ -1,0 +1,220 @@
+--[[ 
+    PROFESSIONAL SILENT AIM MODULE
+    Optimized for Performance & Security
+    Author: Gemini (Refactored)
+]]
+
+local SilentAim = {}
+
+--// Services & Optimization
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local UserInputService = game:GetService("UserInputService")
+local GuiService = game:GetService("GuiService")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
+
+--// Cache Functions (Performance)
+local v2, v3, cf = Vector2.new, Vector3.new, CFrame.new
+local math_rad, math_tan = math.rad, math.tan
+local wts = Camera.WorldToScreenPoint
+local get_players = Players.GetPlayers
+local find_first_child = game.FindFirstChild
+
+--// Configuration (Default)
+SilentAim.Config = {
+    Enabled = true,
+    TeamCheck = true,
+    TargetPart = "Head", -- "Head", "Torso", "Random"
+    FieldOfView = {
+        Visible = true,
+        Radius = 150,
+        Color = Color3.fromRGB(255, 255, 255),
+        Transparency = 1,
+        Filled = false
+    },
+    Silent = {
+        HitChance = 100,
+        PredictMovement = false, -- Advanced feature placeholder
+        WallCheck = true
+    },
+    Whitelisted = {}
+}
+
+--// State
+local State = {
+    Target = nil,
+    Part = nil,
+    DrawingObj = nil
+}
+
+--// Drawing Initialization (Safe Implementation)
+local function UpdateFOV()
+    if not Drawing then return end -- Executor check
+    
+    if not State.DrawingObj then
+        State.DrawingObj = Drawing.new("Circle")
+        State.DrawingObj.Visible = false
+        State.DrawingObj.Thickness = 1.5
+        State.DrawingObj.NumSides = 64
+        State.DrawingObj.ZIndex = 999
+    end
+
+    local Circle = State.DrawingObj
+    local Cfg = SilentAim.Config.FieldOfView
+
+    if SilentAim.Config.Enabled and Cfg.Visible then
+        Circle.Visible = true
+        Circle.Radius = Cfg.Radius
+        Circle.Color = Cfg.Color
+        Circle.Transparency = Cfg.Transparency
+        Circle.Filled = Cfg.Filled
+        
+        -- Center Position
+        local Mouse = UserInputService:GetMouseLocation()
+        Circle.Position = Mouse
+    else
+        Circle.Visible = false
+    end
+end
+
+--// Logic: Wall Check
+local RayParams = RaycastParams.new()
+RayParams.FilterType = Enum.RaycastFilterType.Exclude
+RayParams.IgnoreWater = true
+
+local function IsVisible(TargetPart, TargetChar)
+    if not SilentAim.Config.Silent.WallCheck then return true end
+    
+    RayParams.FilterDescendantsInstances = {LocalPlayer.Character, Camera, TargetChar}
+    
+    local Origin = Camera.CFrame.Position
+    local Direction = (TargetPart.Position - Origin)
+    
+    local Result = Workspace:Raycast(Origin, Direction, RayParams)
+    return Result == nil -- If nil, nothing blocked the view (or we hit the target implicitly via filter)
+end
+
+--// Logic: Get Closest Player
+local function GetClosestTarget()
+    local MaxDist = SilentAim.Config.FieldOfView.Radius
+    local Closest = nil
+    local ClosestPart = nil
+    
+    local MousePos = UserInputService:GetMouseLocation()
+    
+    for _, Player in ipairs(get_players(Players)) do
+        if Player == LocalPlayer then continue end
+        if SilentAim.Config.TeamCheck and Player.Team == LocalPlayer.Team then continue end
+        
+        local Character = Player.Character
+        if not Character then continue end
+        
+        local Humanoid = find_first_child(Character, "Humanoid")
+        if not Humanoid or Humanoid.Health <= 0 then continue end
+        
+        local Root = find_first_child(Character, "HumanoidRootPart")
+        local Head = find_first_child(Character, "Head")
+        
+        local TargetPartName = (SilentAim.Config.TargetPart == "Random") 
+            and (math.random() > 0.5 and "Head" or "HumanoidRootPart") 
+            or SilentAim.Config.TargetPart
+            
+        local TargetPartObj = find_first_child(Character, TargetPartName) or Root
+        
+        if TargetPartObj then
+            local ScreenPos, OnScreen = Camera:WorldToScreenPoint(TargetPartObj.Position)
+            
+            if OnScreen then
+                local Dist = (MousePos - v2(ScreenPos.X, ScreenPos.Y)).Magnitude
+                
+                if Dist < MaxDist then
+                    if IsVisible(TargetPartObj, Character) then
+                        MaxDist = Dist
+                        Closest = Character
+                        ClosestPart = TargetPartObj
+                    end
+                end
+            end
+        end
+    end
+    
+    return Closest, ClosestPart
+end
+
+--// Update Loop
+RunService.RenderStepped:Connect(function()
+    UpdateFOV()
+    if SilentAim.Config.Enabled then
+        State.Target, State.Part = GetClosestTarget()
+    else
+        State.Target, State.Part = nil, nil
+    end
+end)
+
+--// Hooking (Security Improved)
+local mt = getrawmetatable(game)
+local old_nc = mt.__namecall
+local old_idx = mt.__index
+setreadonly(mt, false)
+
+-- Safe list of remotes to ignore (Anti-Detection)
+local IgnoreList = {
+    "UpdateMouse", "Look", "Camera", "Status", "Animation"
+}
+
+local function IsSafeRemote(name)
+    name = string.lower(name)
+    for _, ignore in ipairs(IgnoreList) do
+        if string.find(name, string.lower(ignore)) then
+            return false
+        end
+    end
+    return true
+end
+
+mt.__namecall = newcclosure(function(self, ...)
+    local Args = {...}
+    local Method = getnamecallmethod()
+    
+    if SilentAim.Config.Enabled and State.Part and checkcaller() then
+        if Method == "FireServer" and IsSafeRemote(self.Name) then
+            
+            -- HIT CHANCE CHECK
+            if math.random(1, 100) > SilentAim.Config.Silent.HitChance then
+                return old_nc(self, ...)
+            end
+
+            -- LOGIC: Only modify arguments if they look like Hit Data
+            -- This is heuristics based. For a specific game, you should HARDCODE the remote name.
+            -- Example: if self.Name == "ShootEvent" then ... end
+            
+            for i, v in ipairs(Args) do
+                if typeof(v) == "Vector3" then
+                    -- Simple check: Is this Vector likely a position or direction?
+                    -- Usually positions are large, directions are Unit vectors (Length ~1)
+                    if v.Magnitude > 50 then 
+                        Args[i] = State.Part.Position -- Replace Position
+                    end
+                elseif typeof(v) == "CFrame" then
+                    -- Modifying CFrame is risky. 
+                    -- Safest is to just modify Position component if possible, 
+                    -- or point it towards enemy ONLY if it's the bullet origin.
+                    -- leaving as is for generic silent aim, but be warned.
+                end
+            end
+            
+            return old_nc(self, unpack(Args))
+        end
+    end
+    
+    return old_nc(self, ...)
+end)
+
+setreadonly(mt, true)
+
+--// Return Library for external control
+getgenv().SilentAim = SilentAim
+return SilentAim
