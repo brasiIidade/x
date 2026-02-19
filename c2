@@ -135,7 +135,7 @@ local Success, Lib = pcall(function()
     return loadstring(game:HttpGet(Wind))() 
 end)
 
-if not Success or not UI_Lib then
+if not Success or not Lib then
     warn("Falha ao carregar a UI")
     return 
 end
