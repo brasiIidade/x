@@ -2495,12 +2495,14 @@ do
 end
 
 --// tab configs
+
 local State = {
     ConfigName = "",
     SelectedConfig = nil,
     SecretWord = "/e",
     Keybind = Enum.KeyCode.Z,
-    Connections = {}
+    Connections = {},
+    Initialized = false
 }
 
 local ConfigManager = main.ConfigManager
@@ -2621,7 +2623,7 @@ local function UpdateConnections()
         end
     end)
 
-    State.Connections.Keybind = UserInputService.InputBegan:Connect(function(input, processed)
+    State.Connections.Keybind = Services.UserInputService.InputBegan:Connect(function(input, processed)
         if processed then return end
         if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == State.Keybind then
             main:Toggle()
@@ -2642,9 +2644,9 @@ SectionUI:Toggle({
         main:EditOpenButton({
             Title = "",
             Icon = "rbxthumb://type=Asset&id=88026679106109&w=420&h=420",
-            CornerRadius = UDim.new(1, 0),
+            CornerRadius = UDim.new(0, 8),
             StrokeThickness = 0,
-            Color = ColorSequence.new(Color3.fromRGB(40, 40, 40)),
+            Color = ColorSequence.new(Color3.fromRGB(30, 30, 30)),
             Enabled = enabled,
             Draggable = true,
         })
@@ -2657,6 +2659,7 @@ SectionUI:Input({
     Placeholder = "/e",
     InputIcon = "lucide:message-square",
     Callback = function(val)
+        if not State.Initialized then return end
         if not val or val:match("^%s*$") then
             notificar("Comando inválido", 2, "lucide:x")
             return
@@ -2672,12 +2675,15 @@ SectionUI:Input({
     Placeholder = "Z",
     InputIcon = "lucide:keyboard",
     Callback = function(val)
+        if not State.Initialized then return end
         local keyName = tostring(val):upper():gsub("%s+", "")
+        if keyName == "" then return end
+        
         local success, keyCode = pcall(function() return Enum.KeyCode[keyName] end)
 
         if success and keyCode then
             State.Keybind = keyCode
-            UpdateConnections() -- Atualiza a conexão com a nova tecla
+            UpdateConnections()
             notificar("Atalho definido: " .. keyName, 2, "lucide:keyboard")
         else
             notificar("Tecla inválida", 2, "lucide:x")
@@ -2709,11 +2715,17 @@ SectionTheme:Dropdown({
         local themeName = type(option) == "table" and option.Title or option
         if themeName then
             UI:SetTheme(themeName)
-            notificar("Tema aplicado", 2, "lucide:check")
+            if State.Initialized then
+                notificar("Tema aplicado", 2, "lucide:check")
+            end
         end
     end
 })
 
+task.spawn(function()
+    task.wait(1.5)
+    State.Initialized = true
+end)
 
 --// mapas 
 
