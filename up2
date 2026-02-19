@@ -1393,7 +1393,7 @@ RecordSection:Paragraph({
     Color = Color3.fromHex("#800080"),
     Image = "lucide:hard-drive",
     ImageSize = 30,
-    Desc = cor({"O arquivo será salvo para a pasta "}, {"michigun.xyz/tas", "#00AAFF"})
+    Desc = cor({"O arquivo será salvo para a pasta "}, {"michigun.xyz/tas", "#00AAFF"}),
 })
 
 RecordSection:Button({ 
@@ -1667,7 +1667,7 @@ local currentPrompt = ""
 
 ChatGPT:Paragraph({
     Title = "Observação",
-    Desc = cor({"O prompt usado para a IA está localizado na pasta"}, {"michigun.xyz/IA", "#FFF000"}, {"."}, {"Você pode colocar todas as leis no arquivo e a IA saberá"},
+    Desc = cor({"O prompt usado para a IA está localizado na pasta"}, {"michigun.xyz/IA", "#FFF000"}, {"."}, {"Você pode colocar todas as leis no arquivo e a IA saberá"}),
     Color = "Blue",
     Image = "lucide:info",
     ImageSize = 30
