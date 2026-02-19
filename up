@@ -1236,14 +1236,7 @@ StopButton = PlaybackSection:Button({
         end
     end
 })
-
-PlaybackSection:Paragraph({
-    Title = "Observação",
-    Color = Color3.fromHex("#800080"),
-    Image = "lucide:folder-search",
-    ImageSize = 30,
-    Desc = cor({"Os TAS são salvos em "}, {"michigun.xyz/fp3_Parkours", "#00AAFF"})
-})
+PlaybackSection:Space()
 
 TASDropdown = PlaybackSection:Dropdown({
     Title = "Selecionar",
@@ -1265,7 +1258,6 @@ DeleteButton = PlaybackSection:Button({
     Title = "Deletar",
     Desc = cor({"Apaga", "#FF0000"}, {" os TAS selecionados"}),
     Icon = "lucide:trash-2",
-    Flag = "DeletarTAS",
     Callback = function()
         if IsConfirmingDelete then
             if getgenv().TAS and getgenv().TAS.DeleteSelected then
@@ -1317,7 +1309,7 @@ PlaybackSection:Colorpicker({
 
 PlaybackSection:Slider({
     Title = "Opacidade",
-    Desc = cor({"Invisibilidade do TAS "}, {"(1 = invisível)", "#FF0000"}),
+    Desc = cor({"Visibilidade do  "}, {"TAS", "#FF0000"}),
     Value = { Min = 0, Max = 1, Default = 0 },
     Step = 0.05,
     Flag = "OpacidadeTAS",
@@ -1377,7 +1369,7 @@ RecordSection:Input({
 local g = RecordSection:Group()
 g:Button({ 
     Title = "Gravar", 
-    Desc = cor({"Inicia", "#00FF00"}, {" a captura"}),
+    Desc = cor({"Inicia", "#00FF00"}, {" a gravação"}),
     Icon = "lucide:circle-dot",
     Callback = function()
         if main then main:Close() end
@@ -1389,7 +1381,7 @@ g:Space()
 
 g:Button({ 
     Title = "Parar", 
-    Desc = cor({"Finaliza", "#FF0000"}, {" a captura"}),
+    Desc = cor({"Finaliza", "#FF0000"}, {" a gravação"}),
     Icon = "lucide:square",
     Callback = function()
         if getgenv().TAS and getgenv().TAS.StopRecording then getgenv().TAS.StopRecording() end
@@ -1401,7 +1393,7 @@ RecordSection:Paragraph({
     Color = Color3.fromHex("#800080"),
     Image = "lucide:hard-drive",
     ImageSize = 30,
-    Desc = cor({"O arquivo será salvo para a pasta "}, {"fp3_Parkours", "#00AAFF"})
+    Desc = cor({"O arquivo será salvo para a pasta "}, {"michigun.xyz/tas", "#00AAFF"})
 })
 
 RecordSection:Button({ 
@@ -1675,7 +1667,7 @@ local currentPrompt = ""
 
 ChatGPT:Paragraph({
     Title = "Observação",
-    Desc = "O prompt usado para a IA está localizado na pasta 'fp3_ChatGPT.txt' dentro da pasta 'michigun.xyz'. Você pode colocar todas as leis no arquivo e a IA saberá",
+    Desc = cor({"O prompt usado para a IA está localizado na pasta"}, {"michigun.xyz/IA", "#FFF000"}, {"."}, {"Você pode colocar todas as leis no arquivo e a IA saberá"},
     Color = "Blue",
     Image = "lucide:info",
     ImageSize = 30
@@ -1746,7 +1738,7 @@ ChatGPT:Button({
             _G.ChatGPT.SendToChat(_G.ChatGPT.LastMessage)
             notificar("Enviado no chat", 2, "lucide:message-square")
         else
-            notificar("Erro: Nada para enviar", 2, "lucide:x")
+            notificar("Nada para enviar", 2, "lucide:x")
         end
     end
 })
@@ -1879,7 +1871,7 @@ ConfigSection:Paragraph({
     Color = Color3.fromHex("#800080"),
     Image = "lucide:info",
     ImageSize = 30,
-    Desc = cor({"Salvo em "}, {"michigun.xyz/fp3_F3X", "#00AAFF"})
+    Desc = cor({"Salvo em "}, {"michigun.xyz/F3X", "#00AAFF"})
 })
 
 ConfigSection:Input({
@@ -2017,7 +2009,7 @@ local MainSection = criarsection(Char, "Principal", "Char", "lucide:shirt", true
 
 MainSection:Paragraph({
     Title = "Observação",
-    Desc = cor({"A skin aplicada é visual "}, {"(SOMENTE PARA VOCÊ)", "#FF0000"}),
+    Desc = cor({"A skin aplicada é visual. "}, {"Skins são salvas na pasta michigun/skins", "#FF0000"}),
     Color = "Blue",
     Image = "lucide:circle-alert",
     ImageSize = 30,
@@ -2025,7 +2017,7 @@ MainSection:Paragraph({
 })
 
 MainSection:Input({
-    Title = "Nome / ID",
+    Title = "Nome",
     Desc = cor({"Digite o "}, {"nome", "#FFFFFF"}, {" ou "}, {"ID", "#FFFFFF"}, {" do usuário"}),
     Value = "",
     InputIcon = "lucide:search",
@@ -2076,8 +2068,8 @@ OthersSection:Input({
 })
 
 OthersSection:Input({
-    Title = "Nome / ID",
-    Desc = cor({"Char que será "}, {"aplicado", "#00FF00"}, {" no jogador"}),
+    Title = "Nome",
+    Desc = cor({"Nome ou ID do char que será "}, {"aplicado", "#00FF00"}, {" no jogador"}),
     Value = "",
     InputIcon = "lucide:shirt",
     Placeholder = "ID ou Nome",
@@ -2961,7 +2953,7 @@ if MapaAtual then
         CombatSection:Paragraph({
             Title = "Kill aura",
             Color = Color3.fromHex("#FF1D0D"),
-            Desc = cor({"RISCO", "#FF0000"}, {" Você será banido caso alguém te denuncie"})
+            Desc = cor({"Risco.", "#FF0000"}, {" Você será banido caso alguém te denuncie"})
         })
         local KillAuraToggle
         CombatSection:Toggle({
@@ -2972,13 +2964,13 @@ if MapaAtual then
             Callback = function(state)
                 if state then
                     if KillAuraToggle then KillAuraToggle:Unlock() end
-                    notificar("Permissão concedida", 2, "lucide:unlock")
+                    notificar("Permissão concedida", 2, "lucide:key")
                 else
                     if KillAuraToggle then 
                         KillAuraToggle:Set(false)
                         KillAuraToggle:Lock() 
                     end
-                    notificar("Permissão negada", 2, "lucide:lock")
+                    notificar("Permissão negada", 2, "lucide:key")
                 end
             end
         })
