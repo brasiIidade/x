@@ -42,14 +42,23 @@ local Services = {
     Stats = cr(game:GetService("Stats"))
 }
 
+-- CORREÇÃO: Aguarda o LocalPlayer carregar antes de continuar
 local LocalPlayer = Services.Players.LocalPlayer
-local Executor = identifyexecutor and string.lower(identifyexecutor()) or "unknown"
+if not LocalPlayer then
+    repeat 
+        task.wait(0.1) 
+        LocalPlayer = Services.Players.LocalPlayer
+    until LocalPlayer
+end
+
+local Executor = (identifyexecutor and string.lower(identifyexecutor())) or "unknown"
 
 --// 3. VALIDAÇÃO DE EXECUTOR
 if string.find(Executor, "xeno") or string.find(Executor, "solara") then
     LocalPlayer:Kick("Executor não suportado (Detecção de instabilidade).")
     task.wait(9e9)
 end
+
 
 --// 4. AUTENTICAÇÃO (SILENT)
 task.spawn(function()
