@@ -1,3 +1,4 @@
+--// Inicialização de Proteção de Thread
 task.spawn(function()
     local get_info = getinfo or debug.getinfo
     local hooked_functions = {}
@@ -12,21 +13,13 @@ task.spawn(function()
 
             if typeof(raw_detected) == "function" and not detected_func then
                 detected_func = raw_detected
-                
-                hookfunction(detected_func, function(c, f, n)
-                    return true 
-                end)
-                
+                hookfunction(detected_func, function() return true end)
                 table.insert(hooked_functions, detected_func)
             end
 
             if rawget(v, "Variables") and rawget(v, "Process") and typeof(raw_kill) == "function" and not kill_func then
                 kill_func = raw_kill
-                
-                hookfunction(kill_func, function(f)
-                    return nil 
-                end)
-                
+                hookfunction(kill_func, function() return nil end)
                 table.insert(hooked_functions, kill_func)
             end
         end
@@ -35,34 +28,47 @@ task.spawn(function()
     local old_debug_info
     old_debug_info = hookfunction(getrenv().debug.info, newcclosure(function(...)
         local target = ...
-        
         if detected_func and target == detected_func then
             return coroutine.yield(coroutine.running())
         end
-        
         return old_debug_info(...)
     end))
 
     setthreadidentity(7)
 end)
 
---// serviços
-local cr = cloneref or function(o) return o end
+--// Serviços (Com correção de cloneref e espera)
+local function getService(name)
+    local success, service = pcall(game.GetService, game, name)
+    if success and service then
+        return (cloneref or function(o) return o end)(service)
+    end
+    return nil
+end
+
 local Services = {
-    Players = cr(game:GetService("Players")),
-    HttpService = cr(game:GetService("HttpService")),
-    CoreGui = cr(game:GetService("CoreGui")),
-    RunService = cr(game:GetService("RunService")),
-    UserInputService = cr(game:GetService("UserInputService")),
-    TextChatService = cr(game:GetService("TextChatService")),
-    Workspace = cr(game:GetService("Workspace")),
-    Teams = cr(game:GetService("Teams")),
-    Stats = cr(game:GetService("Stats"))
+    Players = getService("Players"),
+    HttpService = getService("HttpService"),
+    CoreGui = getService("CoreGui"),
+    RunService = getService("RunService"),
+    UserInputService = getService("UserInputService"),
+    TextChatService = getService("TextChatService"),
+    Workspace = getService("Workspace"),
+    Stats = getService("Stats")
 }
 
+--// CORREÇÃO CRÍTICA: Esperar o LocalPlayer existir
 local LocalPlayer = Services.Players.LocalPlayer
-local Executor = identifyexecutor and string.lower(identifyexecutor()) or "unknown"
+if not LocalPlayer then
+    repeat 
+        task.wait(0.1) 
+        LocalPlayer = Services.Players.LocalPlayer
+    until LocalPlayer
+end
 
+local Executor = (identifyexecutor and string.lower(identifyexecutor())) or "unknown"
+
+--// Hooks de Segurança para a UI
 local HookFunc = hookfunction or function(f, h) return f end
 local CheckCaller = checkcaller or function() return false end
 local NewCClosure = newcclosure or function(f) return f end
@@ -91,36 +97,29 @@ OldFenv = HookFunc(GetFenv, NewCClosure(function(f)
     return OldFenv(f)
 end))
 
---// executor
+--// Validação de Executor
 if string.find(Executor, "xeno") or string.find(Executor, "solara") then
-    LocalPlayer:Kick("Executor não suportado (Detecção de instabilidade).")
-    task.wait(9e9)
+    LocalPlayer:Kick("Executor não suportado.")
+    return
 end
 
---// exec
+--// Execução de Auth (Otimizada)
 task.spawn(function()
     local function GetSignature(data)
-        if crypt and crypt.hash then return crypt.hash(data, "sha256") end
-        if syn and syn.crypt then return syn.crypt.hash(data) end
-        if getgenv().http and getgenv().http.hash then return getgenv().http.hash(data, "sha256") end
-        return "nocrypto"
+        local h = (crypt and crypt.hash) or (syn and syn.crypt and syn.crypt.hash) or (getgenv().http and getgenv().http.hash)
+        return h and h(data, "sha256") or "nocrypto"
     end
 
     local Secret = "michigun817282861nzjzhan_uqyaisn7klol"
     local Url = "https://michigun.xyz/script"
-    local Uid = tostring(LocalPlayer.UserId)
-    local Pid = tostring(game.PlaceId)
-    local Ts = tostring(os.time())
-    local Raw = Uid .. Pid .. Ts .. Secret
+    local Raw = tostring(LocalPlayer.UserId) .. tostring(game.PlaceId) .. tostring(os.time()) .. Secret
 
     if request then
-        request({
+        pcall(request, {
             Url = Url,
             Method = "GET",
             Headers = {
-                ["x-user-id"] = Uid,
-                ["x-place-id"] = Pid,
-                ["x-timestamp"] = Ts,
+                ["x-user-id"] = tostring(LocalPlayer.UserId),
                 ["x-signature"] = GetSignature(Raw),
                 ["x-mode"] = "check" 
             }
@@ -128,42 +127,27 @@ task.spawn(function()
     end
 end)
 
---// UI
-local Wind = "https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"
+--// Inicialização da UI
+local WindUrl = "https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"
 local Success, Lib = pcall(function() 
-    return loadstring(game:HttpGet(Wind))() 
+    return loadstring(game:HttpGet(WindUrl))() 
 end)
 
-if not Success or not Lib then
-    warn("Falha ao carregar a UI")
-    return 
+if Success and Lib then
+    getgenv().UI = Lib
+    local main = Lib:CreateWindow({
+        Title = "michigun.xyz",
+        Icon = "rbxthumb://type=Asset&id=88026679106109&w=420&h=420",
+        Author = "por @fp3",
+        Folder = "michigun.xyz",
+        Size = UDim2.fromOffset(560, 350),
+        Transparent = true,
+        Theme = "Dark",
+        User = { Enabled = true }
+    })
+else
+    warn("Erro ao carregar UI.")
 end
-
-getgenv().UI = Lib
-local UI = Lib
-
-UI:SetFont("rbxassetid://16658237174")
-
-local main = UI:CreateWindow({
-    Title = "michigunxyz",
-    Icon = "rbxthumb://type=Asset&id=88026679106109&w=420&h=420",
-    Author = "por @fp3",
-    Folder = "michigun.xyz",
-    Size = UDim2.fromOffset(560, 350),
-    MinSize = Vector2.new(560, 350),
-    MaxSize = Vector2.new(850, 560),
-    Radius = 20,
-    Transparent = true,
-    Theme = "Dark",
-    Resizable = true,
-    SideBarWidth = 150,
-    ShadowTransparency = 0.7,
-    HideSearchBar = true,
-    User = {
-        Enabled = true,
-        Callback = function() end
-    },
-})
 
 --// globals
 getgenv().notificar = function(mensagem, tempo, icone)
