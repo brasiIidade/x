@@ -1983,6 +1983,10 @@ task.spawn(function()
     if ler then ler("char") end
 end)
 
+local function GetAvatar()
+    return getgenv().Avatar
+end
+
 local targetInput = ""
 local otherTargetName = ""
 local otherSkinInput = ""
@@ -2020,8 +2024,9 @@ g1:Button({
     Desc = cor({"Aplica", "#00FF00"}, {" o char"}),
     Icon = "lucide:check",
     Callback = function()
-        if _G.Avatar and _G.Avatar.ApplySkin then
-            _G.Avatar.ApplySkin(targetInput)
+        local av = GetAvatar()
+        if av and av.ApplySkin then
+            av.ApplySkin(targetInput)
         end
     end
 })
@@ -2033,8 +2038,9 @@ g1:Button({
     Desc = cor({"Restaura", "#FF0000"}, {" sua skin original"}),
     Icon = "lucide:rotate-ccw",
     Callback = function()
-        if _G.Avatar and _G.Avatar.RestoreSkin then
-            _G.Avatar.RestoreSkin()
+        local av = GetAvatar()
+        if av and av.RestoreSkin then
+            av.RestoreSkin()
         end
     end
 })
@@ -2070,8 +2076,9 @@ g2:Button({
     Desc = cor({"Muda", "#00FF00"}, {" a skin do jogador alvo"}),
     Icon = "lucide:wand-2",
     Callback = function()
-        if _G.Avatar and _G.Avatar.ApplySkinToOther then
-            _G.Avatar.ApplySkinToOther(otherTargetName, otherSkinInput)
+        local av = GetAvatar()
+        if av and av.ApplySkinToOther then
+            av.ApplySkinToOther(otherTargetName, otherSkinInput)
         end
     end
 })
@@ -2081,8 +2088,9 @@ g2:Button({
     Desc = cor({"Reseta", "#FF0000"}, {" a skin do jogador alvo"}),
     Icon = "lucide:refresh-ccw",
     Callback = function()
-        if _G.Avatar and _G.Avatar.RestoreOther then
-            _G.Avatar.RestoreOther(otherTargetName)
+        local av = GetAvatar()
+        if av and av.RestoreOther then
+            av.RestoreOther(otherTargetName)
         end
     end
 })
@@ -2096,8 +2104,9 @@ OthersSection:Button({
              notificar("Nenhum favorito selecionado", 3, "lucide:x")
              return
         end
-        if _G.Avatar and _G.Avatar.ApplySkinToOther then
-            _G.Avatar.ApplySkinToOther(otherTargetName, selectedFavorite, true) 
+        local av = GetAvatar()
+        if av and av.ApplySkinToOther then
+            av.ApplySkinToOther(otherTargetName, selectedFavorite, true) 
         end
     end
 })
@@ -2109,9 +2118,18 @@ local ActionDropdown = nil
 local isConfirmingDelete = false
 
 local function RefreshList()
-    if _G.Avatar and _G.Avatar.GetSavedSkins and SkinSelectDropdown then
-        SkinSelectDropdown:Refresh(_G.Avatar.GetSavedSkins())
-        if not table.find(_G.Avatar.GetSavedSkins(), selectedFavorite) then
+    local av = GetAvatar()
+    if av and av.GetSavedSkins and SkinSelectDropdown then
+        local skins = av.GetSavedSkins()
+        SkinSelectDropdown:Refresh(skins)
+        
+        local found = false
+        for _, v in pairs(skins) do
+            local t = (type(v) == "table" and v.Title) or v
+            if t == selectedFavorite then found = true break end
+        end
+        
+        if not found then
             selectedFavorite = nil
             SkinSelectDropdown:Select(nil)
         end
@@ -2161,8 +2179,9 @@ CreateActionMenu = function()
                     return
                 end
                 
-                if _G.Avatar and _G.Avatar.LoadSkin then
-                    _G.Avatar.LoadSkin(selectedFavorite)
+                local av = GetAvatar()
+                if av and av.LoadSkin then
+                    av.LoadSkin(selectedFavorite)
                     notificar("Aplicado: " .. selectedFavorite, 3, "lucide:check")
                 end
             end
@@ -2172,8 +2191,9 @@ CreateActionMenu = function()
             Desc = cor({"Salva", "#FFAA00"}, {" o char que você está usando"}),
             Icon = "lucide:save",
             Callback = function()
-                if _G.Avatar and _G.Avatar.SaveSkin then
-                    _G.Avatar.SaveSkin(targetInput) 
+                local av = GetAvatar()
+                if av and av.SaveSkin then
+                    av.SaveSkin(targetInput) 
                     notificar("Char salvo", 3, "lucide:check")
                     RefreshList()
                 end
@@ -2204,8 +2224,9 @@ CreateActionMenu = function()
                         end
                     end)
                 else
-                    if _G.Avatar and _G.Avatar.DeleteSkin then
-                        _G.Avatar.DeleteSkin(selectedFavorite)
+                    local av = GetAvatar()
+                    if av and av.DeleteSkin then
+                        av.DeleteSkin(selectedFavorite)
                         notificar("Deletado: " .. selectedFavorite, 3, "lucide:trash")
                     end
                     
@@ -2245,7 +2266,7 @@ end
 CreateActionMenu()
 
 task.spawn(function()
-    repeat task.wait(0.5) until _G.Avatar and _G.Avatar.GetSavedSkins
+    repeat task.wait(0.5) until getgenv().Avatar and getgenv().Avatar.GetSavedSkins
     RefreshList()
 end)
 
