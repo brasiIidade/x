@@ -2271,7 +2271,6 @@ end)
 
 --//tab player
 getgenv().PlayerConfig = {
-    -- Estados
     SpeedEnabled = false,
     SpeedVal = 16,
     JumpEnabled = false,
@@ -2296,6 +2295,19 @@ task.spawn(function()
     if ler then ler("player") end
 end)
 
+local function FindPlayerName(txt)
+    if txt == "" then return nil end
+    txt = txt:lower()
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then
+            if p.Name:lower():sub(1, #txt) == txt or p.DisplayName:lower():sub(1, #txt) == txt then
+                return p.Name
+            end
+        end
+    end
+    return nil
+end
+
 do
     local CharSection = criarsection(Player, "Personagem", "Modificar personagem", "lucide:user-cog", true)
 
@@ -2314,7 +2326,7 @@ do
     })
 
     CharSection:Input({
-        Title = "Nome fake",
+        Title = "Nome",
         Desc = cor({"Nome para o modo "}, {"anônimo", "#00AAFF"}),
         Placeholder = "Anônimo",
         InputIcon = "lucide:user-pen",
@@ -2335,10 +2347,13 @@ do
 
     CharSection:Toggle({
         Title = "Respawn",
-        Desc = cor({"Teleporta ao local da "}, {"morte", "#FF0000"}),
+        Desc = cor({"Teleporta seu personagem ao local onde você "}, {"morreu", "#FF0000"}),
         Flag = "Respawn",
         Icon = "lucide:map-pin",
-        Callback = function(v) Config.RespawnEnabled = v end
+        Callback = function(v) 
+            Config.RespawnEnabled = v 
+            if v then notificar("Respawn ativado", 2, "lucide:check") end
+        end
     })
 
     CharSection:Toggle({
@@ -2413,16 +2428,20 @@ do
 
     local IntSection = criarsection(Player, "Interação", "Outros jogadores", "lucide:users", false)
     local ActionDrop
-    local target_name_ui = ""
-
+    
     IntSection:Input({
         Title = "Jogador",
         Desc = "Nome ou Display",
         Placeholder = "nome123",
         InputIcon = "lucide:search",
         Callback = function(v)
-            target_name_ui = v
-            Config.TargetPlayer = v
+            local found = FindPlayerName(v)
+            if found then
+                Config.TargetPlayer = found
+                notificar("Selecionado: " .. found, 3, "lucide:user-check")
+            else
+                notificar("Jogador não encontrado", 2, "lucide:search-x")
+            end
         end
     })
 
@@ -2435,19 +2454,31 @@ do
                 Desc = cor({"Arremessa o alvo (arriscado)"}),
                 Icon = "lucide:earth",
                 Callback = function()
-                    Config.FlingActive = true
+                    if Config.TargetPlayer == "" then
+                        notificar("Selecione um jogador primeiro", 2, "lucide:alert-circle")
+                        return
+                    end
                     Config.TriggerFling = true
-                    notificar("Fling iniciado", 3, "lucide:alert-triangle")
-                    task.delay(3, function() Config.FlingActive = false end)
+                    notificar("Fling iniciado em " .. Config.TargetPlayer, 3, "lucide:swords")
                 end
             },
             {
                 Title = Config.SpectateActive and "Parar Espectar" or "Espectar",
-                Desc = "Visualiza a câmera do alvo",
+                Desc = "Visualiza o alvo",
                 Icon = "lucide:eye",
                 Callback = function()
+                    if Config.TargetPlayer == "" then
+                         notificar("Selecione um jogador", 2, "lucide:alert-circle")
+                         return
+                    end
                     Config.SpectateActive = not Config.SpectateActive
                     refresh_drop()
+                    
+                    if Config.SpectateActive then
+                        notificar("Espectando...", 2, "lucide:eye")
+                    else
+                        notificar("Câmera restaurada", 2, "lucide:eye-off")
+                    end
                 end
             },
             {
@@ -2455,7 +2486,9 @@ do
                 Desc = "Vai até o jogador",
                 Icon = "lucide:plane",
                 Callback = function()
+                    if Config.TargetPlayer == "" then return end
                     Config.TriggerTeleport = true
+                    notificar("Teleportando...", 2, "lucide:plane")
                 end
             },
             {
@@ -2464,6 +2497,7 @@ do
                 Icon = "lucide:undo-2",
                 Callback = function()
                     Config.TriggerReturn = true
+                    notificar("Retornando...", 2, "lucide:undo-2")
                 end
             }
         }
