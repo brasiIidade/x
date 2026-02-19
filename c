@@ -1,176 +1,114 @@
--- anti
-local function Finalizar(Mensagem)
-    print(Mensagem)
-    task.wait(0.5)
-    local function Crash() return Crash() end
-    Crash()
-end
+local cr = cloneref or function(o) return o end
+local Services = {
+    Players = cr(game:GetService("Players")),
+    HttpService = cr(game:GetService("HttpService")),
+    CoreGui = cr(game:GetService("CoreGui")),
+    RunService = cr(game:GetService("RunService")),
+    UserInputService = cr(game:GetService("UserInputService")),
+    TextChatService = cr(game:GetService("TextChatService")),
+    Workspace = cr(game:GetService("Workspace"))
+}
 
-local RanTimes = 0
-local Connection = game:GetService("RunService").Heartbeat:Connect(function()
-    RanTimes = RanTimes + 1
-end)
-
-repeat
-    task.wait()
-until RanTimes >= 2
-
-Connection:Disconnect()
-
-if not getmetatable or not setmetatable or not type or not select or type(select(2, pcall(getmetatable, setmetatable({}, {__index = function(self, ...) while true do end end})))['__index']) ~= 'function' or not pcall or not debug or not rawget or not rawset or not pcall(rawset,{}," "," ") or getmetatable(require) or getmetatable(print) or getmetatable(error) or ({debug.info(print,'a')})[1]~=0 or ({debug.info(tostring,'a')})[1]~=0 or ({debug.info(print,'a')})[2]~=true or not select or not getfenv or select(1, pcall(getfenv, 69)) == true or not select(2, pcall(rawget, debug, "info")) or #(((select(2, pcall(rawget, debug, "info")))(getfenv, "n")))<=1 or #(((select(2, pcall(rawget, debug, "info")))(print, "n")))<=1 or not (select(2, pcall(rawget, debug, "info")))(print, "s") == "[C]" or not (select(2, pcall(rawget, debug, "info")))(require, "s") == "[C]" or (select(2, pcall(rawget, debug, "info")))((function()end), "s") == "[C]" or not select(1, pcall(debug.info, coroutine.wrap(function() end)(), 's')) == false then
-    Finalizar("skid de EB :(")
-end
-
-if not game.ServiceAdded then
-    Finalizar("skid de EB :(")
-end
-
-if getfenv()[Instance.new("Part")] then
-    Finalizar("skid de EB :(")
-end
-
-if getmetatable(__call) then
-    Finalizar("skid de EB :(")
-end
-
-local Success = pcall(function()
-    Instance.new("Part"):BananaPeelSlipper("a")
-end)
-
-if Success then
-    Finalizar("skid de EB :(")
-end
-
-local Success, Result = pcall(function()
-    return game:GetService("HttpService"):JSONDecode([=[
-        [
-            42,
-            "deworming tablets",
-            false,
-            987,
-            true,
-            [555, "shimmer", null],
-            null,
-            ["x", 77, true],
-            {"key": "value", "num": 101},
-            [null, ["nested", 999, false]]
-        ]
-    ]=])
-end)
-
-if not Success then
-    Finalizar("skid de EB :(")
-end
-
-if Result[6][3] ~= nil then
-    Finalizar("skid de EB :(")
-end
-
-local _, Message = pcall(function()
-    game()
-end)
-
-if not Message:find("attempt to call a Instance value") then
-    Finalizar("skid de EB :(")
-end
-
-if #game:GetChildren() <= 4 then
-    Finalizar("skid de EB :(")
-end
-
-local UI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
-UI:SetFont("rbxassetid://16658237174")
-loadstring(game:HttpGet("https://raw.githubusercontent.com/michigun-log/logs/refs/heads/main/740dd88a77e9cc25.lua.txt"))()
-
---// serviços
-local cloneref = cloneref or function(o) return o end
-
-local Players = cloneref(game:GetService("Players"))
-local TeamsService = cloneref(game:GetService("Teams"))
-local UserInputService = cloneref(game:GetService("UserInputService"))
-local RunService = cloneref(game:GetService("RunService"))
-local CoreGui = cloneref(game:GetService("CoreGui"))
-local TextChatService = cloneref(game:GetService("TextChatService"))
-local HttpService = cloneref(game:GetService("HttpService"))
-local Workspace = cloneref(game:GetService("Workspace"))
-
-local LocalPlayer = cloneref(Players.LocalPlayer)
-
---// execs
-
-local secret = "michigun817282861nzjzhan_uqyaisn7klol"
-local url = "https://michigun.xyz/script"
-
-local userId = tostring(LocalPlayer.UserId)
-local placeId = tostring(game.PlaceId)
-local timestamp = tostring(os.time())
-
-local data = userId .. placeId .. timestamp .. secret
-local signature = ""
-
-if crypt and crypt.hash then
-    signature = crypt.hash(data, "sha256")
-elseif syn and syn.crypt then
-    signature = syn.crypt.hash(data)
-elseif http and http.hash then
-    signature = http.hash(data, "sha256")
-else
-    signature = "nocrypto"
-end
-
-local response = request({
-    Url = url,
-    Method = "GET",
-    Headers = {
-        ["x-user-id"] = userId,
-        ["x-place-id"] = placeId,
-        ["x-timestamp"] = timestamp,
-        ["x-signature"] = signature,
-        ["x-mode"] = "check" 
-    }
-})
-
-if response.StatusCode ~= 200 then
-    warn("Erro: " .. response.StatusCode)
-end
-
---// executor
+local LocalPlayer = Services.Players.LocalPlayer
 local Executor = identifyexecutor and string.lower(identifyexecutor()) or "unknown"
 
 if string.find(Executor, "xeno") or string.find(Executor, "solara") then
-    LocalPlayer:Kick("Seu executor não tem suporte para rodar o michigun.xyz.")
-    task.wait(0.5)
-    while true do end
+    LocalPlayer:Kick("Executor não suportado.")
+    task.wait(9e9)
 end
 
---// hooks
-local Meta = getrawmetatable(game)
-local OldIndex = Meta.__index
-setreadonly(Meta, false)
+local function GetSignature(data)
+    if crypt and crypt.hash then return crypt.hash(data, "sha256") end
+    if syn and syn.crypt then return syn.crypt.hash(data) end
+    if getgenv().http and getgenv().http.hash then return getgenv().http.hash(data, "sha256") end
+    return "nocrypto"
+end
 
-Meta.__index = newcclosure(function(Self, Key)
-    if not checkcaller() then
-        if Key == "WalkSpeed" then
-            if Self:IsA("Humanoid") then 
-                return 16 
-            end
-        elseif Key == "JumpPower" then
-            if Self:IsA("Humanoid") then 
-                return 50 
-            end
-        elseif Key == "Size" then
-            if Self.Name == "HumanoidRootPart" and Self:IsA("BasePart") then
-                return Vector3.new(2, 2, 1)
-            end
-        end
-    end
-    return OldIndex(Self, Key)
+local Secret = "michigun817282861nzjzhan_uqyaisn7klol"
+local Url = "https://michigun.xyz/script"
+local Uid = tostring(LocalPlayer.UserId)
+local Pid = tostring(game.PlaceId)
+local Ts = tostring(os.time())
+local Raw = Uid .. Pid .. Ts .. Secret
+
+if request then
+    request({
+        Url = Url,
+        Method = "GET",
+        Headers = {
+            ["x-user-id"] = Uid,
+            ["x-place-id"] = Pid,
+            ["x-timestamp"] = Ts,
+            ["x-signature"] = GetSignature(Raw),
+            ["x-mode"] = "check"
+        }
+    })
+end
+
+task.spawn(function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/michigun-log/logs/refs/heads/main/740dd88a77e9cc25.lua.txt"))()
 end)
 
-setreadonly(Meta, true)
+--// spoof
+local GhostTable = setmetatable({}, {__mode = "k"})
 
+local function GetGhost(obj, key)
+    return GhostTable[obj] and GhostTable[obj][key]
+end
+
+local function SetGhost(obj, key, val)
+    if not GhostTable[obj] then GhostTable[obj] = {} end
+    GhostTable[obj][key] = val
+end
+
+local OldIndex
+OldIndex = hookmetamethod(game, "__index", newcclosure(function(self, k)
+    if not checkcaller() then
+        local ghost = GetGhost(self, k)
+        if ghost ~= nil then
+            return ghost
+        end
+    end
+    return OldIndex(self, k)
+end))
+
+local OldNewIndex
+OldNewIndex = hookmetamethod(game, "__newindex", newcclosure(function(self, k, v)
+    if not checkcaller() then
+        local isHum = self:IsA("Humanoid")
+        local isRoot = self:IsA("BasePart") and self.Name == "HumanoidRootPart"
+
+        if (isHum and (k == "WalkSpeed" or k == "JumpPower")) or (isRoot and k == "Size") then
+            SetGhost(self, k, v)
+            return
+        end
+    end
+    return OldNewIndex(self, k, v)
+end))
+
+local function InitSpoof(char)
+    local hum = char:WaitForChild("Humanoid", 10)
+    local root = char:WaitForChild("HumanoidRootPart", 10)
+
+    if hum then
+        if not GetGhost(hum, "WalkSpeed") then SetGhost(hum, "WalkSpeed", hum.WalkSpeed) end
+        if not GetGhost(hum, "JumpPower") then SetGhost(hum, "JumpPower", hum.JumpPower) end
+    end
+
+    if root then
+        if not GetGhost(root, "Size") then SetGhost(root, "Size", root.Size) end
+    end
+end
+
+if LocalPlayer.Character then 
+    InitSpoof(LocalPlayer.Character) 
+end
+
+LocalPlayer.CharacterAdded:Connect(InitSpoof)
 
 --// ui
+local UI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+UI:SetFont("rbxassetid://16658237174")
 
 local main = UI:CreateWindow({
     Title = "michigun.xyz",
@@ -2522,7 +2460,8 @@ local State = {
     SelectedConfig = nil,
     SecretWord = "/e",
     Keybind = Enum.KeyCode.Z,
-    Connections = {}
+    Connections = {},
+    Initialized = false
 }
 
 local ConfigManager = main.ConfigManager
@@ -2680,11 +2619,15 @@ SectionUI:Input({
     InputIcon = "lucide:message-square",
     Callback = function(val)
         if not val or val:match("^%s*$") then
-            notificar("Comando inválido", 2, "lucide:x")
+            if State.Initialized then
+                notificar("Comando inválido", 2, "lucide:x")
+            end
             return
         end
         State.SecretWord = val
-        notificar("Comando definido: " .. val, 3, "lucide:check")
+        if State.Initialized then
+            notificar("Comando definido: " .. val, 3, "lucide:check")
+        end
     end
 })
 
@@ -2695,14 +2638,20 @@ SectionUI:Input({
     InputIcon = "lucide:keyboard",
     Callback = function(val)
         local keyName = tostring(val):upper():gsub("%s+", "")
+        if keyName == "" then return end
+        
         local success, keyCode = pcall(function() return Enum.KeyCode[keyName] end)
 
         if success and keyCode then
             State.Keybind = keyCode
-            UpdateConnections() -- Atualiza a conexão com a nova tecla
-            notificar("Atalho definido: " .. keyName, 2, "lucide:keyboard")
+            UpdateConnections()
+            if State.Initialized then
+                notificar("Atalho definido: " .. keyName, 2, "lucide:keyboard")
+            end
         else
-            notificar("Tecla inválida", 2, "lucide:x")
+            if State.Initialized then
+                notificar("Tecla inválida", 2, "lucide:x")
+            end
         end
     end
 })
@@ -2714,7 +2663,7 @@ local function GetSortedThemes()
     for name, _ in pairs(UI:GetThemes()) do
         table.insert(list, {
             Title = name,
-            Desc = cor({"Aplicar tema "}, {name, "#00AAFF"}),
+            Desc = cor({"Tema "}, {name, "#00AAFF"}),
             Icon = "lucide:paint-bucket"
         })
     end
@@ -2724,18 +2673,23 @@ end
 
 SectionTheme:Dropdown({
     Title = "Temas",
-    Desc = cor({"Selecione o "}, {"estilo", "#FFFFFF"}, {" desejado"}),
+    Desc = cor({"Selecione o "}, {"tema", "#FFFFFF"}, {" desejado"}),
     Icon = "lucide:palette",
     Values = GetSortedThemes(),
     Callback = function(option)
         local themeName = type(option) == "table" and option.Title or option
         if themeName then
             UI:SetTheme(themeName)
-            notificar("Tema aplicado", 2, "lucide:check")
+            if State.Initialized then
+                notificar("Tema aplicado: " .. themeName, 2, "lucide:check")
+            end
         end
     end
 })
 
+task.delay(1, function()
+    State.Initialized = true
+end)
 
 --// mapas 
 
