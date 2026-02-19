@@ -1235,8 +1235,8 @@ PlaybackSection:Toggle({
     Value = false,
     Flag = "TAS",
     Callback = function(v)
-        if _G.TAS and _G.TAS.ToggleAll then
-            _G.TAS.ToggleAll(v)
+        if getgenv().TAS and getgenv().TAS.ToggleAll then
+            getgenv().TAS.ToggleAll(v)
         end
     end
 })
@@ -1248,8 +1248,8 @@ StopButton = PlaybackSection:Button({
     Locked = true,
     Flag = "PararTAS",
     Callback = function()
-        if _G.TAS and _G.TAS.ManualStopPlayback then
-            _G.TAS.ManualStopPlayback()
+        if getgenv().TAS and getgenv().TAS.ManualStopPlayback then
+            getgenv().TAS.ManualStopPlayback()
         end
     end
 })
@@ -1272,8 +1272,8 @@ TASDropdown = PlaybackSection:Dropdown({
     AllowNone = true,
     Flag = "SelecaoTAS",
     Callback = function(v)
-        if _G.TAS and _G.TAS.UpdateSelection then
-            _G.TAS.UpdateSelection(v)
+        if getgenv().TAS and getgenv().TAS.UpdateSelection then
+            getgenv().TAS.UpdateSelection(v)
         end
     end
 })
@@ -1285,8 +1285,8 @@ DeleteButton = PlaybackSection:Button({
     Flag = "DeletarTAS",
     Callback = function()
         if IsConfirmingDelete then
-            if _G.TAS and _G.TAS.DeleteSelected then
-                local newList = _G.TAS.DeleteSelected()
+            if getgenv().TAS and getgenv().TAS.DeleteSelected then
+                local newList = getgenv().TAS.DeleteSelected()
                 RefreshTASList(newList)
                 TASDropdown:Select({})
             end
@@ -1309,16 +1309,16 @@ DeleteButton = PlaybackSection:Button({
 })
 
 task.spawn(function()
-    repeat task.wait(0.5) until _G.TAS and _G.TAS.IsReady
-    _G.TAS.NotifyFunc = notificar 
+    repeat task.wait(0.5) until getgenv().TAS and getgenv().TAS.IsReady
+    getgenv().TAS.NotifyFunc = notificar 
 
-    local oldStop = _G.TAS.StopRecording
-    _G.TAS.StopRecording = function()
+    local oldStop = getgenv().TAS.StopRecording
+    getgenv().TAS.StopRecording = function()
         if oldStop then oldStop() end
         if main then main:Open() end
     end
 
-    _G.TAS.UpdateButtonState = function(isPlaying)
+    getgenv().TAS.UpdateButtonState = function(isPlaying)
         if StopButton then
             if isPlaying then
                 StopButton:Unlock()
@@ -1328,8 +1328,8 @@ task.spawn(function()
         end
     end
     
-    if _G.TAS.GetSaved then
-        RefreshTASList(_G.TAS.GetSaved())
+    if getgenv().TAS.GetSaved then
+        RefreshTASList(getgenv().TAS.GetSaved())
     end
 end)
 
@@ -1350,7 +1350,7 @@ RecordSection:Input({
     InputIcon = "lucide:pencil",
     Flag = "NomeTAS",
     Callback = function(v)
-        if _G.TAS then _G.TAS.CurrentName = v end
+        if getgenv().TAS then getgenv().TAS.CurrentName = v end
     end
 })
 
@@ -1362,7 +1362,7 @@ g:Button({
     Flag = "GravarTAS",
     Callback = function()
         if main then main:Close() end
-        if _G.TAS and _G.TAS.StartRecording then _G.TAS.StartRecording() end
+        if getgenv().TAS and getgenv().TAS.StartRecording then getgenv().TAS.StartRecording() end
     end 
 })
 
@@ -1374,7 +1374,7 @@ g:Button({
     Icon = "lucide:square",
     Flag = "PararDeGravarTAS",
     Callback = function()
-        if _G.TAS and _G.TAS.StopRecording then _G.TAS.StopRecording() end
+        if getgenv().TAS and getgenv().TAS.StopRecording then getgenv().TAS.StopRecording() end
     end 
 })
 
@@ -1392,15 +1392,15 @@ RecordSection:Button({
     Icon = "lucide:save",
     Flag = "SalvarTAS",
     Callback = function()
-        if not _G.TAS then return end
+        if not getgenv().TAS then return end
         
-        if not _G.TAS.CurrentName or _G.TAS.CurrentName == "" then
+        if not getgenv().TAS.CurrentName or getgenv().TAS.CurrentName == "" then
             notificar("Defina um nome antes de salvar", 3, "lucide:alert-circle")
             return
         end
 
-        if _G.TAS.SaveCurrent then
-            local newList = _G.TAS.SaveCurrent()
+        if getgenv().TAS.SaveCurrent then
+            local newList = getgenv().TAS.SaveCurrent()
             if newList then
                 RefreshTASList(newList)
                 notificar("Salvo com sucesso", 3, "lucide:check")
@@ -1410,6 +1410,7 @@ RecordSection:Button({
         end
     end 
 })
+
 
 --// tab JJs
 task.spawn(function()
