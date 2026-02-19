@@ -38,7 +38,9 @@ local function mkLbl(p, o, c, s)
 end
 
 local function add(p)
+    -- FILTRO: Se o jogador for você, interrompe aqui.
     if p == lp or env.espStore[p] then return end
+    
     local h = getHold()
     local c = { hl = Instance.new("Highlight"), bb = Instance.new("BillboardGui"), lbls = {} }
 
@@ -71,6 +73,12 @@ local function upd()
     local lhrp = lchar and lchar:FindFirstChild("HumanoidRootPart")
 
     for p, c in pairs(env.espStore) do
+        -- FILTRO EXTRA: Garante que nada seja processado se o alvo for o LocalPlayer
+        if p == lp then 
+            c.hl.Enabled, c.bb.Enabled = false, false
+            continue 
+        end
+
         if not p or not p.Parent then rem(p) continue end
 
         local char = p.Character
