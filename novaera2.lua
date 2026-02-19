@@ -41,6 +41,8 @@ local function sGrav(hrp)
         local bv = Instance.new("BodyVelocity")
         bv.Name, bv.Velocity, bv.MaxForce, bv.P, bv.Parent = "AG", v0, Vector3.new(9e9, 9e9, 9e9), 9000, hrp
     end
+    hrp.AssemblyLinearVelocity = v0
+    hrp.AssemblyAngularVelocity = v0
 end
 
 local function gCls(tN)
@@ -83,14 +85,13 @@ local function twTo(t)
         return 
     end
     
-    local spd = 115
+    local spd = 125
     local ti = TweenInfo.new(d / spd, Enum.EasingStyle.Linear)
     
     if cTw then cTw:Cancel() end
     cTw = ts:Create(hrp, ti, {CFrame = tgCf})
     cTw:Play()
     cTw.Completed:Wait()
-    task.wait(0.1)
 end
 
 function lgc.Toggle(s)
@@ -105,7 +106,6 @@ function lgc.Toggle(s)
             sCf = hrp.CFrame
             hrp.CFrame = hrp.CFrame * off
             sGrav(hrp)
-            hrp.AssemblyLinearVelocity = v0
         end
     else
         cGrav(c)
@@ -136,16 +136,24 @@ task.spawn(function()
                 
                 sGrav(hrp)
                 
-                local tN = c:FindFirstChild("Lixo_model") and "Lixeira" or "Lixo"
+                local hasL = c:FindFirstChild("Lixo_model") ~= nil
+                local tN = hasL and "Lixeira" or "Lixo"
                 local prm = gCls(tN)
                 
                 if prm and prm.Parent then
                     prm.HoldDuration = 0
                     twTo(prm.Parent)
-                    if lgc.Enabled and hum.Health > 0 then
+                    
+                    repeat
+                        if not lgc.Enabled or hum.Health <= 0 then break end
+                        local chk = c:FindFirstChild("Lixo_model") ~= nil
+                        if chk ~= hasL then break end
+                        
+                        sGrav(hrp)
+                        hrp.CFrame = prm.Parent.CFrame * off
                         fireproximityprompt(prm)
                         task.wait(0.2)
-                    end
+                    until not prm.Parent or not prm.Enabled
                 else
                     task.wait(0.1)
                 end
