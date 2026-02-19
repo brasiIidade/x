@@ -1,8 +1,8 @@
 return {
     silent = "silent.lua",
     hitbox = "hitbox.lua",
-    esp = "e",
-    tas = "tas3.lua",
+    esp = "esp.lua",
+    tas = "tas.lua",
     jj = "jj.lua",
     f3x = "f3x.lua",
     char = "char.lua",
