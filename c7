@@ -1425,8 +1425,9 @@ local ETAParagraph = JJs:Paragraph({
 })
 
 task.spawn(function()
-    repeat task.wait(0.5) until _G.JJs
-    _G.JJs.StatusFunc = function(remaining, secondsLeft)
+    repeat task.wait(0.5) until getgenv().JJs or _G.JJs
+    local ref = getgenv().JJs or _G.JJs
+    ref.StatusFunc = function(remaining, secondsLeft)
         if ETAParagraph then
             ETAParagraph:SetDesc(string.format("Restando: %d JJ's\nTempo estimado: %.1f segundos", remaining, math.max(secondsLeft, 0)))
         end
@@ -1446,7 +1447,7 @@ if game.PlaceId == 13132367906 then
 end
 
 JJsMain:Dropdown({
-    Title = "Tipo de JJ",
+    Title = "Modo",
     Desc = cor({"Escolha qual "}, {"JJ", "#00AAFF"}, {" fazer"}),
     Icon = "lucide:list",
     Values = jjTypes,
