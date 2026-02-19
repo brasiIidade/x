@@ -3,7 +3,7 @@ return {
     hitbox = "hitbox2.lua",
     esp = "esp2.lua",
     tas = "tas2.lua",
-    jj = "jj2.lua",
+    jj = "jj3.lua",
     f3x = "f3x.lua",
     char = "char.lua",
     antilag = "antilag.lua",
