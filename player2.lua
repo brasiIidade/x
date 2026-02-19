@@ -21,6 +21,7 @@ local state = {
     seat = nil,
     weld = nil,
     fling_conn = nil,
+    fling_start_pos = nil,
     spoofed_objs = setmetatable({}, {__mode = "k"})
 }
 
@@ -178,7 +179,10 @@ local function toggle_invis(bool)
     end
 end
 
-local function stop_fling()
+local function stop_fling(restore_pos)
+    local cfg = get_cfg()
+    if cfg then cfg.FlingActive = false end
+
     if state.fling_conn then 
         state.fling_conn:Disconnect() 
         state.fling_conn = nil
@@ -188,36 +192,52 @@ local function stop_fling()
     if root then
         root.Velocity = v3(0,0,0)
         root.RotVelocity = v3(0,0,0)
+        if restore_pos and state.fling_start_pos then
+            root.CFrame = state.fling_start_pos
+        end
     end
+    state.fling_start_pos = nil
 end
 
 local function start_fling(target_name)
-    stop_fling()
+    stop_fling(false)
     
     local target = find_player(target_name)
     if not target then return end
     
+    local my_root = get_root(lp)
+    if my_root then
+        state.fling_start_pos = my_root.CFrame
+    end
+
+    local start_time = tick()
+
     state.fling_conn = srv.RunService.Heartbeat:Connect(function()
         local cfg = get_cfg()
+    
+        if tick() - start_time >= 2 then
+            stop_fling(true)
+            return
+        end
         
         if not cfg.FlingActive or not target or not target.Character or not lp.Character then
-            stop_fling()
+            stop_fling(true)
             return
         end
         
         local t_root = target.Character:FindFirstChild("HumanoidRootPart")
-        local my_root = lp.Character:FindFirstChild("HumanoidRootPart")
+        local my_curr_root = lp.Character:FindFirstChild("HumanoidRootPart")
         
-        if t_root and my_root then
-            my_root.CFrame = cf(t_root.Position + v3(0, -1, 0)) * CFrame.Angles(-math.pi/2, 0, 0)
+        if t_root and my_curr_root then
+            my_curr_root.CFrame = cf(t_root.Position + v3(0, -1, 0)) * CFrame.Angles(-math.pi/2, 0, 0)
             local god_force = v3(0, 10000, 0)
-            my_root.Velocity = god_force
-            my_root.RotVelocity = god_force
+            my_curr_root.Velocity = god_force
+            my_curr_root.RotVelocity = god_force
             pcall(function()
-                sethiddenproperty(my_root, 'PhysicsRepRootPart', t_root)
+                sethiddenproperty(my_curr_root, 'PhysicsRepRootPart', t_root)
             end)
         else
-            stop_fling()
+            stop_fling(true)
         end
     end)
 end
@@ -292,17 +312,13 @@ end)
 
 srv.RunService.Stepped:Connect(function()
     local cfg = get_cfg()
-    if not cfg then return end
+    if not cfg or not cfg.Noclip then return end
     
-    if cfg.Noclip then
-        local c = lp.Character
-        if c then
-            local parts = c:GetDescendants()
-            for i = 1, #parts do
-                local v = parts[i]
-                if v:IsA("BasePart") and v.CanCollide then 
-                    v.CanCollide = false 
-                end
+    local c = lp.Character
+    if c then
+        for _, v in ipairs(c:GetDescendants()) do
+            if v:IsA("BasePart") and v.CanCollide then
+                v.CanCollide = false
             end
         end
     end
