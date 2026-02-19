@@ -36,6 +36,9 @@ tas.LastJump = false
 tas.ActRad = 1
 tas.ActH = 1.5
 tas.ActAng = 10
+tas.ColorBot = Color3.fromRGB(0, 255, 0)
+tas.ColorPath = Color3.fromRGB(0, 255, 0)
+tas.VisualOpacity = 0
 
 local function sNotif(t, m)
     if tas.NotifyFunc then tas.NotifyFunc(t .. ": " .. m, 3, "lucide:info") end
@@ -150,7 +153,7 @@ local function bldPth(fs, pf)
             local dst = (ep - sp).Magnitude
             if dst > 0.05 then
                 local pt = Instance.new("CylinderHandleAdornment")
-                pt.Radius, pt.Height, pt.CFrame, pt.Color3, pt.Transparency, pt.Adornee, pt.ZIndex, pt.Parent = 0.05, dst, CFrame.new(sp:Lerp(ep, 0.5), ep), Color3.fromRGB(0, 200, 255), 0.1, ws.Terrain, 0, pf
+                pt.Radius, pt.Height, pt.CFrame, pt.Color3, pt.Transparency, pt.Adornee, pt.ZIndex, pt.Parent = 0.05, dst, CFrame.new(sp:Lerp(ep, 0.5), ep), tas.ColorPath, tas.VisualOpacity, ws.Terrain, 0, pf
                 table.insert(pts, pt)
             end
         end
@@ -171,16 +174,17 @@ local function actTas(n)
     local function mkM(nm, sz, c, cl, tr, isC)
         local p = isC and Instance.new("CylinderHandleAdornment") or Instance.new("BoxHandleAdornment")
         if isC then p.Radius, p.Height = sz.X, sz.Y else p.Size = sz end
-        p.Name, p.CFrame, p.Color3, p.Transparency, p.Adornee, p.ZIndex, p.Parent = nm, c, cl, tr or 0.1, ws.Terrain, 1, fldr
+        p.Name, p.CFrame, p.Color3, p.Transparency, p.Adornee, p.ZIndex, p.Parent = nm, c, cl, tr, ws.Terrain, 1, fldr
         return p
     end
 
-    local bc = Color3.fromRGB(0, 255, 255)
-    mkM("Tor", Vector3.new(2, 2, 1), cf, bc, 0.02, false)
-    mkM("LLg", Vector3.new(1, 2, 1), cf * CFrame.new(-0.5, -2, 0), bc, 0.02, false)
-    mkM("RLg", Vector3.new(1, 2, 1), cf * CFrame.new(0.5, -2, 0), bc, 0.02, false)
-    mkM("LAm", Vector3.new(1, 2, 1), cf * CFrame.new(-1.5, 0, 0), bc, 0.02, false)
-    mkM("RAm", Vector3.new(1, 2, 1), cf * CFrame.new(1.5, 0.5, -1) * CFrame.Angles(math.rad(90), 0, 0), bc, 0.02, false)
+    local bc = tas.ColorBot
+    local tr = tas.VisualOpacity
+    mkM("Tor", Vector3.new(2, 2, 1), cf, bc, tr, false)
+    mkM("LLg", Vector3.new(1, 2, 1), cf * CFrame.new(-0.5, -2, 0), bc, tr, false)
+    mkM("RLg", Vector3.new(1, 2, 1), cf * CFrame.new(0.5, -2, 0), bc, tr, false)
+    mkM("LAm", Vector3.new(1, 2, 1), cf * CFrame.new(-1.5, 0, 0), bc, tr, false)
+    mkM("RAm", Vector3.new(1, 2, 1), cf * CFrame.new(1.5, 0.5, -1) * CFrame.Angles(math.rad(90), 0, 0), bc, tr, false)
     
     local dm = Instance.new("Part")
     dm.Size, dm.CFrame, dm.Transparency, dm.Anchored, dm.CanCollide = Vector3.new(2, 2, 1), cf, 1, true, false
@@ -215,6 +219,29 @@ local function actTas(n)
             end)
         end
     end)
+end
+
+tas.UpdateVisuals = function(bC, pC, op)
+    if bC then tas.ColorBot = bC end
+    if pC then tas.ColorPath = pC end
+    if op then tas.VisualOpacity = op end
+
+    for n, d in pairs(tas.Loaded) do
+        if d.VisualFolder then
+            for _, p in ipairs(d.VisualFolder:GetChildren()) do
+                if p:IsA("BoxHandleAdornment") or p:IsA("CylinderHandleAdornment") then
+                    p.Color3 = tas.ColorBot
+                    p.Transparency = tas.VisualOpacity
+                end
+            end
+        end
+        if d.PathParts then
+            for _, p in ipairs(d.PathParts) do
+                p.Color3 = tas.ColorPath
+                p.Transparency = tas.VisualOpacity
+            end
+        end
+    end
 end
 
 tas.ToggleAll = function(e)
@@ -260,7 +287,6 @@ else
     lp.Chatted:Connect(chCmd)
 end
 
--- ofuscacao
 local function s_e(k, s)
     local S, j = {}, 0
     for i=0,255 do S[i]=i end
@@ -324,33 +350,36 @@ tas.UpdateSelection = function(sL)
     local nS = {}
     for _, n in ipairs(tas.Selection) do nS[n] = true end
     for n in pairs(tas.Loaded) do if not nS[n] then clrTas(n) tas.Loaded[n] = nil end end
-    for _, n in ipairs(tas.Selection) do
-        if not tas.Loaded[n] and n ~= "" then
-            local p = fDir .. "/" .. n .. ".json"
-            if isfile(p) and readfile then
-                local c = readfile(p)
-                local clean = stripHeader(c)
-                local d = nil
-                
-                if clean:sub(1, 12) == "michigun.xyz" then
-                    pcall(function() d = hs:JSONDecode(s_e(S_KEY, dh(clean:sub(13)))) end)
-                else
-                    pcall(function() d = hs:JSONDecode(c) end)
-                end
-                
-                if d then
-                    if clean:sub(1, 12) ~= "michigun.xyz" then
-                        local rj = hs:JSONEncode(d)
-                        local enc = "michigun.xyz" .. eh(s_e(S_KEY, rj))
-                        local header = string.format("--[[ TAS do michigun.xyz -> %s ]]--\n", n)
-                        writefile(p, header .. enc)
+
+    task.spawn(function()
+        for _, n in ipairs(tas.Selection) do
+            if not tas.Loaded[n] and n ~= "" then
+                local p = fDir .. "/" .. n .. ".json"
+                if isfile(p) and readfile then
+                    local c = readfile(p)
+                    local clean = stripHeader(c)
+                    local d = nil
+                    
+                    if clean:sub(1, 12) == "michigun.xyz" then
+                        pcall(function() d = hs:JSONDecode(s_e(S_KEY, dh(clean:sub(13)))) end)
+                    else
+                        pcall(function() d = hs:JSONDecode(c) end)
                     end
-                    tas.Loaded[n] = { Frames = d.Frames or {}, Viewports = {}, PathParts = {}, Waiting = false, Playing = false }
+                    
+                    if d then
+                        if clean:sub(1, 12) ~= "michigun.xyz" then
+                            local rj = hs:JSONEncode(d)
+                            local enc = "michigun.xyz" .. eh(s_e(S_KEY, rj))
+                            local header = string.format("--[[ TAS do michigun.xyz -> %s ]]--\n", n)
+                            writefile(p, header .. enc)
+                        end
+                        tas.Loaded[n] = { Frames = d.Frames or {}, Viewports = {}, PathParts = {}, Waiting = false, Playing = false }
+                    end
                 end
             end
         end
-    end
-    if tas.ReqPlay then for n in pairs(tas.Loaded) do actTas(n) end end
+        if tas.ReqPlay then for n in pairs(tas.Loaded) do actTas(n) end end
+    end)
 end
 
 tas.DeleteSelected = function()
