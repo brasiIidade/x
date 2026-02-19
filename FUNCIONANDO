@@ -1,41 +1,40 @@
-local function BypassAdonis()
-	local Query = {
-		--Hash = "605A34235509ABBB6946D10B499B526AC72774E441C3F9BAE4B63D321C6E759347D864CE879B39864743C0EEAC444FFF";
-		Constants = {" - On Xbox", " - On mobile", "_"};
-		IgnoreExecutor = true;
+--// bypass
+local function burlar()
+	local cnf = {
+		Constants = {" - On Xbox", " - On mobile", "_"},
+		IgnoreExecutor = true
 	}
 
-	local Detected = filtergc("function", Query); Detected = Detected and Detected[1];
-	if not Detected then
-		--Telemetry:Log("BypassAntiCheat.BypassAdonis", LPH_LINE, "Failed to locate \"Detected\" function from Adonis Anti module.")
-		return LocalClient:Kick("Anticheat bypass failed to activate. This can be the result of an anticheat update. Please contact support.")
+	local det = filtergc("function", cnf)
+	det = det and det[1]
+
+	if not det then
+		return cl:Kick("erro")
 	end
 
-	local iDetour = Hooks.Create(REnv.debug.info)
-	local dDetour = Hooks.Create(Detected)
+	local inf = hk.Create(amb.debug.info)
+	local fke = hk.Create(det)
 
-	local a, b, c, d, e, f = REnv.debug.info(Detected, "slanf")
-	local Jump = function(...)
-		local Args = {...}
-		if Args[1] == Detected and Args[2] == "slanf" then
-			return a, b, c, d, e, f end;
+	local r1, r2, r3, r4, r5, r6 = amb.debug.info(det, "slanf")
 
-		return iDetour:Original(...)
+	local pulo = function(...)
+		local v = {...}
+		if v[1] == det and v[2] == "slanf" then
+			return r1, r2, r3, r4, r5, r6 
+		end
+
+		return inf:Original(...)
 	end
 
-	iDetour:SetDetour(Jump)
-	dDetour:SetDetour(function() return task.wait(9e10) end)
-	iDetour:Enable()
-	dDetour:Enable()
+	inf:SetDetour(pulo)
+	fke:SetDetour(function() return task.wait(9e10) end)
+	
+	inf:Enable()
+	fke:Enable()
 end
-
-local UI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
-UI:SetFont("rbxassetid://16658237174")
-loadstring(game:HttpGet("https://raw.githubusercontent.com/michigun-log/logs/refs/heads/main/740dd88a77e9cc25.lua.txt"))()
 
 --// serviços
 local cloneref = cloneref or function(o) return o end
-
 local Players = cloneref(game:GetService("Players"))
 local TeamsService = cloneref(game:GetService("Teams"))
 local UserInputService = cloneref(game:GetService("UserInputService"))
@@ -122,6 +121,10 @@ setreadonly(Meta, true)
 
 
 --// ui
+
+local UI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+UI:SetFont("rbxassetid://16658237174")
+loadstring(game:HttpGet("https://raw.githubusercontent.com/michigun-log/logs/refs/heads/main/740dd88a77e9cc25.lua.txt"))()
 
 local main = UI:CreateWindow({
     Title = "michigun.xyz",
