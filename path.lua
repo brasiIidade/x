@@ -7,7 +7,7 @@ return {
     f3x = "f3x.lua",
     char = "char.lua",
     chatgpt = "chatgpt.lua",
-    player = "player3.lua",
+    player = "player1.lua",
     tevez = "tevez.lua",
     delta = "delta.lua",
     soucre = "soucre.lua",
