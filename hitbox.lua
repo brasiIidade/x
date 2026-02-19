@@ -1,11 +1,9 @@
---// Táticas de Segurança: cloneref e Localização de Funções
 local cr = cloneref or function(o) return o end
 local plrs = cr(game:GetService("Players"))
 local run = cr(game:GetService("RunService"))
 local core = cr(game:GetService("CoreGui"))
 local http = cr(game:GetService("HttpService"))
 
---// Cache de Métodos (Performance e Segurança)
 local lp = plrs.LocalPlayer
 local find = game.FindFirstChild
 local is_a = game.IsA
@@ -14,7 +12,6 @@ local v3_new = Vector3.new
 local c3_new = Color3.new
 local inst_new = Instance.new
 
---// Tabelas Internas
 local salvos = {} 
 local luzes = {} 
 
@@ -22,7 +19,6 @@ local function pega_cfg()
     return get_genv().HitboxConfig
 end
 
---// Verifica proteção (escudo)
 local function protecao(c)
     if not c then return false end
     local itens = c:GetChildren()
@@ -38,7 +34,6 @@ local function protecao(c)
     return false
 end
 
---// Restaura ao estado original
 local function limpa(p)
     local dados = salvos[p]
     if dados then
@@ -61,7 +56,6 @@ local function limpa(p)
     end
 end
 
---// Validação de Alvo
 local function valida(p)
     local cfg = pega_cfg()
     if not cfg or not cfg.Enabled or p == lp then return false end
@@ -74,7 +68,6 @@ local function valida(p)
     
     if not hum or not root or hum.Health <= 0 then return false end
     
-    -- Filtros de Time
     if cfg.TeamCheck and p.Team and lp.Team and p.Team == lp.Team then
         return false
     end
@@ -88,7 +81,6 @@ local function valida(p)
         if not ok then return false end
     end
     
-    -- Checagem de Escudo
     if cfg.HideOnShield and protecao(char) then
         return false
     end
@@ -96,7 +88,6 @@ local function valida(p)
     return true
 end
 
---// Loop de Execução (Heartbeat é mais seguro que RenderStepped para física)
 local loop = run.Heartbeat:Connect(function()
     local cfg = pega_cfg()
     
@@ -123,14 +114,12 @@ local loop = run.Heartbeat:Connect(function()
                 }
             end
             
-            -- Aplicação da Hitbox
             root.Size = cfg.Size
             root.Transparency = cfg.Transparency
             root.Shape = cfg.Shape
             root.CanCollide = false
             root.Material = Enum.Material.ForceField
             
-            -- Highlight Visual (Indetectável via CoreGui)
             if cfg.Transparency < 1 then
                 if not luzes[p] then
                     local h = inst_new("Highlight")
@@ -155,5 +144,4 @@ local loop = run.Heartbeat:Connect(function()
     end
 end)
 
---// Limpeza ao sair
 plrs.PlayerRemoving:Connect(limpa)
