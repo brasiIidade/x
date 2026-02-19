@@ -6,7 +6,6 @@ return {
     jj = "jj.lua",
     f3x = "f3x.lua",
     char = "char.lua",
-    antilag = "antilag.lua",
     chatgpt = "chatgpt.lua",
     player = "player.lua",
     tevez = "tevez.lua",
