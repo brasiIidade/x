@@ -1767,19 +1767,26 @@ local function round(n)
     return math.floor(n * 10 + 0.5) / 10
 end
 
+local function GetF3X()
+    return getgenv().F3X or _G.F3X
+end
+
 local function UpdateUIBridge()
-    local f3x = getgenv().F3X
+    local f3x = GetF3X()
     if not f3x or not InfoParagraph then return end
     
-    if #f3x.SelectedParts == 0 then
+    if not f3x.SelectedParts or #f3x.SelectedParts == 0 then
         InfoParagraph:SetTitle(cor({"Nada ", "#FF0000"}, {"selecionado"}))
         InfoParagraph:SetDesc("")
         return
     end
 
-    local s = f3x.SelectedParts[1].Size
+    local part = f3x.SelectedParts[1]
+    if not part then return end
+
+    local s = part.Size
     
-    InfoParagraph:SetTitle(cor({f3x.SelectedParts[1].Name, "#00AAFF"}))
+    InfoParagraph:SetTitle(cor({part.Name, "#00AAFF"}))
     InfoParagraph:SetDesc(
         cor({"X: ", "#AAAAAA"}, {tostring(round(s.X)), "#FFFFFF"}) .. "\n" ..
         cor({"Y: ", "#AAAAAA"}, {tostring(round(s.Y)), "#FFFFFF"}) .. "\n" ..
@@ -1798,8 +1805,9 @@ SelectionSection:Toggle({
     Desc = cor({"Ativa a ferramenta de "}, {"seleção", "#00FF00"}),
     Icon = "lucide:mouse-pointer-2",
     Callback = function(v)
-        if getgenv().F3X and getgenv().F3X.Toggle then
-            getgenv().F3X.Toggle(v)
+        local f3x = GetF3X()
+        if f3x and f3x.Toggle then
+            f3x.Toggle(v)
         end
     end
 })
@@ -1834,8 +1842,9 @@ EditSection:Button({
     Desc = cor({"Aplica as "}, {"dimensões", "#00FF00"}, {" na parte selecionada"}),
     Icon = "lucide:check",
     Callback = function()
-        if getgenv().F3X and getgenv().F3X.ApplySize then
-            getgenv().F3X.ApplySize(Vector3.new(
+        local f3x = GetF3X()
+        if f3x and f3x.ApplySize then
+            f3x.ApplySize(Vector3.new(
                 tonumber(InputX.Value),
                 tonumber(InputY.Value),
                 tonumber(InputZ.Value)
@@ -1845,8 +1854,8 @@ EditSection:Button({
 })
 
 local gUR = EditSection:Group()
-gUR:Button({ Title = "Undo", Desc = cor({"Desfaz", "#FFAA00"}, {" a última ação"}), Icon = "lucide:undo-2", Callback = function() if getgenv().F3X and getgenv().F3X.Undo then getgenv().F3X.Undo() end end })
-gUR:Button({ Title = "Redo", Desc = cor({"Refaz", "#FFAA00"}, {" a última ação"}), Icon = "lucide:redo-2", Callback = function() if getgenv().F3X and getgenv().F3X.Redo then getgenv().F3X.Redo() end end })
+gUR:Button({ Title = "Undo", Desc = cor({"Desfaz", "#FFAA00"}, {" a última ação"}), Icon = "lucide:undo-2", Callback = function() local f = GetF3X() if f and f.Undo then f.Undo() end end })
+gUR:Button({ Title = "Redo", Desc = cor({"Refaz", "#FFAA00"}, {" a última ação"}), Icon = "lucide:redo-2", Callback = function() local f = GetF3X() if f and f.Redo then f.Redo() end end })
 
 local ConfigSection = criarsection(F3X, "Configurações", "Salvar e carregar", "lucide:save", false)
 
@@ -1898,9 +1907,10 @@ CreateConfigActions = function()
                     CreateConfigActions()
                     return
                 end
-
-                if getgenv().F3X and getgenv().F3X.SaveConfig then
-                    local newList = getgenv().F3X.SaveConfig(CurrentConfigName)
+                
+                local f3x = GetF3X()
+                if f3x and f3x.SaveConfig then
+                    local newList = f3x.SaveConfig(CurrentConfigName)
                     if newList then 
                         ConfigDropdown:Refresh(newList)
                         notificar("Salvo com sucesso", 3, "lucide:check")
@@ -1920,8 +1930,9 @@ CreateConfigActions = function()
                     return
                 end
 
-                if getgenv().F3X and getgenv().F3X.ApplyConfig then 
-                    getgenv().F3X.ApplyConfig(SelectedConfig) 
+                local f3x = GetF3X()
+                if f3x and f3x.ApplyConfig then 
+                    f3x.ApplyConfig(SelectedConfig) 
                     notificar("Configuração aplicada", 3, "lucide:check")
                 end 
                 CreateConfigActions()
@@ -1938,8 +1949,9 @@ CreateConfigActions = function()
                     return
                 end
 
-                if getgenv().F3X and getgenv().F3X.DeleteConfig then
-                    local newList = getgenv().F3X.DeleteConfig(SelectedConfig)
+                local f3x = GetF3X()
+                if f3x and f3x.DeleteConfig then
+                    local newList = f3x.DeleteConfig(SelectedConfig)
                     if newList then 
                         ConfigDropdown:Refresh(newList) 
                         SelectedConfig = nil
@@ -1964,14 +1976,14 @@ end
 CreateConfigActions()
 
 task.spawn(function()
-    repeat task.wait(0.5) until getgenv().F3X and getgenv().F3X.IsReady
-    getgenv().F3X.UpdateUI = UpdateUIBridge
-    getgenv().F3X.NotifyFunc = notificar
-    if getgenv().F3X.ListConfigs then
-        ConfigDropdown:Refresh(getgenv().F3X.ListConfigs())
+    repeat task.wait(0.5) until (getgenv().F3X or _G.F3X) and (getgenv().F3X or _G.F3X).IsReady
+    local f3x = GetF3X()
+    f3x.UpdateUI = UpdateUIBridge
+    f3x.NotifyFunc = notificar
+    if f3x.ListConfigs then
+        ConfigDropdown:Refresh(f3x.ListConfigs())
     end
 end)
-
 
 --// tab char
 task.spawn(function()
