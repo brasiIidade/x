@@ -2462,7 +2462,7 @@ do
                         return
                     end
                     Config.TriggerFling = true
-                    notificar("Flingando " .. Config.TargetPlayer, 3, "lucide:swords")
+                    notificar("Flingando " .. Config.TargetPlayer, 3, "lucide:helicopter")
                 end
             },
             {
