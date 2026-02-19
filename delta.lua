@@ -9,12 +9,10 @@ local decM = rems:WaitForChild("Events"):WaitForChild("Economy"):WaitForChild("D
 local trns = rs:WaitForChild("Modules"):WaitForChild("Packages"):WaitForChild("Knit"):WaitForChild("Services"):WaitForChild("EconomyService"):WaitForChild("RE"):WaitForChild("Transfer")
 
 local function ntf(m)
-    if getgenv().notificar then
-        getgenv().notificar(m, 3, "lucide:info")
-    end
+    if getgenv().notificar then getgenv().notificar(m, 3, "lucide:info") end
 end
 
-local lgc = { JJValue = 0, MoneyAllEnabled = false, rL = {} }
+local lgc = { JJValue = 0, GetRichValue = 1000000, MoneyAllValue = 100000000000, MoneyAllEnabled = false, rL = {} }
 getgenv().DeltaLogic = lgc
 
 function lgc.SetJJ()
@@ -25,15 +23,20 @@ function lgc.SetJJ()
 end
 
 function lgc.GetRich()
-    decM:FireServer(-1000000, "BuyMilitaryPass")
-    ntf("1M adicionado")
+    local n = tonumber(lgc.GetRichValue)
+    if not n or n == 0 then return end
+    decM:FireServer(-n, "BuyMilitaryPass")
+    ntf(tostring(n) .. " adicionado")
 end
 
 function lgc.ToggleMoneyAll(s)
     lgc.MoneyAllEnabled = s
-    if not s then ntf("Encerrado") return end
+    if not s then ntf("Parado") return end
     
-    decM:FireServer(-1000000000000, "BuyMilitaryPass")
+    local n = tonumber(lgc.MoneyAllValue)
+    if not n or n == 0 then return end
+    
+    decM:FireServer(-1e15, "BuyMilitaryPass")
     ntf("Iniciado")
     
     task.spawn(function()
@@ -60,9 +63,9 @@ function lgc.ToggleMoneyAll(s)
                 end
             end
             
-            trns:FireServer(t.Name, "100000000000")
+            trns:FireServer(t.Name, tostring(-n))
             lgc.rL[t.Name] = true
-            ntf("100B enviado para: " .. t.Name)
+            ntf(tostring(n) .. " enviado para: " .. t.Name)
             task.wait(15.5)
         end
     end)
