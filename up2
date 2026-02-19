@@ -3063,7 +3063,11 @@ if MapaAtual then
     elseif MapaAtual == "Delta" then
         local DeltaTab = criartab("Delta", "https://tr.rbxcdn.com/180DAY-8952e9d8abbff8104b22356f8b66f962/768/432/Image/Webp/noFilter")
 
-      task.spawn(function()
+     if type(notificar) == "function" then
+    getgenv().notificar = notificar
+end
+
+task.spawn(function()
     if ler then ler("delta") end
 end)
 
@@ -3075,7 +3079,7 @@ JJSection:Input({
     Placeholder = "10",
     InputIcon = "lucide:hash",
     Callback = function(v)
-        if getgenv().DeltaLogic then getgenv().DeltaLogic.JJValue = v end
+        if getgenv().DeltaLogic then getgenv().DeltaLogic.JJValue = v:gsub("%D", "") end
     end
 })
 
@@ -3090,23 +3094,45 @@ JJSection:Button({
 
 local EcoSection = criarsection(DeltaTab, "Economia", "Dinheiro", "lucide:coins", false)
 
+EcoSection:Input({
+    Title = "Quantidade",
+    Desc = cor({"Valor para receber"}),
+    Placeholder = "1000000",
+    InputIcon = "lucide:circle-dollar-sign",
+    Callback = function(v)
+        if getgenv().DeltaLogic then getgenv().DeltaLogic.GetRichValue = v:gsub("%D", "") end
+    end
+})
+
 EcoSection:Button({
     Title = "Money",
-    Desc = cor({"Pega", "#00FF00"}, {" 1M de dinheiro"}),
+    Desc = cor({"Pega", "#00FF00"}, {" o dinheiro"}),
     Icon = "lucide:gem",
     Callback = function()
         if getgenv().DeltaLogic and getgenv().DeltaLogic.GetRich then getgenv().DeltaLogic.GetRich() end
     end
 })
 
+EcoSection:Space()
+
 EcoSection:Paragraph({
     Title = "Observação",
-    Desc = cor({"Money all faz transferências a cada"}, {" 15", "#FF0000"}, {"segundos"})
+    Desc = cor({"Money all faz transferências a cada"}, {" 15 ", "#FF0000"}, {"segundos"})
+})
+
+EcoSection:Input({
+    Title = "Valor",
+    Desc = cor({"Quantidade por transferência para o "}, {"money all", "#00FF00"}),
+    Placeholder = "100000000000",
+    InputIcon = "lucide:arrow-right-left",
+    Callback = function(v)
+        if getgenv().DeltaLogic then getgenv().DeltaLogic.MoneyAllValue = v:gsub("%D", "") end
+    end
 })
 
 EcoSection:Toggle({
     Title = "Money all",
-    Desc = cor({"Envia", "#00FF00"}, {" dinheiro infinito para todos"}),
+    Desc = cor({"Envia", "#00FF00"}, {" o dinheiro para todos"}),
     Icon = "lucide:users",
     Value = false,
     Callback = function(v)
