@@ -1,7 +1,7 @@
 return {
     silent = "silent.lua",
     hitbox = "hitbox.lua",
-    esp = "esp.lua",
+    esp = "esp3.lua",
     tas = "tas.lua",
     jj = "jj.lua",
     f3x = "f3x.lua",
