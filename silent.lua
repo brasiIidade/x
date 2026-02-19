@@ -258,8 +258,8 @@ mt.__namecall = newcclosure(function(obj, ...)
     local method = getnamecallmethod()
     local args = {...}
 
-    if Config and Config.Enabled and State.Part and checkcaller() then
-        if method == "FireServer" and is_safe(obj.Name) then
+    if Config and Config.Enabled and State.Part and not checkcaller() then
+        if (method == "FireServer" or method == "InvokeServer") and is_safe(obj.Name) then
             if math.random(1, 100) > Config.HitChance then
                 return old_nc(obj, ...)
             end
@@ -269,11 +269,21 @@ mt.__namecall = newcclosure(function(obj, ...)
                 offset = Vector3.new((math.random()-0.5)*0.5, (math.random()-0.5)*0.5, (math.random()-0.5)*0.5)
             end
             
-            local hit = State.Part.Position + offset
+            local finalPosition = State.Part.Position + offset
+            local cameraPos = Camera.CFrame.Position
+            local direction = (finalPosition - cameraPos).Unit
             
             for i, v in ipairs(args) do
-                if typeof(v) == "Vector3" and v.Magnitude > 10 then
-                    args[i] = hit
+                if typeof(v) == "Vector3" then
+                    -- Lógica original: se magnitude <= 10, é direção. Se maior, é posição.
+                    if v.Magnitude <= 10 then
+                        args[i] = direction
+                    else
+                        args[i] = finalPosition
+                    end
+                elseif typeof(v) == "CFrame" then
+                    -- Restaura o CFrame olhando para o alvo
+                    args[i] = CFrame.new(cameraPos, finalPosition)
                 end
             end
             
