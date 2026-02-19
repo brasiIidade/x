@@ -250,15 +250,15 @@ local function start_fling(target_name)
         end
         
         local t_root = target.Character:FindFirstChild("HumanoidRootPart")
-        local my_curr_root = lp.Character:FindFirstChild("HumanoidRootPart")
+        local my_root = lp.Character:FindFirstChild("HumanoidRootPart")
         
-        if t_root and my_curr_root then
-            my_curr_root.CFrame = cf(t_root.Position + v3(0, -1, 0)) * CFrame.Angles(-math.pi/2, 0, 0)
+        if t_root and my_root then
+            my_root.CFrame = cf(t_root.Position + v3(0, -1, 0)) * CFrame.Angles(-1.5707963267948966, 0, 0)
             local god_force = v3(0, 10000, 0)
-            my_curr_root.Velocity = god_force
-            my_curr_root.RotVelocity = god_force
+            my_root.Velocity = god_force
+            my_root.RotVelocity = god_force
             pcall(function()
-                sethiddenproperty(my_curr_root, 'PhysicsRepRootPart', t_root)
+                sethiddenproperty(my_root, 'PhysicsRepRootPart', t_root)
             end)
         else
             stop_fling(true)
