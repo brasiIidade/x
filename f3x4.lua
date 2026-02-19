@@ -226,34 +226,33 @@ f3x.Toggle = function(s)
     if not s then f3x.ClearSelection() end
 end
 
-local inputConn
-inputConn = uis.InputBegan:Connect(function(inp, gpe)
-    if gpe then return end
-    if not f3x.Enabled then return end
-    if inp.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
-    
-    local m = lp:GetMouse()
-    local t = m.Target
-    if not t or not t:IsA("BasePart") then return end
-    
-    local ctrl = uis:IsKeyDown(Enum.KeyCode.LeftControl) or uis:IsKeyDown(Enum.KeyCode.RightControl)
-    
-    if ctrl then
-        for i, p in ipairs(f3x.SelectedParts) do
-            if p == t then
-                table.remove(f3x.SelectedParts, i)
-                clrHl()
-                for _, sp in ipairs(f3x.SelectedParts) do mkHl(sp) end
-                if f3x.UpdateUI then task.defer(f3x.UpdateUI) end
-                return
+local mouseConn
+if lp then
+    local ms = lp:GetMouse()
+    mouseConn = ms.Button1Down:Connect(function()
+        if not f3x.Enabled then return end
+        local t = ms.Target
+        if not t or not t:IsA("BasePart") then return end
+        
+        local ctrl = uis:IsKeyDown(Enum.KeyCode.LeftControl) or uis:IsKeyDown(Enum.KeyCode.RightControl)
+        
+        if ctrl then
+            for i, p in ipairs(f3x.SelectedParts) do
+                if p == t then
+                    table.remove(f3x.SelectedParts, i)
+                    clrHl()
+                    for _, sp in ipairs(f3x.SelectedParts) do mkHl(sp) end
+                    if f3x.UpdateUI then task.defer(f3x.UpdateUI) end
+                    return
+                end
             end
+            table.insert(f3x.SelectedParts, t)
+            mkHl(t)
+        else
+            f3x.ClearSelection()
+            table.insert(f3x.SelectedParts, t)
+            mkHl(t)
         end
-        table.insert(f3x.SelectedParts, t)
-        mkHl(t)
-    else
-        f3x.ClearSelection()
-        table.insert(f3x.SelectedParts, t)
-        mkHl(t)
-    end
-    if f3x.UpdateUI then task.defer(f3x.UpdateUI) end
-end)
+        if f3x.UpdateUI then task.defer(f3x.UpdateUI) end
+    end)
+end
