@@ -1418,19 +1418,37 @@ task.spawn(function()
 end)
 
 local ETAParagraph = JJs:Paragraph({
-    Title = "Tempo",
+    Title = "Status",
     Desc  = "Aguardando...",
     Color = "Green",
     Locked = false,
 })
 
 task.spawn(function()
+    local RunService = game:GetService("RunService")
+    
     repeat task.wait(0.5) until getgenv().JJs or _G.JJs
     local ref = getgenv().JJs or _G.JJs
-    ref.StatusFunc = function(remaining, secondsLeft)
-        if ETAParagraph then
-            ETAParagraph:SetDesc(string.format("Restando: %d JJ's\nTempo estimado: %.1f segundos", remaining, math.max(secondsLeft, 0)))
+    
+    while true do
+        if ref.State and ref.State.Running then
+            local state = ref.State
+            local now = tick()
+            
+            local timeLeft = math.max(0, state.FinishTimestamp - now)
+            
+            if ETAParagraph then
+                ETAParagraph:SetDesc(string.format(
+                    "Progresso: %d / %d\nEstimativa: %.1f s", 
+                    state.Current, 
+                    state.Total, 
+                    timeLeft
+                ))
+            end
+        else
+            if ETAParagraph then ETAParagraph:SetDesc("Aguardando início...") end
         end
+        RunService.RenderStepped:Wait()
     end
 end)
 
@@ -1445,18 +1463,6 @@ end
 if game.PlaceId == 13132367906 then
     table.insert(jjTypes, "Canguru")
 end
-
-JJsMain:Dropdown({
-    Title = "Modo",
-    Desc = cor({"Escolha qual "}, {"JJ", "#00AAFF"}, {" fazer"}),
-    Icon = "lucide:list",
-    Values = jjTypes,
-    Value = "Padrão",
-    Flag = "TipoJJ",
-    Callback = function(v)
-        if _G.JJs then _G.JJs.Config.Mode = v end
-    end
-})
 
 JJsMain:Toggle({
     Title = "Auto JJ's",
@@ -1473,6 +1479,18 @@ JJsMain:Toggle({
                 notificar("Parado", 2, "lucide:pause")
             end
         end
+    end
+})
+
+JJsMain:Dropdown({
+    Title = "Modo",
+    Desc = cor({"Escolha qual "}, {"JJ", "#00AAFF"}, {" fazer"}),
+    Icon = "lucide:list",
+    Values = jjTypes,
+    Value = "Padrão",
+    Flag = "TipoJJ",
+    Callback = function(v)
+        if _G.JJs then _G.JJs.Config.Mode = v end
     end
 })
 
@@ -1629,6 +1647,7 @@ Extras:Toggle({
         if _G.JJs then _G.JJs.Config.ReverseEnabled = v end
     end
 })
+
 
 --// tab ChatGPT
 task.spawn(function()
