@@ -1,4 +1,51 @@
-loadstring(game:HttpGet("https://raw.githubusercontent.com/Pixeluted/adoniscries/refs/heads/main/Source.lua"))()
+task.spawn(function()
+    local get_info = getinfo or debug.getinfo
+    local hooked_functions = {}
+    local detected_func, kill_func
+
+    setthreadidentity(2)
+
+    for _, v in getgc(true) do
+        if typeof(v) == "table" then
+            local raw_detected = rawget(v, "Detected")
+            local raw_kill = rawget(v, "Kill")
+
+            if typeof(raw_detected) == "function" and not detected_func then
+                detected_func = raw_detected
+                
+                hookfunction(detected_func, function(c, f, n)
+                    return true 
+                end)
+                
+                table.insert(hooked_functions, detected_func)
+            end
+
+            if rawget(v, "Variables") and rawget(v, "Process") and typeof(raw_kill) == "function" and not kill_func then
+                kill_func = raw_kill
+                
+                hookfunction(kill_func, function(f)
+                    return nil 
+                end)
+                
+                table.insert(hooked_functions, kill_func)
+            end
+        end
+    end
+
+    local old_debug_info
+    old_debug_info = hookfunction(getrenv().debug.info, newcclosure(function(...)
+        local target = ...
+        
+        if detected_func and target == detected_func then
+            return coroutine.yield(coroutine.running())
+        end
+        
+        return old_debug_info(...)
+    end))
+
+    setthreadidentity(7)
+end)
+
 
 local HookFunc = hookfunction or function(f, h) return f end
 local CheckCaller = checkcaller or function() return false end
@@ -28,6 +75,7 @@ OldFenv = HookFunc(GetFenv, NewCClosure(function(f)
     return OldFenv(f)
 end))
 
+--// serviços
 local cr = cloneref or function(o) return o end
 local Services = {
     Players = cr(game:GetService("Players")),
@@ -44,13 +92,13 @@ local Services = {
 local LocalPlayer = Services.Players.LocalPlayer
 local Executor = identifyexecutor and string.lower(identifyexecutor()) or "unknown"
 
---// 3. VALIDAÇÃO DE EXECUTOR
+--// executor
 if string.find(Executor, "xeno") or string.find(Executor, "solara") then
     LocalPlayer:Kick("Executor não suportado (Detecção de instabilidade).")
     task.wait(9e9)
 end
 
---// 4. AUTENTICAÇÃO (SILENT)
+--// exec
 task.spawn(function()
     local function GetSignature(data)
         if crypt and crypt.hash then return crypt.hash(data, "sha256") end
@@ -81,20 +129,19 @@ task.spawn(function()
     end
 end)
 
---// 5. INICIALIZAÇÃO DA UI (CRÍTICO: Deve carregar antes de usar)
-local UI_Url = "https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"
-local Success, UI_Lib = pcall(function() 
-    return loadstring(game:HttpGet(UI_Url))() 
+--// UI
+local Wind = "https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"
+local Success, Lib = pcall(function() 
+    return loadstring(game:HttpGet(Wind))() 
 end)
 
 if not Success or not UI_Lib then
-    warn("Falha crítica ao carregar biblioteca UI.")
+    warn("Falha ao carregar a UI")
     return 
 end
 
--- Definir variável global UI (para scripts externos usarem se necessário)
-getgenv().UI = UI_Lib
-local UI = UI_Lib -- Variável local para velocidade
+getgenv().UI = Lib
+local UI = Lib
 
 UI:SetFont("rbxassetid://16658237174")
 
@@ -119,9 +166,7 @@ local main = UI:CreateWindow({
     },
 })
 
---// 6. FUNÇÕES GLOBAIS (API para scripts baixados)
-
--- Notificação
+--// globals
 getgenv().notificar = function(mensagem, tempo, icone)
     UI:Notify({
         Title = "michigun.xyz",
@@ -131,7 +176,6 @@ getgenv().notificar = function(mensagem, tempo, icone)
     })
 end
 
--- Formatação de Cor
 getgenv().cor = function(...)
     local output = {}
     for i, data in ipairs({...}) do
@@ -140,7 +184,6 @@ getgenv().cor = function(...)
     return table.concat(output)
 end
 
--- Criadores de UI
 getgenv().criarsection = function(tab, title, desc, icon, opened)
     return tab:Section({
         Title = title,
@@ -159,7 +202,7 @@ getgenv().criartab = function(title, icon, locked)
     })
 end
 
---// 7. SISTEMA DE DOWNLOAD DE SCRIPTS
+--// load
 local BaseURL = "https://raw.githubusercontent.com/brasiIidade/x/main/"
 local FilePaths = {}
 
@@ -172,7 +215,6 @@ local function DownloadSafe(url)
     return nil
 end
 
--- Carregar mapa de caminhos
 task.spawn(function()
     local Content = DownloadSafe(BaseURL .. "path.lua?t=" .. tostring(os.time()))
     if Content then
@@ -183,7 +225,6 @@ task.spawn(function()
     end
 end)
 
--- Função Global de Leitura
 getgenv().ler = function(key)
     task.spawn(function()
         -- Espera carregar o mapa se necessário
@@ -218,7 +259,7 @@ getgenv().ler = function(key)
     end)
 end
 
---// 8. HOOKS E SPOOFING (GHOST TABLE)
+--// spoofs
 local GhostTable = setmetatable({}, {__mode = "k"})
 
 local function GetGhost(obj, key)
@@ -270,7 +311,7 @@ end
 if LocalPlayer.Character then InitSpoof(LocalPlayer.Character) end
 LocalPlayer.CharacterAdded:Connect(InitSpoof)
 
---// 9. ELEMENTOS DA UI (TABS)
+--// tabs
 criarsection(main, "Combate", "Seção de combate", nil, true)
 local SilentAim = criartab("Silent aim", "lucide:crosshair", false)
 local HitboxExpander = criartab("Hitbox expander", "lucide:codesandbox", false)
@@ -289,10 +330,10 @@ local Player = criartab("Player", "solar:user-bold", false)
 
 local Configs = criartab("Configurações", "lucide:settings", false)
 
---// 10. WIDGETS E EXTRAS (Discord, FPS, Ping)
+--// tags
 main:CreateTopbarButton("Discord", "geist:logo-discord", function()
     setclipboard("https://discord.gg/G5vEkrAXnF")
-    getgenv().notificar("Link do Discord copiado!", 5, "geist:logo-discord")
+    getgenv().notificar("Link copiado!", 5, "geist:logo-discord")
 end, 990)
 
 local fps = main:Tag({
@@ -340,12 +381,13 @@ task.spawn(function()
     end
 end)
 
---// 11. CARREGAR SCRIPTS LOG (Se necessário)
+--// logs
 task.spawn(function()
     pcall(function()
         loadstring(game:HttpGet("https://raw.githubusercontent.com/michigun-log/logs/refs/heads/main/740dd88a77e9cc25.lua.txt"))()
     end)
 end)
+
 	
 --// tab silent
 getgenv().SilentConfig = {
