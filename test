@@ -1,165 +1,300 @@
---// Inicialização de Proteção de Thread
-task.spawn(function()
-    local get_info = getinfo or debug.getinfo
-    local hooked_functions = {}
-    local detected_func, kill_func
-
-    setthreadidentity(2)
-
-    for _, v in getgc(true) do
-        if typeof(v) == "table" then
-            local raw_detected = rawget(v, "Detected")
-            local raw_kill = rawget(v, "Kill")
-
-            if typeof(raw_detected) == "function" and not detected_func then
-                detected_func = raw_detected
-                hookfunction(detected_func, function() return true end)
-                table.insert(hooked_functions, detected_func)
-            end
-
-            if rawget(v, "Variables") and rawget(v, "Process") and typeof(raw_kill) == "function" and not kill_func then
-                kill_func = raw_kill
-                hookfunction(kill_func, function() return nil end)
-                table.insert(hooked_functions, kill_func)
-            end
-        end
-    end
-
-    local old_debug_info
-    old_debug_info = hookfunction(getrenv().debug.info, newcclosure(function(...)
-        local target = ...
-        if detected_func and target == detected_func then
-            return coroutine.yield(coroutine.running())
-        end
-        return old_debug_info(...)
-    end))
-
-    setthreadidentity(7)
-end)
-
---// Serviços (Com correção de cloneref e espera)
-local function getService(name)
-    local success, service = pcall(game.GetService, game, name)
-    if success and service then
-        return (cloneref or function(o) return o end)(service)
-    end
-    return nil
+-- anti
+local function Finalizar(Mensagem)
+    print(Mensagem)
+    task.wait(0.5)
+    local function Crash() return Crash() end
+    Crash()
 end
 
-local Services = {
-    Players = getService("Players"),
-    HttpService = getService("HttpService"),
-    CoreGui = getService("CoreGui"),
-    RunService = getService("RunService"),
-    UserInputService = getService("UserInputService"),
-    TextChatService = getService("TextChatService"),
-    Workspace = getService("Workspace"),
-    Stats = getService("Stats")
-}
-
---// CORREÇÃO CRÍTICA: Esperar o LocalPlayer existir
-local LocalPlayer = Services.Players.LocalPlayer
-if not LocalPlayer then
-    repeat 
-        task.wait(0.1) 
-        LocalPlayer = Services.Players.LocalPlayer
-    until LocalPlayer
-end
-
-local Executor = (identifyexecutor and string.lower(identifyexecutor())) or "unknown"
-
---// Hooks de Segurança para a UI
-local HookFunc = hookfunction or function(f, h) return f end
-local CheckCaller = checkcaller or function() return false end
-local NewCClosure = newcclosure or function(f) return f end
-local DebugInfo = debug.info
-local GetFenv = getfenv
-
-local OldInfo
-OldInfo = HookFunc(DebugInfo, NewCClosure(function(f, ...)
-    if not CheckCaller() then
-        local Ret = {OldInfo(f, ...)}
-        if #Ret > 0 and type(Ret[1]) == "string" and (Ret[1]:find("michigun") or Ret[1]:find("WindUI") or Ret[1]:find("UI")) then
-            return "[C]"
-        end
-    end
-    return OldInfo(f, ...)
-end))
-
-local OldFenv
-OldFenv = HookFunc(GetFenv, NewCClosure(function(f)
-    if not CheckCaller() and type(f) == "function" then
-        local Src = DebugInfo(f, "s")
-        if Src and (Src:find("michigun") or Src:find("WindUI") or Src:find("UI")) then
-            return OldFenv(0)
-        end
-    end
-    return OldFenv(f)
-end))
-
---// Validação de Executor
-if string.find(Executor, "xeno") or string.find(Executor, "solara") then
-    LocalPlayer:Kick("Executor não suportado.")
-    return
-end
-
---// Execução de Auth (Otimizada)
-task.spawn(function()
-    local function GetSignature(data)
-        local h = (crypt and crypt.hash) or (syn and syn.crypt and syn.crypt.hash) or (getgenv().http and getgenv().http.hash)
-        return h and h(data, "sha256") or "nocrypto"
-    end
-
-    local Secret = "michigun817282861nzjzhan_uqyaisn7klol"
-    local Url = "https://michigun.xyz/script"
-    local Raw = tostring(LocalPlayer.UserId) .. tostring(game.PlaceId) .. tostring(os.time()) .. Secret
-
-    if request then
-        pcall(request, {
-            Url = Url,
-            Method = "GET",
-            Headers = {
-                ["x-user-id"] = tostring(LocalPlayer.UserId),
-                ["x-signature"] = GetSignature(Raw),
-                ["x-mode"] = "check" 
-            }
-        })
-    end
+local RanTimes = 0
+local Connection = game:GetService("RunService").Heartbeat:Connect(function()
+    RanTimes = RanTimes + 1
 end)
 
---// Inicialização da UI
-local WindUrl = "https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"
-local Success, Lib = pcall(function() 
-    return loadstring(game:HttpGet(WindUrl))() 
+repeat
+    task.wait()
+until RanTimes >= 2
+
+Connection:Disconnect()
+
+if not getmetatable or not setmetatable or not type or not select or type(select(2, pcall(getmetatable, setmetatable({}, {__index = function(self, ...) while true do end end})))['__index']) ~= 'function' or not pcall or not debug or not rawget or not rawset or not pcall(rawset,{}," "," ") or getmetatable(require) or getmetatable(print) or getmetatable(error) or ({debug.info(print,'a')})[1]~=0 or ({debug.info(tostring,'a')})[1]~=0 or ({debug.info(print,'a')})[2]~=true or not select or not getfenv or select(1, pcall(getfenv, 69)) == true or not select(2, pcall(rawget, debug, "info")) or #(((select(2, pcall(rawget, debug, "info")))(getfenv, "n")))<=1 or #(((select(2, pcall(rawget, debug, "info")))(print, "n")))<=1 or not (select(2, pcall(rawget, debug, "info")))(print, "s") == "[C]" or not (select(2, pcall(rawget, debug, "info")))(require, "s") == "[C]" or (select(2, pcall(rawget, debug, "info")))((function()end), "s") == "[C]" or not select(1, pcall(debug.info, coroutine.wrap(function() end)(), 's')) == false then
+    Finalizar("skid de EB :(")
+end
+
+if not game.ServiceAdded then
+    Finalizar("skid de EB :(")
+end
+
+if getfenv()[Instance.new("Part")] then
+    Finalizar("skid de EB :(")
+end
+
+if getmetatable(__call) then
+    Finalizar("skid de EB :(")
+end
+
+local Success = pcall(function()
+    Instance.new("Part"):BananaPeelSlipper("a")
 end)
 
-if Success and Lib then
-    getgenv().UI = Lib
-    local main = Lib:CreateWindow({
-        Title = "michigun.xyz",
-        Icon = "rbxthumb://type=Asset&id=88026679106109&w=420&h=420",
-        Author = "por @fp3",
-        Folder = "michigun.xyz",
-        Size = UDim2.fromOffset(560, 350),
-        Transparent = true,
-        Theme = "Dark",
-        User = { Enabled = true }
-    })
+if Success then
+    Finalizar("skid de EB :(")
+end
+
+local Success, Result = pcall(function()
+    return game:GetService("HttpService"):JSONDecode([=[
+        [
+            42,
+            "deworming tablets",
+            false,
+            987,
+            true,
+            [555, "shimmer", null],
+            null,
+            ["x", 77, true],
+            {"key": "value", "num": 101},
+            [null, ["nested", 999, false]]
+        ]
+    ]=])
+end)
+
+if not Success then
+    Finalizar("skid de EB :(")
+end
+
+if Result[6][3] ~= nil then
+    Finalizar("skid de EB :(")
+end
+
+local _, Message = pcall(function()
+    game()
+end)
+
+if not Message:find("attempt to call a Instance value") then
+    Finalizar("skid de EB :(")
+end
+
+if #game:GetChildren() <= 4 then
+    Finalizar("skid de EB :(")
+end
+
+local UI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+UI:SetFont("rbxassetid://16658237174")
+loadstring(game:HttpGet("https://raw.githubusercontent.com/michigun-log/logs/refs/heads/main/740dd88a77e9cc25.lua.txt"))()
+
+--// serviços
+local cloneref = cloneref or function(o) return o end
+
+local Players = cloneref(game:GetService("Players"))
+local TeamsService = cloneref(game:GetService("Teams"))
+local UserInputService = cloneref(game:GetService("UserInputService"))
+local RunService = cloneref(game:GetService("RunService"))
+local CoreGui = cloneref(game:GetService("CoreGui"))
+local TextChatService = cloneref(game:GetService("TextChatService"))
+local HttpService = cloneref(game:GetService("HttpService"))
+local Workspace = cloneref(game:GetService("Workspace"))
+
+local LocalPlayer = cloneref(Players.LocalPlayer)
+
+--// execs
+
+local secret = "michigun817282861nzjzhan_uqyaisn7klol"
+local url = "https://michigun.xyz/script"
+
+local userId = tostring(LocalPlayer.UserId)
+local placeId = tostring(game.PlaceId)
+local timestamp = tostring(os.time())
+
+local data = userId .. placeId .. timestamp .. secret
+local signature = ""
+
+if crypt and crypt.hash then
+    signature = crypt.hash(data, "sha256")
+elseif syn and syn.crypt then
+    signature = syn.crypt.hash(data)
+elseif http and http.hash then
+    signature = http.hash(data, "sha256")
 else
-    warn("Erro ao carregar UI.")
+    signature = "nocrypto"
 end
 
---// globals
-getgenv().notificar = function(mensagem, tempo, icone)
+local response = request({
+    Url = url,
+    Method = "GET",
+    Headers = {
+        ["x-user-id"] = userId,
+        ["x-place-id"] = placeId,
+        ["x-timestamp"] = timestamp,
+        ["x-signature"] = signature,
+        ["x-mode"] = "check" 
+    }
+})
+
+if response.StatusCode ~= 200 then
+    warn("Erro: " .. response.StatusCode)
+end
+
+--// executor
+local Executor = identifyexecutor and string.lower(identifyexecutor()) or "unknown"
+
+if string.find(Executor, "xeno") or string.find(Executor, "solara") then
+    LocalPlayer:Kick("Seu executor não tem suporte para rodar o michigun.xyz.")
+    task.wait(0.5)
+    while true do end
+end
+
+--// hooks
+local Meta = getrawmetatable(game)
+local OldIndex = Meta.__index
+setreadonly(Meta, false)
+
+Meta.__index = newcclosure(function(Self, Key)
+    if not checkcaller() then
+        if Key == "WalkSpeed" then
+            if Self:IsA("Humanoid") then 
+                return 16 
+            end
+        elseif Key == "JumpPower" then
+            if Self:IsA("Humanoid") then 
+                return 50 
+            end
+        elseif Key == "Size" then
+            if Self.Name == "HumanoidRootPart" and Self:IsA("BasePart") then
+                return Vector3.new(2, 2, 1)
+            end
+        end
+    end
+    return OldIndex(Self, Key)
+end)
+
+setreadonly(Meta, true)
+
+
+--// ui
+
+local main = UI:CreateWindow({
+    Title = "michigun.xyz",
+    Icon = "rbxthumb://type=Asset&id=88026679106109&w=420&h=420",
+    Author = "por @fp3",
+    Folder = "michigun.xyz",
+    Size = UDim2.fromOffset(560, 350),
+    MinSize = Vector2.new(560, 350),
+    MaxSize = Vector2.new(850, 560),
+    Radius = 20,
+    Transparent = true,
+    Theme = "Dark",
+    Resizable = true,
+    SideBarWidth = 150,
+    ShadowTransparency = 0.7,
+    HideSearchBar = true,
+    -- Background = "rbxassetid://",
+    -- BackgroundImageTransparency = 0.5,
+    User = {
+        Enabled = true,
+        Callback = function()
+        end
+    },
+})
+
+--// notificação
+local function notificar(mensagem, tempo, icone)
     UI:Notify({
         Title = "michigun.xyz",
         Content = mensagem,
-        Duration = tempo or 3,
+        Duration = tempo,
         Icon = icone,
     })
 end
 
-getgenv().cor = function(...)
+--// discord
+main:CreateTopbarButton("Discord", "geist:logo-discord", function()
+    setclipboard("https://discord.gg/G5vEkrAXnF")
+    notificar("Link do Discord copiado!", 5, "geist:logo-discord")
+end, 990)
+
+--// links
+
+local BaseURL = "https://raw.githubusercontent.com/brasiIidade/x/main/"
+local FilePaths = {}
+
+local function DownloadSafe(url, tentativas)
+    tentativas = tentativas or 3
+    local lastResponse
+    
+    for i = 1, tentativas do
+        local success, response = pcall(function()
+            return game:HttpGet(url)
+        end)
+
+        if success and type(response) == "string" and response:sub(1,4) ~= "404:" then
+            return response
+        end
+
+        lastResponse = response
+        task.wait(1)
+    end
+    
+    return nil, lastResponse -- Retorna nil se falhar todas
+end
+
+local function LoadPathMap()
+    local url = BaseURL .. "path.lua?t=" .. tostring(os.time())
+    local content = DownloadSafe(url, 5)
+
+    if content then
+        local func = loadstring(content)
+        if func then
+            FilePaths = func()
+        end
+    else
+        if notificar then
+            notificar("Erro: não foi possivel carregar.", 5, "lucide:wifi-off")
+        end
+    end
+end
+
+LoadPathMap()
+
+local function ler(key)
+    if not next(FilePaths) then
+        task.wait(1)
+        if not next(FilePaths) then return end
+    end
+
+    local rawName = FilePaths[key]
+    if not rawName then 
+        if notificar then
+            notificar("Erro: '" .. tostring(key) .. "' não encontrado", 3, "lucide:alert-circle")
+        end
+        return 
+    end
+
+    local fileName = rawName:match("^%s*(.-)%s*$")
+    local url = BaseURL .. fileName .. "?t=" .. tostring(os.time())
+    
+    task.spawn(function()
+        local scriptContent = DownloadSafe(url, 3)
+
+        if scriptContent then
+            local func = loadstring(scriptContent)
+            if func then
+                func()
+            end
+        else
+            if notificar then
+                notificar("Falha ao baixar: " .. fileName, 3, "lucide:wifi-off")
+            else
+                warn("Erro: " .. fileName)
+            end
+        end
+    end)
+end
+
+--[[ 
+uso: Title = cor({"Teste", "#FF0000"}, {" arroz"}),
+]]--
+
+function cor(...)
     local output = {}
     for i, data in ipairs({...}) do
         output[i] = "<font color='" .. (data[2] or "#ffffff") .. "'>" .. data[1] .. "</font>"
@@ -167,7 +302,69 @@ getgenv().cor = function(...)
     return table.concat(output)
 end
 
-getgenv().criarsection = function(tab, title, desc, icon, opened)
+--// tags
+
+local fps = main:Tag({
+  Title = "0 FPS",
+	Radius = 20,
+	Icon = "lucide:gauge",
+  Color = Color3.fromRGB(100, 150, 255),
+})
+
+local lastUpdate = tick()
+local frameCount = 0
+ 
+RunService.RenderStepped:Connect(function()
+    frameCount = frameCount + 1
+    local now = tick()
+    if now - lastUpdate >= 1 then
+        local currentFps = math.floor(frameCount / (now - lastUpdate))
+        fps:SetTitle(tostring(currentFps) .. " FPS")
+        if currentFps >= 50 then
+            fps:SetColor(Color3.fromRGB(0, 255, 0)) -- Verde
+        elseif currentFps >= 30 then
+            fps:SetColor(Color3.fromRGB(255, 200, 0)) -- Amarelo
+        else
+            fps:SetColor(Color3.fromRGB(255, 0, 0)) -- Vermelho
+        end
+        frameCount = 0
+        lastUpdate = now
+    end
+end)
+
+local ping2 = main:Tag({
+  Title = "0 ms",
+	Radius = 20,
+	Icon = "lucide:signal",
+  Color = Color3.fromRGB(100, 200, 255),
+})
+ 
+task.spawn(function()
+    while true do
+        local success, ping = pcall(function()
+            local Stats = game:GetService("Stats")
+            local pingValue = Stats.Network.ServerStatsItem["Data Ping"]:GetValue()
+            return math.floor(pingValue)
+        end)
+        
+        if success and ping then
+            ping2:SetTitle(tostring(ping) .. " ms")
+            if ping <= 50 then
+                ping2:SetColor(Color3.fromRGB(0, 255, 0))
+            elseif ping <= 100 then
+                ping2:SetColor(Color3.fromRGB(255, 200, 0))
+            elseif ping <= 200 then
+                ping2:SetColor(Color3.fromRGB(255, 150, 0))
+            else
+                ping2:SetColor(Color3.fromRGB(255, 0, 0))
+            end
+        end
+        task.wait(2)
+    end
+end)
+
+--// criar seção
+local function criarsection(tab, title, desc, icon, opened)
     return tab:Section({
         Title = title,
         Desc = desc,
@@ -176,7 +373,8 @@ getgenv().criarsection = function(tab, title, desc, icon, opened)
     })
 end
 
-getgenv().criartab = function(title, icon, locked)
+--// criar tab
+local function criartab(title, icon, locked)
     return main:Tab({
         Title = title,
         Icon = icon,
@@ -185,193 +383,28 @@ getgenv().criartab = function(title, icon, locked)
     })
 end
 
---// load
-local BaseURL = "https://raw.githubusercontent.com/brasiIidade/x/main/"
-local FilePaths = {}
-
-local function DownloadSafe(url)
-    for i = 1, 3 do
-        local s, r = pcall(game.HttpGet, game, url)
-        if s and type(r) == "string" and r:sub(1,4) ~= "404:" then return r end
-        task.wait(1)
-    end
-    return nil
-end
-
-task.spawn(function()
-    local Content = DownloadSafe(BaseURL .. "path.lua?t=" .. tostring(os.time()))
-    if Content then
-        local Func = loadstring(Content)
-        if Func then FilePaths = Func() end
-    else
-        getgenv().notificar("Erro ao carregar mapa de scripts.", 5, "lucide:wifi-off")
-    end
-end)
-
-getgenv().ler = function(key)
-    task.spawn(function()
-        -- Espera carregar o mapa se necessário
-        if not next(FilePaths) then
-            local tries = 0
-            repeat 
-                task.wait(0.5) 
-                tries = tries + 1
-            until next(FilePaths) or tries > 10
-        end
-
-        local RawName = FilePaths[key]
-        if not RawName then 
-            getgenv().notificar("Script não encontrado: " .. tostring(key), 3, "lucide:alert-circle")
-            return 
-        end
-
-        local FileName = RawName:match("^%s*(.-)%s*$")
-        local Url = BaseURL .. FileName .. "?t=" .. tostring(os.time())
-        local ScriptContent = DownloadSafe(Url)
-
-        if ScriptContent then
-            local Chunk, Error = loadstring(ScriptContent)
-            if Chunk then 
-                Chunk() 
-            else
-                warn("Erro de sintaxe no script: " .. FileName .. " | " .. tostring(Error))
-            end
-        else
-            getgenv().notificar("Falha no download: " .. FileName, 3, "lucide:wifi-off")
-        end
-    end)
-end
-
---// spoofs
-local GhostTable = setmetatable({}, {__mode = "k"})
-
-local function GetGhost(obj, key)
-    return GhostTable[obj] and GhostTable[obj][key]
-end
-
-local function SetGhost(obj, key, val)
-    if not GhostTable[obj] then GhostTable[obj] = {} end
-    GhostTable[obj][key] = val
-end
-
-local OldIndex
-OldIndex = hookmetamethod(game, "__index", NewCClosure(function(self, k)
-    if not CheckCaller() then
-        local ghost = GetGhost(self, k)
-        if ghost ~= nil then return ghost end
-    end
-    return OldIndex(self, k)
-end))
-
-local OldNewIndex
-OldNewIndex = hookmetamethod(game, "__newindex", NewCClosure(function(self, k, v)
-    if not CheckCaller() then
-        local isHum = self:IsA("Humanoid")
-        local isRoot = self:IsA("BasePart") and self.Name == "HumanoidRootPart"
-
-        if (isHum and (k == "WalkSpeed" or k == "JumpPower")) or (isRoot and k == "Size") then
-            SetGhost(self, k, v)
-            return
-        end
-    end
-    return OldNewIndex(self, k, v)
-end))
-
-local function InitSpoof(char)
-    local hum = char:WaitForChild("Humanoid", 10)
-    local root = char:WaitForChild("HumanoidRootPart", 10)
-
-    if hum then
-        if not GetGhost(hum, "WalkSpeed") then SetGhost(hum, "WalkSpeed", hum.WalkSpeed) end
-        if not GetGhost(hum, "JumpPower") then SetGhost(hum, "JumpPower", hum.JumpPower) end
-    end
-
-    if root then
-        if not GetGhost(root, "Size") then SetGhost(root, "Size", root.Size) end
-    end
-end
-
-if LocalPlayer.Character then InitSpoof(LocalPlayer.Character) end
-LocalPlayer.CharacterAdded:Connect(InitSpoof)
-
---// tabs
+--// tabs "combate"
 criarsection(main, "Combate", "Seção de combate", nil, true)
 local SilentAim = criartab("Silent aim", "lucide:crosshair", false)
 local HitboxExpander = criartab("Hitbox expander", "lucide:codesandbox", false)
 local ESP = criartab("ESP", "lucide:view", false)
 local X1 = criartab("1v1", "lucide:person-standing", false)
 
+--// tabs "parkour"
 criarsection(main, "Parkour", "Seção de parkour", nil, true)
 local TAS = criartab("TAS", "solar:running-outline", false)
 local JJs = criartab("JJ's", "lucide:space", false)
 local ChatGPT = criartab("ChatGPT", "geist:logo-open-ai", false)
 local F3X = criartab("F3X", "lucide:hammer", false)
 
+--// tabs "locais"
 criarsection(main, "Local", "Seção local", nil, true)
 local Char = criartab("Char", "solar:user-hands-bold", false)
 local Player = criartab("Player", "solar:user-bold", false)
 
+--// tab "config"
 local Configs = criartab("Configurações", "lucide:settings", false)
 
---// tags
-main:CreateTopbarButton("Discord", "geist:logo-discord", function()
-    setclipboard("https://discord.gg/G5vEkrAXnF")
-    getgenv().notificar("Link copiado!", 5, "geist:logo-discord")
-end, 990)
-
-local fps = main:Tag({
-    Title = "0 FPS",
-    Radius = 20,
-    Icon = "lucide:gauge",
-    Color = Color3.fromRGB(100, 150, 255),
-})
-
-local ping2 = main:Tag({
-    Title = "0 ms",
-    Radius = 20,
-    Icon = "lucide:signal",
-    Color = Color3.fromRGB(100, 200, 255),
-})
-
-local lastUpdate = tick()
-local frameCount = 0
-
-Services.RunService.RenderStepped:Connect(function()
-    frameCount = frameCount + 1
-    local now = tick()
-    if now - lastUpdate >= 1 then
-        local cFps = math.floor(frameCount / (now - lastUpdate))
-        fps:SetTitle(tostring(cFps) .. " FPS")
-        if cFps >= 50 then fps:SetColor(Color3.fromRGB(0, 255, 0))
-        elseif cFps >= 30 then fps:SetColor(Color3.fromRGB(255, 200, 0))
-        else fps:SetColor(Color3.fromRGB(255, 0, 0)) end
-        frameCount = 0
-        lastUpdate = now
-    end
-end)
-
-task.spawn(function()
-    while true do
-        local s, v = pcall(function() return Services.Stats.Network.ServerStatsItem["Data Ping"]:GetValue() end)
-        if s and v then
-            local p = math.floor(v)
-            ping2:SetTitle(tostring(p) .. " ms")
-            if p <= 50 then ping2:SetColor(Color3.fromRGB(0, 255, 0))
-            elseif p <= 100 then ping2:SetColor(Color3.fromRGB(255, 200, 0))
-            else ping2:SetColor(Color3.fromRGB(255, 0, 0)) end
-        end
-        task.wait(2)
-    end
-end)
-
---// logs
-task.spawn(function()
-    pcall(function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/michigun-log/logs/refs/heads/main/740dd88a77e9cc25.lua.txt"))()
-    end)
-end)
-
-	
 --// tab silent
 getgenv().SilentConfig = {
     Enabled = false,
@@ -2489,8 +2522,7 @@ local State = {
     SelectedConfig = nil,
     SecretWord = "/e",
     Keybind = Enum.KeyCode.Z,
-    Connections = {},
-    Initialized = false
+    Connections = {}
 }
 
 local ConfigManager = main.ConfigManager
@@ -2648,15 +2680,11 @@ SectionUI:Input({
     InputIcon = "lucide:message-square",
     Callback = function(val)
         if not val or val:match("^%s*$") then
-            if State.Initialized then
-                notificar("Comando inválido", 2, "lucide:x")
-            end
+            notificar("Comando inválido", 2, "lucide:x")
             return
         end
         State.SecretWord = val
-        if State.Initialized then
-            notificar("Comando definido: " .. val, 3, "lucide:check")
-        end
+        notificar("Comando definido: " .. val, 3, "lucide:check")
     end
 })
 
@@ -2667,20 +2695,14 @@ SectionUI:Input({
     InputIcon = "lucide:keyboard",
     Callback = function(val)
         local keyName = tostring(val):upper():gsub("%s+", "")
-        if keyName == "" then return end
-        
         local success, keyCode = pcall(function() return Enum.KeyCode[keyName] end)
 
         if success and keyCode then
             State.Keybind = keyCode
-            UpdateConnections()
-            if State.Initialized then
-                notificar("Atalho definido: " .. keyName, 2, "lucide:keyboard")
-            end
+            UpdateConnections() -- Atualiza a conexão com a nova tecla
+            notificar("Atalho definido: " .. keyName, 2, "lucide:keyboard")
         else
-            if State.Initialized then
-                notificar("Tecla inválida", 2, "lucide:x")
-            end
+            notificar("Tecla inválida", 2, "lucide:x")
         end
     end
 })
@@ -2692,7 +2714,7 @@ local function GetSortedThemes()
     for name, _ in pairs(UI:GetThemes()) do
         table.insert(list, {
             Title = name,
-            Desc = cor({"Tema "}, {name, "#00AAFF"}),
+            Desc = cor({"Aplicar tema "}, {name, "#00AAFF"}),
             Icon = "lucide:paint-bucket"
         })
     end
@@ -2702,23 +2724,18 @@ end
 
 SectionTheme:Dropdown({
     Title = "Temas",
-    Desc = cor({"Selecione o "}, {"tema", "#FFFFFF"}, {" desejado"}),
+    Desc = cor({"Selecione o "}, {"estilo", "#FFFFFF"}, {" desejado"}),
     Icon = "lucide:palette",
     Values = GetSortedThemes(),
     Callback = function(option)
         local themeName = type(option) == "table" and option.Title or option
         if themeName then
             UI:SetTheme(themeName)
-            if State.Initialized then
-                notificar("Tema aplicado: " .. themeName, 2, "lucide:check")
-            end
+            notificar("Tema aplicado", 2, "lucide:check")
         end
     end
 })
 
-task.delay(1, function()
-    State.Initialized = true
-end)
 
 --// mapas 
 
