@@ -975,8 +975,17 @@ getgenv().ESPConfig = getgenv().ESPConfig or {
     Distance = false,
     Health = false,
     Tracers = false,
+    Weapon = false,
     TeamCheck = true,
-    MaxDistance = 2000
+    UseTeamColor = false,
+    MaxDistance = 2000,
+    Colors = {
+        Box = Color3.fromRGB(255, 255, 255),
+        Name = Color3.fromRGB(255, 255, 255),
+        Distance = Color3.fromRGB(200, 200, 200),
+        Tracer = Color3.fromRGB(255, 255, 255),
+        Weapon = Color3.fromRGB(255, 255, 255)
+    }
 }
 
 task.spawn(function()
@@ -1031,6 +1040,17 @@ MainSection:Toggle({
     end
 })
 
+MainSection:Toggle({
+    Title = "Team color",
+    Desc = cor({"Aplica a "}, {"cor do time", "#00AAFF"}, {" no ESP"}),
+    Icon = "lucide:palette",
+    Value = getgenv().ESPConfig.UseTeamColor,
+    Flag = "ESPTeamColor",
+    Callback = function(v)
+        getgenv().ESPConfig.UseTeamColor = v
+    end
+})
+
 MainSection:Input({
     Title = "Distância máxima",
     Desc = cor({"Distância para renderizar o ESP"}),
@@ -1082,12 +1102,73 @@ VisualsSection:Toggle({
 })
 
 VisualsSection:Toggle({ 
+    Title = "Item", 
+    Desc = cor({"Mostra o "}, {"item equipado", "#00FF00"}),
+    Icon = "lucide:sword", 
+    Value = getgenv().ESPConfig.Weapon, 
+    Flag = "ESPItem", 
+    Callback = function(v) getgenv().ESPConfig.Weapon = v end 
+})
+
+VisualsSection:Toggle({ 
     Title = "Tracers", 
     Desc = cor({"Desenha uma "}, {"linha", "#00FF00"}, {" até o jogador"}),
     Icon = "lucide:git-commit", 
     Value = getgenv().ESPConfig.Tracers, 
     Flag = "ESPTracers", 
     Callback = function(v) getgenv().ESPConfig.Tracers = v end 
+})
+
+local ColorsSection = criarsection(ESP, "Cores", "Personalização", "lucide:paint-bucket", false)
+
+ColorsSection:Colorpicker({
+    Title = "Boxes",
+    Desc = "Define a cor da box",
+    Default = getgenv().ESPConfig.Colors.Box,
+    Flag = "ESPBoxesCor",
+    Callback = function(c)
+        getgenv().ESPConfig.Colors.Box = c
+    end
+})
+
+ColorsSection:Colorpicker({
+    Title = "Nome",
+    Desc = "Define a cor do texto do nome",
+    Default = getgenv().ESPConfig.Colors.Name,
+    Flag = "ESPNomeCor",
+    Callback = function(c)
+        getgenv().ESPConfig.Colors.Name = c
+    end
+})
+
+ColorsSection:Colorpicker({
+    Title = "Distância",
+    Desc = "Define a cor do texto da distância",
+    Default = getgenv().ESPConfig.Colors.Distance,
+    Flag = "ESPDistanciaCor",
+    Callback = function(c)
+        getgenv().ESPConfig.Colors.Distance = c
+    end
+})
+
+ColorsSection:Colorpicker({
+    Title = "Item",
+    Desc = "Define a cor do texto do item",
+    Default = getgenv().ESPConfig.Colors.Weapon,
+    Flag = "ESPItemCor",
+    Callback = function(c)
+        getgenv().ESPConfig.Colors.Weapon = c
+    end
+})
+
+ColorsSection:Colorpicker({
+    Title = "Tracers",
+    Desc = "Define a cor da linha",
+    Default = getgenv().ESPConfig.Colors.Tracer,
+    Flag = "ESPTracersCor",
+    Callback = function(c)
+        getgenv().ESPConfig.Colors.Tracer = c
+    end
 })
 
 --// tab X1
