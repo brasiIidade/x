@@ -457,6 +457,8 @@ _G.StartSilentAim = function()
     table.insert(SilentAimConnections, c1)
 end
 
+local TargetPlaceId = 13132367906
+
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
     if not checkcaller() and _G.SilentAimActive and ClosestHitPart then
@@ -468,38 +470,67 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
         if MathRandom(1, 100) <= (_G.AimbotConfig.HitChance or 100) then
             local finalPosition = ClosestHitPart.Position + (getLegitOffset and getLegitOffset() or Vector3.new(0,0,0))
             local cameraPos = Workspace.CurrentCamera.CFrame.Position
-            local Direction = (finalPosition - cameraPos).Unit
+            
+            -- Lógica Específica para o jogo 13132367906
+            if game.PlaceId == TargetPlaceId then
+                if (Method == "FireServer" or Method == "InvokeServer") and self.Name == "Fire" then
+                    if typeof(Arguments[1]) == "Instance" and Arguments[1]:IsA("Tool") and type(Arguments[2]) == "table" and typeof(Arguments[3]) == "Vector3" then
+                        
+                        local originPosition = Arguments[3]
+                        local aimDistance = (finalPosition - originPosition).Magnitude
 
-            if (Method == "FireServer" or Method == "InvokeServer") then
-                if isBulletRemote(self.Name) then
-                    for i, v in pairs(Arguments) do
-                        if typeof(v) == "Vector3" then
-                            if v.Magnitude <= 10 then 
-                                Arguments[i] = Direction * v.Magnitude
-                            else
-                                Arguments[i] = finalPosition
-                            end
-                        elseif typeof(v) == "CFrame" then
-                            Arguments[i] = CFrameNew(cameraPos, finalPosition)
-                        elseif typeof(v) == "Instance" and v:IsA("BasePart") and v.Parent and v.Parent:FindFirstChild("Humanoid") then
-                            Arguments[i] = ClosestHitPart
-                        end
+                        local FakeHitData = {
+                            Normal = Vector3.new(0, 1, 0),
+                            Position = finalPosition,
+                            Instance = ClosestHitPart,
+                            Distance = aimDistance,
+                            Material = Enum.Material.Plastic
+                        }
+
+                        Arguments[2] = {
+                            [finalPosition] = FakeHitData
+                        }
+
+                        return oldNamecall(self, unpack(Arguments))
                     end
+                end
+            
+            -- Lógica Genérica para os outros jogos
+            else
+                local Direction = (finalPosition - cameraPos).Unit
+
+                if (Method == "FireServer" or Method == "InvokeServer") then
+                    if isBulletRemote(self.Name) then
+                        for i, v in pairs(Arguments) do
+                            if typeof(v) == "Vector3" then
+                                if v.Magnitude <= 10 then 
+                                    Arguments[i] = Direction * v.Magnitude
+                                else
+                                    Arguments[i] = finalPosition
+                                end
+                            elseif typeof(v) == "CFrame" then
+                                Arguments[i] = CFrameNew(cameraPos, finalPosition)
+                            elseif typeof(v) == "Instance" and v:IsA("BasePart") and v.Parent and v.Parent:FindFirstChild("Humanoid") then
+                                Arguments[i] = ClosestHitPart
+                            end
+                        end
+                        return oldNamecall(self, unpack(Arguments))
+                    end
+
+                elseif Method == "Raycast" and self == Workspace then
+                    local origin = Arguments[1]
+                    local distance = 10000
+                    if Arguments[2] then distance = Arguments[2].Magnitude end
+                    
+                    Arguments[2] = (finalPosition - origin).Unit * distance
                     return oldNamecall(self, unpack(Arguments))
                 end
-
-            elseif Method == "Raycast" and self == Workspace then
-                local origin = Arguments[1]
-                local distance = 10000
-                if Arguments[2] then distance = Arguments[2].Magnitude end
-                
-                Arguments[2] = (finalPosition - origin).Unit * distance
-                return oldNamecall(self, unpack(Arguments))
             end
         end
     end
     return oldNamecall(self, ...)
 end))
+
 
 if _G.AimbotConfig and _G.AimbotConfig.Enabled then
     _G.StartSilentAim()
