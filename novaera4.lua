@@ -41,8 +41,6 @@ local function sGrav(hrp)
         local bv = Instance.new("BodyVelocity")
         bv.Name, bv.Velocity, bv.MaxForce, bv.P, bv.Parent = "AG", v0, Vector3.new(9e9, 9e9, 9e9), 9000, hrp
     end
-    hrp.AssemblyLinearVelocity = v0
-    hrp.AssemblyAngularVelocity = v0
 end
 
 local function gCls(tN)
@@ -52,14 +50,16 @@ local function gCls(tN)
     
     local t = ws:FindFirstChild("Trabalhos / SWATntj")
     local cl = t and t:FindFirstChild("Coleta")
-    if not cl then return nil end
+    local fld = cl and cl:FindFirstChild(tN)
+    if not fld then return nil end
 
     local bP, bD = nil, 9e9
-    for _, v in ipairs(cl:GetChildren()) do
-        if v.Name == tN and v:IsA("BasePart") then
-            local p = v:FindFirstChildWhichIsA("ProximityPrompt")
-            if p and p.Enabled then
-                local d = (v.Position - hrp.Position).Magnitude
+    for _, p in ipairs(fld:GetDescendants()) do
+        if p:IsA("ProximityPrompt") and p.Enabled then
+            local pt = p.Parent
+            if pt and pt:IsA("Attachment") then pt = pt.Parent end
+            if pt and pt:IsA("BasePart") then
+                local d = (pt.Position - hrp.Position).Magnitude
                 if d < bD then 
                     bD = d
                     bP = p 
@@ -80,12 +80,12 @@ local function twTo(t, hum)
     local tCf = CFrame.new(t.Position + off)
     local d = (hrp.Position - tCf.Position).Magnitude
     
-    if d < 3 then 
+    if d < 1 then 
         hrp.CFrame = tCf
         return true 
     end
     
-    local spd = 85
+    local spd = 65 
     local ti = TweenInfo.new(d / spd, Enum.EasingStyle.Linear)
     
     if cTw then cTw:Cancel() end
