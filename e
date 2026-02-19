@@ -5,8 +5,7 @@ local rs = cloneref(game:GetService("RunService"))
 local hs = cloneref(game:GetService("HttpService"))
 local lp = cloneref(plrs.LocalPlayer)
 
--- Armazenamos o ID logo no início para evitar erros de referência
-local localUserId = lp.UserId
+local localName = lp.Name
 
 local env = getgenv()
 env.espConns = env.espConns or {}
@@ -41,8 +40,7 @@ local function mkLbl(p, o, c, s)
 end
 
 local function add(p)
-    -- WORKAROUND: Comparamos o UserId em vez da instância do objeto
-    if not p or p.UserId == localUserId or env.espStore[p] then return end
+    if not p or p.Name == localName or env.espStore[p] then return end
     
     local h = getHold()
     local c = { hl = Instance.new("Highlight"), bb = Instance.new("BillboardGui"), lbls = {} }
@@ -76,8 +74,7 @@ local function upd()
     local lhrp = lchar and lchar:FindFirstChild("HumanoidRootPart")
 
     for p, c in pairs(env.espStore) do
-        -- Reforço da verificação por UserId no loop principal
-        if not p or p.UserId == localUserId or not p.Parent then 
+        if not p or p.Name == localName or not p.Parent then 
             rem(p) 
             continue 
         end
@@ -144,7 +141,7 @@ env.StartESP = function()
     env.StopESP()
     getHold()
     for _, p in ipairs(plrs:GetPlayers()) do 
-        if p.UserId ~= localUserId then add(p) end 
+        if p.Name ~= localName then add(p) end 
     end
     table.insert(env.espConns, plrs.PlayerAdded:Connect(add))
     table.insert(env.espConns, plrs.PlayerRemoving:Connect(rem))
