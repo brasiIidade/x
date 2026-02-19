@@ -1,5 +1,3 @@
-Silent:
-
 if _G.SilentAimConnections then
     for _, conn in pairs(_G.SilentAimConnections) do conn:Disconnect() end
 end
