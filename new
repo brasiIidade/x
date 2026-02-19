@@ -976,7 +976,6 @@ local def_cfg = {
     Names = false,
     Distance = false,
     Health = false,
-    Tracers = false,
     Weapon = false,
     TeamCheck = true,
     UseTeamColor = false,
@@ -985,7 +984,6 @@ local def_cfg = {
         Box = Color3.fromRGB(255, 255, 255),
         Name = Color3.fromRGB(255, 255, 255),
         Distance = Color3.fromRGB(200, 200, 200),
-        Tracer = Color3.fromRGB(255, 255, 255),
         Weapon = Color3.fromRGB(255, 255, 255)
     }
 }
@@ -1124,15 +1122,6 @@ VisualsSection:Toggle({
     Callback = function(v) env.ESPConfig.Weapon = v end 
 })
 
-VisualsSection:Toggle({ 
-    Title = "Tracers", 
-    Desc = cor({"Desenha uma "}, {"linha", "#00FF00"}, {" até o jogador"}),
-    Icon = "lucide:line-dot-right-horizontal", 
-    Value = env.ESPConfig.Tracers, 
-    Flag = "ESPTracers", 
-    Callback = function(v) env.ESPConfig.Tracers = v end 
-})
-
 local ColorsSection = criarsection(ESP, "Cores", "Personalização", "lucide:paint-bucket", false)
 
 ColorsSection:Colorpicker({
@@ -1172,16 +1161,6 @@ ColorsSection:Colorpicker({
     Flag = "ESPItemCor",
     Callback = function(c)
         env.ESPConfig.Colors.Weapon = c
-    end
-})
-
-ColorsSection:Colorpicker({
-    Title = "Tracers",
-    Desc = "Define a cor da linha",
-    Default = env.ESPConfig.Colors.Tracer,
-    Flag = "ESPTracersCor",
-    Callback = function(c)
-        env.ESPConfig.Colors.Tracer = c
     end
 })
 
