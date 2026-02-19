@@ -23,7 +23,7 @@ local state = {
     fling_conn = nil,
     fling_start_pos = nil,
     fake_id = math.random(1000000, 2000000000),
-    spoofed_objs = setmetatable({}, {__mode = "k"})
+    connections = {} 
 }
 
 local function get_cfg()
@@ -72,26 +72,47 @@ local function spoof_string(str)
     return str
 end
 
-local function force_update_obj(obj)
+local function monitor_object(obj)
+    if not obj then return end
+    if state.connections[obj] then return end 
+
     if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
-        local current = obj.Text
-        local spoofed = spoof_string(current)
-        if current ~= spoofed then
-            obj.Text = spoofed
-            state.spoofed_objs[obj] = true
+        local function update()
+            local cfg = get_cfg()
+            if not cfg or not cfg.AnonEnabled then return end
+            
+            local current = obj.Text
+            local spoofed = spoof_string(current)
+            
+            if current ~= spoofed then
+                obj.Text = spoofed
+            end
         end
+        
+        update()
+        state.connections[obj] = obj:GetPropertyChangedSignal("Text"):Connect(update)
     end
 end
 
 local function scan_ui_layer(layer)
     if not layer then return end
+    
     for _, v in ipairs(layer:GetDescendants()) do
-        pcall(force_update_obj, v)
+        pcall(monitor_object, v)
     end
-    layer.DescendantAdded:Connect(function(v)
+    
+    local conn = layer.DescendantAdded:Connect(function(v)
         task.wait() 
-        pcall(force_update_obj, v)
+        pcall(monitor_object, v)
     end)
+    table.insert(state.connections, conn)
+end
+
+local function clear_spoof()
+    for _, conn in pairs(state.connections) do
+        if typeof(conn) == "RBXScriptConnection" then conn:Disconnect() end
+    end
+    table.clear(state.connections)
 end
 
 local function update_anon_visuals()
@@ -106,12 +127,21 @@ local function update_anon_visuals()
                 if hum.DisplayName ~= cfg.FakeName then
                     hum.DisplayName = cfg.FakeName
                 end
+                
+                local conn = hum:GetPropertyChangedSignal("DisplayName"):Connect(function()
+                    if cfg.AnonEnabled and hum.DisplayName ~= cfg.FakeName then
+                        hum.DisplayName = cfg.FakeName
+                    end
+                end)
+                table.insert(state.connections, conn)
             end
         end
+        
         scan_ui_layer(lp:WaitForChild("PlayerGui"))
         pcall(function() scan_ui_layer(srv.CoreGui) end)
         if char then scan_ui_layer(char) end
     else
+        clear_spoof()
         local char = lp.Character
         if char then
             local hum = char:FindFirstChild("Humanoid")
