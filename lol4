@@ -2495,241 +2495,288 @@ do
 end
 
 --// tab configs
-local State = {
-    ConfigName = "",
-    SelectedConfig = nil,
-    SecretWord = "/e",
-    Keybind = Enum.KeyCode.Z,
-    Connections = {},
-    Initialized = false
-}
 
-local ConfigManager = main.ConfigManager
-local ConfigListDropdown = nil
+local GerenciadorConfig = main.ConfigManager
+local NomeConfig = ""
+local ConfigSelecionada = nil
+local DropdownListaConfig = nil
 
-local function RefreshConfigList()
-    if ConfigListDropdown then
-        ConfigListDropdown:Refresh(ConfigManager:AllConfigs())
+local function AtualizarListaConfig()
+    local configs = GerenciadorConfig:AllConfigs()
+    if DropdownListaConfig then
+        DropdownListaConfig:Refresh(configs)
     end
 end
 
-local function HandleConfigAction(action)
-    if not State.SelectedConfig or State.SelectedConfig == "Nenhuma" then
-        notificar("Nenhuma configuração selecionada", 3, "lucide:x")
-        return
-    end
+local CreationSection = criarsection(Configs, "Criação", "Criar configuração", "lucide:file-plus", true)
 
-    local cfg = ConfigManager:CreateConfig(State.SelectedConfig)
-    
-    if action == "Load" then
-        cfg:Load()
-        notificar("Carregado: " .. State.SelectedConfig, 3, "lucide:check")
-    elseif action == "Save" then
-        cfg:Save()
-        notificar("Atualizado: " .. State.SelectedConfig, 3, "lucide:check")
-    elseif action == "Delete" then
-        cfg:Delete()
-        notificar("Deletado: " .. State.SelectedConfig, 3, "lucide:trash")
-        State.SelectedConfig = nil
-        RefreshConfigList()
-    end
-end
-
-local SectionCreate = criarsection(Configs, "Criação", "Criar configuração", "lucide:file-plus", true)
-
-SectionCreate:Input({
+CreationSection:Input({
     Title = "Nome da configuração",
-    Desc = cor({"Define um "}, {"nome", "#FFFFFF"}, {" para a configuração"}),
-    Placeholder = "Ex: Legit v1",
+    Desc = cor({"Dê um "}, {"nome", "#FFFFFF"}, {" para o arquivo"}),
+    Value = "",
+    Placeholder = "Digite aqui...",
     InputIcon = "lucide:pencil",
-    Callback = function(text)
-        State.ConfigName = text
+    Type = "Input",
+    Callback = function(texto)
+        NomeConfig = texto
     end
 })
 
-SectionCreate:Button({
-    Title = "Salvar nova configuração",
-    Desc = cor({"Salva", "#00FF00"}, {" a configuração atual"}),
+CreationSection:Button({
+    Title = "Criar configuração",
+    Desc = cor({"Salva", "#00FF00"}, {" o estado atual das funções"}),
     Icon = "lucide:save-all",
     Callback = function()
-        if State.ConfigName and State.ConfigName ~= "" then
-            local cfg = ConfigManager:CreateConfig(State.ConfigName)
+        if NomeConfig ~= "" then
+            local cfg = GerenciadorConfig:CreateConfig(NomeConfig)
             cfg:Save()
-            notificar("Salvo como: " .. State.ConfigName, 3, "lucide:check")
-            RefreshConfigList()
+            notificar("Salvo como " .. NomeConfig, 3, "lucide:check")
+            AtualizarListaConfig()
         else
-            notificar("Nome inválido", 3, "lucide:alert-circle")
+            notificar("Digite um nome válido", 3, "lucide:x")
         end
     end
 })
 
-local SectionManage = criarsection(Configs, "Gerenciamento", "Gerenciar arquivos", "lucide:folder-open", true)
+local ManagementSection = criarsection(Configs, "Gerenciamento", "Gerenciar configurações", "lucide:folder-open", true)
 
-ConfigListDropdown = SectionManage:Dropdown({
+DropdownListaConfig = ManagementSection:Dropdown({
     Title = "Selecionar arquivo",
-    Desc = cor({"Escolha a "}, {"configuração", "#00AAFF"}),
+    Desc = cor({"Escolha a "}, {"configuração", "#00AAFF"}, {" alvo"}),
     Icon = "lucide:folder",
-    Values = ConfigManager:AllConfigs(),
+    Values = GerenciadorConfig:AllConfigs(),
     Value = "Nenhuma",
     Callback = function(val)
-        State.SelectedConfig = val
+        ConfigSelecionada = val
     end
 })
 
-SectionManage:Dropdown({
-    Title = "Ações do arquivo",
-    Desc = cor({"Faz algo em relação ao "}, {"arquivo", "#FFAA00"}, {" selecionado"}),
+ManagementSection:Dropdown({
+    Title = "Ações",
+    Desc = cor({"Executa uma "}, {"ação", "#FFAA00"}, {" no arquivo selecionado"}),
     Icon = "lucide:settings-2",
     Values = {
         {
             Title = "Carregar",
-            Desc = "Aplica as configurações salvas",
+            Desc = cor({"Carrega", "#00FF00"}, {" os dados salvos"}),
             Icon = "lucide:upload",
-            Callback = function() HandleConfigAction("Load") end
+            Callback = function()
+                if ConfigSelecionada and ConfigSelecionada ~= "Nenhuma" then
+                    local cfg = GerenciadorConfig:CreateConfig(ConfigSelecionada)
+                    cfg:Load()
+                    notificar("Carregado: " .. ConfigSelecionada, 3, "lucide:check")
+                else
+                    notificar("Nenhuma configuração selecionada", 3, "lucide:x")
+                end
+            end
         },
         {
             Title = "Sobrescrever",
-            Desc = "Atualiza o arquivo com os valores atuais",
+            Desc = cor({"Substitui", "#FFAA00"}, {" os dados deste arquivo"}),
             Icon = "lucide:refresh-cw",
-            Callback = function() HandleConfigAction("Save") end
+            Callback = function()
+                if ConfigSelecionada and ConfigSelecionada ~= "Nenhuma" then
+                    local cfg = GerenciadorConfig:CreateConfig(ConfigSelecionada)
+                    cfg:Save()
+                    notificar("Alterado: " .. ConfigSelecionada, 3, "lucide:check")
+                else
+                    notificar("Nenhuma configuração selecionada", 3, "lucide:x")
+                end
+            end
         },
         {
-            Title = "Deletar",
-            Desc = "Remove permanentemente o arquivo",
-            Icon = "lucide:trash-2",
-            Callback = function() HandleConfigAction("Delete") end
+            Type = "Divider",
         },
-        { Type = "Divider" },
+        {
+            Title = "Deletar arquivo",
+            Desc = cor({"Apaga", "#FF0000"}, {" permanentemente o registro"}),
+            Icon = "lucide:trash-2",
+            Callback = function()
+                if ConfigSelecionada and ConfigSelecionada ~= "Nenhuma" then
+                    local cfg = GerenciadorConfig:CreateConfig(ConfigSelecionada)
+                    cfg:Delete()
+                    notificar("Deletado: " .. ConfigSelecionada, 3, "lucide:trash")
+                    AtualizarListaConfig()
+                    ConfigSelecionada = "Nenhuma"
+                    DropdownListaConfig:Select("Nenhuma")
+                else
+                    notificar("Nenhuma configuração selecionada", 3, "lucide:x")
+                end
+            end
+        },
         {
             Title = "Atualizar lista",
-            Desc = "Recarrega os arquivos da pasta",
+            Desc = cor({"Recarrega", "#00AAFF"}, {" a lista de arquivos"}),
             Icon = "lucide:rotate-ccw",
             Callback = function()
-                RefreshConfigList()
-                notificar("Lista sincronizada", 2, "lucide:check")
+                AtualizarListaConfig()
+                notificar("Lista atualizada", 2, "lucide:check")
             end
         }
     }
 })
 
-local function UpdateConnections()
-    if State.Connections.Chat then State.Connections.Chat:Disconnect() end
-    if State.Connections.Keybind then State.Connections.Keybind:Disconnect() end
+--// ativar e desativar UI
+local SecretWord = "/e" 
+local KeybindKey = Enum.KeyCode.Z 
+local ChatConnection = nil
+local KeybindConnection = nil 
 
-    State.Connections.Chat = LocalPlayer.Chatted:Connect(function(msg)
-        if msg == State.SecretWord then
-            main:Toggle()
-        end
-    end)
+local function setupChatToggle()
+    if ChatConnection then
+        ChatConnection:Disconnect()
+        ChatConnection = nil
+    end
 
-    State.Connections.Keybind = UserInputService.InputBegan:Connect(function(input, processed)
-        if processed then return end
-        if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == State.Keybind then
+    ChatConnection = LocalPlayer.Chatted:Connect(function(msg)
+        if msg == SecretWord then
             main:Toggle()
         end
     end)
 end
 
-UpdateConnections()
+setupChatToggle()
 
-local SectionUI = criarsection(Configs, "Interface", "Customização visual", "lucide:monitor", false)
+local function setupKeybind(isUpdate)
+    if KeybindConnection then
+        KeybindConnection:Disconnect()
+        KeybindConnection = nil
+    end
 
-SectionUI:Toggle({
-    Title = "Botão flutuante",
-    Desc = cor({"Mostra um botão ao "}, {"fechar", "#FFAA00"}, {" o menu para reabri-lo"}),
-    Icon = "lucide:circle-dot",
+    KeybindConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+
+        if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == KeybindKey then
+            main:Toggle()
+        end
+    end)
+    
+    if isUpdate then
+        notificar("Keybind: " .. tostring(KeybindKey), 3, "lucide:keyboard")
+    end
+end
+
+setupKeybind(false)
+
+local InterfaceSection = criarsection(Configs, "Interface", "Opções da UI", "lucide:monitor", false)
+
+InterfaceSection:Toggle({
+    Title = "Botão UI",
+    Desc = cor({"Ativa", "#00FF00"}, {" o botão flutuante ao "}, {"minimizar", "#FFAA00"}),
+    Icon = "lucide:check",
+    IconColor = "Green",
+    Type = "Checkbox",
     Value = true,
-    Callback = function(enabled)
-        main:EditOpenButton({
-            Title = "",
-            Icon = "rbxthumb://type=Asset&id=88026679106109&w=420&h=420",
-            CornerRadius = UDim.new(1, 0),
-            StrokeThickness = 0,
-            Color = ColorSequence.new(Color3.fromRGB(40, 40, 40)),
-            Enabled = enabled,
-            Draggable = true,
-        })
+    Callback = function(state)
+    main:EditOpenButton({
+    Title = "",
+    Icon = "rbxthumb://type=Asset&id=88026679106109&w=420&h=420",
+    CornerRadius = UDim.new(10, 10),
+    StrokeThickness = 1,
+    Color = ColorSequence.new(
+        Color3.fromHex("#282828"), 
+        Color3.fromHex("#FFFFFF")
+    ),
+    OnlyMobile = false,
+    Enabled = state,
+    Draggable = true,
+})
     end
 })
 
-SectionUI:Input({
-    Title = "Comando de chat",
-    Desc = cor({"Frase para "}, {"abrir/fechar", "#FFFFFF"}, {" o menu"}),
+InterfaceSection:Input({
+    Title = "Palavra secreta",
+    Desc = cor({"Usa o "}, {"chat", "#FFFFFF"}, {" para abrir a UI"}),
     Placeholder = "/e",
     InputIcon = "lucide:message-square",
-    Callback = function(val)
-        if not val or val:match("^%s*$") then
-            if State.Initialized then
-                notificar("Comando inválido", 2, "lucide:x")
-            end
+    Flag = "PalavraSecreta",
+    Callback = function(v)
+        if v == "" then return end
+        local has_space = string.find(v or "", "%s")
+        local is_empty = string.len(v or "") == 0
+        
+        if not is_empty and not has_space then
+            SecretWord = v
+            setupChatToggle()
+            notificar("Definida para: " .. v, 3, "lucide:check")
+        else
+            notificar("Texto inválido", 3, "lucide:alert-circle")
+            
+            SecretWord = "/e"
+            setupChatToggle()
+            notificar("Resetada para: /e", 3, "lucide:rotate-ccw")
+        end
+    end
+})
+
+InterfaceSection:Input({
+    Title = "Keybind",
+    Desc = cor({"Define a tecla para "}, {"abrir/fechar", "#FFFFFF"}, {" a interface"}),
+    Flag = "KeybindUI",
+    InputIcon = "lucide:keyboard",
+    Placeholder = "Z",
+    Callback = function(v)
+        local keyName = string.upper(string.gsub(v or "", "%s+", ""))
+
+        if string.len(keyName) == 0 then
             return
         end
-        State.SecretWord = val
-        if State.Initialized then
-            notificar("Comando definido: " .. val, 3, "lucide:check")
-        end
-    end
-})
 
-SectionUI:Input({
-    Title = "Tecla de atalho",
-    Desc = cor({"Tecla para "}, {"abrir/fechar", "#FFFFFF"}, {" a UI"}),
-    Placeholder = "Z",
-    InputIcon = "lucide:keyboard",
-    Callback = function(val)
-        local keyName = tostring(val):upper():gsub("%s+", "")
-        if keyName == "" then return end
-        
-        local success, keyCode = pcall(function() return Enum.KeyCode[keyName] end)
+        local success, newKeybind = pcall(function()
+            return Enum.KeyCode[keyName]
+        end)
 
-        if success and keyCode then
-            State.Keybind = keyCode
-            UpdateConnections()
-            if State.Initialized then
-                notificar("Atalho definido: " .. keyName, 2, "lucide:keyboard")
-            end
+        if success and newKeybind then
+            KeybindKey = newKeybind
+            setupKeybind(true)
         else
-            if State.Initialized then
-                notificar("Tecla inválida", 2, "lucide:x")
-            end
+            notificar("Tecla inválida", 3, "lucide:x")
         end
     end
 })
 
-local SectionTheme = criarsection(Configs, "Temas", "Aparência", "lucide:palette", false)
+local ThemeSection = criarsection(Configs, "Temas", "Customize a UI", "lucide:palette", false)
 
-local function GetSortedThemes()
+local function GetThemeList()
+    local themes = UI:GetThemes() 
     local list = {}
-    for name, _ in pairs(UI:GetThemes()) do
-        table.insert(list, {
-            Title = name,
-            Desc = cor({"Aplicar tema "}, {name, "#00AAFF"}),
-            Icon = "lucide:paint-bucket"
-        })
+    
+    for k, v in pairs(themes) do
+        local themeName
+        if type(k) == "string" then
+            themeName = k 
+        elseif type(v) == "string" then
+            themeName = v
+        end
+        
+        if themeName then
+            table.insert(list, {
+                Title = themeName,
+                Desc = cor({"Tema "}, {themeName, "#00AAFF"}),
+                Icon = "lucide:paintbrush",
+            })
+        end
     end
+    
     table.sort(list, function(a, b) return a.Title < b.Title end)
+    
     return list
 end
 
-SectionTheme:Dropdown({
+ThemeSection:Dropdown({
     Title = "Temas",
-    Desc = cor({"Selecione o "}, {"estilo", "#FFFFFF"}, {" desejado"}),
+    Desc = cor({"Escolha o "}, {"tema", "#FFFFFF"}, {" da interface"}),
     Icon = "lucide:palette",
-    Values = GetSortedThemes(),
-    Callback = function(option)
-        local themeName = type(option) == "table" and option.Title or option
+    Values = GetThemeList(),
+    Flag = "Tema",
+    Callback = function(val)
+        local themeName = (type(val) == "table" and val.Title) or val
         if themeName then
             UI:SetTheme(themeName)
-            if State.Initialized then
-                notificar("Tema: " .. themeName, 2, "lucide:check")
-            end
+            notificar("Aplicado " .. themeName, 2, "lucide:check")
         end
     end
 })
-
-task.delay(1, function()
-    State.Initialized = true
-end)
 
 --// mapas 
 
