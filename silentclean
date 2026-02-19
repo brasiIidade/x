@@ -1,0 +1,404 @@
+--[[ 
+    SILENT AIM LIBRARY (BACKEND)
+    Author: Gemini
+    Structure: Professional Environment Library (getgenv)
+]]
+
+--// Prevenção de Múltiplas Execuções
+if getgenv().SilentAim and getgenv().SilentAim.Unload then
+    getgenv().SilentAim:Unload()
+end
+
+local Library = {}
+local Services = {
+    Players = game:GetService("Players"),
+    RunService = game:GetService("RunService"),
+    Workspace = game:GetService("Workspace"),
+    GuiService = game:GetService("GuiService"),
+    UserInputService = game:GetService("UserInputService"),
+    CoreGui = game:GetService("CoreGui")
+}
+
+local LocalPlayer = Services.Players.LocalPlayer
+local Camera = Services.Workspace.CurrentCamera
+
+--// Funções de Segurança (Cache)
+local gethui = gethui or function() return Services.CoreGui end
+local clonefunction = clonefunction or function(f) return f end
+local raycast = clonefunction(Services.Workspace.Raycast)
+local world_to_screen = clonefunction(Camera.WorldToScreenPoint)
+local get_mouse_loc = clonefunction(Services.UserInputService.GetMouseLocation)
+
+--// Configuração Padrão
+Library.Config = {
+    Enabled = false,
+    TeamCheck = "Team", -- "Team", "All"
+    TargetPart = {"Head"}, -- Pode ser {"Head", "Random", ...}
+    TargetPriority = "Distance", -- "Distance", "Health"
+    MaxDistance = 1000,
+    HitChance = 100,
+    UseLegitOffset = true,
+    WallCheck = true,
+    WhitelistedUsers = {},
+    WhitelistedTeams = {},
+    FocusList = {},
+    FocusMode = false,
+    
+    -- Visuals
+    ShowFOV = true,
+    FOVSize = 150,
+    FOVColor = Color3.fromRGB(34, 140, 85),
+    FOVBehavior = "Center", -- "Center", "Mouse"
+    
+    ShowHighlight = true,
+    HighlightColor = Color3.fromRGB(255, 60, 60),
+    
+    ESP = {
+        Enabled = true,
+        ShowName = true,
+        ShowTeam = true,
+        ShowHealth = true,
+        ShowWeapon = true
+    }
+}
+
+--// Estado Interno
+Library.State = {
+    Target = nil,
+    TargetPart = nil,
+    Connections = {},
+    Visuals = {
+        GUI = nil,
+        Circle = nil,
+        Stroke = nil,
+        Highlight = nil,
+        ESP = nil,
+        Labels = {}
+    }
+}
+
+--// Funções Utilitárias Públicas
+function Library:GetPlayerNames()
+    local names = {}
+    for _, p in ipairs(Services.Players:GetPlayers()) do
+        if p ~= LocalPlayer then table.insert(names, p.Name) end
+    end
+    return names
+end
+
+function Library:GetTeamNames()
+    local names = {}
+    if game:GetService("Teams") then
+        for _, t in ipairs(game:GetService("Teams"):GetTeams()) do table.insert(names, t.Name) end
+    end
+    return names
+end
+
+--// Sistema de Raycast (WallCheck)
+local RayParams = RaycastParams.new()
+RayParams.FilterType = Enum.RaycastFilterType.Exclude
+RayParams.IgnoreWater = true
+
+local function IsVisible(targetPart, character)
+    if not Library.Config.WallCheck then return true end
+    
+    -- Atualiza filtro dinamicamente
+    local ignoreList = {LocalPlayer.Character, Camera, character}
+    if Library.State.Visuals.GUI then table.insert(ignoreList, Library.State.Visuals.GUI) end
+    RayParams.FilterDescendantsInstances = ignoreList
+    
+    local origin = Camera.CFrame.Position
+    local direction = targetPart.Position - origin
+    
+    local result = raycast(Services.Workspace, origin, direction, RayParams)
+    return result == nil or result.Instance:IsDescendantOf(character)
+end
+
+--// Offset Legit
+local function GetLegitOffset()
+    if not Library.Config.UseLegitOffset then return Vector3.zero end
+    return Vector3.new(
+        (math.random() - 0.5) * 0.5,
+        (math.random() - 0.5) * 0.5,
+        (math.random() - 0.5) * 0.5
+    )
+end
+
+--// Lógica Principal (Busca de Alvo)
+function Library:UpdateTarget()
+    local Config = self.Config
+    local BestTarget, BestPart, BestScore = nil, nil, math.huge
+    
+    local MousePos
+    if Config.FOVBehavior == "Mouse" then
+        MousePos = get_mouse_loc(Services.UserInputService)
+    else
+        local Viewport = Camera.ViewportSize
+        MousePos = Vector2.new(Viewport.X / 2, Viewport.Y / 2)
+    end
+    
+    for _, Player in ipairs(Services.Players:GetPlayers()) do
+        if Player == LocalPlayer then continue end
+        
+        -- Team Check
+        if Config.TeamCheck == "Team" and Player.Team == LocalPlayer.Team then continue end
+        
+        -- Whitelist Check
+        if table.find(Config.WhitelistedUsers, Player.Name) then continue end
+        if Player.Team and table.find(Config.WhitelistedTeams, Player.Team.Name) then continue end
+        
+        -- Focus Mode Check
+        if Config.FocusMode and not table.find(Config.FocusList, Player.Name) then continue end
+        
+        local Char = Player.Character
+        if not Char then continue end
+        
+        local Root = Char:FindFirstChild("HumanoidRootPart")
+        local Hum = Char:FindFirstChild("Humanoid")
+        
+        if not Root or not Hum or Hum.Health <= 0 then continue end
+        
+        local Dist3D = (Root.Position - Camera.CFrame.Position).Magnitude
+        if Dist3D > Config.MaxDistance then continue end
+        
+        -- Seleção da Parte
+        local TargetPartName = "Head"
+        if type(Config.TargetPart) == "table" then
+            if table.find(Config.TargetPart, "Random") then
+                TargetPartName = (math.random() > 0.5) and "Head" or "HumanoidRootPart"
+            else
+                TargetPartName = Config.TargetPart[math.random(1, #Config.TargetPart)]
+            end
+        elseif type(Config.TargetPart) == "string" and Config.TargetPart ~= "Random" then
+            TargetPartName = Config.TargetPart
+        end
+        if TargetPartName == "Torso" then TargetPartName = "HumanoidRootPart" end
+        
+        local PartObj = Char:FindFirstChild(TargetPartName) or Root
+        
+        -- Cálculo Matemático
+        local ScreenPos, OnScreen = world_to_screen(Camera, PartObj.Position)
+        if OnScreen then
+            local Dist2D = (MousePos - Vector2.new(ScreenPos.X, ScreenPos.Y)).Magnitude
+            
+            if Dist2D <= Config.FOVSize then
+                if IsVisible(PartObj, Char) then
+                    local Score = (Config.TargetPriority == "Health") and Hum.Health or Dist2D
+                    if Score < BestScore then
+                        BestScore = Score
+                        BestTarget = Char
+                        BestPart = PartObj
+                    end
+                end
+            end
+        end
+    end
+    
+    self.State.Target = BestTarget
+    self.State.TargetPart = BestPart
+end
+
+--// Sistema Visual (Criação e Atualização)
+function Library:InitVisuals()
+    if self.State.Visuals.GUI then self.State.Visuals.GUI:Destroy() end
+    
+    local SGui = Instance.new("ScreenGui")
+    SGui.Name = "SA_Overlay"
+    SGui.IgnoreGuiInset = true
+    SGui.ResetOnSpawn = false
+    SGui.Parent = gethui()
+    
+    -- FOV
+    local FOVFrame = Instance.new("Frame", SGui)
+    FOVFrame.BackgroundTransparency = 1
+    FOVFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    
+    local Corner = Instance.new("UICorner", FOVFrame)
+    Corner.CornerRadius = UDim.new(1, 0)
+    
+    local Stroke = Instance.new("UIStroke", FOVFrame)
+    Stroke.Thickness = 1.5
+    Stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    
+    -- Highlight
+    local HL = Instance.new("Highlight", SGui)
+    HL.FillTransparency = 0.5
+    HL.OutlineTransparency = 0
+    HL.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    HL.Enabled = false
+    
+    -- ESP Billboard
+    local ESPBill = Instance.new("BillboardGui", SGui)
+    ESPBill.Size = UDim2.fromOffset(200, 100)
+    ESPBill.StudsOffset = Vector3.new(0, 3, 0)
+    ESPBill.AlwaysOnTop = true
+    ESPBill.Enabled = false
+    
+    local Container = Instance.new("Frame", ESPBill)
+    Container.Size = UDim2.fromScale(1, 1)
+    Container.BackgroundTransparency = 1
+    
+    local List = Instance.new("UIListLayout", Container)
+    List.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    List.SortOrder = Enum.SortOrder.LayoutOrder
+    
+    local function mkLabel(order, font, color)
+        local L = Instance.new("TextLabel", Container)
+        L.BackgroundTransparency = 1
+        L.Size = UDim2.new(1, 0, 0, 15)
+        L.Font = font or Enum.Font.GothamBold
+        L.TextSize = 13
+        L.TextColor3 = color or Color3.new(1,1,1)
+        L.TextStrokeTransparency = 0.2
+        L.LayoutOrder = order
+        return L
+    end
+    
+    self.State.Visuals.GUI = SGui
+    self.State.Visuals.Circle = FOVFrame
+    self.State.Visuals.Stroke = Stroke
+    self.State.Visuals.Highlight = HL
+    self.State.Visuals.ESP = ESPBill
+    self.State.Visuals.Labels = {
+        Name = mkLabel(1),
+        Team = mkLabel(2, nil, Color3.new(0.8,0.8,0.8)),
+        Weapon = mkLabel(3),
+        Health = mkLabel(4, Enum.Font.Code)
+    }
+end
+
+function Library:UpdateVisuals()
+    if not self.State.Visuals.GUI or not self.State.Visuals.GUI.Parent then return end
+    local Config = self.Config
+    local V = self.State.Visuals
+    
+    -- FOV
+    if Config.ShowFOV then
+        V.Circle.Visible = true
+        V.Circle.Size = UDim2.fromOffset(Config.FOVSize * 2, Config.FOVSize * 2)
+        V.Stroke.Color = Config.FOVColor
+        
+        local Pos
+        if Config.FOVBehavior == "Mouse" then
+            Pos = get_mouse_loc(Services.UserInputService)
+        else
+            local View = Camera.ViewportSize
+            Pos = Vector2.new(View.X/2, View.Y/2)
+        end
+        V.Circle.Position = UDim2.fromOffset(Pos.X, Pos.Y)
+    else
+        V.Circle.Visible = false
+    end
+    
+    -- Target Visuals
+    local T = self.State.Target
+    if T and T:FindFirstChild("HumanoidRootPart") then
+        -- Highlight
+        if Config.ShowHighlight then
+            V.Highlight.Adornee = T
+            V.Highlight.FillColor = Config.HighlightColor
+            V.Highlight.OutlineColor = Config.HighlightColor
+            V.Highlight.Enabled = true
+        else
+            V.Highlight.Enabled = false
+        end
+        
+        -- ESP
+        if Config.ESP.Enabled then
+            V.ESP.Adornee = T:FindFirstChild("HumanoidRootPart")
+            V.ESP.Enabled = true
+            
+            local P = Services.Players:GetPlayerFromCharacter(T)
+            local Hum = T:FindFirstChild("Humanoid")
+            
+            V.Labels.Name.Visible = Config.ESP.ShowName
+            V.Labels.Name.Text = P and P.Name or T.Name
+            
+            V.Labels.Team.Visible = Config.ESP.ShowTeam
+            V.Labels.Team.Text = P and tostring(P.Team) or "NPC"
+            V.Labels.Team.TextColor3 = P and P.TeamColor.Color or Color3.new(1,1,1)
+            
+            V.Labels.Weapon.Visible = Config.ESP.ShowWeapon
+            local Tool = T:FindFirstChildWhichIsA("Tool")
+            V.Labels.Weapon.Text = Tool and Tool.Name or "None"
+            
+            V.Labels.Health.Visible = Config.ESP.ShowHealth
+            if Hum then
+                local hp, mhp = math.floor(Hum.Health), math.floor(Hum.MaxHealth)
+                V.Labels.Health.Text = string.format("[%d / %d]", hp, mhp)
+                V.Labels.Health.TextColor3 = Color3.fromHSV((hp/mhp)*0.3, 1, 1)
+            end
+        else
+            V.ESP.Enabled = false
+        end
+    else
+        V.Highlight.Enabled = false
+        V.ESP.Enabled = false
+    end
+end
+
+--// Ciclo de Vida
+function Library:Start()
+    if self.State.Connections.Loop then return end
+    self:InitVisuals()
+    self.Config.Enabled = true
+    
+    self.State.Connections.Loop = Services.RunService.RenderStepped:Connect(function()
+        if not self.Config.Enabled then return end
+        self:UpdateTarget()
+        self:UpdateVisuals()
+    end)
+    
+    -- Hooking
+    local mt = getrawmetatable(game)
+    local old_nc = mt.__namecall
+    setreadonly(mt, false)
+    
+    local IgnoreList = {"UpdateMouse", "Look", "Camera", "Status", "Animation", "Heartbeat"}
+    local function IsSafeRemote(n)
+        n = string.lower(n)
+        for _, v in ipairs(IgnoreList) do if string.find(n, v) then return false end end
+        return true
+    end
+    
+    mt.__namecall = newcclosure(function(obj, ...)
+        local method = getnamecallmethod()
+        local args = {...}
+        
+        if self.Config.Enabled and self.State.TargetPart and checkcaller() then
+            if method == "FireServer" and IsSafeRemote(obj.Name) then
+                if math.random(1, 100) > self.Config.HitChance then return old_nc(obj, ...) end
+                
+                local hitPos = self.State.TargetPart.Position + GetLegitOffset()
+                for i, v in ipairs(args) do
+                    if typeof(v) == "Vector3" and v.Magnitude > 10 then args[i] = hitPos end
+                end
+                return old_nc(obj, unpack(args))
+            end
+        end
+        return old_nc(obj, ...)
+    end)
+    setreadonly(mt, true)
+end
+
+function Library:Stop()
+    self.Config.Enabled = false
+    if self.State.Connections.Loop then
+        self.State.Connections.Loop:Disconnect()
+        self.State.Connections.Loop = nil
+    end
+    if self.State.Visuals.GUI then
+        self.State.Visuals.GUI:Destroy()
+    end
+    self.State.Target = nil
+    self.State.TargetPart = nil
+end
+
+function Library:Unload()
+    self:Stop()
+    getgenv().SilentAim = nil
+end
+
+--// Inicialização
+getgenv().SilentAim = Library
+return Library
