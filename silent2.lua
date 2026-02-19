@@ -1,5 +1,3 @@
--- anti
-
 local function Finalizar(Mensagem)
     print(Mensagem)
     task.wait(0.5)
@@ -26,7 +24,8 @@ if not game.ServiceAdded then
     Finalizar("skid de EB :(")
 end
 
-if getfenv()[Instance.new("Part")] then
+local _, envErr = pcall(function() return getfenv()[Instance.new("Part")] end)
+if not _ and envErr and not string.find(envErr, "expected string") then
     Finalizar("skid de EB :(")
 end
 
@@ -306,7 +305,7 @@ _G.StopSilentAim = function()
     _G.SilentAimActive = false
     for _, conn in pairs(SilentAimConnections) do if conn then conn:Disconnect() end end
     SilentAimConnections = {}
-    for _, line in pairs(FOVLines) do pcall(function() line:Remove() end) end
+    for _, line in pairs(FOVLines) do pcall(function() line:Destroy() end) end
     FOVLines = {}
     
     if AimFOVCircleInstance then pcall(function() AimFOVCircleInstance:Remove() end) AimFOVCircleInstance = nil end
@@ -342,7 +341,7 @@ _G.StartSilentAim = function()
 
     FOVLines = {} 
 
-    local ScreenGui = Functions:Create("ScreenGui", {Parent = CoreGui, Name = "HUD"})
+    local ScreenGui = Functions:Create("ScreenGui", {Parent = CoreGui, Name = "HUD", IgnoreGuiInset = true})
     AimbotGuiInstance = ScreenGui
 
     local Name = Functions:Create("TextLabel", {Parent = ScreenGui, Size = UDim2.new(0, 100, 0, 20), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundTransparency = 1, TextColor3 = Color3.fromRGB(255, 255, 255), Font = Enum.Font.Code, TextSize = ESP_SETTINGS.FontSize, TextStrokeTransparency = 0, TextStrokeColor3 = Color3.fromRGB(0, 0, 0), RichText = true, Visible = false})
@@ -378,10 +377,11 @@ _G.StartSilentAim = function()
                 
             for i = 1, numSides do
                 if not FOVLines[i] then
-                    local l = Drawing.new("Line")
-                    l.Thickness = 2
-                    l.Transparency = 1
-                    l.Visible = true
+                    local l = Instance.new("Frame")
+                    l.Parent = AimbotGuiInstance
+                    l.AnchorPoint = Vector2.new(0.5, 0.5)
+                    l.BorderSizePixel = 0
+                    l.ZIndex = 0
                     FOVLines[i] = l
                 end
             end
@@ -394,7 +394,6 @@ _G.StartSilentAim = function()
                 local line = FOVLines[i]
                 if line then
                     line.Visible = true
-                    line.Thickness = 2
                     
                     local currentRad = angleStep * (i - 1)
                     local nextRad = angleStep * i
@@ -402,14 +401,19 @@ _G.StartSilentAim = function()
                     local p1 = pos + Vector2New(math.cos(currentRad) * radius, math.sin(currentRad) * radius)
                     local p2 = pos + Vector2New(math.cos(nextRad) * radius, math.sin(nextRad) * radius)
 
-                    line.From = p1
-                    line.To = p2
+                    local distanceCalc = (p2 - p1).Magnitude
+                    local centerCalc = (p1 + p2) / 2
+                    local angleCalc = math.atan2(p2.Y - p1.Y, p2.X - p1.X)
+
+                    line.Position = UDim2.new(0, centerCalc.X, 0, centerCalc.Y)
+                    line.Size = UDim2.new(0, distanceCalc, 0, 2)
+                    line.Rotation = math.deg(angleCalc)
 
                     local progress = i / numSides
                     local wave = math.sin(time * config.GradientSpeed + (progress * math.pi * 2))
                     local lerpFactor = (wave + 1) / 2
                     
-                    line.Color = config.FOVColor1:Lerp(config.FOVColor2, lerpFactor)
+                    line.BackgroundColor3 = config.FOVColor1:Lerp(config.FOVColor2, lerpFactor)
                 end
             end
         else
