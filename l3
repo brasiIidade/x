@@ -8,30 +8,36 @@ local OldInfo
 OldInfo = HookFunc(DebugInfo, NewCClosure(function(f, ...)
     if not CheckCaller() then
         local Ret = {OldInfo(f, ...)}
-        -- Mascara a origem das funções da UI e do Script
         if #Ret > 0 and type(Ret[1]) == "string" and (Ret[1]:find("michigun") or Ret[1]:find("WindUI") or Ret[1]:find("UI")) then
             return "[C]"
         end
     end
     return OldInfo(f, ...)
-end))
+end)); -- Adicionado ; para fechar a instrução
 
 local OldFenv
 OldFenv = HookFunc(GetFenv, NewCClosure(function(f)
     if not CheckCaller() and type(f) == "function" then
         local Src = DebugInfo(f, "s")
-        -- Impede acesso ao ambiente do script
         if Src and (Src:find("michigun") or Src:find("WindUI") or Src:find("UI")) then
             return OldFenv(0)
         end
     end
     return OldFenv(f)
-end))
+end)); -- Adicionado ; para fechar a instrução
 
 --// 2. SERVIÇOS E VARIÁVEIS LOCAIS
 local cr = cloneref or function(o) return o end
+local PlayersService = cr(game:GetService("Players")) -- Definido explicitamente antes
+
+-- CORREÇÃO TOTAL: Espera o serviço e o jogador de forma robusta
+if not PlayersService.LocalPlayer then
+    repeat task.wait() until PlayersService.LocalPlayer
+end
+
+local LocalPlayer = PlayersService.LocalPlayer
 local Services = {
-    Players = cr(game:GetService("Players")),
+    Players = PlayersService,
     HttpService = cr(game:GetService("HttpService")),
     CoreGui = cr(game:GetService("CoreGui")),
     RunService = cr(game:GetService("RunService")),
@@ -42,23 +48,15 @@ local Services = {
     Stats = cr(game:GetService("Stats"))
 }
 
--- CORREÇÃO: Aguarda o LocalPlayer carregar antes de continuar
-local LocalPlayer = Services.Players.LocalPlayer
-if not LocalPlayer then
-    repeat 
-        task.wait(0.1) 
-        LocalPlayer = Services.Players.LocalPlayer
-    until LocalPlayer
-end
-
 local Executor = (identifyexecutor and string.lower(identifyexecutor())) or "unknown"
 
 --// 3. VALIDAÇÃO DE EXECUTOR
 if string.find(Executor, "xeno") or string.find(Executor, "solara") then
-    LocalPlayer:Kick("Executor não suportado (Detecção de instabilidade).")
-    task.wait(9e9)
+    if LocalPlayer then
+        LocalPlayer:Kick("Executor não suportado (Detecção de instabilidade).")
+    end
+    return -- Para a execução aqui
 end
-
 
 --// 4. AUTENTICAÇÃO (SILENT)
 task.spawn(function()
