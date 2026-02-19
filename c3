@@ -832,7 +832,8 @@ do
 end
 
 --// tab hitbox
-_G.HitboxConfig = {
+getgenv().HitboxConfig = {
+    Enabled = false,
     Size = Vector3.new(5,5,5),
     Transparency = 0.5,
     Shape = Enum.PartType.Ball,
@@ -842,158 +843,145 @@ _G.HitboxConfig = {
     SelectedTeams = {}
 }
 
+local Config = getgenv().HitboxConfig
+
 task.spawn(function()
     if ler then ler("hitbox") end
 end)
 
-local function AtualizarValores()
-    if _G.UpdateHitboxValues then
-        _G.UpdateHitboxValues()
+local function GetTeamNames()
+    local t = {}
+    if TeamsService then
+        for _, v in ipairs(TeamsService:GetTeams()) do table.insert(t, v.Name) end
     end
+    return t
 end
 
-local MainSection = criarsection(HitboxExpander, "Principal", "Controles gerais", "lucide:box", true)
+do
+    local MainSection = criarsection(HitboxExpander, "Principal", "Controles gerais", "lucide:box", true)
 
-MainSection:Paragraph({
-    Title = "Modificar hitbox",
-    Image = "lucide:expand",
-    Desc = cor({"Altera o "}, {"tamanho", "#00AAFF"}, {" da hitbox dos inimigos"})
-})
+    MainSection:Paragraph({
+        Title = "Modificar hitbox",
+        Image = "lucide:expand",
+        Desc = cor({"Altera o "}, {"tamanho", "#00AAFF"}, {" da hitbox dos inimigos"})
+    })
 
-local FirstRun = true
-MainSection:Toggle({
-    Title = "Hitbox",
-    Desc = cor({"Liga", "#00FF00"}, {" o hitbox expander"}),
-    Icon = "lucide:boxes",
-    Value = false,
-    Flag = "Hitbox",
-    Callback = function(v)
-        if FirstRun then
-            FirstRun = false
+    local FirstRun = true
+    MainSection:Toggle({
+        Title = "Hitbox",
+        Desc = cor({"Liga", "#00FF00"}, {" o hitbox expander"}),
+        Icon = "lucide:boxes",
+        Value = Config.Enabled,
+        Flag = "Hitbox",
+        Callback = function(v)
+            Config.Enabled = v
+            if FirstRun then
+                FirstRun = false
+                return
+            end
+
             if v then
-                if _G.StartHitboxLogic then _G.StartHitboxLogic() end
-            else
-                if _G.StopHitboxLogic then _G.StopHitboxLogic() end
-            end
-            return
-        end
-
-        if v then
-            if _G.StartHitboxLogic then
-                _G.StartHitboxLogic()
                 notificar("Ligado", 2, "lucide:play")
-            end
-        else
-            if _G.StopHitboxLogic then
-                _G.StopHitboxLogic()
+            else
                 notificar("Desligado", 2, "lucide:pause")
             end
         end
-    end
-})
+    })
 
-local ConfigSection = criarsection(HitboxExpander, "Configuração", "Ajustes visuais e técnicos", "lucide:settings-2", false)
+    local ConfigSection = criarsection(HitboxExpander, "Configuração", "Ajustes visuais e técnicos", "lucide:settings-2", false)
 
-ConfigSection:Input({
-    Title = "Tamanho da hitbox",
-    Placeholder = "20",
-    InputIcon = "lucide:ruler",
-    Flag = "TamanhoHitbox",
-    Callback = function(v)
-        local n = tonumber(v)
-        if n then
-            _G.HitboxConfig.Size = Vector3.new(n,n,n)
-            AtualizarValores()
+    ConfigSection:Input({
+        Title = "Tamanho da hitbox",
+        Placeholder = "20",
+        InputIcon = "lucide:ruler",
+        Flag = "TamanhoHitbox",
+        Callback = function(v)
+            local n = tonumber(v)
+            if n then
+                Config.Size = Vector3.new(n,n,n)
+            end
         end
-    end
-})
+    })
 
-ConfigSection:Dropdown({
-    Title = "Formato",
-    Desc = cor({"Formato", "#00AAFF"}, {" usado para a hitbox"}),
-    Icon = "lucide:shapes",
-    Values = { "Sphere", "Block", "Cylinder", "Wedge" },
-    Value = "Sphere",
-    Flag = "FormatoHitbox",
-    Callback = function(option)
-        local map = {
-            Sphere = Enum.PartType.Ball,
-            Block = Enum.PartType.Block,
-            Cylinder = Enum.PartType.Cylinder,
-            Wedge = Enum.PartType.Wedge
-        }
-        _G.HitboxConfig.Shape = map[option]
-        AtualizarValores()
-    end
-})
-
-ConfigSection:Toggle({
-    Title = "Escudo check",
-    Desc = cor({"A hitbox volta ao normal se "}, {"equiparem", "#FFAA00"}, {" o escudo"}),
-    Icon = "lucide:shield-alert",
-    Value = _G.HitboxConfig.HideOnShield,
-    Flag = "EscudoHitbox",
-    Callback = function(v)
-        _G.HitboxConfig.HideOnShield = v
-        AtualizarValores()
-    end
-})
-
-ConfigSection:Slider({
-    Title = "Transparência",
-    Desc = cor({"0 = "}, {"visível", "#00FF00"}, {"; 1 = "}, {"invisível", "#FF0000"}),
-    Icon = "lucide:ghost",
-    Step = 0.02,
-    Value = { Min = 0, Max = 1, Default = _G.HitboxConfig.Transparency },
-    Flag = "VisibilidadeHitbox",
-    Callback = function(val)
-        _G.HitboxConfig.Transparency = val
-        AtualizarValores()
-    end
-})
-
-local TeamSection = criarsection(HitboxExpander, "Filtros", "Configuração de times", "lucide:users", false)
-
-TeamSection:Toggle({
-    Title = "Team check",
-    Desc = cor({"Ignora", "#FF0000"}, {" jogadores do mesmo time"}),
-    Icon = "lucide:shield-check",
-    Value = _G.HitboxConfig.TeamCheck,
-    Flag = "TeamCheckHitbox",
-    Callback = function(v)
-        _G.HitboxConfig.TeamCheck = v
-        AtualizarValores()
-    end
-})
-
-TeamSection:Toggle({
-    Title = "Filtrar por time",
-    Desc = cor({"Aplica", "#00AAFF"}, {" a hitbox apenas nos times selecionados"}),
-    Icon = "lucide:sliders-horizontal",
-    Value = _G.HitboxConfig.TeamFilterEnabled,
-    Flag = "FiltrarTimeHitbox",
-    Callback = function(v)
-        _G.HitboxConfig.TeamFilterEnabled = v
-        AtualizarValores()
-    end
-})
-
-TeamSection:Dropdown({
-    Title = "Times",
-    Desc = cor({"Selecione", "#FFFFFF"}, {" os times"}),
-    Icon = "lucide:users-round",
-    Values = GetTeamNames(),
-    Value = {}, 
-    Multi = true,
-    AllowNone = true,
-    Flag = "TimesFiltradosHitbox",
-    Callback = function(option)
-        _G.HitboxConfig.SelectedTeams = option
-        if _G.HitboxConfig.TeamFilterEnabled then
-            AtualizarValores()
+    ConfigSection:Dropdown({
+        Title = "Formato",
+        Desc = cor({"Formato", "#00AAFF"}, {" usado para a hitbox"}),
+        Icon = "lucide:shapes",
+        Values = { "Sphere", "Block", "Cylinder", "Wedge" },
+        Value = "Sphere",
+        Flag = "FormatoHitbox",
+        Callback = function(option)
+            local map = {
+                Sphere = Enum.PartType.Ball,
+                Block = Enum.PartType.Block,
+                Cylinder = Enum.PartType.Cylinder,
+                Wedge = Enum.PartType.Wedge
+            }
+            Config.Shape = map[option]
         end
-    end
-})
+    })
+
+    ConfigSection:Toggle({
+        Title = "Escudo check",
+        Desc = cor({"A hitbox volta ao normal se "}, {"equiparem", "#FFAA00"}, {" o escudo"}),
+        Icon = "lucide:shield-alert",
+        Value = Config.HideOnShield,
+        Flag = "EscudoHitbox",
+        Callback = function(v)
+            Config.HideOnShield = v
+        end
+    })
+
+    ConfigSection:Slider({
+        Title = "Transparência",
+        Desc = cor({"0 = "}, {"visível", "#00FF00"}, {"; 1 = "}, {"invisível", "#FF0000"}),
+        Icon = "lucide:ghost",
+        Step = 0.02,
+        Value = { Min = 0, Max = 1, Default = Config.Transparency },
+        Flag = "VisibilidadeHitbox",
+        Callback = function(val)
+            Config.Transparency = val
+        end
+    })
+
+    local TeamSection = criarsection(HitboxExpander, "Filtros", "Configuração de times", "lucide:users", false)
+
+    TeamSection:Toggle({
+        Title = "Team check",
+        Desc = cor({"Ignora", "#FF0000"}, {" jogadores do mesmo time"}),
+        Icon = "lucide:shield-check",
+        Value = Config.TeamCheck,
+        Flag = "TeamCheckHitbox",
+        Callback = function(v)
+            Config.TeamCheck = v
+        end
+    })
+
+    TeamSection:Toggle({
+        Title = "Filtrar por time",
+        Desc = cor({"Aplica", "#00AAFF"}, {" a hitbox apenas nos times selecionados"}),
+        Icon = "lucide:sliders-horizontal",
+        Value = Config.TeamFilterEnabled,
+        Flag = "FiltrarTimeHitbox",
+        Callback = function(v)
+            Config.TeamFilterEnabled = v
+        end
+    })
+
+    TeamSection:Dropdown({
+        Title = "Times",
+        Desc = cor({"Selecione", "#FFFFFF"}, {" os times"}),
+        Icon = "lucide:users-round",
+        Values = GetTeamNames(),
+        Value = {}, 
+        Multi = true,
+        AllowNone = true,
+        Flag = "TimesFiltradosHitbox",
+        Callback = function(option)
+            Config.SelectedTeams = option
+        end
+    })
+end
 
 --// tab esp
 _G.ESPConfig = {
