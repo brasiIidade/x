@@ -1,28 +1,71 @@
-if _G.SilentAimConnections then
-    for _, conn in pairs(_G.SilentAimConnections) do conn:Disconnect() end
-end
-if _G.AimFOVCircle then pcall(function() _G.AimFOVCircle:Remove() end) _G.AimFOVCircle = nil end
-if _G.AimbotGui then _G.AimbotGui:Destroy() _G.AimbotGui = nil end
-if _G.AimHighlight then _G.AimHighlight:Destroy() _G.AimHighlight = nil end
+--[[ 
+    SILENT AIM LOGIC - OPTIMIZED & SECURE
+    Implementação completa do Backend para suportar a UI.
+]]
 
+--// Serviços e Otimização de Segurança (Anti-Detecção Básica)
+local g = game
+local clonefunction = clonefunction or function(f) return f end
+local gethui = gethui or function() return g:GetService("CoreGui") end
+
+-- Clonagem de funções críticas para evitar hooks de anti-cheat
+local GetService = clonefunction(g.GetService)
+local FindFirstChild = clonefunction(g.FindFirstChild)
+local FindFirstChildWhichIsA = clonefunction(g.FindFirstChildWhichIsA)
+local IsDescendantOf = clonefunction(g.IsDescendantOf)
+local WorldToScreenPoint = clonefunction(g.GetService(g, "Workspace").CurrentCamera.WorldToScreenPoint)
+local Raycast = clonefunction(g.GetService(g, "Workspace").Raycast)
+local GetPlayers = clonefunction(g.GetService(g, "Players").GetPlayers)
+local GetMouseLocation = clonefunction(g.GetService(g, "UserInputService").GetMouseLocation)
+
+-- Serviços
+local Players = GetService(g, "Players")
+local RunService = GetService(g, "RunService")
+local Workspace = GetService(g, "Workspace")
+local UserInputService = GetService(g, "UserInputService")
+local Camera = Workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+
+-- Otimização de Matemática e Tabelas
+local Vector2New = Vector2.new
+local Vector3New = Vector3.new
+local CFrameNew = CFrame.new
+local MathRandom = math.random
+local MathHuge = math.huge
+local MathClamp = math.clamp
+local MathFloor = math.floor
+local MathRad = math.rad
+local MathCos = math.cos
+local MathSin = math.sin
+local StringLower = string.lower
+local StringFind = string.find
+local TableInsert = table.insert
+local TableFind = table.find
+local Pairs = pairs
+local IPairs = ipairs
+
+--// Configuração Global (Ajustada para a UI)
 _G.AimbotConfig = _G.AimbotConfig or {
     Enabled = false,
-    TeamCheck = "Team",         
+    TeamCheck = "Team",         -- "Team" ou "All"
     TargetPart = {"Random"},
     TargetPriority = "Distance",
-    MaxDistance = 1000,         
+    MaxDistance = 1000,
     SwitchThreshold = 1,
-    WhitelistedUsers = {}, 
-    WhitelistedTeams = {}, 
+    WhitelistedUsers = {},
+    WhitelistedTeams = {},
     FocusList = {},
     FocusMode = false,
     UseLegitOffset = true,
     HitChance = 60,
     WallCheck = true,
     FOVSize = 200,
-    ShowFOV = false,
-    FOVBehavior = "Center",
-    FOVColor1 = Color3.fromRGB(255, 255, 255), 
+    ShowFOV = true,
+    FOVBehavior = "Center",     -- "Mouse" ou "Center"
+    FOVNumSides = 20,           -- (Não usado em GUI nativa, mas mantido para compatibilidade)
+    FOVColor1 = Color3.fromRGB(34, 140, 85),
+    FOVColor2 = Color3.fromRGB(250, 255, 252),
+    GradientSpeed = 4,
     ShowHighlight = true,
     HighlightColor = Color3.fromRGB(255, 60, 60),
     ESP = {
@@ -36,32 +79,13 @@ _G.AimbotConfig = _G.AimbotConfig or {
     }
 }
 
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
-local CoreGui = game:GetService("CoreGui")
-local UserInputService = game:GetService("UserInputService")
-local Camera = Workspace.CurrentCamera
-local LocalPlayer = Players.LocalPlayer
-
-local Vector2New = Vector2.new
-local Vector3New = Vector3.new
-local CFrameNew = CFrame.new
-local MathRandom = math.random
-local IPairs = ipairs
-local Pairs = pairs
-local StringLower = string.lower
-local StringFind = string.find
-local MathHuge = math.huge
-local MathFloor = math.floor
-local WorldToScreenPoint = Camera.WorldToScreenPoint
-local Raycast = Workspace.Raycast
-
+--// Variáveis de Controle
 _G.SilentAimConnections = {}
 _G.SilentAimActive = false
 local ClosestHitPart = nil
 local CurrentTargetCharacter = nil
 
+-- Mapeamento de Partes do Corpo
 local PartMapping = {
     ["Head"] = {"Head"},
     ["Torso"] = {"HumanoidRootPart", "Torso", "UpperTorso", "LowerTorso"},
@@ -71,12 +95,15 @@ local PartMapping = {
     ["Right Leg"] = {"Right Leg", "RightUpperLeg", "RightLowerLeg", "RightFoot"}
 }
 
+-- Palavras-chave para identificar disparos
 local bulletFunctions = {
     "fire", "shoot", "bullet", "ammo", "projectile", 
     "missile", "rocket", "hit", "damage", "attack", 
     "cast", "ray", "target", "server", "remote", "action", 
     "mouse", "input", "create"
 }
+
+--// Funções Auxiliares
 
 local function getLegitOffset()
     if not _G.AimbotConfig.UseLegitOffset then return Vector3New(0,0,0) end
@@ -97,11 +124,14 @@ end
 
 local function isWhitelisted(player)
     if not player then return false end
-    if table.find(_G.AimbotConfig.WhitelistedUsers, player.Name) then return true end
-    if player.Team and table.find(_G.AimbotConfig.WhitelistedTeams, player.Team.Name) then return true end
+    -- Checa Usuários
+    if TableFind(_G.AimbotConfig.WhitelistedUsers, player.Name) then return true end
+    -- Checa Times
+    if player.Team and TableFind(_G.AimbotConfig.WhitelistedTeams, player.Team.Name) then return true end
     return false
 end
 
+-- Sistema de WallCheck (Raycast Otimizado)
 local RayParams = RaycastParams.new()
 RayParams.FilterType = Enum.RaycastFilterType.Exclude
 RayParams.IgnoreWater = true
@@ -116,12 +146,13 @@ local function IsPartVisible(part, character)
     FilterCache[1] = LocalPlayer.Character
     FilterCache[2] = character
     FilterCache[3] = Camera
-    if _G.AimbotGui then FilterCache[4] = _G.AimbotGui end
+    if _G.SilentAimGui then FilterCache[4] = _G.SilentAimGui end -- Ignora a GUI do Aim
     
     RayParams.FilterDescendantsInstances = FilterCache
     local rayResult = Raycast(Workspace, origin, direction, RayParams)
     
-    return rayResult == nil or rayResult.Instance:IsDescendantOf(character)
+    -- Se não bateu em nada ou bateu no personagem alvo, está visível
+    return rayResult == nil or IsDescendantOf(rayResult.Instance, character)
 end
 
 local function ShuffleTable(t)
@@ -139,11 +170,11 @@ local function GetBestPart(character)
     
     local partsToCheck = {}
 
-    if #targets == 0 or table.find(targets, "Random") then
+    if #targets == 0 or TableFind(targets, "Random") then
         partsToCheck = {"Head", "Torso", "Right Arm", "Left Arm", "Right Leg", "Left Leg"}
     else
         for _, t in IPairs(targets) do
-            table.insert(partsToCheck, t)
+            TableInsert(partsToCheck, t)
         end
     end
 
@@ -153,7 +184,7 @@ local function GetBestPart(character)
         local specificParts = PartMapping[groupName]
         if specificParts then
             for _, partName in IPairs(specificParts) do
-                local part = character:FindFirstChild(partName)
+                local part = FindFirstChild(character, partName)
                 if part and IsPartVisible(part, character) then
                     return part 
                 end
@@ -171,7 +202,7 @@ local function getClosestPlayer()
 
     local OriginPos
     if _G.AimbotConfig.FOVBehavior == "Mouse" then
-        OriginPos = UserInputService:GetMouseLocation()
+        OriginPos = GetMouseLocation(UserInputService)
     else
         local Viewport = Camera.ViewportSize
         OriginPos = Vector2New(Viewport.X / 2, Viewport.Y / 2)
@@ -180,17 +211,20 @@ local function getClosestPlayer()
     local MyPos = Camera.CFrame.Position
     local FOVSize = _G.AimbotConfig.FOVSize
     local MyTeam = LocalPlayer.Team
-    local TeamCheck = _G.AimbotConfig.TeamCheck == "Team"
+    local TeamCheckType = _G.AimbotConfig.TeamCheck -- "Team" ou "All"
     local FocusMode = _G.AimbotConfig.FocusMode
     local FocusList = _G.AimbotConfig.FocusList
     local Priority = _G.AimbotConfig.TargetPriority or "Distance"
 
-    for _, Player in IPairs(Players:GetPlayers()) do
+    for _, Player in IPairs(GetPlayers(Players)) do
         if Player == LocalPlayer then continue end
-        if TeamCheck and Player.Team == MyTeam then continue end
+        
+        -- Verificação de Time
+        if TeamCheckType == "Team" and Player.Team == MyTeam and MyTeam ~= nil then continue end
 
+        -- Modo Foco e Whitelist
         if FocusMode then
-            if not table.find(FocusList, Player.Name) then continue end
+            if not TableFind(FocusList, Player.Name) then continue end
         else
             if isWhitelisted(Player) then continue end
         end
@@ -198,15 +232,16 @@ local function getClosestPlayer()
         local Character = Player.Character
         if not Character then continue end
         
-        local RootPart = Character:FindFirstChild("HumanoidRootPart")
-        local Humanoid = Character:FindFirstChild("Humanoid")
+        local RootPart = FindFirstChild(Character, "HumanoidRootPart")
+        local Humanoid = FindFirstChild(Character, "Humanoid")
         
         if not RootPart or not Humanoid or Humanoid.Health <= 0 then continue end
 
         local dist3D = (RootPart.Position - MyPos).Magnitude
         if dist3D > _G.AimbotConfig.MaxDistance then continue end
 
-        local CheckPart = Character:FindFirstChild("Head") or RootPart
+        -- Verificação de FOV
+        local CheckPart = FindFirstChild(Character, "Head") or RootPart
         local screenPos, onScreen = WorldToScreenPoint(Camera, CheckPart.Position)
 
         if onScreen then
@@ -217,10 +252,11 @@ local function getClosestPlayer()
                 if Priority == "Health" then
                     currentScore = Humanoid.Health
                 else
-                    currentScore = dist3D
+                    currentScore = dist3D -- Distância 3D é geralmente melhor para prioridade "Distância"
                 end
 
                 if currentScore < BestScore then
+                    -- Só faz o Raycast (caro) se o alvo for um candidato melhor
                     local PotentialPart = GetBestPart(Character)
                     if PotentialPart then
                         BestScore = currentScore
@@ -235,6 +271,7 @@ local function getClosestPlayer()
     return BestPart, BestChar
 end
 
+--// Limpeza
 _G.StopSilentAim = function()
     _G.SilentAimActive = false
     
@@ -245,16 +282,15 @@ _G.StopSilentAim = function()
     end
     _G.SilentAimConnections = {}
 
-    if _G.AimFOVCircle then pcall(function() _G.AimFOVCircle:Remove() end) _G.AimFOVCircle = nil end
-    if _G.AimbotGui then _G.AimbotGui:Destroy() _G.AimbotGui = nil end
-    if _G.AimHighlight then _G.AimHighlight:Destroy() _G.AimHighlight = nil end
+    if _G.SilentAimGui then _G.SilentAimGui:Destroy() _G.SilentAimGui = nil end
     
     ClosestHitPart = nil
     CurrentTargetCharacter = nil
 end
 
+--// Inicialização
 _G.StartSilentAim = function()
-    _G.StopSilentAim()
+    _G.StopSilentAim() -- Limpa anterior
     _G.SilentAimActive = true
     local config = _G.AimbotConfig
     
@@ -262,23 +298,43 @@ _G.StartSilentAim = function()
          _G.AimbotConfig.Enabled = true
     end
 
-    local fov_circle = Drawing.new("Circle")
-    fov_circle.Visible = false 
-    fov_circle.Thickness = 2
-    fov_circle.Transparency = 1
-    fov_circle.Color = config.FOVColor1
-    fov_circle.Filled = false
-    fov_circle.NumSides = 64
-    _G.AimFOVCircle = fov_circle
-
-    local SafeParent = (gethui and gethui()) or CoreGui
+    -- Criação da GUI segura (Substituindo Drawing API)
+    local SafeParent = gethui()
     local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "HUD"
+    ScreenGui.Name = "SA_UI_" .. tostring(MathRandom(1000,9999))
     ScreenGui.ResetOnSpawn = false
     ScreenGui.IgnoreGuiInset = true 
     ScreenGui.Parent = SafeParent
-    _G.AimbotGui = ScreenGui
+    _G.SilentAimGui = ScreenGui
 
+    -- FOV Circle (Feito com UIStroke + UICorner para ser smooth)
+    local FOVFrame = Instance.new("Frame")
+    FOVFrame.Name = "FOV"
+    FOVFrame.BackgroundTransparency = 1
+    FOVFrame.AnchorPoint = Vector2New(0.5, 0.5)
+    FOVFrame.Size = UDim2.new(0, config.FOVSize * 2, 0, config.FOVSize * 2)
+    FOVFrame.Visible = false
+    FOVFrame.Parent = ScreenGui
+
+    local FOVStroke = Instance.new("UIStroke")
+    FOVStroke.Name = "Stroke"
+    FOVStroke.Thickness = 1.5
+    FOVStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    FOVStroke.Parent = FOVFrame
+
+    local FOVCorner = Instance.new("UICorner")
+    FOVCorner.CornerRadius = UDim.new(1, 0) -- Transforma em círculo perfeito
+    FOVCorner.Parent = FOVFrame
+
+    local FOVGradient = Instance.new("UIGradient")
+    FOVGradient.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, config.FOVColor1),
+        ColorSequenceKeypoint.new(1, config.FOVColor2)
+    }
+    FOVGradient.Rotation = 45
+    FOVGradient.Parent = FOVStroke
+
+    -- Highlight e ESP Container
     local TargetHighlight = Instance.new("Highlight")
     TargetHighlight.Name = "TargetFX"
     TargetHighlight.FillTransparency = 0.85
@@ -286,7 +342,6 @@ _G.StartSilentAim = function()
     TargetHighlight.OutlineColor = config.HighlightColor
     TargetHighlight.FillColor = config.HighlightColor
     TargetHighlight.Parent = ScreenGui
-    _G.AimHighlight = TargetHighlight
 
     local FeetBillboard = Instance.new("BillboardGui")
     FeetBillboard.Size = UDim2.new(0, 200, 0, 90) 
@@ -307,85 +362,67 @@ _G.StartSilentAim = function()
     ListLayout.VerticalAlignment = Enum.VerticalAlignment.Top
     ListLayout.Padding = UDim.new(0, 2)
     
-    local NameLabel = Instance.new("TextLabel")
-    NameLabel.Size = UDim2.new(1,0,0,16)
-    NameLabel.BackgroundTransparency = 1
-    NameLabel.TextColor3 = Color3.new(1,1,1)
-    NameLabel.Font = Enum.Font.GothamBold
-    NameLabel.TextSize = 14
-    NameLabel.TextStrokeTransparency = 0.5
-    NameLabel.LayoutOrder = 1
-    NameLabel.Parent = MainContainer
-    
-    local TeamLabel = Instance.new("TextLabel")
-    TeamLabel.Size = UDim2.new(1,0,0,14)
-    TeamLabel.BackgroundTransparency = 1
-    TeamLabel.TextColor3 = Color3.new(0.8,0.8,0.8)
-    TeamLabel.Font = Enum.Font.Gotham
-    TeamLabel.TextSize = 12
-    TeamLabel.TextStrokeTransparency = 0.5
-    TeamLabel.LayoutOrder = 2
-    TeamLabel.Parent = MainContainer
-    
-    local WeaponLabel = Instance.new("TextLabel")
-    WeaponLabel.Size = UDim2.new(1,0,0,14)
-    WeaponLabel.BackgroundTransparency = 1
-    WeaponLabel.TextColor3 = Color3.new(0.9,0.9,0.9)
-    WeaponLabel.Font = Enum.Font.Gotham
-    WeaponLabel.TextSize = 12
-    WeaponLabel.TextStrokeTransparency = 0.5
-    WeaponLabel.LayoutOrder = 3
-    WeaponLabel.Parent = MainContainer
+    -- Componentes do ESP
+    local function createLabel(order, color, fontSize)
+        local l = Instance.new("TextLabel")
+        l.Size = UDim2.new(1,0,0,14)
+        l.BackgroundTransparency = 1
+        l.TextColor3 = color
+        l.Font = Enum.Font.GothamBold
+        l.TextSize = fontSize or 12
+        l.TextStrokeTransparency = 0.5
+        l.LayoutOrder = order
+        l.Visible = false
+        l.Parent = MainContainer
+        return l
+    end
 
-    local HPText = Instance.new("TextLabel")
-    HPText.Size = UDim2.new(1,0,0,14)
-    HPText.BackgroundTransparency = 1
-    HPText.TextColor3 = Color3.new(0,1,0)
+    local NameLabel = createLabel(1, Color3.new(1,1,1), 14)
+    local TeamLabel = createLabel(2, Color3.new(0.8,0.8,0.8))
+    local WeaponLabel = createLabel(3, Color3.new(0.9,0.9,0.9))
+    local HPText = createLabel(4, Color3.new(0,1,0), 12)
     HPText.Font = Enum.Font.Code
-    HPText.TextSize = 12
-    HPText.TextStrokeTransparency = 0.5
-    HPText.LayoutOrder = 4
-    HPText.Parent = MainContainer
 
-    local c1 = RunService.RenderStepped:Connect(function()
-        if _G.SilentAimActive and config.ShowFOV and fov_circle then
-            fov_circle.Visible = true
-            fov_circle.Radius = config.FOVSize
-            fov_circle.Color = config.FOVColor1
-            local pos = config.FOVBehavior == "Mouse" and UserInputService:GetMouseLocation() or Vector2New(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-            fov_circle.Position = pos
-        else
-            if fov_circle then fov_circle.Visible = false end
-        end
-
+    -- Loop Principal
+    local rot = 0
+    local c1 = RunService.RenderStepped:Connect(function(dt)
+        -- Atualiza Lógica do Alvo
         if _G.SilentAimActive then
             local Part, Character = getClosestPlayer()
             ClosestHitPart = Part
             CurrentTargetCharacter = Character
         
+            -- Atualiza Visuais
             if Character then
+                -- Highlight
                 if config.ShowHighlight then
                     TargetHighlight.Adornee = Character
                     TargetHighlight.Enabled = true
                     TargetHighlight.OutlineColor = config.HighlightColor
                     TargetHighlight.FillColor = config.HighlightColor
+                else
+                    TargetHighlight.Enabled = false
                 end
 
+                -- ESP
                 if config.ESP.Enabled then
-                    local root = Character:FindFirstChild("HumanoidRootPart")
-                    local hum = Character:FindFirstChild("Humanoid")
+                    local root = FindFirstChild(Character, "HumanoidRootPart")
+                    local hum = FindFirstChild(Character, "Humanoid")
                     
                     if root and hum then
                         FeetBillboard.Adornee = root
                         FeetBillboard.Enabled = true
                         
+                        -- Nome
                         if config.ESP.ShowName then
                             NameLabel.Visible = true
                             NameLabel.Text = Character.Name
+                            NameLabel.TextColor3 = config.ESP.TextColor
                         else
                             NameLabel.Visible = false
                         end
                         
+                        -- Time
                         if config.ESP.ShowTeam then
                             TeamLabel.Visible = true
                             local plr = Players:GetPlayerFromCharacter(Character)
@@ -399,9 +436,10 @@ _G.StartSilentAim = function()
                             TeamLabel.Visible = false
                         end
                         
+                        -- Arma
                         if config.ESP.ShowWeapon then
                             WeaponLabel.Visible = true
-                            local tool = Character:FindFirstChildWhichIsA("Tool")
+                            local tool = FindFirstChildWhichIsA(Character, "Tool")
                             if tool then
                                 WeaponLabel.Text = string.upper(tool.Name)
                             else
@@ -411,28 +449,63 @@ _G.StartSilentAim = function()
                             WeaponLabel.Visible = false
                         end
 
+                        -- Vida
                         if config.ESP.ShowHealth then
                             HPText.Visible = true
-                            local health = hum.Health
-                            local maxHealth = hum.MaxHealth
+                            local health = MathFloor(hum.Health)
+                            local maxHealth = MathFloor(hum.MaxHealth)
                             HPText.Text = string.format("[%d / %d]", health, maxHealth)
                             
-                            local hue = math.clamp(health / maxHealth, 0, 1) * 0.33
+                            local hue = MathClamp(health / maxHealth, 0, 1) * 0.33
                             HPText.TextColor3 = Color3.fromHSV(hue, 1, 1)
                         else
                             HPText.Visible = false
                         end
                     end
+                else
+                    FeetBillboard.Enabled = false
                 end
             else
                 TargetHighlight.Enabled = false
                 FeetBillboard.Enabled = false
             end
         end
+
+        -- Atualiza FOV Circle
+        if _G.SilentAimActive and config.ShowFOV then
+            FOVFrame.Visible = true
+            -- Tamanho (Diametro = Radius * 2)
+            FOVFrame.Size = UDim2.new(0, config.FOVSize * 2, 0, config.FOVSize * 2)
+            
+            -- Posição
+            local pos
+            if config.FOVBehavior == "Mouse" then
+                pos = GetMouseLocation(UserInputService)
+            else
+                local vp = Camera.ViewportSize
+                pos = Vector2New(vp.X / 2, vp.Y / 2)
+            end
+            FOVFrame.Position = UDim2.new(0, pos.X, 0, pos.Y)
+
+            -- Cores do Gradiente
+            FOVGradient.Color = ColorSequence.new{
+                ColorSequenceKeypoint.new(0, config.FOVColor1),
+                ColorSequenceKeypoint.new(1, config.FOVColor2)
+            }
+            
+            -- Rotação do Gradiente
+            rot = rot + (config.GradientSpeed or 1)
+            if rot > 360 then rot = 0 end
+            FOVGradient.Rotation = rot
+        else
+            FOVFrame.Visible = false
+        end
     end)
-    table.insert(_G.SilentAimConnections, c1)
+    TableInsert(_G.SilentAimConnections, c1)
 end
 
+--// HOOKMETAMETHOD (INTACTO - Como solicitado)
+-- Apenas garantindo que as referências usadas existam
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
     if not checkcaller() and _G.SilentAimActive and ClosestHitPart then
@@ -450,6 +523,7 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
                     for i = 1, #Arguments do
                         local v = Arguments[i]
                         if typeof(v) == "Vector3" then
+                            -- Modifica se for argumento de direção ou posição final
                             Arguments[i] = (v.Magnitude <= 10) and Direction or finalPosition
                         elseif typeof(v) == "CFrame" then
                             Arguments[i] = CFrameNew(cameraPos, finalPosition)
@@ -461,6 +535,7 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
                 local Arguments = {...}
                 local origin = Arguments[1]
                 local finalPosition = ClosestHitPart.Position + getLegitOffset()
+                -- Recalcula direção para bater no alvo
                 Arguments[2] = (finalPosition - origin).Unit * 10000 
                 return oldNamecall(self, unpack(Arguments))
             end
@@ -469,6 +544,7 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
     return oldNamecall(self, ...)
 end))
 
+-- Inicializa se a config já estiver ativa
 if _G.AimbotConfig and _G.AimbotConfig.Enabled then
     _G.StartSilentAim()
 end
