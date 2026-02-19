@@ -968,14 +968,15 @@ do
 end
 
 --// tab esp
-getgenv().ESPConfig = {
+getgenv().ESPConfig = getgenv().ESPConfig or {
     Enabled = false,
-    TeamCheck = false,
-    Chams = false,
-    Name = false,
-    Studs = false,
+    Boxes = false,
+    Names = false,
+    Distance = false,
     Health = false,
-    WeaponN = false
+    Tracers = false,
+    TeamCheck = true,
+    MaxDistance = 2000
 }
 
 task.spawn(function()
@@ -995,16 +996,13 @@ MainSection:Toggle({
     Title = "ESP",
     Desc = cor({"Liga", "#00FF00"}, {" o ESP"}),
     Icon = "lucide:power",
-    Value = false,
+    Value = getgenv().ESPConfig.Enabled,
     Flag = "ESP",
     Callback = function(v)
+        getgenv().ESPConfig.Enabled = v
         if FirstRunESP then
             FirstRunESP = false
-            if v then
-                if getgenv().StartESP then getgenv().StartESP() end
-            else
-                if getgenv().StopESP then getgenv().StopESP() end
-            end
+            if v and getgenv().StartESP then getgenv().StartESP() end
             return
         end
 
@@ -1027,39 +1025,51 @@ MainSection:Toggle({
     Desc = cor({"Não", "#FF0000"}, {" mostra se o jogador for do seu "}, {"time", "#00FF00"}),
     Icon = "lucide:shield-check",
     Value = getgenv().ESPConfig.TeamCheck,
-    Flag = "TimeESP",
+    Flag = "ESPTeamCheck",
     Callback = function(v)
         getgenv().ESPConfig.TeamCheck = v
+    end
+})
+
+MainSection:Input({
+    Title = "Distância máxima",
+    Desc = cor({"Distância para renderizar o ESP"}),
+    Placeholder = "2000",
+    InputIcon = "lucide:ruler",
+    Flag = "ESPDistanciaMaxima",
+    Callback = function(v)
+        local n = tonumber(v)
+        if n then getgenv().ESPConfig.MaxDistance = n end
     end
 })
 
 local VisualsSection = criarsection(ESP, "Visualização", "Elementos visuais", "lucide:monitor", true)
 
 VisualsSection:Toggle({ 
-    Title = "Highlight", 
-    Desc = cor({"Ativa o "}, {"brilho", "#FFAA00"}),
-    Icon = "lucide:sparkles", 
-    Value = getgenv().ESPConfig.Chams, 
-    Flag = "ChamsESP", 
-    Callback = function(v) getgenv().ESPConfig.Chams = v end 
+    Title = "Boxes", 
+    Desc = cor({"Desenha uma "}, {"caixa", "#FFAA00"}, {" ao redor do jogador"}),
+    Icon = "lucide:box", 
+    Value = getgenv().ESPConfig.Boxes, 
+    Flag = "ESPBoxes", 
+    Callback = function(v) getgenv().ESPConfig.Boxes = v end 
 })
 
 VisualsSection:Toggle({ 
     Title = "Nome", 
     Desc = cor({"Exibe o "}, {"nome", "#FFFFFF"}),
     Icon = "lucide:user", 
-    Value = getgenv().ESPConfig.Name, 
-    Flag = "NomeESP", 
-    Callback = function(v) getgenv().ESPConfig.Name = v end 
+    Value = getgenv().ESPConfig.Names, 
+    Flag = "ESPNome", 
+    Callback = function(v) getgenv().ESPConfig.Names = v end 
 })
 
 VisualsSection:Toggle({ 
     Title = "Distância", 
     Desc = cor({"Mostra a "}, {"distância", "#00AAFF"}),
     Icon = "lucide:ruler", 
-    Value = getgenv().ESPConfig.Studs, 
-    Flag = "DistanciaESP", 
-    Callback = function(v) getgenv().ESPConfig.Studs = v end 
+    Value = getgenv().ESPConfig.Distance, 
+    Flag = "ESPDistancia", 
+    Callback = function(v) getgenv().ESPConfig.Distance = v end 
 })
 
 VisualsSection:Toggle({ 
@@ -1067,19 +1077,18 @@ VisualsSection:Toggle({
     Desc = cor({"Exibe "}, {"a barra de vida", "#FF0000"}),
     Icon = "lucide:heart", 
     Value = getgenv().ESPConfig.Health, 
-    Flag = "VidaESP", 
+    Flag = "ESPVida", 
     Callback = function(v) getgenv().ESPConfig.Health = v end 
 })
 
 VisualsSection:Toggle({ 
-    Title = "Item", 
-    Desc = cor({"Mostra o "}, {"item", "#FFAA00"}, {" que o jogador está segurando"}),
-    Icon = "lucide:sword", 
-    Value = getgenv().ESPConfig.WeaponN, 
-    Flag = "ItemESP", 
-    Callback = function(v) getgenv().ESPConfig.WeaponN = v end 
+    Title = "Tracers", 
+    Desc = cor({"Desenha uma "}, {"linha", "#00FF00"}, {" até o jogador"}),
+    Icon = "lucide:git-commit", 
+    Value = getgenv().ESPConfig.Tracers, 
+    Flag = "ESPTracers", 
+    Callback = function(v) getgenv().ESPConfig.Tracers = v end 
 })
-
 
 --// tab X1
 local ugs = UserSettings():GetService("UserGameSettings")
