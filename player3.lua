@@ -22,6 +22,7 @@ local state = {
     weld = nil,
     fling_conn = nil,
     fling_start_pos = nil,
+    fake_id = math.random(1000000, 2000000000),
     spoofed_objs = setmetatable({}, {__mode = "k"})
 }
 
@@ -52,77 +53,70 @@ local function find_player(str)
     return nil
 end
 
-local function spoof_text(text)
+local function spoof_string(str)
     local cfg = get_cfg()
-    if not cfg or not cfg.AnonEnabled or type(text) ~= "string" then return text end
+    if not cfg or not cfg.AnonEnabled or type(str) ~= "string" then return str end
     
-    local safe_name = lp.Name:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
-    local safe_display = lp.DisplayName:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
     local fake = cfg.FakeName or "Anônimo"
+    local r_name = lp.Name
+    local r_display = lp.DisplayName
     
-    local res = text
-    if res:find(lp.Name) then res = res:gsub(safe_name, fake) end
-    if res:find(lp.DisplayName) then res = res:gsub(safe_display, fake) end
-    return res
-end
-
-local function hook_ui(obj)
-    if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
-        local function update()
-            local cfg = get_cfg()
-            if not cfg or not cfg.AnonEnabled then return end
-            
-            local current = obj.Text
-            if state.spoofed_objs[obj] and current == spoof_text(state.spoofed_objs[obj]) then return end
-            
-            local spoofed = spoof_text(current)
-            if current ~= spoofed then
-                state.spoofed_objs[obj] = current
-                obj.Text = spoofed
-            end
-        end
+    if str:find(r_name) or str:find(r_display) then
+        local safe_name = r_name:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
+        local safe_display = r_display:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
         
-        update()
-        obj:GetPropertyChangedSignal("Text"):Connect(update)
+        str = str:gsub(safe_name, fake)
+        str = str:gsub(safe_display, fake)
+    end
+    
+    return str
+end
+
+local function force_update_obj(obj)
+    if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
+        local current = obj.Text
+        local spoofed = spoof_string(current)
+        if current ~= spoofed then
+            obj.Text = spoofed
+            state.spoofed_objs[obj] = true
+        end
     end
 end
 
-local function scan_ui(parent)
-    for _, obj in ipairs(parent:GetDescendants()) do
-        pcall(hook_ui, obj)
+local function scan_ui_layer(layer)
+    if not layer then return end
+    for _, v in ipairs(layer:GetDescendants()) do
+        pcall(force_update_obj, v)
     end
-    parent.DescendantAdded:Connect(function(obj)
-        pcall(hook_ui, obj)
+    layer.DescendantAdded:Connect(function(v)
+        task.wait() 
+        pcall(force_update_obj, v)
     end)
 end
 
-local function update_anon()
+local function update_anon_visuals()
     local cfg = get_cfg()
     if not cfg then return end
     
     if cfg.AnonEnabled then
         local char = lp.Character
-        local hum = char and char:FindFirstChild("Humanoid")
-        if hum then
-            hum.DisplayName = cfg.FakeName
-            hum:GetPropertyChangedSignal("DisplayName"):Connect(function()
-                if cfg.AnonEnabled and hum.DisplayName ~= cfg.FakeName then
+        if char then
+            local hum = char:FindFirstChild("Humanoid")
+            if hum then
+                if hum.DisplayName ~= cfg.FakeName then
                     hum.DisplayName = cfg.FakeName
                 end
-            end)
+            end
         end
-        
-        scan_ui(lp:WaitForChild("PlayerGui"))
-        pcall(function() scan_ui(srv.CoreGui) end)
+        scan_ui_layer(lp:WaitForChild("PlayerGui"))
+        pcall(function() scan_ui_layer(srv.CoreGui) end)
+        if char then scan_ui_layer(char) end
     else
         local char = lp.Character
-        local hum = char and char:FindFirstChild("Humanoid")
-        if hum then hum.DisplayName = lp.DisplayName end
-        
-        for obj, orig in pairs(state.spoofed_objs) do
-            pcall(function() obj.Text = orig end)
+        if char then
+            local hum = char:FindFirstChild("Humanoid")
+            if hum then hum.DisplayName = lp.DisplayName end
         end
-        table.clear(state.spoofed_objs)
     end
 end
 
@@ -214,7 +208,7 @@ local function start_fling(target_name)
 
     state.fling_conn = srv.RunService.Heartbeat:Connect(function()
         local cfg = get_cfg()
-    
+        
         if tick() - start_time >= 2 then
             stop_fling(true)
             return
@@ -256,7 +250,7 @@ local function hook_character(char)
     end
     
     if get_cfg().AnonEnabled then
-        scan_ui(char)
+        scan_ui_layer(char)
     end
 end
 
@@ -283,7 +277,7 @@ lp.CharacterAdded:Connect(function(char)
     
     if cfg.AnonEnabled then
         task.wait(1)
-        update_anon()
+        update_anon_visuals()
     end
 end)
 
@@ -316,9 +310,11 @@ srv.RunService.Stepped:Connect(function()
     
     local c = lp.Character
     if c then
-        for _, v in ipairs(c:GetDescendants()) do
-            if v:IsA("BasePart") and v.CanCollide then
-                v.CanCollide = false
+        local parts = c:GetDescendants()
+        for i = 1, #parts do
+            local v = parts[i]
+            if v:IsA("BasePart") and v.CanCollide then 
+                v.CanCollide = false 
             end
         end
     end
@@ -333,22 +329,28 @@ setreadonly(mt, false)
 mt.__index = newcclosure(function(self, k)
     if not checkcaller() then
         local cfg = get_cfg()
-        if cfg and self:IsA("Humanoid") then
-            if k == "WalkSpeed" and cfg.SpeedEnabled then return 16 end
-            if k == "JumpPower" and cfg.JumpEnabled then return 50 end
+        if cfg then
+            if self == lp and cfg.AnonEnabled then
+                if k == "UserId" then return state.fake_id end
+                if k == "Name" then return cfg.FakeName end
+                if k == "DisplayName" then return cfg.FakeName end
+            end
+            
+            if self:IsA("Humanoid") then
+                if k == "WalkSpeed" and cfg.SpeedEnabled then return 16 end
+                if k == "JumpPower" and cfg.JumpEnabled then return 50 end
+            end
         end
     end
     return old_idx(self, k)
 end)
 
 mt.__newindex = newcclosure(function(self, k, v)
-    local cfg = get_cfg()
-    if not checkcaller() and cfg and cfg.AnonEnabled then
-        if k == "Text" and type(v) == "string" then
-            local spoofed = spoof_text(v)
-            if spoofed ~= v then
-                state.spoofed_objs[self] = v
-                v = spoofed
+    if not checkcaller() then
+        local cfg = get_cfg()
+        if cfg and cfg.AnonEnabled then
+            if k == "Text" and type(v) == "string" then
+                return old_newidx(self, k, spoof_string(v))
             end
         end
     end
@@ -364,8 +366,8 @@ mt.__namecall = newcclosure(function(self, ...)
         if method == "SetCore" and args[1] == "SendNotification" then
             local data = args[2]
             if type(data) == "table" then
-                if data.Title then data.Title = spoof_text(data.Title) end
-                if data.Text then data.Text = spoof_text(data.Text) end
+                if data.Title then data.Title = spoof_string(data.Title) end
+                if data.Text then data.Text = spoof_string(data.Text) end
                 return old_nc(self, unpack(args))
             end
         end
@@ -386,7 +388,7 @@ if srv.TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
                 local display = cfg.FakeName or "Anônimo"
                 props.PrefixText = string.format("<font color='#F5CD30'>[%s]</font>", display)
             else
-                props.PrefixText = spoof_text(msg.PrefixText)
+                props.PrefixText = spoof_string(msg.PrefixText)
             end
         end
         return props
@@ -435,7 +437,7 @@ task.spawn(function()
         
         if cfg.AnonEnabled ~= last_anon_state then
             last_anon_state = cfg.AnonEnabled
-            update_anon()
+            update_anon_visuals()
         end
     end
 end)
