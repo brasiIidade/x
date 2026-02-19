@@ -2282,7 +2282,6 @@ getgenv().PlayerConfig = {
     InvisEnabled = false,
     SpectateActive = false,
     FlingActive = false,
-    
     TargetPlayer = "",
     TriggerTeleport = false,
     TriggerReturn = false,
@@ -2290,13 +2289,15 @@ getgenv().PlayerConfig = {
 }
 
 local Config = getgenv().PlayerConfig
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 
 task.spawn(function()
     if ler then ler("player") end
 end)
 
 local function FindPlayerName(txt)
-    if txt == "" then return nil end
+    if not txt or txt == "" then return nil end
     txt = txt:lower()
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= LocalPlayer then
@@ -2347,7 +2348,7 @@ do
 
     CharSection:Toggle({
         Title = "Respawn",
-        Desc = cor({"Teleporta seu personagem ao local onde você "}, {"morreu", "#FF0000"}),
+        Desc = cor({"Volta ao lugar onde você "}, {"morreu", "#FF0000"}),
         Flag = "Respawn",
         Icon = "lucide:map-pin",
         Callback = function(v) 
@@ -2432,9 +2433,11 @@ do
     IntSection:Input({
         Title = "Jogador",
         Desc = "Nome ou Display",
-        Placeholder = "nome123",
+        Placeholder = "Digite aqui",
         InputIcon = "lucide:search",
         Callback = function(v)
+            if v == "" then return end
+            
             local found = FindPlayerName(v)
             if found then
                 Config.TargetPlayer = found
@@ -2459,12 +2462,12 @@ do
                         return
                     end
                     Config.TriggerFling = true
-                    notificar("Fling iniciado em " .. Config.TargetPlayer, 3, "lucide:swords")
+                    notificar("Flingando " .. Config.TargetPlayer, 3, "lucide:swords")
                 end
             },
             {
                 Title = Config.SpectateActive and "Parar Espectar" or "Espectar",
-                Desc = "Visualiza o alvo",
+                Desc = "Visualiza a câmera do alvo",
                 Icon = "lucide:eye",
                 Callback = function()
                     if Config.TargetPlayer == "" then
@@ -2477,7 +2480,7 @@ do
                     if Config.SpectateActive then
                         notificar("Espectando...", 2, "lucide:eye")
                     else
-                        notificar("Câmera restaurada", 2, "lucide:eye-off")
+                        notificar("Restaurado", 2, "lucide:eye-off")
                     end
                 end
             },
