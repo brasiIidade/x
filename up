@@ -3152,33 +3152,33 @@ FarmSection:Toggle({
         local NovaEraTab = criartab("Nova Era", "https://tr.rbxcdn.com/180DAY-9b65f927dea36f98c1a720694fd00fd3/768/432/Image/Webp/noFilter")
 
         task.spawn(function()
-            if ler then ler("novaera") end
-        end)
+    if ler then ler("novaera") end
+end)
 
-        local FarmSection = criarsection(NovaEraTab, "Dinheiro", "Autofarm", "lucide:coins", true)
+local FarmSection = criarsection(NovaEraTab, "Dinheiro", "Autofarm", "lucide:coins", true)
 
-        local MoneyPara = FarmSection:Paragraph({
-            Title = "Status",
-            Desc = "Dinheiro farmado: $0",
-            Color = "Green",
-            Image = "lucide:coins"
-        })
+local MoneyPara = FarmSection:Paragraph({
+    Title = "Status",
+    Desc = "Dinheiro farmado: $0",
+    Color = "Green",
+    Image = "lucide:coins"
+})
 
-        task.spawn(function()
-            repeat task.wait(0.5) until _G.NovaEraLogic
-            _G.NovaEraLogic.UpdateCallback = function(val)
-                if MoneyPara then MoneyPara:SetDesc(cor({"Dinheiro farmado: ", "#AAAAAA"}, {"$", "#00FF00"}, {tostring(val), "#00FF00"})) end
-            end
-        end)
-
-        FarmSection:Toggle({
-            Title = "Autofarm",
-            Desc = cor({"Inicia", "#00FF00"}, {" o autofarm de coleta"}),
-            Icon = "lucide:circle-play",
-            Value = false,
-            Callback = function(v)
-                if _G.NovaEraLogic then _G.NovaEraLogic.Toggle(v) end
-            end
-        })
+task.spawn(function()
+    repeat task.wait(0.5) until getgenv().NovaEraLogic
+    getgenv().NovaEraLogic.UpdateCallback = function(val)
+        if MoneyPara then 
+            MoneyPara:SetDesc(cor({"Dinheiro farmado: ", "#AAAAAA"}, {"$", "#00FF00"}, {tostring(val), "#00FF00"})) 
+        end
     end
-end
+end)
+
+FarmSection:Toggle({
+    Title = "Autofarm",
+    Desc = cor({"Inicia", "#00FF00"}, {" o autofarm de coleta"}),
+    Icon = "lucide:circle-play",
+    Value = false,
+    Callback = function(v)
+        if getgenv().NovaEraLogic then getgenv().NovaEraLogic.Toggle(v) end
+    end
+})
