@@ -11,7 +11,6 @@ local def_cfg = {
     Names = false,
     Distance = false,
     Health = false,
-    Tracers = false,
     Weapon = false,
     TeamCheck = true,
     UseTeamColor = false,
@@ -20,7 +19,6 @@ local def_cfg = {
         Box = Color3.fromRGB(255, 255, 255),
         Name = Color3.fromRGB(255, 255, 255),
         Distance = Color3.fromRGB(200, 200, 200),
-        Tracer = Color3.fromRGB(255, 255, 255),
         Weapon = Color3.fromRGB(255, 255, 255)
     }
 }
@@ -114,17 +112,6 @@ local function mk_esp(p)
     d.hb.Transparency = 1
     d.hb.Filled = true
     
-    d.tr_out = Drawing.new("Line")
-    d.tr_out.Visible = false
-    d.tr_out.Color = Color3.fromRGB(0, 0, 0)
-    d.tr_out.Thickness = 3
-    d.tr_out.Transparency = 1
-
-    d.tr = Drawing.new("Line")
-    d.tr.Visible = false
-    d.tr.Thickness = 1
-    d.tr.Transparency = 1
-    
     env.espObjects[p] = d
 end
 
@@ -141,7 +128,6 @@ local function upd()
     local cam = workspace.CurrentCamera
     if not cam then return end
     
-    local vp_sz = cam.ViewportSize
     local cfg = env.ESPConfig
     
     for p, d in pairs(env.espObjects) do
@@ -247,26 +233,6 @@ local function upd()
             if d.hb_out then d.hb_out.Visible = false end
             if d.hb_bg then d.hb_bg.Visible = false end
             if d.hb then d.hb.Visible = false end
-        end
-        
-        if cfg.Tracers and d.tr and d.tr_out then
-            local cx = math.floor(vp_sz.X / 2)
-            local cy = math.floor(vp_sz.Y)
-            local tx = math.floor(rt_pos.X)
-            local ty = math.floor(rt_pos.Y)
-            local c_tr = get_esp_col(p, cfg.Colors.Tracer)
-            
-            d.tr_out.From = Vector2.new(cx, cy)
-            d.tr_out.To = Vector2.new(tx, ty)
-            d.tr_out.Visible = true
-            
-            d.tr.From = Vector2.new(cx, cy)
-            d.tr.To = Vector2.new(tx, ty)
-            d.tr.Color = c_tr
-            d.tr.Visible = true
-        else
-            if d.tr_out then d.tr_out.Visible = false end
-            if d.tr then d.tr.Visible = false end
         end
     end
 end
