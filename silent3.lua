@@ -1,8 +1,9 @@
 --[[
     Lógica Backend do Silent Aim
-    Melhorias de segurança (anti-detecção) aplicadas usando clonefunction.
-    Todas as funcionalidades da UI foram implementadas.
-    O Hook de tiro foi mantido INTACTO.
+    - Melhorias de segurança (clonefunction)
+    - FOV com Debugging
+    - HUD Reestilizado e Organizado
+    - Hook de tiro INTACTO
 ]]
 
 -- Otimização e Segurança (Anti-Detecção)
@@ -49,12 +50,12 @@ if _G.AimFOVCircle then pcall(function() _G.AimFOVCircle:Remove() end) _G.AimFOV
 if _G.AimbotGui then _G.AimbotGui:Destroy() _G.AimbotGui = nil end
 if _G.AimHighlight then _G.AimHighlight:Destroy() _G.AimHighlight = nil end
 
--- Configuração Global (Sincronizada com a UI)
+-- Configuração Global
 _G.AimbotConfig = _G.AimbotConfig or {
     Enabled = false,
     TeamCheck = "Team",         
     TargetPart = {"Random"},
-    TargetPriority = "Distance", -- "Distance" ou "Health"
+    TargetPriority = "Distance",
     MaxDistance = 1000,         
     SwitchThreshold = 1,
     WhitelistedUsers = {}, 
@@ -66,7 +67,7 @@ _G.AimbotConfig = _G.AimbotConfig or {
     WallCheck = true,
     FOVSize = 200,
     ShowFOV = true,
-    FOVBehavior = "Center", -- "Mouse" ou "Center"
+    FOVBehavior = "Center",
     FOVNumSides = 20,
     FOVColor1 = Color3.fromRGB(34, 140, 85),
     FOVColor2 = Color3.fromRGB(250, 255, 252),
@@ -208,7 +209,7 @@ local function getClosestPlayer()
     local MyPos = Camera.CFrame.Position
     local FOVSize = _G.AimbotConfig.FOVSize
     local MyTeam = LocalPlayer.Team
-    local TeamCheckType = _G.AimbotConfig.TeamCheck -- "Team" or "All"
+    local TeamCheckType = _G.AimbotConfig.TeamCheck 
     local FocusMode = _G.AimbotConfig.FocusMode
     local FocusList = _G.AimbotConfig.FocusList
     local Priority = _G.AimbotConfig.TargetPriority or "Distance"
@@ -216,10 +217,8 @@ local function getClosestPlayer()
     for _, Player in IPairs(Players:GetPlayers()) do
         if Player == LocalPlayer then continue end
         
-        -- Lógica de Time (Team Check)
         if TeamCheckType == "Team" and Player.Team == MyTeam then continue end
 
-        -- Lógica de Foco e Whitelist
         if FocusMode then
             if not TableFind(FocusList, Player.Name) then continue end
         else
@@ -246,9 +245,9 @@ local function getClosestPlayer()
             if dist2D <= FOVSize then
                 local currentScore
                 if Priority == "Health" then
-                    currentScore = Humanoid.Health -- Menor vida = melhor
+                    currentScore = Humanoid.Health 
                 else
-                    currentScore = dist2D -- Menor distância do cursor = melhor
+                    currentScore = dist2D 
                 end
 
                 if currentScore < BestScore then
@@ -292,20 +291,38 @@ _G.StartSilentAim = function()
     
     config.Enabled = true
 
-    -- Criação do FOV Circle
-    local fov_circle = Drawing.new("Circle")
-    fov_circle.Visible = false 
-    fov_circle.Thickness = 2
-    fov_circle.Transparency = 1
-    fov_circle.Color = config.FOVColor1
-    fov_circle.Filled = false
-    fov_circle.NumSides = config.FOVNumSides or 20
-    _G.AimFOVCircle = fov_circle
+    print("[DEBUG] Iniciando Silent Aim...")
 
-    -- Criação da GUI
+    -- Verificação de suporte a Drawing
+    if not Drawing then
+        warn("[ERRO] Seu executor não suporta a biblioteca 'Drawing'. O FOV não aparecerá.")
+    else
+        print("[DEBUG] Biblioteca Drawing detectada.")
+    end
+
+    -- Criação do FOV Circle
+    local success, fov_circle = pcall(function()
+        local circle = Drawing.new("Circle")
+        circle.Visible = true
+        circle.Thickness = 2
+        circle.Transparency = 1 -- 1 é visível na maioria das libs
+        circle.Color = config.FOVColor1
+        circle.Filled = false
+        circle.NumSides = config.FOVNumSides or 20
+        return circle
+    end)
+
+    if success then
+        _G.AimFOVCircle = fov_circle
+        print("[DEBUG] Círculo FOV criado com sucesso.")
+    else
+        warn("[ERRO] Falha ao criar Círculo FOV:", fov_circle)
+    end
+
+    -- Criação da GUI (HUD Melhorado)
     local SafeParent = (gethui and gethui()) or CoreGui
     local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "HUD"
+    ScreenGui.Name = "SilentAimHUD"
     ScreenGui.ResetOnSpawn = false
     ScreenGui.IgnoreGuiInset = true 
     ScreenGui.Parent = SafeParent
@@ -321,85 +338,109 @@ _G.StartSilentAim = function()
     TargetHighlight.Parent = ScreenGui
     _G.AimHighlight = TargetHighlight
 
-    -- Billboard para ESP
+    -- Billboard para ESP (Reestilizado)
     local FeetBillboard = Instance.new("BillboardGui")
-    FeetBillboard.Size = UDim2.new(0, 200, 0, 90) 
+    FeetBillboard.Size = UDim2.new(0, 200, 0, 100) 
     FeetBillboard.StudsOffset = Vector3New(0, -5, 0)
     FeetBillboard.AlwaysOnTop = true
     FeetBillboard.Enabled = false
     FeetBillboard.Parent = ScreenGui
 
+    -- Container do HUD com fundo escuro e bordas
     local MainContainer = Instance.new("Frame")
-    MainContainer.Size = UDim2.new(1,0,1,0)
-    MainContainer.BackgroundTransparency = 1
+    MainContainer.Name = "Container"
+    MainContainer.Size = UDim2.new(0.9, 0, 0.9, 0)
+    MainContainer.Position = UDim2.new(0.05, 0, 0, 0)
+    MainContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    MainContainer.BackgroundTransparency = 0.3
     MainContainer.Parent = FeetBillboard
     
+    local UICorner = Instance.new("UICorner")
+    UICorner.CornerRadius = UDim.new(0, 8)
+    UICorner.Parent = MainContainer
+
+    local UIStroke = Instance.new("UIStroke")
+    UIStroke.Color = config.OutlineColor or config.HighlightColor
+    UIStroke.Thickness = 1.5
+    UIStroke.Transparency = 0.2
+    UIStroke.Parent = MainContainer
+
     local ListLayout = Instance.new("UIListLayout")
     ListLayout.Parent = MainContainer
     ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
     ListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    ListLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+    ListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
     ListLayout.Padding = UDim.new(0, 2)
     
-    local NameLabel = Instance.new("TextLabel")
-    NameLabel.Size = UDim2.new(1,0,0,16)
-    NameLabel.BackgroundTransparency = 1
-    NameLabel.TextColor3 = Color3.new(1,1,1)
-    NameLabel.Font = Enum.Font.GothamBold
-    NameLabel.TextSize = 14
-    NameLabel.TextStrokeTransparency = 0.5
-    NameLabel.LayoutOrder = 1
-    NameLabel.Parent = MainContainer
-    
-    local TeamLabel = Instance.new("TextLabel")
-    TeamLabel.Size = UDim2.new(1,0,0,14)
-    TeamLabel.BackgroundTransparency = 1
-    TeamLabel.TextColor3 = Color3.new(0.8,0.8,0.8)
-    TeamLabel.Font = Enum.Font.Gotham
-    TeamLabel.TextSize = 12
-    TeamLabel.TextStrokeTransparency = 0.5
-    TeamLabel.LayoutOrder = 2
-    TeamLabel.Parent = MainContainer
-    
-    local WeaponLabel = Instance.new("TextLabel")
-    WeaponLabel.Size = UDim2.new(1,0,0,14)
-    WeaponLabel.BackgroundTransparency = 1
-    WeaponLabel.TextColor3 = Color3.new(0.9,0.9,0.9)
-    WeaponLabel.Font = Enum.Font.Gotham
-    WeaponLabel.TextSize = 12
-    WeaponLabel.TextStrokeTransparency = 0.5
-    WeaponLabel.LayoutOrder = 3
-    WeaponLabel.Parent = MainContainer
+    -- Função helper para criar labels
+    local function createLabel(order, defaultText, color, font)
+        local lbl = Instance.new("TextLabel")
+        lbl.Size = UDim2.new(1, -10, 0, 16)
+        lbl.BackgroundTransparency = 1
+        lbl.TextColor3 = color
+        lbl.Font = font
+        lbl.TextSize = 12
+        lbl.TextStrokeTransparency = 0.8
+        lbl.Text = defaultText
+        lbl.LayoutOrder = order
+        lbl.Parent = MainContainer
+        return lbl
+    end
 
-    local HPText = Instance.new("TextLabel")
-    HPText.Size = UDim2.new(1,0,0,14)
-    HPText.BackgroundTransparency = 1
-    HPText.TextColor3 = Color3.new(0,1,0)
-    HPText.Font = Enum.Font.Code
-    HPText.TextSize = 12
-    HPText.TextStrokeTransparency = 0.5
-    HPText.LayoutOrder = 4
-    HPText.Parent = MainContainer
+    local NameLabel = createLabel(1, "Player Name", Color3.new(1,1,1), Enum.Font.GothamBold)
+    NameLabel.TextSize = 14
+    local TeamLabel = createLabel(2, "Team", Color3.new(0.8,0.8,0.8), Enum.Font.Gotham)
+    local WeaponLabel = createLabel(3, "Weapon", Color3.new(0.9,0.9,0.9), Enum.Font.Gotham)
+    local HPText = createLabel(4, "HP: 100", Color3.new(0,1,0), Enum.Font.Code)
+
+    -- Variáveis de controle de Debug
+    local lastDebugTime = 0
+    local debugInterval = 2 -- Segundos entre mensagens de debug
 
     -- Loop de Renderização
     local c1 = RunService.RenderStepped:Connect(function()
-        if _G.SilentAimActive and config.ShowFOV and fov_circle then
-            fov_circle.Visible = true
-            fov_circle.Radius = config.FOVSize
-            fov_circle.NumSides = config.FOVNumSides or 20
-            
-            -- Lógica de Gradiente/Pulsar
-            local tick = OsClock()
-            local speed = config.GradientSpeed or 4
-            local alpha = (MathSin(tick * speed) + 1) / 2
-            local c1 = config.FOVColor1
-            local c2 = config.FOVColor2
-            fov_circle.Color = c1:Lerp(c2, alpha)
+        local now = OsClock()
+        
+        -- Lógica FOV
+        if _G.AimFOVCircle then
+            if _G.SilentAimActive and config.ShowFOV then
+                _G.AimFOVCircle.Visible = true
+                _G.AimFOVCircle.Radius = config.FOVSize
+                _G.AimFOVCircle.NumSides = config.FOVNumSides or 20
+                
+                -- Gradiente
+                local speed = config.GradientSpeed or 4
+                local alpha = (MathSin(now * speed) + 1) / 2
+                local c1 = config.FOVColor1
+                local c2 = config.FOVColor2
+                _G.AimFOVCircle.Color = c1:Lerp(c2, alpha)
 
-            local pos = config.FOVBehavior == "Mouse" and UserInputService:GetMouseLocation() or Vector2New(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-            fov_circle.Position = pos
-        else
-            if fov_circle then fov_circle.Visible = false end
+                local pos
+                if config.FOVBehavior == "Mouse" then
+                     pos = UserInputService:GetMouseLocation()
+                else
+                     pos = Vector2New(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+                end
+                _G.AimFOVCircle.Position = pos
+            else
+                _G.AimFOVCircle.Visible = false
+            end
+        elseif config.ShowFOV and _G.SilentAimActive then
+             -- Tentar recuperar se for nil e deveria estar mostrando
+             if now - lastDebugTime > debugInterval then
+                warn("[DEBUG] _G.AimFOVCircle é nulo, mas ShowFOV está ativado.")
+             end
+        end
+
+        -- Debug Periódico
+        if now - lastDebugTime > debugInterval then
+            lastDebugTime = now
+            if not _G.AimFOVCircle then
+                print("[DEBUG] Status FOV: Objeto Inexistente")
+            elseif not _G.AimFOVCircle.Visible and config.ShowFOV then
+                 -- Se o script acha que está visível, mas não está
+                 print("[DEBUG] Status FOV: Oculto (Possível conflito de renderização ou 'Active' false). Active:", _G.SilentAimActive)
+            end
         end
 
         if _G.SilentAimActive then
@@ -408,15 +449,18 @@ _G.StartSilentAim = function()
             CurrentTargetCharacter = Character
         
             if Character then
+                -- Highlight Update
                 if config.ShowHighlight then
                     TargetHighlight.Adornee = Character
                     TargetHighlight.Enabled = true
                     TargetHighlight.OutlineColor = config.HighlightColor
                     TargetHighlight.FillColor = config.HighlightColor
+                    UIStroke.Color = config.HighlightColor -- Atualiza borda do HUD também
                 else
                     TargetHighlight.Enabled = false
                 end
 
+                -- ESP / HUD Update
                 if config.ESP.Enabled then
                     local root = Character:FindFirstChild("HumanoidRootPart")
                     local hum = Character:FindFirstChild("Humanoid")
@@ -439,7 +483,7 @@ _G.StartSilentAim = function()
                             TeamLabel.Visible = true
                             local plr = Players:GetPlayerFromCharacter(Character)
                             if plr then
-                                TeamLabel.Text = plr.Team and plr.Team.Name or "Sem Time"
+                                TeamLabel.Text = plr.Team and ("Time: " .. plr.Team.Name) or "Sem Time"
                                 TeamLabel.TextColor3 = plr.TeamColor and plr.TeamColor.Color or Color3.new(1,1,1)
                             else
                                 TeamLabel.Text = "NPC"
@@ -453,9 +497,9 @@ _G.StartSilentAim = function()
                             WeaponLabel.Visible = true
                             local tool = Character:FindFirstChildWhichIsA("Tool")
                             if tool then
-                                WeaponLabel.Text = string.upper(tool.Name)
+                                WeaponLabel.Text = "Usando: " .. string.upper(tool.Name)
                             else
-                                WeaponLabel.Text = "NADA EQUIPADO"
+                                WeaponLabel.Text = "Mãos Livres"
                             end
                         else
                             WeaponLabel.Visible = false
@@ -466,7 +510,7 @@ _G.StartSilentAim = function()
                             HPText.Visible = true
                             local health = hum.Health
                             local maxHealth = hum.MaxHealth
-                            HPText.Text = string.format("[%d / %d]", health, maxHealth)
+                            HPText.Text = string.format("HP: %d / %d", health, maxHealth)
                             
                             local hue = MathClamp(health / maxHealth, 0, 1) * 0.33
                             HPText.TextColor3 = Color3.fromHSV(hue, 1, 1)
@@ -486,7 +530,7 @@ _G.StartSilentAim = function()
     table.insert(_G.SilentAimConnections, c1)
 end
 
--- HOOK (INTACTO CONFORME SOLICITADO)
+-- HOOK (INTACTO)
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
     if not checkcaller() and _G.SilentAimActive and ClosestHitPart then
