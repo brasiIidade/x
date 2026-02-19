@@ -2504,7 +2504,6 @@ local State = {
     Initialized = false
 }
 
-local UIS = game:GetService("UserInputService")
 local ConfigManager = main.ConfigManager
 local ConfigListDropdown = nil
 
@@ -2579,7 +2578,7 @@ ConfigListDropdown = SectionManage:Dropdown({
 
 SectionManage:Dropdown({
     Title = "Ações do arquivo",
-    Desc = cor({"Funções do "}, {"arquivo", "#FFAA00"}, {" selecionado"}),
+    Desc = cor({"Faz algo em relação ao "}, {"arquivo", "#FFAA00"}, {" selecionado"}),
     Icon = "lucide:settings-2",
     Values = {
         {
@@ -2623,7 +2622,7 @@ local function UpdateConnections()
         end
     end)
 
-    State.Connections.Keybind = UIS.InputBegan:Connect(function(input, processed)
+    State.Connections.Keybind = UserInputService.InputBegan:Connect(function(input, processed)
         if processed then return end
         if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == State.Keybind then
             main:Toggle()
@@ -2644,9 +2643,9 @@ SectionUI:Toggle({
         main:EditOpenButton({
             Title = "",
             Icon = "rbxthumb://type=Asset&id=88026679106109&w=420&h=420",
-            CornerRadius = UDim.new(0, 8),
+            CornerRadius = UDim.new(1, 0),
             StrokeThickness = 0,
-            Color = ColorSequence.new(Color3.fromRGB(30, 30, 30)),
+            Color = ColorSequence.new(Color3.fromRGB(40, 40, 40)),
             Enabled = enabled,
             Draggable = true,
         })
@@ -2659,13 +2658,16 @@ SectionUI:Input({
     Placeholder = "/e",
     InputIcon = "lucide:message-square",
     Callback = function(val)
-        if not State.Initialized then return end
         if not val or val:match("^%s*$") then
-            notificar("Comando inválido", 2, "lucide:x")
+            if State.Initialized then
+                notificar("Comando inválido", 2, "lucide:x")
+            end
             return
         end
         State.SecretWord = val
-        notificar("Comando definido: " .. val, 3, "lucide:check")
+        if State.Initialized then
+            notificar("Comando definido: " .. val, 3, "lucide:check")
+        end
     end
 })
 
@@ -2675,7 +2677,6 @@ SectionUI:Input({
     Placeholder = "Z",
     InputIcon = "lucide:keyboard",
     Callback = function(val)
-        if not State.Initialized then return end
         local keyName = tostring(val):upper():gsub("%s+", "")
         if keyName == "" then return end
         
@@ -2684,9 +2685,13 @@ SectionUI:Input({
         if success and keyCode then
             State.Keybind = keyCode
             UpdateConnections()
-            notificar("Atalho definido: " .. keyName, 2, "lucide:keyboard")
+            if State.Initialized then
+                notificar("Atalho definido: " .. keyName, 2, "lucide:keyboard")
+            end
         else
-            notificar("Tecla inválida", 2, "lucide:x")
+            if State.Initialized then
+                notificar("Tecla inválida", 2, "lucide:x")
+            end
         end
     end
 })
@@ -2698,7 +2703,7 @@ local function GetSortedThemes()
     for name, _ in pairs(UI:GetThemes()) do
         table.insert(list, {
             Title = name,
-            Desc = cor({"Tema "}, {name, "#00AAFF"}),
+            Desc = cor({"Aplicar tema "}, {name, "#00AAFF"}),
             Icon = "lucide:paint-bucket"
         })
     end
@@ -2716,14 +2721,13 @@ SectionTheme:Dropdown({
         if themeName then
             UI:SetTheme(themeName)
             if State.Initialized then
-                notificar("Tema aplicado", 2, "lucide:check")
+                notificar("Tema: " .. themeName, 2, "lucide:check")
             end
         end
     end
 })
 
-task.spawn(function()
-    task.wait(2)
+task.delay(1, function()
     State.Initialized = true
 end)
 
