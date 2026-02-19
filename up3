@@ -3113,33 +3113,6 @@ EcoSection:Button({
     end
 })
 
-EcoSection:Space()
-
-EcoSection:Paragraph({
-    Title = "Observação",
-    Desc = cor({"Money all faz transferências a cada"}, {" 15 ", "#FF0000"}, {"segundos"})
-})
-
-EcoSection:Input({
-    Title = "Valor",
-    Desc = cor({"Quantidade por transferência para o "}, {"money all", "#00FF00"}),
-    Placeholder = "100000000000",
-    InputIcon = "lucide:arrow-right-left",
-    Callback = function(v)
-        if getgenv().DeltaLogic then getgenv().DeltaLogic.MoneyAllValue = v:gsub("%D", "") end
-    end
-})
-
-EcoSection:Toggle({
-    Title = "Money all",
-    Desc = cor({"Envia", "#00FF00"}, {" o dinheiro para todos"}),
-    Icon = "lucide:users",
-    Value = false,
-    Callback = function(v)
-        if getgenv().DeltaLogic and getgenv().DeltaLogic.ToggleMoneyAll then getgenv().DeltaLogic.ToggleMoneyAll(v) end
-    end
-})
-
     elseif MapaAtual == "Soucre" then
         local SoucreTab = criartab("Soucre", "https://tr.rbxcdn.com/180DAY-9b65f927dea36f98c1a720694fd00fd3/768/432/Image/Webp/noFilter")
 
