@@ -46,6 +46,22 @@ task.spawn(function()
     setthreadidentity(7)
 end)
 
+--// serviços
+local cr = cloneref or function(o) return o end
+local Services = {
+    Players = cr(game:GetService("Players")),
+    HttpService = cr(game:GetService("HttpService")),
+    CoreGui = cr(game:GetService("CoreGui")),
+    RunService = cr(game:GetService("RunService")),
+    UserInputService = cr(game:GetService("UserInputService")),
+    TextChatService = cr(game:GetService("TextChatService")),
+    Workspace = cr(game:GetService("Workspace")),
+    Teams = cr(game:GetService("Teams")),
+    Stats = cr(game:GetService("Stats"))
+}
+
+local LocalPlayer = Services.Players.LocalPlayer
+local Executor = identifyexecutor and string.lower(identifyexecutor()) or "unknown"
 
 local HookFunc = hookfunction or function(f, h) return f end
 local CheckCaller = checkcaller or function() return false end
@@ -74,23 +90,6 @@ OldFenv = HookFunc(GetFenv, NewCClosure(function(f)
     end
     return OldFenv(f)
 end))
-
---// serviços
-local cr = cloneref or function(o) return o end
-local Services = {
-    Players = cr(game:GetService("Players")),
-    HttpService = cr(game:GetService("HttpService")),
-    CoreGui = cr(game:GetService("CoreGui")),
-    RunService = cr(game:GetService("RunService")),
-    UserInputService = cr(game:GetService("UserInputService")),
-    TextChatService = cr(game:GetService("TextChatService")),
-    Workspace = cr(game:GetService("Workspace")),
-    Teams = cr(game:GetService("Teams")),
-    Stats = cr(game:GetService("Stats"))
-}
-
-local LocalPlayer = Services.Players.LocalPlayer
-local Executor = identifyexecutor and string.lower(identifyexecutor()) or "unknown"
 
 --// executor
 if string.find(Executor, "xeno") or string.find(Executor, "solara") then
@@ -146,7 +145,7 @@ local UI = Lib
 UI:SetFont("rbxassetid://16658237174")
 
 local main = UI:CreateWindow({
-    Title = "michigun.xyz",
+    Title = "michigunxyz",
     Icon = "rbxthumb://type=Asset&id=88026679106109&w=420&h=420",
     Author = "por @fp3",
     Folder = "michigun.xyz",
