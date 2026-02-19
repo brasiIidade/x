@@ -4,7 +4,7 @@ return {
     esp = "esp2.lua",
     tas = "tas2.lua",
     jj = "jj3.lua",
-    f3x = "f3x2.lua",
+    f3x = "f3x4.lua",
     char = "char.lua",
     antilag = "antilag.lua",
     chatgpt = "chatgpt.lua",
