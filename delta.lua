@@ -1,7 +1,6 @@
 local cr = cloneref or function(o) return o end
 local rs = cr(game:GetService("ReplicatedStorage"))
 local plrs = cr(game:GetService("Players"))
-local sg = cr(game:GetService("StarterGui"))
 local lp = cr(plrs.LocalPlayer)
 
 local rems = rs:WaitForChild("Remotes")
@@ -10,17 +9,8 @@ local decM = rems:WaitForChild("Events"):WaitForChild("Economy"):WaitForChild("D
 local trns = rs:WaitForChild("Modules"):WaitForChild("Packages"):WaitForChild("Knit"):WaitForChild("Services"):WaitForChild("EconomyService"):WaitForChild("RE"):WaitForChild("Transfer")
 
 local function ntf(m)
-    local f = getgenv().notificar
-    if f then
-        f(m, 3, "lucide:info")
-    else
-        pcall(function()
-            sg:SetCore("SendNotification", {
-                Title = "michigun.xyz",
-                Text = m,
-                Duration = 3
-            })
-        end)
+    if getgenv().notificar then
+        getgenv().notificar(m, 3, "lucide:info")
     end
 end
 
@@ -31,7 +21,7 @@ function lgc.SetJJ()
     local n = tonumber(lgc.JJValue)
     if not n or n == 0 then return end
     poli:FireServer("Add", n)
-    ntf("JJ alterado para " .. tostring(n))
+    ntf(tostring(n) .. " polichinelos adicionados")
 end
 
 function lgc.GetRich()
@@ -43,7 +33,7 @@ function lgc.ToggleMoneyAll(s)
     lgc.MoneyAllEnabled = s
     if not s then ntf("Encerrado") return end
     
-    decM:FireServer(-9e9, "BuyMilitaryPass")
+    decM:FireServer(-1000000000000, "BuyMilitaryPass")
     ntf("Iniciado")
     
     task.spawn(function()
@@ -70,9 +60,9 @@ function lgc.ToggleMoneyAll(s)
                 end
             end
             
-            trns:FireServer(t.Name, "9e99")
+            trns:FireServer(t.Name, "100000000000")
             lgc.rL[t.Name] = true
-            ntf("Enviado para: " .. t.Name)
+            ntf("100B enviado para: " .. t.Name)
             task.wait(15.5)
         end
     end)
