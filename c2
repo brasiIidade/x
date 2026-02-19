@@ -1,3 +1,32 @@
+local HookFunc = hookfunction or function(f, h) return f end
+local CheckCaller = checkcaller or function() return false end
+local NewCClosure = newcclosure or function(f) return f end
+local DebugInfo = debug.info
+local GetFenv = getfenv
+
+local OldInfo
+OldInfo = HookFunc(DebugInfo, NewCClosure(function(f, ...)
+    if not CheckCaller() then
+        local Ret = {OldInfo(f, ...)}
+        if #Ret > 0 and type(Ret[1]) == "string" and (Ret[1]:find("michigun") or Ret[1]:find("UI")) then
+            return "[C]"
+        end
+    end
+    return OldInfo(f, ...)
+end))
+
+local OldFenv
+OldFenv = HookFunc(GetFenv, NewCClosure(function(f)
+    if not CheckCaller() and type(f) == "function" then
+        local Src = DebugInfo(f, "s")
+        if Src and (Src:find("michigun") or Src:find("UI")) then
+            return OldFenv(0)
+        end
+    end
+    return OldFenv(f)
+end))
+
+--// serviços
 local cr = cloneref or function(o) return o end
 local Services = {
     Players = cr(game:GetService("Players")),
@@ -6,17 +35,22 @@ local Services = {
     RunService = cr(game:GetService("RunService")),
     UserInputService = cr(game:GetService("UserInputService")),
     TextChatService = cr(game:GetService("TextChatService")),
-    Workspace = cr(game:GetService("Workspace"))
+    Workspace = cr(game:GetService("Workspace")),
+    Teams = cr(game:GetService("Teams")),
+    Stats = cr(game:GetService("Stats"))
 }
 
 local LocalPlayer = Services.Players.LocalPlayer
+
+--// executor
 local Executor = identifyexecutor and string.lower(identifyexecutor()) or "unknown"
 
 if string.find(Executor, "xeno") or string.find(Executor, "solara") then
-    LocalPlayer:Kick("Executor não suportado.")
+    LocalPlayer:Kick("Seu executor não tem suporte para rodar o michigun.xyz.")
     task.wait(9e9)
 end
 
+--// execs
 local function GetSignature(data)
     if crypt and crypt.hash then return crypt.hash(data, "sha256") end
     if syn and syn.crypt then return syn.crypt.hash(data) end
@@ -32,7 +66,7 @@ local Ts = tostring(os.time())
 local Raw = Uid .. Pid .. Ts .. Secret
 
 if request then
-    request({
+    local Response = request({
         Url = Url,
         Method = "GET",
         Headers = {
@@ -40,16 +74,20 @@ if request then
             ["x-place-id"] = Pid,
             ["x-timestamp"] = Ts,
             ["x-signature"] = GetSignature(Raw),
-            ["x-mode"] = "check"
+            ["x-mode"] = "check" 
         }
     })
+    
+    if Response.StatusCode ~= 200 then
+        warn("Falha na autenticação: " .. Response.StatusCode)
+    end
 end
 
 task.spawn(function()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/michigun-log/logs/refs/heads/main/740dd88a77e9cc25.lua.txt"))()
 end)
 
---// spoof
+--// hooks
 local GhostTable = setmetatable({}, {__mode = "k"})
 
 local function GetGhost(obj, key)
@@ -62,8 +100,8 @@ local function SetGhost(obj, key, val)
 end
 
 local OldIndex
-OldIndex = hookmetamethod(game, "__index", newcclosure(function(self, k)
-    if not checkcaller() then
+OldIndex = hookmetamethod(game, "__index", NewCClosure(function(self, k)
+    if not CheckCaller() then
         local ghost = GetGhost(self, k)
         if ghost ~= nil then
             return ghost
@@ -73,8 +111,8 @@ OldIndex = hookmetamethod(game, "__index", newcclosure(function(self, k)
 end))
 
 local OldNewIndex
-OldNewIndex = hookmetamethod(game, "__newindex", newcclosure(function(self, k, v)
-    if not checkcaller() then
+OldNewIndex = hookmetamethod(game, "__newindex", NewCClosure(function(self, k, v)
+    if not CheckCaller() then
         local isHum = self:IsA("Humanoid")
         local isRoot = self:IsA("BasePart") and self.Name == "HumanoidRootPart"
 
@@ -103,7 +141,6 @@ end
 if LocalPlayer.Character then 
     InitSpoof(LocalPlayer.Character) 
 end
-
 LocalPlayer.CharacterAdded:Connect(InitSpoof)
 
 --// ui
@@ -125,12 +162,9 @@ local main = UI:CreateWindow({
     SideBarWidth = 150,
     ShadowTransparency = 0.7,
     HideSearchBar = true,
-    -- Background = "rbxassetid://",
-    -- BackgroundImageTransparency = 0.5,
     User = {
         Enabled = true,
-        Callback = function()
-        end
+        Callback = function() end
     },
 })
 
@@ -147,53 +181,41 @@ end
 --// discord
 main:CreateTopbarButton("Discord", "geist:logo-discord", function()
     setclipboard("https://discord.gg/G5vEkrAXnF")
-    notificar("Link do Discord copiado!", 5, "geist:logo-discord")
+    notificar("Link copiado!", 5, "geist:logo-discord")
 end, 990)
 
 --// links
-
 local BaseURL = "https://raw.githubusercontent.com/brasiIidade/x/main/"
 local FilePaths = {}
 
 local function DownloadSafe(url, tentativas)
     tentativas = tentativas or 3
-    local lastResponse
-    
     for i = 1, tentativas do
         local success, response = pcall(function()
             return game:HttpGet(url)
         end)
-
         if success and type(response) == "string" and response:sub(1,4) ~= "404:" then
             return response
         end
-
-        lastResponse = response
         task.wait(1)
     end
-    
-    return nil, lastResponse -- Retorna nil se falhar todas
+    return nil
 end
 
 local function LoadPathMap()
     local url = BaseURL .. "path.lua?t=" .. tostring(os.time())
     local content = DownloadSafe(url, 5)
-
     if content then
         local func = loadstring(content)
-        if func then
-            FilePaths = func()
-        end
+        if func then FilePaths = func() end
     else
-        if notificar then
-            notificar("Erro: não foi possivel carregar.", 5, "lucide:wifi-off")
-        end
+        notificar("Erro: não foi possivel carregar.", 5, "lucide:wifi-off")
     end
 end
 
 LoadPathMap()
 
-local function ler(key)
+getgenv().ler = function(key)
     if not next(FilePaths) then
         task.wait(1)
         if not next(FilePaths) then return end
@@ -201,9 +223,7 @@ local function ler(key)
 
     local rawName = FilePaths[key]
     if not rawName then 
-        if notificar then
-            notificar("Erro: '" .. tostring(key) .. "' não encontrado", 3, "lucide:alert-circle")
-        end
+        notificar("Erro: '" .. tostring(key) .. "' não encontrado", 3, "lucide:alert-circle")
         return 
     end
 
@@ -212,27 +232,16 @@ local function ler(key)
     
     task.spawn(function()
         local scriptContent = DownloadSafe(url, 3)
-
         if scriptContent then
             local func = loadstring(scriptContent)
-            if func then
-                func()
-            end
+            if func then func() end
         else
-            if notificar then
-                notificar("Falha ao baixar: " .. fileName, 3, "lucide:wifi-off")
-            else
-                warn("Erro: " .. fileName)
-            end
+            notificar("Falha ao baixar: " .. fileName, 3, "lucide:wifi-off")
         end
     end)
 end
 
---[[ 
-uso: Title = cor({"Teste", "#FF0000"}, {" arroz"}),
-]]--
-
-function cor(...)
+function getgenv().cor(...)
     local output = {}
     for i, data in ipairs({...}) do
         output[i] = "<font color='" .. (data[2] or "#ffffff") .. "'>" .. data[1] .. "</font>"
@@ -241,29 +250,28 @@ function cor(...)
 end
 
 --// tags
-
 local fps = main:Tag({
-  Title = "0 FPS",
-	Radius = 20,
-	Icon = "lucide:gauge",
-  Color = Color3.fromRGB(100, 150, 255),
+    Title = "0 FPS",
+    Radius = 20,
+    Icon = "lucide:gauge",
+    Color = Color3.fromRGB(100, 150, 255),
 })
 
 local lastUpdate = tick()
 local frameCount = 0
  
-RunService.RenderStepped:Connect(function()
+Services.RunService.RenderStepped:Connect(function()
     frameCount = frameCount + 1
     local now = tick()
     if now - lastUpdate >= 1 then
         local currentFps = math.floor(frameCount / (now - lastUpdate))
         fps:SetTitle(tostring(currentFps) .. " FPS")
         if currentFps >= 50 then
-            fps:SetColor(Color3.fromRGB(0, 255, 0)) -- Verde
+            fps:SetColor(Color3.fromRGB(0, 255, 0))
         elseif currentFps >= 30 then
-            fps:SetColor(Color3.fromRGB(255, 200, 0)) -- Amarelo
+            fps:SetColor(Color3.fromRGB(255, 200, 0))
         else
-            fps:SetColor(Color3.fromRGB(255, 0, 0)) -- Vermelho
+            fps:SetColor(Color3.fromRGB(255, 0, 0))
         end
         frameCount = 0
         lastUpdate = now
@@ -271,38 +279,32 @@ RunService.RenderStepped:Connect(function()
 end)
 
 local ping2 = main:Tag({
-  Title = "0 ms",
-	Radius = 20,
-	Icon = "lucide:signal",
-  Color = Color3.fromRGB(100, 200, 255),
+    Title = "0 ms",
+    Radius = 20,
+    Icon = "lucide:signal",
+    Color = Color3.fromRGB(100, 200, 255),
 })
  
 task.spawn(function()
     while true do
-        local success, ping = pcall(function()
-            local Stats = game:GetService("Stats")
-            local pingValue = Stats.Network.ServerStatsItem["Data Ping"]:GetValue()
-            return math.floor(pingValue)
+        local success, p_val = pcall(function()
+            return Services.Stats.Network.ServerStatsItem["Data Ping"]:GetValue()
         end)
         
-        if success and ping then
-            ping2:SetTitle(tostring(ping) .. " ms")
-            if ping <= 50 then
-                ping2:SetColor(Color3.fromRGB(0, 255, 0))
-            elseif ping <= 100 then
-                ping2:SetColor(Color3.fromRGB(255, 200, 0))
-            elseif ping <= 200 then
-                ping2:SetColor(Color3.fromRGB(255, 150, 0))
-            else
-                ping2:SetColor(Color3.fromRGB(255, 0, 0))
-            end
+        if success and p_val then
+            local p = math.floor(p_val)
+            ping2:SetTitle(tostring(p) .. " ms")
+            if p <= 50 then ping2:SetColor(Color3.fromRGB(0, 255, 0))
+            elseif p <= 100 then ping2:SetColor(Color3.fromRGB(255, 200, 0))
+            elseif p <= 200 then ping2:SetColor(Color3.fromRGB(255, 150, 0))
+            else ping2:SetColor(Color3.fromRGB(255, 0, 0)) end
         end
         task.wait(2)
     end
 end)
 
 --// criar seção
-local function criarsection(tab, title, desc, icon, opened)
+getgenv().criarsection = function(tab, title, desc, icon, opened)
     return tab:Section({
         Title = title,
         Desc = desc,
@@ -312,7 +314,7 @@ local function criarsection(tab, title, desc, icon, opened)
 end
 
 --// criar tab
-local function criartab(title, icon, locked)
+getgenv().criartab = function(title, icon, locked)
     return main:Tab({
         Title = title,
         Icon = icon,
@@ -342,7 +344,7 @@ local Player = criartab("Player", "solar:user-bold", false)
 
 --// tab "config"
 local Configs = criartab("Configurações", "lucide:settings", false)
-
+	
 --// tab silent
 getgenv().SilentConfig = {
     Enabled = false,
