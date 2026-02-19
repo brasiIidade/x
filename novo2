@@ -970,12 +970,17 @@ end
 --// tab esp
 getgenv().ESPConfig = getgenv().ESPConfig or {
     Enabled = false,
+    TeamCheck = false,
+    UseTeamColor = false,
     Boxes = false,
+    BoxColor = Color3.fromRGB(255, 255, 255),
     Names = false,
+    NameColor = Color3.fromRGB(255, 255, 255),
     Distance = false,
+    DistanceColor = Color3.fromRGB(200, 200, 200),
     Health = false,
     Tracers = false,
-    TeamCheck = true,
+    TracerColor = Color3.fromRGB(255, 255, 255),
     MaxDistance = 2000
 }
 
@@ -996,7 +1001,7 @@ MainSection:Toggle({
     Title = "ESP",
     Desc = cor({"Liga", "#00FF00"}, {" o ESP"}),
     Icon = "lucide:power",
-    Value = getgenv().ESPConfig.Enabled,
+    Value = false,
     Flag = "ESP",
     Callback = function(v)
         getgenv().ESPConfig.Enabled = v
@@ -1025,33 +1030,40 @@ MainSection:Toggle({
     Desc = cor({"Não", "#FF0000"}, {" mostra se o jogador for do seu "}, {"time", "#00FF00"}),
     Icon = "lucide:shield-check",
     Value = getgenv().ESPConfig.TeamCheck,
-    Flag = "ESPTeamCheck",
+    Flag = "TimeESP",
     Callback = function(v)
         getgenv().ESPConfig.TeamCheck = v
     end
 })
 
-MainSection:Input({
-    Title = "Distância máxima",
-    Desc = cor({"Distância para renderizar o ESP"}),
-    Placeholder = "2000",
-    InputIcon = "lucide:ruler",
-    Flag = "ESPDistanciaMaxima",
+MainSection:Toggle({
+    Title = "Usar Cor do Time",
+    Desc = cor({"Coloca todos os visuais na cor do "}, {"time", "#00FF00"}),
+    Icon = "lucide:palette",
+    Value = getgenv().ESPConfig.UseTeamColor,
+    Flag = "TeamColorESP",
     Callback = function(v)
-        local n = tonumber(v)
-        if n then getgenv().ESPConfig.MaxDistance = n end
+        getgenv().ESPConfig.UseTeamColor = v
     end
 })
 
 local VisualsSection = criarsection(ESP, "Visualização", "Elementos visuais", "lucide:monitor", true)
 
 VisualsSection:Toggle({ 
-    Title = "Boxes", 
-    Desc = cor({"Desenha uma "}, {"caixa", "#FFAA00"}, {" ao redor do jogador"}),
+    Title = "Caixas (Boxes)", 
+    Desc = cor({"Desenha uma "}, {"caixa", "#FFFFFF"}, {" em volta"}),
     Icon = "lucide:box", 
     Value = getgenv().ESPConfig.Boxes, 
-    Flag = "ESPBoxes", 
+    Flag = "BoxESP", 
     Callback = function(v) getgenv().ESPConfig.Boxes = v end 
+})
+
+VisualsSection:Colorpicker({
+    Title = "Cor da Caixa",
+    Desc = "Define a cor padrão da caixa",
+    Default = Color3.fromRGB(255, 255, 255),
+    Flag = "BoxColor",
+    Callback = function(color) getgenv().ESPConfig.BoxColor = color end
 })
 
 VisualsSection:Toggle({ 
@@ -1059,8 +1071,16 @@ VisualsSection:Toggle({
     Desc = cor({"Exibe o "}, {"nome", "#FFFFFF"}),
     Icon = "lucide:user", 
     Value = getgenv().ESPConfig.Names, 
-    Flag = "ESPNome", 
+    Flag = "NomeESP", 
     Callback = function(v) getgenv().ESPConfig.Names = v end 
+})
+
+VisualsSection:Colorpicker({
+    Title = "Cor do Nome",
+    Desc = "Define a cor padrão do nome",
+    Default = Color3.fromRGB(255, 255, 255),
+    Flag = "NameColor",
+    Callback = function(color) getgenv().ESPConfig.NameColor = color end
 })
 
 VisualsSection:Toggle({ 
@@ -1068,8 +1088,16 @@ VisualsSection:Toggle({
     Desc = cor({"Mostra a "}, {"distância", "#00AAFF"}),
     Icon = "lucide:ruler", 
     Value = getgenv().ESPConfig.Distance, 
-    Flag = "ESPDistancia", 
+    Flag = "DistanciaESP", 
     Callback = function(v) getgenv().ESPConfig.Distance = v end 
+})
+
+VisualsSection:Colorpicker({
+    Title = "Cor da Distância",
+    Desc = "Define a cor do indicador de distância",
+    Default = Color3.fromRGB(200, 200, 200),
+    Flag = "DistanceColor",
+    Callback = function(color) getgenv().ESPConfig.DistanceColor = color end
 })
 
 VisualsSection:Toggle({ 
@@ -1077,17 +1105,25 @@ VisualsSection:Toggle({
     Desc = cor({"Exibe "}, {"a barra de vida", "#FF0000"}),
     Icon = "lucide:heart", 
     Value = getgenv().ESPConfig.Health, 
-    Flag = "ESPVida", 
+    Flag = "VidaESP", 
     Callback = function(v) getgenv().ESPConfig.Health = v end 
 })
 
 VisualsSection:Toggle({ 
     Title = "Tracers", 
-    Desc = cor({"Desenha uma "}, {"linha", "#00FF00"}, {" até o jogador"}),
+    Desc = cor({"Cria uma "}, {"linha", "#FFFFFF"}, {" até o jogador"}),
     Icon = "lucide:git-commit", 
     Value = getgenv().ESPConfig.Tracers, 
-    Flag = "ESPTracers", 
+    Flag = "TracerESP", 
     Callback = function(v) getgenv().ESPConfig.Tracers = v end 
+})
+
+VisualsSection:Colorpicker({
+    Title = "Cor da Linha",
+    Desc = "Define a cor padrão dos tracers",
+    Default = Color3.fromRGB(255, 255, 255),
+    Flag = "TracerColor",
+    Callback = function(color) getgenv().ESPConfig.TracerColor = color end
 })
 
 --// tab X1
