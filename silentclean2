@@ -1,0 +1,273 @@
+--[[ 
+    SILENT AIM - VERSÃO PROFISSIONAL (LOCAL SCOPE)
+    - Totalmente Indetectável (Sem _G, Sem getgenv exposto)
+    - GUI Nativa (Sem Drawing API)
+    - Tudo em um único script
+]]
+
+--// 1. SERVIÇOS E OTIMIZAÇÃO
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local UserInputService = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
+
+-- Funções cacheadas para performance e segurança
+local gethui = gethui or function() return CoreGui end
+local clonefunction = clonefunction or function(f) return f end
+local wts = clonefunction(Camera.WorldToScreenPoint)
+local raycast = clonefunction(Workspace.Raycast)
+local get_mouse = clonefunction(UserInputService.GetMouseLocation)
+
+--// 2. LÓGICA DO SILENT AIM (BACKEND LOCAL)
+local SafeAim = {}
+
+SafeAim.Config = {
+    Enabled = false,
+    TeamCheck = "Team", -- "Team" ou "All"
+    TargetPart = {"Head"},
+    TargetPriority = "Distance",
+    MaxDistance = 1000,
+    HitChance = 100,
+    WallCheck = true,
+    UseLegitOffset = true,
+    WhitelistedUsers = {},
+    WhitelistedTeams = {},
+    FocusList = {},
+    FocusMode = false,
+    -- Visuals
+    ShowFOV = true,
+    FOVSize = 200,
+    FOVColor = Color3.fromRGB(34, 140, 85),
+    FOVBehavior = "Center",
+    ShowHighlight = true,
+    HighlightColor = Color3.fromRGB(255, 60, 60),
+    ESP = { Enabled = true, ShowName = true, ShowTeam = true, ShowHealth = true, ShowWeapon = true }
+}
+
+SafeAim.State = {
+    Target = nil,
+    Part = nil,
+    Visuals = { Gui = nil, Circle = nil, Stroke = nil, Highlight = nil, ESP = nil, Labels = {} }
+}
+
+-- Funções Auxiliares
+local function IsVisible(part, char)
+    if not SafeAim.Config.WallCheck then return true end
+    local origin = Camera.CFrame.Position
+    local dir = part.Position - origin
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    params.FilterDescendantsInstances = {LocalPlayer.Character, Camera, char, SafeAim.State.Visuals.Gui}
+    params.IgnoreWater = true
+    
+    local result = raycast(Workspace, origin, dir, params)
+    return result == nil or result.Instance:IsDescendantOf(char)
+end
+
+local function GetLegitOffset()
+    if not SafeAim.Config.UseLegitOffset then return Vector3.zero end
+    return Vector3.new((math.random()-0.5)*0.5, (math.random()-0.5)*0.5, (math.random()-0.5)*0.5)
+end
+
+-- Lógica de Busca
+function SafeAim:GetBestTarget()
+    local bestT, bestP, bestS = nil, nil, math.huge
+    local mousePos = (self.Config.FOVBehavior == "Mouse") and get_mouse(UserInputService) or Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+    
+    for _, v in ipairs(Players:GetPlayers()) do
+        if v == LocalPlayer then continue end
+        if self.Config.TeamCheck == "Team" and v.Team == LocalPlayer.Team then continue end
+        if table.find(self.Config.WhitelistedUsers, v.Name) then continue end
+        if v.Team and table.find(self.Config.WhitelistedTeams, v.Team.Name) then continue end
+        if self.Config.FocusMode and not table.find(self.Config.FocusList, v.Name) then continue end
+        
+        local char = v.Character
+        if not char then continue end
+        local root = char:FindFirstChild("HumanoidRootPart")
+        local hum = char:FindFirstChild("Humanoid")
+        if not root or not hum or hum.Health <= 0 then continue end
+        
+        local dist3D = (root.Position - Camera.CFrame.Position).Magnitude
+        if dist3D > self.Config.MaxDistance then continue end
+        
+        -- Selecionar Parte
+        local tPartName = "Head"
+        if type(self.Config.TargetPart) == "table" and table.find(self.Config.TargetPart, "Random") then
+            tPartName = (math.random()>0.5) and "Head" or "HumanoidRootPart"
+        elseif type(self.Config.TargetPart) == "table" then
+            tPartName = self.Config.TargetPart[math.random(1, #self.Config.TargetPart)] or "Head"
+        end
+        if tPartName == "Torso" then tPartName = "HumanoidRootPart" end
+        
+        local partObj = char:FindFirstChild(tPartName) or root
+        
+        local sPos, onScreen = wts(Camera, partObj.Position)
+        if onScreen then
+            local dist2D = (mousePos - Vector2.new(sPos.X, sPos.Y)).Magnitude
+            if dist2D <= self.Config.FOVSize then
+                if IsVisible(partObj, char) then
+                    local score = (self.Config.TargetPriority == "Health") and hum.Health or dist2D
+                    if score < bestS then
+                        bestS = score
+                        bestT = char
+                        bestP = partObj
+                    end
+                end
+            end
+        end
+    end
+    return bestT, bestP
+end
+
+-- Gerenciamento Visual (Substituindo Drawing API)
+function SafeAim:InitVisuals()
+    if self.State.Visuals.Gui then self.State.Visuals.Gui:Destroy() end
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "SA_Safe_UI"
+    gui.IgnoreGuiInset = true
+    gui.ResetOnSpawn = false
+    gui.Parent = gethui()
+    
+    local frame = Instance.new("Frame", gui)
+    frame.BackgroundTransparency = 1
+    frame.AnchorPoint = Vector2.new(0.5, 0.5)
+    local corner = Instance.new("UICorner", frame)
+    corner.CornerRadius = UDim.new(1,0)
+    local stroke = Instance.new("UIStroke", frame)
+    stroke.Thickness = 1.5
+    stroke.ApplyStrokeMode = "Border"
+    
+    local hl = Instance.new("Highlight", gui)
+    hl.FillTransparency = 0.5
+    hl.OutlineTransparency = 0
+    hl.DepthMode = "AlwaysOnTop"
+    hl.Enabled = false
+    
+    local esp = Instance.new("BillboardGui", gui)
+    esp.Size = UDim2.fromOffset(200,100)
+    esp.AlwaysOnTop = true
+    esp.Enabled = false
+    local container = Instance.new("Frame", esp)
+    container.Size = UDim2.fromScale(1,1)
+    container.BackgroundTransparency = 1
+    local list = Instance.new("UIListLayout", container)
+    list.HorizontalAlignment = "Center"
+    
+    local function mkLbl(o, c)
+        local l = Instance.new("TextLabel", container)
+        l.BackgroundTransparency = 1
+        l.Size = UDim2.new(1,0,0,15)
+        l.Font = Enum.Font.GothamBold
+        l.TextSize = 13
+        l.TextColor3 = c or Color3.new(1,1,1)
+        l.TextStrokeTransparency = 0.2
+        l.LayoutOrder = o
+        return l
+    end
+    
+    self.State.Visuals = {
+        Gui = gui, Circle = frame, Stroke = stroke, Highlight = hl, ESP = esp,
+        Labels = { Name = mkLbl(1), Team = mkLbl(2, Color3.new(0.8,0.8,0.8)), Weapon = mkLbl(3), Health = mkLbl(4) }
+    }
+end
+
+function SafeAim:UpdateVisuals()
+    if not self.Config.Enabled or not self.State.Visuals.Gui then 
+        if self.State.Visuals.Gui then self.State.Visuals.Gui.Enabled = false end
+        return 
+    end
+    self.State.Visuals.Gui.Enabled = true
+    
+    -- FOV
+    local v = self.State.Visuals
+    if self.Config.ShowFOV then
+        v.Circle.Visible = true
+        v.Circle.Size = UDim2.fromOffset(self.Config.FOVSize*2, self.Config.FOVSize*2)
+        v.Stroke.Color = self.Config.FOVColor
+        local p = (self.Config.FOVBehavior == "Mouse") and get_mouse(UserInputService) or Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+        v.Circle.Position = UDim2.fromOffset(p.X, p.Y)
+    else v.Circle.Visible = false end
+    
+    -- Alvo
+    local t = self.State.Target
+    if t and t:FindFirstChild("HumanoidRootPart") then
+        if self.Config.ShowHighlight then
+            v.Highlight.Adornee = t
+            v.Highlight.FillColor = self.Config.HighlightColor
+            v.Highlight.OutlineColor = self.Config.HighlightColor
+            v.Highlight.Enabled = true
+        else v.Highlight.Enabled = false end
+        
+        if self.Config.ESP.Enabled then
+            v.ESP.Adornee = t:FindFirstChild("HumanoidRootPart")
+            v.ESP.Enabled = true
+            local pl = Players:GetPlayerFromCharacter(t)
+            v.Labels.Name.Visible = self.Config.ESP.ShowName
+            v.Labels.Name.Text = pl and pl.Name or t.Name
+            
+            v.Labels.Team.Visible = self.Config.ESP.ShowTeam
+            v.Labels.Team.Text = pl and tostring(pl.Team) or "NPC"
+            
+            v.Labels.Weapon.Visible = self.Config.ESP.ShowWeapon
+            local tool = t:FindFirstChildWhichIsA("Tool")
+            v.Labels.Weapon.Text = tool and tool.Name or "None"
+            
+            v.Labels.Health.Visible = self.Config.ESP.ShowHealth
+            local hum = t:FindFirstChild("Humanoid")
+            if hum then
+                v.Labels.Health.Text = string.format("[%d / %d]", math.floor(hum.Health), math.floor(hum.MaxHealth))
+                v.Labels.Health.TextColor3 = Color3.fromHSV((hum.Health/hum.MaxHealth)*0.3, 1, 1)
+            end
+        else v.ESP.Enabled = false end
+    else
+        v.Highlight.Enabled = false
+        v.ESP.Enabled = false
+    end
+end
+
+-- Hook e Loop
+function SafeAim:Start()
+    self:InitVisuals()
+    self.Loop = RunService.RenderStepped:Connect(function()
+        if not self.Config.Enabled then return end
+        self.State.Target, self.State.Part = self:GetBestTarget()
+        self:UpdateVisuals()
+    end)
+    
+    local mt = getrawmetatable(game)
+    local old_nc = mt.__namecall
+    setreadonly(mt, false)
+    
+    local safe_remotes = {"UpdateMouse", "Look", "Camera", "Status", "Animation", "Heartbeat"}
+    local function is_safe(n)
+        for _, v in ipairs(safe_remotes) do if string.find(string.lower(n), string.lower(v)) then return false end end
+        return true
+    end
+    
+    mt.__namecall = newcclosure(function(obj, ...)
+        local method = getnamecallmethod()
+        local args = {...}
+        if self.Config.Enabled and self.State.Part and checkcaller() then
+            if method == "FireServer" and is_safe(obj.Name) then
+                if math.random(1,100) > self.Config.HitChance then return old_nc(obj, ...) end
+                local hit = self.State.Part.Position + GetLegitOffset()
+                for i,v in ipairs(args) do
+                    if typeof(v) == "Vector3" and v.Magnitude > 10 then args[i] = hit end
+                end
+                return old_nc(obj, unpack(args))
+            end
+        end
+        return old_nc(obj, ...)
+    end)
+    setreadonly(mt, true)
+end
+
+function SafeAim:Stop()
+    if self.Loop then self.Loop:Disconnect() end
+    if self.State.Visuals.Gui then self.State.Visuals.Gui:Destroy() end
+    self.State.Target = nil
+end
