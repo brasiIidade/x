@@ -17,7 +17,7 @@ local ui = Instance.new("ScreenGui")
 ui.Name, ui.ResetOnSpawn, ui.Parent = ".", false, gh()
 
 if not isfolder("michigun.xyz") then makefolder("michigun.xyz") end
-local fDir = "michigun.xyz/fp3_Parkours"
+local fDir = "michigun.xyz/tas"
 if writefile and not isfolder(fDir) then makefolder(fDir) end
 
 local env = getgenv()
