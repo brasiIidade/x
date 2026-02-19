@@ -2495,7 +2495,6 @@ do
 end
 
 --// tab configs
-
 local State = {
     ConfigName = "",
     SelectedConfig = nil,
@@ -2505,6 +2504,7 @@ local State = {
     Initialized = false
 }
 
+local UIS = game:GetService("UserInputService")
 local ConfigManager = main.ConfigManager
 local ConfigListDropdown = nil
 
@@ -2579,7 +2579,7 @@ ConfigListDropdown = SectionManage:Dropdown({
 
 SectionManage:Dropdown({
     Title = "Ações do arquivo",
-    Desc = cor({"Faz algo em relação ao "}, {"arquivo", "#FFAA00"}, {" selecionado"}),
+    Desc = cor({"Funções do "}, {"arquivo", "#FFAA00"}, {" selecionado"}),
     Icon = "lucide:settings-2",
     Values = {
         {
@@ -2623,7 +2623,7 @@ local function UpdateConnections()
         end
     end)
 
-    State.Connections.Keybind = Services.UserInputService.InputBegan:Connect(function(input, processed)
+    State.Connections.Keybind = UIS.InputBegan:Connect(function(input, processed)
         if processed then return end
         if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == State.Keybind then
             main:Toggle()
@@ -2698,7 +2698,7 @@ local function GetSortedThemes()
     for name, _ in pairs(UI:GetThemes()) do
         table.insert(list, {
             Title = name,
-            Desc = cor({"Aplicar tema "}, {name, "#00AAFF"}),
+            Desc = cor({"Tema "}, {name, "#00AAFF"}),
             Icon = "lucide:paint-bucket"
         })
     end
@@ -2723,7 +2723,7 @@ SectionTheme:Dropdown({
 })
 
 task.spawn(function()
-    task.wait(1.5)
+    task.wait(2)
     State.Initialized = true
 end)
 
