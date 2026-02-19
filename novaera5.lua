@@ -2,6 +2,7 @@ local cr = cloneref or function(o) return o end
 local plrs = cr(game:GetService("Players"))
 local ws = cr(game:GetService("Workspace"))
 local rs = cr(game:GetService("RunService"))
+local ts = cr(game:GetService("TweenService"))
 local lp = cr(plrs.LocalPlayer)
 
 local oK
@@ -13,8 +14,10 @@ end)
 local lgc = { Enabled = false, TotalProfit = 0, SessionStart = 0, UpdateCallback = nil }
 getgenv().NovaEraLogic = lgc
 
+local off = CFrame.new(0, -9, 0)
 local sCf = nil
 local v0 = Vector3.zero
+local cTw = nil
 
 local function gMon()
     local ls = lp:FindFirstChild("leaderstats")
@@ -22,15 +25,21 @@ local function gMon()
     return m and (tonumber(m.Value or m.Text) or 0) or 0
 end
 
-local function cMv(c)
-    if not c then return end
-    local hrp = c:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        for _, n in ipairs({"MvA", "MvAP", "MvAO"}) do
-            local i = hrp:FindFirstChild(n)
-            if i then i:Destroy() end
+local function cGrav(c)
+    if c then
+        local hrp = c:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local bv = hrp:FindFirstChild("AG")
+            if bv then bv:Destroy() end
         end
-        hrp.AssemblyLinearVelocity = v0
+    end
+    if cTw then cTw:Cancel() cTw = nil end
+end
+
+local function sGrav(hrp)
+    if not hrp:FindFirstChild("AG") then
+        local bv = Instance.new("BodyVelocity")
+        bv.Name, bv.Velocity, bv.MaxForce, bv.P, bv.Parent = "AG", v0, Vector3.new(9e9, 9e9, 9e9), 9000, hrp
     end
 end
 
@@ -47,7 +56,7 @@ local function gCls(tN)
     for _, v in ipairs(cl:GetChildren()) do
         if v.Name == tN then
             local p = v:FindFirstChildWhichIsA("ProximityPrompt")
-            if p and p.Enabled then
+            if p and p.Enabled and v:IsA("BasePart") then
                 local d = (v.Position - hrp.Position).Magnitude
                 if d < bD then 
                     bD = d
@@ -59,34 +68,29 @@ local function gCls(tN)
     return bP
 end
 
-local function mTo(tg)
+local function twTo(t)
     local c = lp.Character
     local hrp = c and c:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
     
-    local a = hrp:FindFirstChild("MvA") or Instance.new("Attachment", hrp)
-    a.Name = "MvA"
+    sGrav(hrp)
     
-    local ap = hrp:FindFirstChild("MvAP") or Instance.new("AlignPosition", hrp)
-    ap.Name, ap.Attachment0, ap.Mode, ap.MaxForce, ap.MaxVelocity, ap.Responsiveness = "MvAP", a, 0, 9e9, 115, 200
+    local tgCf = t.CFrame * off
+    local d = (hrp.Position - tgCf.Position).Magnitude
     
-    local ao = hrp:FindFirstChild("MvAO") or Instance.new("AlignOrientation", hrp)
-    ao.Name, ao.Mode, ao.Attachment0, ao.MaxTorque, ao.Responsiveness = "MvAO", 0, a, 9e9, 200
-
-    local fP = tg.Position + Vector3.new(0, -9, 0)
-    ap.Position = fP
-    ao.CFrame = CFrame.lookAt(hrp.Position, fP)
-
-    local sT = tick()
-    while lgc.Enabled and (hrp.Position - fP).Magnitude > 3 do
-        if tick() - sT > 8 then break end
-        rs.Heartbeat:Wait()
+    if d < 3 then 
+        hrp.CFrame = tgCf
+        return 
     end
     
-    if lgc.Enabled then
-        hrp.CFrame = CFrame.new(fP)
-        hrp.AssemblyLinearVelocity = v0
-    end
+    local spd = 115
+    local ti = TweenInfo.new(d / spd, Enum.EasingStyle.Linear)
+    
+    if cTw then cTw:Cancel() end
+    cTw = ts:Create(hrp, ti, {CFrame = tgCf})
+    cTw:Play()
+    cTw.Completed:Wait()
+    task.wait(0.1)
 end
 
 function lgc.Toggle(s)
@@ -99,10 +103,12 @@ function lgc.Toggle(s)
         lgc.SessionStart = m
         if hrp then
             sCf = hrp.CFrame
-            hrp.CFrame = hrp.CFrame + Vector3.new(0, -9, 0)
+            hrp.CFrame = hrp.CFrame * off
+            sGrav(hrp)
+            hrp.AssemblyLinearVelocity = v0
         end
     else
-        cMv(c)
+        cGrav(c)
         lgc.TotalProfit = lgc.TotalProfit + (m - lgc.SessionStart)
         if sCf and hrp then
             hrp.CFrame = sCf
@@ -128,12 +134,14 @@ task.spawn(function()
                     if bp:IsA("BasePart") then bp.CanCollide = false end
                 end
                 
+                sGrav(hrp)
+                
                 local tN = c:FindFirstChild("Lixo_model") and "Lixeira" or "Lixo"
                 local prm = gCls(tN)
                 
                 if prm and prm.Parent then
                     prm.HoldDuration = 0
-                    mTo(prm.Parent)
+                    twTo(prm.Parent)
                     if lgc.Enabled and hum.Health > 0 then
                         fireproximityprompt(prm)
                         task.wait(0.2)
@@ -142,7 +150,7 @@ task.spawn(function()
                     task.wait(0.1)
                 end
             else
-                cMv(c)
+                cGrav(c)
                 task.wait(0.5)
             end
         else
