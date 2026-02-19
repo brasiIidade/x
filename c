@@ -1,5 +1,4 @@
 -- anti
-
 local function Finalizar(Mensagem)
     print(Mensagem)
     task.wait(0.5)
@@ -2271,878 +2270,435 @@ task.spawn(function()
 end)
 
 --//tab player
+getgenv().PlayerConfig = {
+    -- Estados
+    SpeedEnabled = false,
+    SpeedVal = 16,
+    JumpEnabled = false,
+    JumpVal = 50,
+    Noclip = false,
+    RespawnEnabled = false,
+    AnonEnabled = false,
+    FakeName = "Anônimo",
+    InvisEnabled = false,
+    SpectateActive = false,
+    FlingActive = false,
+    
+    TargetPlayer = "",
+    TriggerTeleport = false,
+    TriggerReturn = false,
+    TriggerFling = false
+}
+
+local Config = getgenv().PlayerConfig
+
 task.spawn(function()
     if ler then ler("player") end
 end)
 
-local S = {
-    Enabled = false,
-    FakeName = "Anônimo",
-    FakeDisplay = "Anônimo",
-    RealName = LocalPlayer.Name,
-    RealDisplay = LocalPlayer.DisplayName
-}
+do
+    local CharSection = criarsection(Player, "Personagem", "Modificar personagem", "lucide:user-cog", true)
 
-S.SafeName = S.RealName:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
-S.SafeDisplay = S.RealDisplay:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
-
-local SpoofedObjects = setmetatable({}, {__mode = "k"})
-
-local function SpoofString(text)
-    if not S.Enabled or type(text) ~= "string" then return text end
-    local spoofed = text
-    if spoofed:find(S.RealName) then
-        spoofed = spoofed:gsub(S.SafeName, S.FakeName)
-    end
-    if spoofed:find(S.RealDisplay) then
-        spoofed = spoofed:gsub(S.SafeDisplay, S.FakeDisplay)
-    end
-    return spoofed
-end
-
-local function HookUI(obj)
-    if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
-        local function UpdateText()
-            if not S.Enabled then return end
-            local currentText = obj.Text
-            if SpoofedObjects[obj] and currentText == SpoofString(SpoofedObjects[obj]) then return end
-            
-            local spoofed = SpoofString(currentText)
-            if currentText ~= spoofed then
-                SpoofedObjects[obj] = currentText
-                obj.Text = spoofed
-            end
-        end
-        UpdateText()
-        obj:GetPropertyChangedSignal("Text"):Connect(UpdateText)
-    end
-end
-
-local function ScanHierarchy(parent)
-    task.spawn(function()
-        for _, obj in ipairs(parent:GetDescendants()) do
-            pcall(HookUI, cloneref(obj))
-        end
-        parent.DescendantAdded:Connect(function(obj)
-            pcall(HookUI, cloneref(obj))
-        end)
-    end)
-end
-
-local oldNewIndex
-oldNewIndex = hookmetamethod(game, "__newindex", newcclosure(function(self, index, value)
-    if not checkcaller() and index == "Text" and type(value) == "string" and S.Enabled then
-        local spoofed = SpoofString(value)
-        if spoofed ~= value then
-            SpoofedObjects[self] = value
-            value = spoofed
-        end
-    end
-    return oldNewIndex(self, index, value)
-end))
-
-local oldNamecall
-oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
-    local method = getnamecallmethod()
-    local args = {...}
-    
-    if not checkcaller() and S.Enabled then
-        if method == "SetCore" and args[1] == "SendNotification" and type(args[2]) == "table" then
-            if type(args[2].Title) == "string" then args[2].Title = SpoofString(args[2].Title) end
-            if type(args[2].Text) == "string" then args[2].Text = SpoofString(args[2].Text) end
-            return oldNamecall(self, unpack(args))
-        end
-    end
-    
-    return oldNamecall(self, ...)
-end))
-
-local function SetupChatSpoof()
-    if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
-        TextChatService.OnIncomingMessage = function(message)
-            local props = cloneref(Instance.new("TextChatMessageProperties"))
-            if S.Enabled and message.TextSource and message.TextSource.UserId == LocalPlayer.UserId then
-                props.PrefixText = "<font color='#F5CD30'>[" .. S.FakeDisplay .. "]</font>"
-            else
-                props.PrefixText = SpoofString(message.PrefixText)
-            end
-            return props
-        end
-    end
-end
-
-local function SpoofCharacter(char)
-    if not char then return end
-    local humanoid = char:WaitForChild("Humanoid", 5)
-    if humanoid then
-        local safeHumanoid = cloneref(humanoid)
-        if S.Enabled then safeHumanoid.DisplayName = S.FakeDisplay end
-        safeHumanoid:GetPropertyChangedSignal("DisplayName"):Connect(function()
-            if S.Enabled and safeHumanoid.DisplayName ~= S.FakeDisplay then
-                safeHumanoid.DisplayName = S.FakeDisplay
-            end
-        end)
-    end
-    ScanHierarchy(char)
-end
-
-ScanHierarchy(cloneref(LocalPlayer:WaitForChild("PlayerGui")))
-pcall(function() ScanHierarchy(CoreGui) end)
-SetupChatSpoof()
-
-if LocalPlayer.Character then
-    SpoofCharacter(cloneref(LocalPlayer.Character))
-end
-LocalPlayer.CharacterAdded:Connect(function(char)
-    SpoofCharacter(cloneref(char))
-end)
-
-local function ForceUpdateAll()
-    local function ProcessNode(node)
-        pcall(function()
-            if node:IsA("TextLabel") or node:IsA("TextButton") or node:IsA("TextBox") then
-                local currentText = node.Text
-                if SpoofedObjects[node] then currentText = SpoofedObjects[node] end
-                local spoofed = SpoofString(currentText)
-                if currentText ~= spoofed then
-                    SpoofedObjects[node] = currentText
-                    node.Text = spoofed
-                end
-            end
-        end)
-    end
-    
-    for _, v in ipairs(LocalPlayer:WaitForChild("PlayerGui"):GetDescendants()) do ProcessNode(v) end
-    
-    pcall(function() 
-        for _, v in ipairs(CoreGui:GetDescendants()) do ProcessNode(v) end 
-    end)
-    
-    if LocalPlayer.Character then
-        for _, v in ipairs(LocalPlayer.Character:GetDescendants()) do ProcessNode(v) end
-    end
-end
-
-local function RevertAll()
-    for obj, origText in pairs(SpoofedObjects) do
-        pcall(function()
-            if obj.Text ~= origText then
-                obj.Text = origText
-            end
-        end)
-    end
-    for k in pairs(SpoofedObjects) do SpoofedObjects[k] = nil end
-end
-
-local CharacterSection = criarsection(Player, "Personagem", "Modificar personagem", "lucide:user-cog", true)
-
-local CurrentSeat
-
-CharacterSection:Toggle({
-    Title = "Anônimo",
-    Desc = cor({"Altera o seu nome"}, {" visualmente", "#00AAFF"}),
-    Flag = "Anonimo",
-    Icon = "lucide:square-user-round",
-    Callback = function(state)
-        S.Enabled = state
-        
-        local char = LocalPlayer.Character
-        local hum = char and char:FindFirstChild("Humanoid")
-        if hum then
-            hum.DisplayName = state and S.FakeDisplay or S.RealDisplay
-        end
-
-        if state then
-            ForceUpdateAll()
-        else
-            RevertAll()
-        end
-    end
-})
-
-CharacterSection:Input({
-    Title = "Nome",
-    Desc = cor({"Escolha o "}, {"nome", "#00AAFF"}, {" para o modo anônimo"}),
-    Placeholder = "nome123",
-    InputIcon = "lucide:user-pen",
-    Callback = function(v)
-        if v ~= "" then
-            S.FakeName = v
-            S.FakeDisplay = v
-            if S.Enabled then
-                ForceUpdateAll()
-                local char = LocalPlayer.Character
-                local hum = char and char:FindFirstChild("Humanoid")
-                if hum then hum.DisplayName = S.FakeDisplay end
-            end
-        end
-    end
-})
-
-CharacterSection:Space()
-
-CharacterSection:Toggle({
-    Title = "Invisibilidade",
-    Desc = cor({"Você ficará "}, {"invisível", "#FFFFFF"}, {" para os outros jogadores"}),
-    Flag = "Invisivel",
-    Icon = "lucide:hat-glasses",
-    Callback = function(Value)
-        local Character = LocalPlayer.Character
-        local RootPart = Character and Character:FindFirstChild("HumanoidRootPart")
-
-        if not RootPart then return end
-
-        if Value then
-            for _, v in ipairs(Character:GetDescendants()) do
-                if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
-                    v.Transparency = 0.5
-                elseif v:IsA("Decal") then
-                    v.Transparency = 0.5
-                end
-            end
-
-            local Camera = Workspace.CurrentCamera
-            local SavedCFrame = RootPart.CFrame
-            local OldCamType = Camera.CameraType
-
-            Camera.CameraType = Enum.CameraType.Scriptable
-            RootPart.CFrame = CFrame.new(-25.95, 84, 3537.55)
-            task.wait(0.15)
-
-            local Seat = Instance.new("Seat")
-            Seat.Name = HttpService:GenerateGUID(false)
-            Seat.Transparency = 1
-            Seat.CanCollide = false
-            Seat.Anchored = false
-            Seat.Position = Vector3.new(-25.95, 84, 3537.55)
-            Seat.Parent = Workspace
-            CurrentSeat = Seat
-
-            local Weld = Instance.new("Weld")
-            Weld.Part0 = Seat
-            Weld.Part1 = Character:FindFirstChild("Torso") or Character:FindFirstChild("UpperTorso")
-            Weld.Parent = Seat
-
-            task.wait()
-            Seat.CFrame = SavedCFrame
-            Camera.CameraType = OldCamType
-        else
-            for _, v in ipairs(Character:GetDescendants()) do
-                if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
-                    v.Transparency = 0
-                elseif v:IsA("Decal") then
-                    v.Transparency = 0
-                end
-            end
-
-            if CurrentSeat and CurrentSeat.Parent then
-                CurrentSeat:Destroy()
-                CurrentSeat = nil
-            end
-        end
-    end
-})
-
-CharacterSection:Space()
-
-CharacterSection:Toggle({
-    Title = "Respawn",
-    Desc = cor({"O personagem automaticamente "}, {"teleportará", "#00AAFF"}, {" ao local onde você "}, {"morreu", "#FF0000"}),
-    Flag = "Respawn",
-    Icon = "lucide:map-pin",
-    Callback = function(v)
-        if _G.PlayerMod and _G.PlayerMod.ToggleAntiSpawn then
-            _G.PlayerMod.ToggleAntiSpawn(v)
+    CharSection:Toggle({
+        Title = "Anônimo",
+        Desc = cor({"Altera o seu nome"}, {" visualmente", "#00AAFF"}),
+        Flag = "Anonimo",
+        Icon = "lucide:square-user-round",
+        Callback = function(v)
+            Config.AnonEnabled = v
             if v then
-                notificar("Respawn ativado", 2, "lucide:map-pin")
+                local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+                if hum then hum.DisplayName = Config.FakeName end
             end
         end
-    end
-})
-
-CharacterSection:Toggle({
-    Title = "Noclip",
-    Desc = cor({"Permite "}, {"atravessar", "#00AAFF"}, {" paredes"}),
-    Flag = "Noclip",
-    Icon = "lucide:ghost",
-    Callback = function(state)
-        if _G.PlayerMod and _G.PlayerMod.ToggleNoclip then
-            _G.PlayerMod.ToggleNoclip(state)
-            if state then
-                notificar("Ativado", 2, "lucide:ghost")
-            else
-                notificar("Desativado", 2, "lucide:ban")
-            end
-        end
-    end
-})
-
-CharacterSection:Toggle({
-    Title = "Habilitar chat",
-    Desc = cor({"Permite "}, {"ver", "#00AAFF"}, {" o histórico de mensagens no "}, {"chat", "#FFFFFF"}),
-    Flag = "ChatHabilitado",
-    Icon = "lucide:message-square",
-    Callback = function(v)
-        if _G.PlayerMod and _G.PlayerMod.ToggleChat then
-            _G.PlayerMod.ToggleChat(v)
-        end
-    end
-})
-
-local LocalModsSection = criarsection(Player, "Modificações locais", "Modifica seu humanoid", "lucide:activity", false)
-
-local speedValue = nil
-
-LocalModsSection:Input({
-    Title = "Speed",
-    Desc = cor({"Define a sua "}, {"velocidade", "#00AAFF"}),
-    Placeholder = "16",
-    InputIcon = "lucide:gauge",
-    Flag = "Speed",
-    Callback = function(v)
-        if v == "" then return end
-        speedValue = tonumber(v)
-    end
-})
-
-local grupamentoSpeed = LocalModsSection:Group()
-
-grupamentoSpeed:Button({
-    Title = "Aplicar velocidade",
-    Desc = cor({"Aplica", "#00FF00"}, {" a velocidade"}),
-    Icon = "lucide:check-circle",
-    Callback = function()
-        if not speedValue then
-            notificar("Informe um valor válido", 2, "lucide:alert-circle")
-            return
-        end
-        local Character = LocalPlayer.Character
-        local Humanoid = Character and Character:FindFirstChild("Humanoid")
-        if Humanoid then
-            Humanoid.WalkSpeed = speedValue
-            notificar("Velocidade alterada", 2, "lucide:zap")
-        end
-    end
-})
-
-grupamentoSpeed:Space()
-
-grupamentoSpeed:Button({
-    Title = "Resetar velocidade",
-    Desc = cor({"Retorna para a velocidade "}, {"padrão", "#FFFFFF"}),
-    Icon = "lucide:rotate-ccw",
-    Callback = function()
-        local Character = LocalPlayer.Character
-        local Humanoid = Character and Character:FindFirstChild("Humanoid")
-        if Humanoid then
-            Humanoid.WalkSpeed = 16
-            notificar("Velocidade resetada", 2, "lucide:rotate-ccw")
-        end
-    end
-})
-
-LocalModsSection:Space()
-
-local jumpValue = nil
-
-LocalModsSection:Input({
-    Title = "Jump",
-    Desc = cor({"Define o seu "}, {"pulo", "#00AAFF"}),
-    Placeholder = "50",
-    InputIcon = "lucide:arrow-up",
-    Flag = "Jump",
-    Callback = function(v)
-        if v == "" then return end
-        jumpValue = tonumber(v)
-    end
-})
-
-local grupamentoJump = LocalModsSection:Group()
-
-grupamentoJump:Button({
-    Title = "Aplicar pulo",
-    Desc = cor({"Altera", "#00FF00"}, {" o pulo"}),
-    Icon = "lucide:check-circle",
-    Callback = function()
-        if not jumpValue then
-            notificar("Informe um valor válido", 2, "lucide:alert-circle")
-            return
-        end
-        local Character = LocalPlayer.Character
-        local Humanoid = Character and Character:FindFirstChild("Humanoid")
-        if Humanoid then
-            Humanoid.UseJumpPower = true
-            Humanoid.JumpPower = jumpValue
-            notificar("Pulo alterado", 2, "lucide:zap")
-        end
-    end
-})
-
-grupamentoJump:Space()
-
-grupamentoJump:Button({
-    Title = "Resetar pulo",
-    Desc = cor({"Volta para o pulo "}, {"padrão", "#FFFFFF"}),
-    Icon = "lucide:rotate-ccw",
-    Callback = function()
-        local Character = LocalPlayer.Character
-        local Humanoid = Character and Character:FindFirstChild("Humanoid")
-        if Humanoid then
-            Humanoid.UseJumpPower = true
-            Humanoid.JumpPower = 50
-            notificar("Pulo resetado", 2, "lucide:rotate-ccw")
-        end
-    end
-})
-
-local InteractionSection = criarsection(Player, "Interação", "Outros jogadores", "lucide:users", false)
-
-local TargetName = ""
-local usuario = nil
-local isSpectating = false
-local ActionDropdown = nil
-
-InteractionSection:Input({
-    Title = "Jogador",
-    Desc = cor({"Digite o"}, {" nome", "#FFFFFF"}, {" ou"}, {" display", "#FFFFFF"}, {" do jogador"}),
-    Placeholder = "nome123",
-    InputIcon = "lucide:search",
-    Callback = function(text)
-        TargetName = text
-        usuario = nil
-        if text == "" then return end
-        local v = text:lower()
-        for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer then
-                if p.Name:lower():sub(1, #v) == v or p.DisplayName:lower():sub(1, #v) == v then
-                    usuario = p
-                    TargetName = p.Name
-                    notificar("Alvo: " .. p.Name, 2, "lucide:check")
-                    break
-                end
-            end
-        end
-    end
-})
-
-local CreateActionsDropdown 
-
-CreateActionsDropdown = function()
-    if ActionDropdown then
-        ActionDropdown:Destroy()
-        ActionDropdown = nil
-    end
-
-    local actions = {
-        {
-            Title = "Fling",
-            Desc = cor({"Arremessa o alvo para "}, {"longe.", "#FF0000"}, {" VOCÊ SERÁ TELEPORTADO"}),
-            Icon = "lucide:earth",
-            Callback = function()
-                if not usuario then
-                    notificar("Selecione um usuário primeiro", 2, "lucide:alert-circle")
-                    CreateActionsDropdown()
-                    return
-                end
-
-                local Target = usuario
-                if Target and Target.Character and LocalPlayer.Character then
-                    local TargetRoot = Target.Character:FindFirstChild("HumanoidRootPart")
-                    local LocalRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                    
-                    if TargetRoot and LocalRoot then
-                        local OldPosition = LocalRoot.CFrame
-                        local StartTime = tick()
-                        local Duration = 1.5 
-                        
-                        local Connection
-                        Connection = RunService.Heartbeat:Connect(function()
-                            if tick() - StartTime >= Duration or not Target or not Target.Character or not Target.Character:FindFirstChild("HumanoidRootPart") or not LocalPlayer.Character then
-                                if Connection then Connection:Disconnect() end
-                                LocalRoot.Velocity = Vector3.new(0, 0, 0)
-                                LocalRoot.RotVelocity = Vector3.new(0, 0, 0)
-                                LocalRoot.CFrame = OldPosition
-                                return
-                            end
-
-                            local CurrentTargetRoot = Target.Character.HumanoidRootPart
-                            
-                            LocalRoot.CFrame = (CFrame.new(CurrentTargetRoot.Position + Vector3.new(0, -1, 0)) * CFrame.Angles(-1.5707963267948966, 0, 0))
-                            
-                            local GodspeedForce = Vector3.new(0, 10000, 0)
-                            LocalRoot.Velocity = GodspeedForce
-                            LocalRoot.RotVelocity = GodspeedForce
-                            
-                            pcall(function()
-                                sethiddenproperty(LocalRoot, 'PhysicsRepRootPart', CurrentTargetRoot)
-                            end)
-                        end)
-                    else
-                        notificar("O alvo ou você não tem personagem", 2, "lucide:x-octagon")
-                    end
-                end
-                CreateActionsDropdown()
-            end
-        },
-        {
-            Title = isSpectating and "Parar de espectar" or "Espectar jogador",
-            Desc = isSpectating and cor({"Parar", "#FF0000"}, {" de seguir a câmera do alvo"}) or cor({"Especta", "#00AAFF"}, {" o jogador selecionado"}),
-            Icon = isSpectating and "lucide:eye-off" or "lucide:eye",
-            Callback = function()
-                local newState = not isSpectating
-                
-                if _G.PlayerMod and _G.PlayerMod.ToggleView then
-                    local result = _G.PlayerMod.ToggleView(newState, TargetName)
-                    
-                    if newState and not result then
-                        notificar("Jogador não encontrado", 2, "lucide:search-x")
-                        CreateActionsDropdown() 
-                        return 
-                    end
-
-                    isSpectating = newState
-                    
-                    if isSpectating then
-                        notificar("Espectando: " .. (result or TargetName), 3, "lucide:eye")
-                    else
-                        notificar("Restaurada", 2, "lucide:eye-off")
-                    end
-
-                    CreateActionsDropdown()
-                end
-            end
-        },
-        {
-            Title = "Teleportar",
-            Desc = cor({"Teleporta", "#00FF00"}, {" ao jogador"}),
-            Icon = "lucide:plane",
-            Callback = function()
-                if _G.PlayerMod and _G.PlayerMod.TeleportTo then
-                    local result = _G.PlayerMod.TeleportTo(TargetName)
-                    if result then
-                        notificar("Teleportado para: " .. result, 3, "lucide:plane")
-                    else
-                        notificar("Jogador não encontrado", 2, "lucide:search-x")
-                    end
-                end
-                CreateActionsDropdown()
-            end
-        },
-        {
-            Title = "Voltar posição",
-            Desc = cor({"Retorna", "#FFAA00"}, {" para o lugar onde você estava"}),
-            Icon = "lucide:undo-2",
-            Callback = function()
-                if _G.PlayerMod and _G.PlayerMod.ReturnPos then
-                    if _G.PlayerMod.ReturnPos() then
-                        notificar("Retornado", 2, "lucide:undo-2")
-                    else
-                        notificar("Nenhuma posição salva", 2, "lucide:x")
-                    end
-                end
-                CreateActionsDropdown()
-            end
-        }
-    }
-
-    ActionDropdown = InteractionSection:Dropdown({
-        Title = "Ações",
-        Desc = cor({"Gerenciar o alvo"}),
-        Icon = "lucide:mouse-pointer-click",
-        Values = actions,
-        Value = "Nenhuma"
     })
+
+    CharSection:Input({
+        Title = "Nome fake",
+        Desc = cor({"Nome para o modo "}, {"anônimo", "#00AAFF"}),
+        Placeholder = "Anônimo",
+        InputIcon = "lucide:user-pen",
+        Callback = function(v)
+            if v ~= "" then Config.FakeName = v end
+        end
+    })
+
+    CharSection:Space()
+
+    CharSection:Toggle({
+        Title = "Invisibilidade",
+        Desc = cor({"Fica "}, {"invisível", "#FFFFFF"}, {" para outros jogadores"}),
+        Flag = "Invisivel",
+        Icon = "lucide:hat-glasses",
+        Callback = function(v) Config.InvisEnabled = v end
+    })
+
+    CharSection:Toggle({
+        Title = "Respawn",
+        Desc = cor({"Teleporta ao local da "}, {"morte", "#FF0000"}),
+        Flag = "Respawn",
+        Icon = "lucide:map-pin",
+        Callback = function(v) Config.RespawnEnabled = v end
+    })
+
+    CharSection:Toggle({
+        Title = "Noclip",
+        Desc = cor({"Atravessa ", "#00AAFF"}, {"paredes"}),
+        Flag = "Noclip",
+        Icon = "lucide:ghost",
+        Callback = function(v) Config.Noclip = v end
+    })
+
+    local ModSection = criarsection(Player, "Física", "Velocidade e pulo", "lucide:activity", false)
+
+    local spd_val = 16
+    ModSection:Input({
+        Title = "Speed",
+        Placeholder = "16",
+        InputIcon = "lucide:gauge",
+        Callback = function(v) spd_val = tonumber(v) or 16 end
+    })
+
+    local grp_spd = ModSection:Group()
+    grp_spd:Button({
+        Title = "Aplicar",
+        Icon = "lucide:check-circle",
+        Callback = function()
+            Config.SpeedVal = spd_val
+            Config.SpeedEnabled = true
+            notificar("Velocidade: " .. spd_val, 2, "lucide:zap")
+        end
+    })
+    grp_spd:Button({
+        Title = "Resetar",
+        Icon = "lucide:rotate-ccw",
+        Callback = function()
+            Config.SpeedEnabled = false
+            Config.SpeedVal = 16
+            local h = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+            if h then h.WalkSpeed = 16 end
+        end
+    })
+
+    ModSection:Space()
+
+    local jmp_val = 50
+    ModSection:Input({
+        Title = "Jump",
+        Placeholder = "50",
+        InputIcon = "lucide:arrow-up",
+        Callback = function(v) jmp_val = tonumber(v) or 50 end
+    })
+
+    local grp_jmp = ModSection:Group()
+    grp_jmp:Button({
+        Title = "Aplicar",
+        Icon = "lucide:check-circle",
+        Callback = function()
+            Config.JumpVal = jmp_val
+            Config.JumpEnabled = true
+            notificar("Pulo: " .. jmp_val, 2, "lucide:zap")
+        end
+    })
+    grp_jmp:Button({
+        Title = "Resetar",
+        Icon = "lucide:rotate-ccw",
+        Callback = function()
+            Config.JumpEnabled = false
+            Config.JumpVal = 50
+            local h = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+            if h then h.JumpPower = 50 end
+        end
+    })
+
+    local IntSection = criarsection(Player, "Interação", "Outros jogadores", "lucide:users", false)
+    local ActionDrop
+    local target_name_ui = ""
+
+    IntSection:Input({
+        Title = "Jogador",
+        Desc = "Nome ou Display",
+        Placeholder = "nome123",
+        InputIcon = "lucide:search",
+        Callback = function(v)
+            target_name_ui = v
+            Config.TargetPlayer = v
+        end
+    })
+
+    local function refresh_drop()
+        if ActionDrop then ActionDrop:Destroy() ActionDrop = nil end
+        
+        local acts = {
+            {
+                Title = "Fling",
+                Desc = cor({"Arremessa o alvo (arriscado)"}),
+                Icon = "lucide:earth",
+                Callback = function()
+                    Config.FlingActive = true
+                    Config.TriggerFling = true
+                    notificar("Fling iniciado", 3, "lucide:alert-triangle")
+                    task.delay(3, function() Config.FlingActive = false end)
+                end
+            },
+            {
+                Title = Config.SpectateActive and "Parar Espectar" or "Espectar",
+                Desc = "Visualiza a câmera do alvo",
+                Icon = "lucide:eye",
+                Callback = function()
+                    Config.SpectateActive = not Config.SpectateActive
+                    refresh_drop()
+                end
+            },
+            {
+                Title = "Teleportar",
+                Desc = "Vai até o jogador",
+                Icon = "lucide:plane",
+                Callback = function()
+                    Config.TriggerTeleport = true
+                end
+            },
+            {
+                Title = "Voltar",
+                Desc = "Retorna à posição anterior",
+                Icon = "lucide:undo-2",
+                Callback = function()
+                    Config.TriggerReturn = true
+                end
+            }
+        }
+        
+        ActionDrop = IntSection:Dropdown({
+            Title = "Ações",
+            Icon = "lucide:mouse-pointer-click",
+            Values = acts,
+            Value = "Selecione"
+        })
+    end
+    
+    refresh_drop()
 end
-
-CreateActionsDropdown()
-
 
 --// tab configs
+local State = {
+    ConfigName = "",
+    SelectedConfig = nil,
+    SecretWord = "/e",
+    Keybind = Enum.KeyCode.Z,
+    Connections = {}
+}
 
---// manager das config
+local ConfigManager = main.ConfigManager
+local ConfigListDropdown = nil
 
-local GerenciadorConfig = main.ConfigManager
-local NomeConfig = ""
-local ConfigSelecionada = nil
-local DropdownListaConfig = nil
-
-local function AtualizarListaConfig()
-    local configs = GerenciadorConfig:AllConfigs()
-    if DropdownListaConfig then
-        DropdownListaConfig:Refresh(configs)
+local function RefreshConfigList()
+    if ConfigListDropdown then
+        ConfigListDropdown:Refresh(ConfigManager:AllConfigs())
     end
 end
 
-local CreationSection = criarsection(Configs, "Criação", "Criar configuração", "lucide:file-plus", true)
+local function HandleConfigAction(action)
+    if not State.SelectedConfig or State.SelectedConfig == "Nenhuma" then
+        notificar("Nenhuma configuração selecionada", 3, "lucide:x")
+        return
+    end
 
-CreationSection:Input({
+    local cfg = ConfigManager:CreateConfig(State.SelectedConfig)
+    
+    if action == "Load" then
+        cfg:Load()
+        notificar("Carregado: " .. State.SelectedConfig, 3, "lucide:check")
+    elseif action == "Save" then
+        cfg:Save()
+        notificar("Atualizado: " .. State.SelectedConfig, 3, "lucide:check")
+    elseif action == "Delete" then
+        cfg:Delete()
+        notificar("Deletado: " .. State.SelectedConfig, 3, "lucide:trash")
+        State.SelectedConfig = nil
+        RefreshConfigList()
+    end
+end
+
+local SectionCreate = criarsection(Configs, "Criação", "Criar configuração", "lucide:file-plus", true)
+
+SectionCreate:Input({
     Title = "Nome da configuração",
-    Desc = cor({"Dê um "}, {"nome", "#FFFFFF"}, {" para o arquivo"}),
-    Value = "",
-    Placeholder = "Digite aqui...",
+    Desc = cor({"Define um "}, {"nome", "#FFFFFF"}, {" para a configuração"}),
+    Placeholder = "Ex: Legit v1",
     InputIcon = "lucide:pencil",
-    Type = "Input",
-    Callback = function(texto)
-        NomeConfig = texto
+    Callback = function(text)
+        State.ConfigName = text
     end
 })
 
-CreationSection:Button({
-    Title = "Criar configuração",
-    Desc = cor({"Salva", "#00FF00"}, {" o estado atual das funções"}),
+SectionCreate:Button({
+    Title = "Salvar nova configuração",
+    Desc = cor({"Salva", "#00FF00"}, {" a configuração atual"}),
     Icon = "lucide:save-all",
     Callback = function()
-        if NomeConfig ~= "" then
-            local cfg = GerenciadorConfig:CreateConfig(NomeConfig)
+        if State.ConfigName and State.ConfigName ~= "" then
+            local cfg = ConfigManager:CreateConfig(State.ConfigName)
             cfg:Save()
-            notificar("Salvo como " .. NomeConfig, 3, "lucide:check")
-            AtualizarListaConfig()
+            notificar("Salvo como: " .. State.ConfigName, 3, "lucide:check")
+            RefreshConfigList()
         else
-            notificar("Digite um nome válido", 3, "lucide:x")
+            notificar("Nome inválido", 3, "lucide:alert-circle")
         end
     end
 })
 
-local ManagementSection = criarsection(Configs, "Gerenciamento", "Gerenciar configurações", "lucide:folder-open", true)
+local SectionManage = criarsection(Configs, "Gerenciamento", "Gerenciar arquivos", "lucide:folder-open", true)
 
-DropdownListaConfig = ManagementSection:Dropdown({
+ConfigListDropdown = SectionManage:Dropdown({
     Title = "Selecionar arquivo",
-    Desc = cor({"Escolha a "}, {"configuração", "#00AAFF"}, {" alvo"}),
+    Desc = cor({"Escolha a "}, {"configuração", "#00AAFF"}),
     Icon = "lucide:folder",
-    Values = GerenciadorConfig:AllConfigs(),
+    Values = ConfigManager:AllConfigs(),
     Value = "Nenhuma",
     Callback = function(val)
-        ConfigSelecionada = val
+        State.SelectedConfig = val
     end
 })
 
-ManagementSection:Dropdown({
-    Title = "Ações",
-    Desc = cor({"Executa uma "}, {"ação", "#FFAA00"}, {" no arquivo selecionado"}),
+SectionManage:Dropdown({
+    Title = "Ações do arquivo",
+    Desc = cor({"Faz algo em relação ao "}, {"arquivo", "#FFAA00"}, {" selecionado"}),
     Icon = "lucide:settings-2",
     Values = {
         {
             Title = "Carregar",
-            Desc = cor({"Carrega", "#00FF00"}, {" os dados salvos"}),
+            Desc = "Aplica as configurações salvas",
             Icon = "lucide:upload",
-            Callback = function()
-                if ConfigSelecionada and ConfigSelecionada ~= "Nenhuma" then
-                    local cfg = GerenciadorConfig:CreateConfig(ConfigSelecionada)
-                    cfg:Load()
-                    notificar("Carregado: " .. ConfigSelecionada, 3, "lucide:check")
-                else
-                    notificar("Nenhuma configuração selecionada", 3, "lucide:x")
-                end
-            end
+            Callback = function() HandleConfigAction("Load") end
         },
         {
             Title = "Sobrescrever",
-            Desc = cor({"Substitui", "#FFAA00"}, {" os dados deste arquivo"}),
+            Desc = "Atualiza o arquivo com os valores atuais",
             Icon = "lucide:refresh-cw",
-            Callback = function()
-                if ConfigSelecionada and ConfigSelecionada ~= "Nenhuma" then
-                    local cfg = GerenciadorConfig:CreateConfig(ConfigSelecionada)
-                    cfg:Save()
-                    notificar("Alterado: " .. ConfigSelecionada, 3, "lucide:check")
-                else
-                    notificar("Nenhuma configuração selecionada", 3, "lucide:x")
-                end
-            end
+            Callback = function() HandleConfigAction("Save") end
         },
         {
-            Type = "Divider",
-        },
-        {
-            Title = "Deletar arquivo",
-            Desc = cor({"Apaga", "#FF0000"}, {" permanentemente o registro"}),
+            Title = "Deletar",
+            Desc = "Remove permanentemente o arquivo",
             Icon = "lucide:trash-2",
-            Callback = function()
-                if ConfigSelecionada and ConfigSelecionada ~= "Nenhuma" then
-                    local cfg = GerenciadorConfig:CreateConfig(ConfigSelecionada)
-                    cfg:Delete()
-                    notificar("Deletado: " .. ConfigSelecionada, 3, "lucide:trash")
-                    AtualizarListaConfig()
-                    ConfigSelecionada = "Nenhuma"
-                    DropdownListaConfig:Select("Nenhuma")
-                else
-                    notificar("Nenhuma configuração selecionada", 3, "lucide:x")
-                end
-            end
+            Callback = function() HandleConfigAction("Delete") end
         },
+        { Type = "Divider" },
         {
             Title = "Atualizar lista",
-            Desc = cor({"Recarrega", "#00AAFF"}, {" a lista de arquivos"}),
+            Desc = "Recarrega os arquivos da pasta",
             Icon = "lucide:rotate-ccw",
             Callback = function()
-                AtualizarListaConfig()
-                notificar("Lista atualizada", 2, "lucide:check")
+                RefreshConfigList()
+                notificar("Lista sincronizada", 2, "lucide:check")
             end
         }
     }
 })
 
+local function UpdateConnections()
+    if State.Connections.Chat then State.Connections.Chat:Disconnect() end
+    if State.Connections.Keybind then State.Connections.Keybind:Disconnect() end
 
---// ativar e desativar UI
-local SecretWord = "/e" 
-local KeybindKey = Enum.KeyCode.Z 
-local ChatConnection = nil
-local KeybindConnection = nil 
+    State.Connections.Chat = LocalPlayer.Chatted:Connect(function(msg)
+        if msg == State.SecretWord then
+            main:Toggle()
+        end
+    end)
 
-local function setupChatToggle()
-    if ChatConnection then
-        ChatConnection:Disconnect()
-        ChatConnection = nil
-    end
-
-    ChatConnection = LocalPlayer.Chatted:Connect(function(msg)
-        if msg == SecretWord then
+    State.Connections.Keybind = UserInputService.InputBegan:Connect(function(input, processed)
+        if processed then return end
+        if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == State.Keybind then
             main:Toggle()
         end
     end)
 end
 
-setupChatToggle()
+UpdateConnections()
 
-local function setupKeybind(isUpdate)
-    if KeybindConnection then
-        KeybindConnection:Disconnect()
-        KeybindConnection = nil
-    end
+local SectionUI = criarsection(Configs, "Interface", "Customização visual", "lucide:monitor", false)
 
-    KeybindConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
-        if gameProcessed then return end
-
-        if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == KeybindKey then
-            main:Toggle()
-        end
-    end)
-    
-    if isUpdate then
-        notificar("Keybind: " .. tostring(KeybindKey), 3, "lucide:keyboard")
-    end
-end
-
-setupKeybind(false)
-
-local InterfaceSection = criarsection(Configs, "Interface", "Opções da UI", "lucide:monitor", false)
-
-InterfaceSection:Toggle({
-    Title = "Botão UI",
-    Desc = cor({"Ativa", "#00FF00"}, {" o botão flutuante ao "}, {"minimizar", "#FFAA00"}),
-    Icon = "lucide:check",
-    IconColor = "Green",
-    Type = "Checkbox",
+SectionUI:Toggle({
+    Title = "Botão flutuante",
+    Desc = cor({"Mostra um botão ao "}, {"fechar", "#FFAA00"}, {" o menu para reabri-lo"}),
+    Icon = "lucide:circle-dot",
     Value = true,
-    Callback = function(state)
-    main:EditOpenButton({
-    Title = "",
-    Icon = "rbxthumb://type=Asset&id=88026679106109&w=420&h=420",
-    CornerRadius = UDim.new(10, 10),
-    StrokeThickness = 1,
-    Color = ColorSequence.new(
-        Color3.fromHex("#282828"), 
-        Color3.fromHex("#FFFFFF")
-    ),
-    OnlyMobile = false,
-    Enabled = state,
-    Draggable = true,
-})
+    Callback = function(enabled)
+        main:EditOpenButton({
+            Title = "",
+            Icon = "rbxthumb://type=Asset&id=88026679106109&w=420&h=420",
+            CornerRadius = UDim.new(1, 0),
+            StrokeThickness = 0,
+            Color = ColorSequence.new(Color3.fromRGB(40, 40, 40)),
+            Enabled = enabled,
+            Draggable = true,
+        })
     end
 })
 
-InterfaceSection:Input({
-    Title = "Palavra secreta",
-    Desc = cor({"Usa o "}, {"chat", "#FFFFFF"}, {" para abrir a UI"}),
+SectionUI:Input({
+    Title = "Comando de chat",
+    Desc = cor({"Frase para "}, {"abrir/fechar", "#FFFFFF"}, {" o menu"}),
     Placeholder = "/e",
     InputIcon = "lucide:message-square",
-    Flag = "PalavraSecreta",
-    Callback = function(v)
-        if v == "" then return end
-        local has_space = string.find(v or "", "%s")
-        local is_empty = string.len(v or "") == 0
-        
-        if not is_empty and not has_space then
-            SecretWord = v
-            setupChatToggle()
-            notificar("Definida para: " .. v, 3, "lucide:check")
-        else
-            notificar("Texto inválido", 3, "lucide:alert-circle")
-            
-            SecretWord = "/e"
-            setupChatToggle()
-            notificar("Resetada para: /e", 3, "lucide:rotate-ccw")
-        end
-    end
-})
-
-InterfaceSection:Input({
-    Title = "Keybind",
-    Desc = cor({"Define a "}, {"tecla", "#FFFFFF"}, {" para abrir/fechar a UI"}),
-    Flag = "KeybindUI",
-    InputIcon = "lucide:keyboard",
-    Placeholder = "Z",
-    Callback = function(v)
-        local keyName = string.upper(string.gsub(v or "", "%s+", ""))
-
-        if string.len(keyName) == 0 then
+    Callback = function(val)
+        if not val or val:match("^%s*$") then
+            notificar("Comando inválido", 2, "lucide:x")
             return
         end
+        State.SecretWord = val
+        notificar("Comando definido: " .. val, 3, "lucide:check")
+    end
+})
 
-        local success, newKeybind = pcall(function()
-            return Enum.KeyCode[keyName]
-        end)
+SectionUI:Input({
+    Title = "Tecla de atalho",
+    Desc = cor({"Tecla para "}, {"abrir/fechar", "#FFFFFF"}, {" a UI"}),
+    Placeholder = "Z",
+    InputIcon = "lucide:keyboard",
+    Callback = function(val)
+        local keyName = tostring(val):upper():gsub("%s+", "")
+        local success, keyCode = pcall(function() return Enum.KeyCode[keyName] end)
 
-        if success and newKeybind then
-            KeybindKey = newKeybind
-            setupKeybind(true)
+        if success and keyCode then
+            State.Keybind = keyCode
+            UpdateConnections() -- Atualiza a conexão com a nova tecla
+            notificar("Atalho definido: " .. keyName, 2, "lucide:keyboard")
         else
-            notificar("Tecla inválida", 3, "lucide:x")
+            notificar("Tecla inválida", 2, "lucide:x")
         end
     end
 })
 
-local ThemeSection = criarsection(Configs, "Temas", "Customize a UI", "lucide:palette", false)
+local SectionTheme = criarsection(Configs, "Temas", "Aparência", "lucide:palette", false)
 
-local function GetThemeList()
-    local themes = UI:GetThemes() 
+local function GetSortedThemes()
     local list = {}
-    
-    for k, v in pairs(themes) do
-        local themeName
-        if type(k) == "string" then
-            themeName = k 
-        elseif type(v) == "string" then
-            themeName = v
-        end
-        
-        if themeName then
-            table.insert(list, {
-                Title = themeName,
-                Desc = cor({"Aplicar o tema "}, {themeName, "#00AAFF"}),
-                Icon = "lucide:paintbrush",
-            })
-        end
+    for name, _ in pairs(UI:GetThemes()) do
+        table.insert(list, {
+            Title = name,
+            Desc = cor({"Aplicar tema "}, {name, "#00AAFF"}),
+            Icon = "lucide:paint-bucket"
+        })
     end
-    
     table.sort(list, function(a, b) return a.Title < b.Title end)
-    
     return list
 end
 
-ThemeSection:Dropdown({
+SectionTheme:Dropdown({
     Title = "Temas",
-    Desc = cor({"Escolha o "}, {"estilo visual", "#FFFFFF"}, {" da interface"}),
+    Desc = cor({"Selecione o "}, {"estilo", "#FFFFFF"}, {" desejado"}),
     Icon = "lucide:palette",
-    Values = GetThemeList(),
-    Flag = "Tema",
-    Callback = function(val)
-        local themeName = (type(val) == "table" and val.Title) or val
+    Values = GetSortedThemes(),
+    Callback = function(option)
+        local themeName = type(option) == "table" and option.Title or option
         if themeName then
             UI:SetTheme(themeName)
-            notificar("Tema aplicado: " .. themeName, 2, "lucide:check")
+            notificar("Tema aplicado", 2, "lucide:check")
         end
     end
 })
+
 
 --// mapas 
 
