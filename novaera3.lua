@@ -14,7 +14,7 @@ end)
 local lgc = { Enabled = false, TotalProfit = 0, SessionStart = 0, UpdateCallback = nil }
 getgenv().NovaEraLogic = lgc
 
-local off = CFrame.new(0, -9, 0)
+local off = Vector3.new(0, -9, 0)
 local sCf = nil
 local v0 = Vector3.zero
 local cTw = nil
@@ -48,17 +48,17 @@ end
 local function gCls(tN)
     local c = lp.Character
     local hrp = c and c:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
+    if not hrp then return nil end
     
     local t = ws:FindFirstChild("Trabalhos / SWATntj")
     local cl = t and t:FindFirstChild("Coleta")
-    if not cl then return end
+    if not cl then return nil end
 
     local bP, bD = nil, 9e9
     for _, v in ipairs(cl:GetChildren()) do
-        if v.Name == tN then
+        if v.Name == tN and v:IsA("BasePart") then
             local p = v:FindFirstChildWhichIsA("ProximityPrompt")
-            if p and p.Enabled and v:IsA("BasePart") then
+            if p and p.Enabled then
                 local d = (v.Position - hrp.Position).Magnitude
                 if d < bD then 
                     bD = d
@@ -70,28 +70,41 @@ local function gCls(tN)
     return bP
 end
 
-local function twTo(t)
+local function twTo(t, hum)
     local c = lp.Character
     local hrp = c and c:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
+    if not hrp then return false end
     
     sGrav(hrp)
     
-    local tgCf = t.CFrame * off
-    local d = (hrp.Position - tgCf.Position).Magnitude
+    local tCf = CFrame.new(t.Position + off)
+    local d = (hrp.Position - tCf.Position).Magnitude
     
     if d < 3 then 
-        hrp.CFrame = tgCf
-        return 
+        hrp.CFrame = tCf
+        return true 
     end
     
-    local spd = 125
+    local spd = 85
     local ti = TweenInfo.new(d / spd, Enum.EasingStyle.Linear)
     
     if cTw then cTw:Cancel() end
-    cTw = ts:Create(hrp, ti, {CFrame = tgCf})
+    cTw = ts:Create(hrp, ti, {CFrame = tCf})
+    
+    local cnn
+    cnn = rs.Heartbeat:Connect(function()
+        if not lgc.Enabled or hum.Health <= 0 or not t.Parent then
+            if cTw then cTw:Cancel() end
+        else
+            sGrav(hrp)
+        end
+    end)
+    
     cTw:Play()
     cTw.Completed:Wait()
+    cnn:Disconnect()
+    
+    return lgc.Enabled and hum.Health > 0 and t.Parent ~= nil
 end
 
 function lgc.Toggle(s)
@@ -104,7 +117,7 @@ function lgc.Toggle(s)
         lgc.SessionStart = m
         if hrp then
             sCf = hrp.CFrame
-            hrp.CFrame = hrp.CFrame * off
+            hrp.CFrame = CFrame.new(hrp.Position + off)
             sGrav(hrp)
         end
     else
@@ -142,18 +155,20 @@ task.spawn(function()
                 
                 if prm and prm.Parent then
                     prm.HoldDuration = 0
-                    twTo(prm.Parent)
+                    local ok = twTo(prm.Parent, hum)
                     
-                    repeat
-                        if not lgc.Enabled or hum.Health <= 0 then break end
-                        local chk = c:FindFirstChild("Lixo_model") ~= nil
-                        if chk ~= hasL then break end
-                        
-                        sGrav(hrp)
-                        hrp.CFrame = prm.Parent.CFrame * off
-                        fireproximityprompt(prm)
-                        task.wait(0.2)
-                    until not prm.Parent or not prm.Enabled
+                    if ok then
+                        repeat
+                            if not lgc.Enabled or hum.Health <= 0 then break end
+                            local chk = c:FindFirstChild("Lixo_model") ~= nil
+                            if chk ~= hasL then break end
+                            
+                            sGrav(hrp)
+                            hrp.CFrame = CFrame.new(prm.Parent.Position + off)
+                            fireproximityprompt(prm)
+                            task.wait(0.2)
+                        until not prm.Parent or not prm.Enabled
+                    end
                 else
                     task.wait(0.1)
                 end
