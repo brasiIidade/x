@@ -62,7 +62,7 @@ _G.AimbotConfig = _G.AimbotConfig or {
     FOVSize = 200,
     ShowFOV = true,
     FOVBehavior = "Center",     -- "Mouse" ou "Center"
-    FOVNumSides = 20,           -- (Não usado em GUI nativa, mas mantido para compatibilidade)
+    FOVNumSides = 20,           
     FOVColor1 = Color3.fromRGB(34, 140, 85),
     FOVColor2 = Color3.fromRGB(250, 255, 252),
     GradientSpeed = 4,
@@ -307,32 +307,14 @@ _G.StartSilentAim = function()
     ScreenGui.Parent = SafeParent
     _G.SilentAimGui = ScreenGui
 
-    -- FOV Circle (Feito com UIStroke + UICorner para ser smooth)
-    local FOVFrame = Instance.new("Frame")
-    FOVFrame.Name = "FOV"
-    FOVFrame.BackgroundTransparency = 1
-    FOVFrame.AnchorPoint = Vector2New(0.5, 0.5)
-    FOVFrame.Size = UDim2.new(0, config.FOVSize * 2, 0, config.FOVSize * 2)
-    FOVFrame.Visible = false
-    FOVFrame.Parent = ScreenGui
-
-    local FOVStroke = Instance.new("UIStroke")
-    FOVStroke.Name = "Stroke"
-    FOVStroke.Thickness = 1.5
-    FOVStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    FOVStroke.Parent = FOVFrame
-
-    local FOVCorner = Instance.new("UICorner")
-    FOVCorner.CornerRadius = UDim.new(1, 0) -- Transforma em círculo perfeito
-    FOVCorner.Parent = FOVFrame
-
-    local FOVGradient = Instance.new("UIGradient")
-    FOVGradient.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0, config.FOVColor1),
-        ColorSequenceKeypoint.new(1, config.FOVColor2)
-    }
-    FOVGradient.Rotation = 45
-    FOVGradient.Parent = FOVStroke
+    -- Container Invisível para as linhas do FOV
+    local FOVContainer = Instance.new("Frame")
+    FOVContainer.Name = "FOV_Container"
+    FOVContainer.BackgroundTransparency = 1
+    FOVContainer.Size = UDim2.new(1, 0, 1, 0)
+    FOVContainer.Parent = ScreenGui
+    
+    local FOVLines = {} -- Pool de linhas para desenhar o polígono
 
     -- Highlight e ESP Container
     local TargetHighlight = Instance.new("Highlight")
@@ -471,13 +453,11 @@ _G.StartSilentAim = function()
             end
         end
 
-        -- Atualiza FOV Circle
+        -- Atualiza FOV (Polígono com Linhas)
         if _G.SilentAimActive and config.ShowFOV then
-            FOVFrame.Visible = true
-            -- Tamanho (Diametro = Radius * 2)
-            FOVFrame.Size = UDim2.new(0, config.FOVSize * 2, 0, config.FOVSize * 2)
+            FOVContainer.Visible = true
             
-            -- Posição
+            -- Posição Central
             local pos
             if config.FOVBehavior == "Mouse" then
                 pos = GetMouseLocation(UserInputService)
@@ -485,20 +465,59 @@ _G.StartSilentAim = function()
                 local vp = Camera.ViewportSize
                 pos = Vector2New(vp.X / 2, vp.Y / 2)
             end
-            FOVFrame.Position = UDim2.new(0, pos.X, 0, pos.Y)
-
-            -- Cores do Gradiente
-            FOVGradient.Color = ColorSequence.new{
-                ColorSequenceKeypoint.new(0, config.FOVColor1),
-                ColorSequenceKeypoint.new(1, config.FOVColor2)
-            }
             
-            -- Rotação do Gradiente
+            local sides = config.FOVNumSides or 20
+            if sides < 3 then sides = 3 end -- Mínimo triângulo
+            local radius = config.FOVSize
+            local thickness = 1.5
+            
+            -- Controle de rotação do gradiente
             rot = rot + (config.GradientSpeed or 1)
             if rot > 360 then rot = 0 end
-            FOVGradient.Rotation = rot
+            local gradPhase = rot / 360 
+            
+            local anglePerSide = 360 / sides
+            
+            -- Desenha as linhas do polígono
+            for i = 1, sides do
+                local line = FOVLines[i]
+                if not line then
+                    line = Instance.new("Frame")
+                    line.Name = "L"..i
+                    line.AnchorPoint = Vector2New(0.5, 0.5)
+                    line.BorderSizePixel = 0
+                    line.Parent = FOVContainer
+                    FOVLines[i] = line
+                end
+                line.Visible = true
+                
+                -- Calcula vértices
+                local r1 = MathRad((i - 1) * anglePerSide)
+                local r2 = MathRad(i * anglePerSide)
+                
+                local p1 = Vector2New(pos.X + MathCos(r1) * radius, pos.Y + MathSin(r1) * radius)
+                local p2 = Vector2New(pos.X + MathCos(r2) * radius, pos.Y + MathSin(r2) * radius)
+                
+                -- Geometria da Linha
+                local dist = (p2 - p1).Magnitude
+                local center = (p1 + p2) / 2
+                local angle = math.atan2(p2.Y - p1.Y, p2.X - p1.X)
+                
+                line.Size = UDim2.new(0, dist, 0, thickness)
+                line.Position = UDim2.new(0, center.X, 0, center.Y)
+                line.Rotation = math.deg(angle)
+                
+                -- Cor (Simulação de gradiente linear rotativo)
+                local t = ((i / sides) + gradPhase) % 1
+                line.BackgroundColor3 = config.FOVColor1:Lerp(config.FOVColor2, t)
+            end
+            
+            -- Esconde linhas não usadas (caso diminua os lados)
+            for i = sides + 1, #FOVLines do
+                FOVLines[i].Visible = false
+            end
         else
-            FOVFrame.Visible = false
+            FOVContainer.Visible = false
         end
     end)
     TableInsert(_G.SilentAimConnections, c1)
