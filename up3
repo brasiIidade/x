@@ -1194,241 +1194,103 @@ X1:Toggle({
 
 
 --// tab tas
-task.spawn(function()
-    if ler then ler("tas") end
-end)
-
-local TASDropdown
-local StopButton
-local DeleteButton
-local IsConfirmingDelete = false
+task.spawn(function() if ler then ler("tas") end end)
+local TASDropdown, StopButton, DeleteButton, IsConfirmingDelete = nil, nil, nil, false
 
 local function RefreshTASList(list)
-    if TASDropdown then
-        table.sort(list, function(a, b) return a:lower() < b:lower() end)
-        TASDropdown:Refresh(list)
-    end
+    if TASDropdown then table.sort(list) TASDropdown:Refresh(list) end
 end
 
-local PlaybackSection = criarsection(TAS, "Reprodução", "Controles de execução", "lucide:play", true)
+local PlaybackSection = criarsection(TAS, "Reprodução", "Controles", "lucide:play", true)
 
 PlaybackSection:Toggle({
     Title = "Iniciar",
     Icon = "lucide:circle-play",
-    Desc = cor({"Inicia a "}, {"execução", "#00FF00"}, {" do percurso"}),
     Value = false,
     Flag = "TAS",
-    Callback = function(v)
-        if getgenv().TAS and getgenv().TAS.ToggleAll then
-            getgenv().TAS.ToggleAll(v)
-        end
-    end
+    Callback = function(v) if getgenv().TAS then getgenv().TAS.ToggleAll(v) end end
 })
 
 StopButton = PlaybackSection:Button({
     Title = "Parar",
-    Desc = cor({"Interrompe o ", "#FF0000"}, {" TAS"}),
     Icon = "lucide:circle-stop",
     Locked = true,
-    Flag = "PararTAS",
-    Callback = function()
-        if getgenv().TAS and getgenv().TAS.ManualStopPlayback then
-            getgenv().TAS.ManualStopPlayback()
-        end
-    end
-})
-
-PlaybackSection:Paragraph({
-    Title = "Observação",
-    Color = Color3.fromHex("#800080"),
-    Image = "lucide:folder-search",
-    ImageSize = 30,
-    Desc = cor({"Os TAS são salvos em "}, {"michigun.xyz/fp3_Parkours", "#00AAFF"})
+    Callback = function() if getgenv().TAS then getgenv().TAS.ManualStopPlayback() end end
 })
 
 TASDropdown = PlaybackSection:Dropdown({
     Title = "Selecionar",
-    Icon = "lucide:list",
-    Desc = cor({"Escolha os "}, {"TAS para iniciar", "#FFFFFF"}),
     Values = {},
-    Value = {},
     Multi = true,
-    AllowNone = true,
     Flag = "SelecaoTAS",
-    Callback = function(v)
-        if getgenv().TAS and getgenv().TAS.UpdateSelection then
-            getgenv().TAS.UpdateSelection(v)
-        end
-    end
+    Callback = function(v) if getgenv().TAS then getgenv().TAS.UpdateSelection(v) end end
 })
 
 DeleteButton = PlaybackSection:Button({
     Title = "Deletar",
-    Desc = cor({"Apaga", "#FF0000"}, {" os TAS selecionados"}),
     Icon = "lucide:trash-2",
-    Flag = "DeletarTAS",
     Callback = function()
         if IsConfirmingDelete then
-            if getgenv().TAS and getgenv().TAS.DeleteSelected then
-                local newList = getgenv().TAS.DeleteSelected()
-                RefreshTASList(newList)
-                TASDropdown:Select({})
-            end
+            if getgenv().TAS then RefreshTASList(getgenv().TAS.DeleteSelected()) end
             IsConfirmingDelete = false
             DeleteButton:SetTitle("Deletar")
-            DeleteButton:SetDesc(cor({"Apaga", "#FF0000"}, {" os TAS selecionados"}))
         else
             IsConfirmingDelete = true
             DeleteButton:SetTitle("Certeza?")
-            DeleteButton:SetDesc(cor({"Clique novamente para "}, {"apagar", "#FF0000"}))
-            task.delay(3, function()
-                if IsConfirmingDelete then
-                    IsConfirmingDelete = false
-                    DeleteButton:SetTitle("Deletar")
-                    DeleteButton:SetDesc(cor({"Apaga", "#FF0000"}, {" os TAS selecionados"}))
-                end
-            end)
+            task.delay(3, function() IsConfirmingDelete = false DeleteButton:SetTitle("Deletar") end)
         end
     end
 })
 
 PlaybackSection:Colorpicker({
-    Title = "Cor do Bot",
+    Title = "Humanoid",
     Default = Color3.fromRGB(0, 255, 0),
-    Flag = "CorBotTAS",
-    Callback = function(color)
-        if getgenv().TAS and getgenv().TAS.UpdateVisuals then
-            getgenv().TAS.UpdateVisuals(color, nil, nil)
-        end
-    end
+    Flag = "TASHumanoidCor",
+    Callback = function(c) if getgenv().TAS then getgenv().TAS.UpdateVisuals(c, nil, nil) end end
 })
 
 PlaybackSection:Colorpicker({
-    Title = "Cor da Linha",
+    Title = "Trajeto",
     Default = Color3.fromRGB(0, 255, 0),
-    Flag = "CorLinhaTAS",
-    Callback = function(color)
-        if getgenv().TAS and getgenv().TAS.UpdateVisuals then
-            getgenv().TAS.UpdateVisuals(nil, color, nil)
-        end
-    end
+    Flag = "TASTrajetoCor",
+    Callback = function(c) if getgenv().TAS then getgenv().TAS.UpdateVisuals(nil, c, nil) end end
 })
 
 PlaybackSection:Slider({
     Title = "Opacidade",
-    Desc = cor({"Ajusta a invisibilidade do TAS "}, {"(1 = invisível)", "#FF0000"}),
     Value = { Min = 0, Max = 1, Default = 0 },
-    Step = 0.05,
-    Flag = "OpacidadeTAS",
-    Callback = function(value)
-        if getgenv().TAS and getgenv().TAS.UpdateVisuals then
-            getgenv().TAS.UpdateVisuals(nil, nil, value)
+    Step = 0.1,
+    Callback = function(v) if getgenv().TAS then getgenv().TAS.UpdateVisuals(nil, nil, v) end end
+})
+
+local RecordSection = criarsection(TAS, "Gravação", "Captura", "lucide:video", false)
+
+RecordSection:Input({
+    Title = "Nome",
+    Flag = "NomeTAS",
+    Callback = function(v) if getgenv().TAS then getgenv().TAS.CurrentName = v end end
+})
+
+local g = RecordSection:Group()
+g:Button({ Title = "Gravar", Callback = function() if getgenv().TAS then getgenv().TAS.StartRecording() end end })
+g:Button({ Title = "Parar", Callback = function() if getgenv().TAS then getgenv().TAS.StopRecording() end end })
+
+RecordSection:Button({
+    Title = "Salvar",
+    Icon = "lucide:save",
+    Callback = function()
+        if getgenv().TAS then
+            local l = getgenv().TAS.SaveCurrent()
+            if l then RefreshTASList(l) notificar("Salvo", 2) end
         end
     end
 })
 
 task.spawn(function()
-    repeat task.wait(0.5) until getgenv().TAS and getgenv().TAS.IsReady
-    getgenv().TAS.NotifyFunc = notificar 
-
-    local oldStop = getgenv().TAS.StopRecording
-    getgenv().TAS.StopRecording = function()
-        if oldStop then oldStop() end
-        if main then main:Open() end
-    end
-
-    getgenv().TAS.UpdateButtonState = function(isPlaying)
-        if StopButton then
-            if isPlaying then
-                StopButton:Unlock()
-            else
-                StopButton:Lock()
-            end
-        end
-    end
-    
-    if getgenv().TAS.GetSaved then
-        RefreshTASList(getgenv().TAS.GetSaved())
-    end
+    repeat task.wait(0.5) until getgenv().TAS
+    getgenv().TAS.UpdateButtonState = function(p) if StopButton then if p then StopButton:Unlock() else StopButton:Lock() end end end
+    if getgenv().TAS.GetSaved then RefreshTASList(getgenv().TAS.GetSaved()) end
 end)
-
-local RecordSection = criarsection(TAS, "Gravação", "Criar novo percurso", "lucide:video", false)
-
-RecordSection:Paragraph({
-    Title = "Observação",
-    Color = Color3.fromHex("#800080"),
-    Image = "lucide:message-square",
-    ImageSize = 30,
-    Desc = cor({"Também é possível usar "}, {"/e gravar", "#00FF00"}, {" e "}, {"/e parar", "#FF0000"}, {" no chat"}),
-})
-
-RecordSection:Input({
-    Title = "Nome",
-    Desc = cor({"Defina o "}, {"nome", "#00AAFF"}, {" do arquivo"}),
-    Value = "",
-    InputIcon = "lucide:pencil",
-    Flag = "NomeTAS",
-    Callback = function(v)
-        if getgenv().TAS then getgenv().TAS.CurrentName = v end
-    end
-})
-
-local g = RecordSection:Group()
-g:Button({ 
-    Title = "Gravar", 
-    Desc = cor({"Inicia", "#00FF00"}, {" a captura"}),
-    Icon = "lucide:circle-dot",
-    Flag = "GravarTAS",
-    Callback = function()
-        if main then main:Close() end
-        if getgenv().TAS and getgenv().TAS.StartRecording then getgenv().TAS.StartRecording() end
-    end 
-})
-
-g:Space()
-
-g:Button({ 
-    Title = "Parar", 
-    Desc = cor({"Finaliza", "#FF0000"}, {" a captura"}),
-    Icon = "lucide:square",
-    Flag = "PararDeGravarTAS",
-    Callback = function()
-        if getgenv().TAS and getgenv().TAS.StopRecording then getgenv().TAS.StopRecording() end
-    end 
-})
-
-RecordSection:Paragraph({
-    Title = "Observação",
-    Color = Color3.fromHex("#800080"),
-    Image = "lucide:hard-drive",
-    ImageSize = 30,
-    Desc = cor({"O arquivo será salvo para a pasta "}, {"fp3_Parkours", "#00AAFF"})
-})
-
-RecordSection:Button({ 
-    Title = "Salvar", 
-    Desc = cor({"Salva", "#FFAA00"}, {" o arquivo"}),
-    Icon = "lucide:save",
-    Flag = "SalvarTAS",
-    Callback = function()
-        if not getgenv().TAS then return end
-        
-        if not getgenv().TAS.CurrentName or getgenv().TAS.CurrentName == "" then
-            notificar("Defina um nome antes de salvar", 3, "lucide:alert-circle")
-            return
-        end
-
-        if getgenv().TAS.SaveCurrent then
-            local newList = getgenv().TAS.SaveCurrent()
-            if newList then
-                RefreshTASList(newList)
-                notificar("Salvo com sucesso", 3, "lucide:check")
-            else
-                notificar("Nada gravado para salvar", 3, "lucide:x")
-            end
-        end
-    end 
-})
 
 --// tab JJs
 task.spawn(function()
