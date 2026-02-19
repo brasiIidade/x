@@ -1247,9 +1247,9 @@ PlaybackSection:Paragraph({
 })
 
 TASDropdown = PlaybackSection:Dropdown({
-    Title = "Selecionar TAS",
+    Title = "Selecionar",
     Icon = "lucide:list",
-    Desc = cor({"Escolha os "}, {"arquivos", "#FFFFFF"}),
+    Desc = cor({"Escolha os "}, {"TAS para iniciar", "#FFFFFF"}),
     Values = {},
     Value = {},
     Multi = true,
@@ -1288,6 +1288,41 @@ DeleteButton = PlaybackSection:Button({
                     DeleteButton:SetDesc(cor({"Apaga", "#FF0000"}, {" os TAS selecionados"}))
                 end
             end)
+        end
+    end
+})
+
+PlaybackSection:Colorpicker({
+    Title = "Cor do Bot",
+    Default = Color3.fromRGB(0, 255, 0),
+    Flag = "CorBotTAS",
+    Callback = function(color)
+        if getgenv().TAS and getgenv().TAS.UpdateVisuals then
+            getgenv().TAS.UpdateVisuals(color, nil, nil)
+        end
+    end
+})
+
+PlaybackSection:Colorpicker({
+    Title = "Cor da Linha",
+    Default = Color3.fromRGB(0, 255, 0),
+    Flag = "CorLinhaTAS",
+    Callback = function(color)
+        if getgenv().TAS and getgenv().TAS.UpdateVisuals then
+            getgenv().TAS.UpdateVisuals(nil, color, nil)
+        end
+    end
+})
+
+PlaybackSection:Slider({
+    Title = "Opacidade",
+    Desc = cor({"Ajusta a invisibilidade do TAS "}, {"(1 = invisível)", "#FF0000"}),
+    Value = { Min = 0, Max = 1, Default = 0 },
+    Step = 0.05,
+    Flag = "OpacidadeTAS",
+    Callback = function(value)
+        if getgenv().TAS and getgenv().TAS.UpdateVisuals then
+            getgenv().TAS.UpdateVisuals(nil, nil, value)
         end
     end
 })
@@ -1394,7 +1429,6 @@ RecordSection:Button({
         end
     end 
 })
-
 
 --// tab JJs
 task.spawn(function()
