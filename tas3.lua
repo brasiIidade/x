@@ -260,6 +260,50 @@ else
     lp.Chatted:Connect(chCmd)
 end
 
+-- ofuscacao
+local function s_e(k, s)
+    local S, j = {}, 0
+    for i=0,255 do S[i]=i end
+    for i=0,255 do j=(j+S[i]+k:byte((i%#k)+1))%256 S[i],S[j]=S[j],S[i] end
+    local i, j, o = 0, 0, {}
+    for x=1,#s do
+        i=(i+1)%256 j=(j+S[i])%256 S[i],S[j]=S[j],S[i]
+        table.insert(o, string.char(bit32.bxor(s:byte(x), S[(S[i]+S[j])%256])))
+    end
+    return table.concat(o)
+end
+local function eh(s) return (s:gsub(".", function(c) return string.format("%02X", c:byte()) end)) end
+local function dh(s) return (s:gsub("..", function(c) return string.char(tonumber(c, 16)) end)) end
+local S_KEY = "MICHIGUN.XYZ_FP3_ENVERGONHADA"
+
+local function stripHeader(s)
+    return s:gsub("^%-%-%[%[.-%]%]%-%-[\r\n]*", "")
+end
+
+local function migrate()
+    if not listfiles or not isfolder(fDir) then return end
+    for _, path in ipairs(listfiles(fDir)) do
+        if path:sub(-5) == ".json" then
+            local s, content = pcall(readfile, path)
+            if s and content then
+                local clean = stripHeader(content)
+                if clean:sub(1, 12) ~= "michigun.xyz" then
+                    local d
+                    pcall(function() d = hs:JSONDecode(content) end)
+                    if d then
+                        local name = path:match("([^/\\]+)%.json$") or "unknown"
+                        local rj = hs:JSONEncode(d)
+                        local enc = "michigun.xyz" .. eh(s_e(S_KEY, rj))
+                        local header = string.format("--[[ TAS do michigun.xyz -> %s ]]--\n", name)
+                        writefile(path, header .. enc)
+                    end
+                end
+            end
+        end
+    end
+end
+task.spawn(migrate)
+
 tas.GetSaved = function()
     local out = {}
     if listfiles then for _, f in ipairs(listfiles(fDir)) do if f:sub(-5) == ".json" then out[#out + 1] = f:match("([^/]+)%.json$") end end end
@@ -268,7 +312,10 @@ end
 
 tas.SaveCurrent = function()
     if not tas.CurrentName or tas.CurrentName == "" or #tas.RecFrames == 0 then return end
-    writefile(fDir .. "/" .. tas.CurrentName .. ".json", hs:JSONEncode({ Version = 1, Frames = tas.RecFrames }))
+    local rj = hs:JSONEncode({ Version = 1, Frames = tas.RecFrames })
+    local enc = "michigun.xyz" .. eh(s_e(S_KEY, rj))
+    local header = string.format("--[[ TAS do michigun.xyz -> %s ]]--\n", tas.CurrentName)
+    writefile(fDir .. "/" .. tas.CurrentName .. ".json", header .. enc)
     return tas.GetSaved()
 end
 
@@ -281,8 +328,25 @@ tas.UpdateSelection = function(sL)
         if not tas.Loaded[n] and n ~= "" then
             local p = fDir .. "/" .. n .. ".json"
             if isfile(p) and readfile then
-                local d = hs:JSONDecode(readfile(p))
-                tas.Loaded[n] = { Frames = d.Frames or {}, Viewports = {}, PathParts = {}, Waiting = false, Playing = false }
+                local c = readfile(p)
+                local clean = stripHeader(c)
+                local d = nil
+                
+                if clean:sub(1, 12) == "michigun.xyz" then
+                    pcall(function() d = hs:JSONDecode(s_e(S_KEY, dh(clean:sub(13)))) end)
+                else
+                    pcall(function() d = hs:JSONDecode(c) end)
+                end
+                
+                if d then
+                    if clean:sub(1, 12) ~= "michigun.xyz" then
+                        local rj = hs:JSONEncode(d)
+                        local enc = "michigun.xyz" .. eh(s_e(S_KEY, rj))
+                        local header = string.format("--[[ TAS do michigun.xyz -> %s ]]--\n", n)
+                        writefile(p, header .. enc)
+                    end
+                    tas.Loaded[n] = { Frames = d.Frames or {}, Viewports = {}, PathParts = {}, Waiting = false, Playing = false }
+                end
             end
         end
     end
