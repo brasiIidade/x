@@ -4,7 +4,8 @@ local rs = cr(game:GetService("RunService"))
 local lp = plrs.LocalPlayer
 
 local env = getgenv()
-env.ESPConfig = env.ESPConfig or {
+
+local def_cfg = {
     Enabled = false,
     Boxes = false,
     Names = false,
@@ -24,6 +25,18 @@ env.ESPConfig = env.ESPConfig or {
     }
 }
 
+if type(env.ESPConfig) ~= "table" then
+    env.ESPConfig = def_cfg
+else
+    for k, v in pairs(def_cfg) do
+        if env.ESPConfig[k] == nil then env.ESPConfig[k] = v end
+    end
+    if type(env.ESPConfig.Colors) ~= "table" then env.ESPConfig.Colors = def_cfg.Colors end
+    for k, v in pairs(def_cfg.Colors) do
+        if env.ESPConfig.Colors[k] == nil then env.ESPConfig.Colors[k] = v end
+    end
+end
+
 env.espObjects = env.espObjects or {}
 env.espConns = env.espConns or {}
 
@@ -36,7 +49,7 @@ local function get_esp_col(p, def)
     if env.ESPConfig.UseTeamColor and p.Team and p.TeamColor then
         return p.TeamColor.Color
     end
-    return def
+    return def or Color3.fromRGB(255, 255, 255)
 end
 
 local function mk_esp(p)
@@ -214,7 +227,8 @@ local function upd()
         end
         
         if cfg.Health and d.hb_bg and d.hb and d.hb_out then
-            local hp_pct = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+            local max_hp = hum.MaxHealth > 0 and hum.MaxHealth or 100
+            local hp_pct = math.clamp(hum.Health / max_hp, 0, 1)
             local bh = bx_sz.Y
             
             d.hb_out.Size = Vector2.new(4, bh + 2)
