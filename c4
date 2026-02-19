@@ -984,7 +984,7 @@ do
 end
 
 --// tab esp
-_G.ESPConfig = {
+getgenv().ESPConfig = {
     Enabled = false,
     TeamCheck = false,
     Chams = false,
@@ -1017,21 +1017,21 @@ MainSection:Toggle({
         if FirstRunESP then
             FirstRunESP = false
             if v then
-                if _G.StartESP then _G.StartESP() end
+                if getgenv().StartESP then getgenv().StartESP() end
             else
-                if _G.StopESP then _G.StopESP() end
+                if getgenv().StopESP then getgenv().StopESP() end
             end
             return
         end
 
         if v then
-            if _G.StartESP then 
-                _G.StartESP() 
+            if getgenv().StartESP then 
+                getgenv().StartESP() 
                 notificar("Ativado", 2, "lucide:eye")
             end
         else
-            if _G.StopESP then 
-                _G.StopESP() 
+            if getgenv().StopESP then 
+                getgenv().StopESP() 
                 notificar("Desativado", 2, "lucide:eye-off")
             end
         end
@@ -1042,10 +1042,10 @@ MainSection:Toggle({
     Title = "Team check",
     Desc = cor({"Não", "#FF0000"}, {" mostra se o jogador for do seu "}, {"time", "#00FF00"}),
     Icon = "lucide:shield-check",
-    Value = _G.ESPConfig.TeamCheck,
+    Value = getgenv().ESPConfig.TeamCheck,
     Flag = "TimeESP",
     Callback = function(v)
-        _G.ESPConfig.TeamCheck = v
+        getgenv().ESPConfig.TeamCheck = v
     end
 })
 
@@ -1055,45 +1055,45 @@ VisualsSection:Toggle({
     Title = "Highlight", 
     Desc = cor({"Ativa o "}, {"brilho", "#FFAA00"}),
     Icon = "lucide:sparkles", 
-    Value = _G.ESPConfig.Chams, 
+    Value = getgenv().ESPConfig.Chams, 
     Flag = "ChamsESP", 
-    Callback = function(v) _G.ESPConfig.Chams = v end 
+    Callback = function(v) getgenv().ESPConfig.Chams = v end 
 })
 
 VisualsSection:Toggle({ 
     Title = "Nome", 
     Desc = cor({"Exibe o "}, {"nome", "#FFFFFF"}),
     Icon = "lucide:user", 
-    Value = _G.ESPConfig.Name, 
+    Value = getgenv().ESPConfig.Name, 
     Flag = "NomeESP", 
-    Callback = function(v) _G.ESPConfig.Name = v end 
+    Callback = function(v) getgenv().ESPConfig.Name = v end 
 })
 
 VisualsSection:Toggle({ 
     Title = "Distância", 
     Desc = cor({"Mostra a "}, {"distância", "#00AAFF"}),
     Icon = "lucide:ruler", 
-    Value = _G.ESPConfig.Studs, 
+    Value = getgenv().ESPConfig.Studs, 
     Flag = "DistanciaESP", 
-    Callback = function(v) _G.ESPConfig.Studs = v end 
+    Callback = function(v) getgenv().ESPConfig.Studs = v end 
 })
 
 VisualsSection:Toggle({ 
     Title = "Vida", 
     Desc = cor({"Exibe "}, {"a barra de vida", "#FF0000"}),
     Icon = "lucide:heart", 
-    Value = _G.ESPConfig.Health, 
+    Value = getgenv().ESPConfig.Health, 
     Flag = "VidaESP", 
-    Callback = function(v) _G.ESPConfig.Health = v end 
+    Callback = function(v) getgenv().ESPConfig.Health = v end 
 })
 
 VisualsSection:Toggle({ 
     Title = "Item", 
     Desc = cor({"Mostra o "}, {"item", "#FFAA00"}, {" que o jogador está segurando"}),
     Icon = "lucide:sword", 
-    Value = _G.ESPConfig.WeaponN, 
+    Value = getgenv().ESPConfig.WeaponN, 
     Flag = "ItemESP", 
-    Callback = function(v) _G.ESPConfig.WeaponN = v end 
+    Callback = function(v) getgenv().ESPConfig.WeaponN = v end 
 })
 
 
