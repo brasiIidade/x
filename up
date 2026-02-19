@@ -2886,6 +2886,7 @@ if MapaAtual then
                 if _G.TevezMods and _G.TevezMods.ToggleSpoof then _G.TevezMods.ToggleSpoof(v) end
             end
         })
+        SpooferSection:Space()
 
         SpooferSection:Dropdown({
             Title = "AFK",
@@ -2952,6 +2953,7 @@ if MapaAtual then
         local CombatSection = criarsection(TevezTab, "Combate", "Kill aura", "lucide:swords", false)
         CombatSection:Paragraph({
             Title = "Kill aura",
+            Image = "lucide:triangle-alert",
             Color = Color3.fromHex("#FF1D0D"),
             Desc = cor({"Risco.", "#FF0000"}, {" Você será banido caso alguém te denuncie"})
         })
@@ -3061,89 +3063,91 @@ if MapaAtual then
     elseif MapaAtual == "Delta" then
         local DeltaTab = criartab("Delta", "https://tr.rbxcdn.com/180DAY-8952e9d8abbff8104b22356f8b66f962/768/432/Image/Webp/noFilter")
 
-        task.spawn(function()
-            if ler then ler("delta") end
-        end)
+      task.spawn(function()
+    if ler then ler("delta") end
+end)
 
-        local JJSection = criarsection(DeltaTab, "Polichinelos", "Modificar", "lucide:activity", true)
-        
-        JJSection:Input({
-            Title = "Quantidade",
-            Desc = cor({"Valor para "}, {"adicionar ou remover", "#FFFFFF"}),
-            Placeholder = "10",
-            InputIcon = "lucide:hash",
-            Callback = function(v)
-                if _G.DeltaLogic then _G.DeltaLogic.JJValue = v end
-            end
-        })
+local JJSection = criarsection(DeltaTab, "Polichinelos", "Modificar", "lucide:activity", true)
 
-        JJSection:Button({
-            Title = "Modificar",
-            Desc = cor({"Muda", "#00FF00"}, {" seus polichinelos"}),
-            Icon = "lucide:edit-2",
-            Callback = function()
-                if _G.DeltaLogic and _G.DeltaLogic.SetJJ then _G.DeltaLogic.SetJJ() end
-            end
-        })
+JJSection:Input({
+    Title = "Quantidade",
+    Desc = cor({"Valor para "}, {"adicionar ou remover", "#FFFFFF"}),
+    Placeholder = "10",
+    InputIcon = "lucide:hash",
+    Callback = function(v)
+        if getgenv().DeltaLogic then getgenv().DeltaLogic.JJValue = v end
+    end
+})
 
-        local EcoSection = criarsection(DeltaTab, "Economia", "Dinheiro", "lucide:coins", false)
+JJSection:Button({
+    Title = "Modificar",
+    Desc = cor({"Muda", "#00FF00"}, {" seus polichinelos"}),
+    Icon = "lucide:edit-2",
+    Callback = function()
+        if getgenv().DeltaLogic and getgenv().DeltaLogic.SetJJ then getgenv().DeltaLogic.SetJJ() end
+    end
+})
 
-        EcoSection:Button({
-            Title = "Money",
-            Desc = cor({"Pega", "#00FF00"}, {" 1M de dinheiro"}),
-            Icon = "lucide:gem",
-            Callback = function()
-                if _G.DeltaLogic and _G.DeltaLogic.GetRich then _G.DeltaLogic.GetRich() end
-            end
-        })
+local EcoSection = criarsection(DeltaTab, "Economia", "Dinheiro", "lucide:coins", false)
 
-        EcoSection:Paragraph({
-            Title = "Observação",
-            Desc = cor({"Money all faz transferências a cada 15 segundos"})
-        })
+EcoSection:Button({
+    Title = "Money",
+    Desc = cor({"Pega", "#00FF00"}, {" 1M de dinheiro"}),
+    Icon = "lucide:gem",
+    Callback = function()
+        if getgenv().DeltaLogic and getgenv().DeltaLogic.GetRich then getgenv().DeltaLogic.GetRich() end
+    end
+})
 
-        EcoSection:Toggle({
-            Title = "Money all",
-            Desc = cor({"Envia", "#00FF00"}, {" dinheiro infinito para todos"}),
-            Icon = "lucide:users",
-            Value = false,
-            Callback = function(v)
-                if _G.DeltaLogic and _G.DeltaLogic.ToggleMoneyAll then _G.DeltaLogic.ToggleMoneyAll(v) end
-            end
-        })
+EcoSection:Paragraph({
+    Title = "Observação",
+    Desc = cor({"Money all faz transferências a cada"}, {" 15", "#FF0000"}, {"segundos"})
+})
+
+EcoSection:Toggle({
+    Title = "Money all",
+    Desc = cor({"Envia", "#00FF00"}, {" dinheiro infinito para todos"}),
+    Icon = "lucide:users",
+    Value = false,
+    Callback = function(v)
+        if getgenv().DeltaLogic and getgenv().DeltaLogic.ToggleMoneyAll then getgenv().DeltaLogic.ToggleMoneyAll(v) end
+    end
+})
 
     elseif MapaAtual == "Soucre" then
         local SoucreTab = criartab("Soucre", "https://tr.rbxcdn.com/180DAY-9b65f927dea36f98c1a720694fd00fd3/768/432/Image/Webp/noFilter")
 
         task.spawn(function()
-            if ler then ler("soucre") end
-        end)
+    if ler then ler("soucre") end
+end)
 
-        local FarmSection = criarsection(SoucreTab, "Entregador", "Autofarm", "lucide:banknote-arrow-up", true)
+local FarmSection = criarsection(SoucreTab, "Entregador", "Autofarm", "lucide:banknote-arrow-up", true)
 
-        local MoneyPara = FarmSection:Paragraph({
-            Title = "Status",
-            Desc = "Dinheiro farmado: $0",
-            Color = "Green",
-            Image = "lucide:coins"
-        })
+local MoneyPara = FarmSection:Paragraph({
+    Title = "Status",
+    Desc = "Dinheiro farmado: $0",
+    Color = "Green",
+    Image = "lucide:coins"
+})
 
-        task.spawn(function()
-            repeat task.wait(0.5) until _G.SoucreLogic
-            _G.SoucreLogic.UpdateCallback = function(val)
-                if MoneyPara then MoneyPara:SetDesc(cor({"Dinheiro farmado: ", "#AAAAAA"}, {"$", "#00FF00"}, {tostring(val), "#00FF00"})) end
-            end
-        end)
+task.spawn(function()
+    repeat task.wait(0.5) until getgenv().SoucreLogic
+    getgenv().SoucreLogic.UpdateCallback = function(val)
+        if MoneyPara then 
+            MoneyPara:SetDesc(cor({"Dinheiro farmado: ", "#AAAAAA"}, {"$", "#00FF00"}, {tostring(val), "#00FF00"})) 
+        end
+    end
+end)
 
-        FarmSection:Toggle({
-            Title = "Autofarm",
-            Desc = cor({"Inicia", "#00FF00"}, {" o autofarm"}),
-            Icon = "lucide:circle-play",
-            Value = false,
-            Callback = function(v)
-                if _G.SoucreLogic then _G.SoucreLogic.Toggle(v) end
-            end
-        })
+FarmSection:Toggle({
+    Title = "Autofarm",
+    Desc = cor({"Inicia", "#00FF00"}, {" o autofarm"}),
+    Icon = "lucide:circle-play",
+    Value = false,
+    Callback = function(v)
+        if getgenv().SoucreLogic then getgenv().SoucreLogic.Toggle(v) end
+    end
+})
 
     elseif MapaAtual == "NovaEra" then
         local NovaEraTab = criartab("Nova Era", "https://tr.rbxcdn.com/180DAY-9b65f927dea36f98c1a720694fd00fd3/768/432/Image/Webp/noFilter")
