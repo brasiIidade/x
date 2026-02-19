@@ -968,7 +968,9 @@ do
 end
 
 --// tab esp
-getgenv().ESPConfig = getgenv().ESPConfig or {
+local env = getgenv()
+
+local def_cfg = {
     Enabled = false,
     Boxes = false,
     Names = false,
@@ -988,6 +990,18 @@ getgenv().ESPConfig = getgenv().ESPConfig or {
     }
 }
 
+if type(env.ESPConfig) ~= "table" then
+    env.ESPConfig = def_cfg
+else
+    for k, v in pairs(def_cfg) do
+        if env.ESPConfig[k] == nil then env.ESPConfig[k] = v end
+    end
+    if type(env.ESPConfig.Colors) ~= "table" then env.ESPConfig.Colors = def_cfg.Colors end
+    for k, v in pairs(def_cfg.Colors) do
+        if env.ESPConfig.Colors[k] == nil then env.ESPConfig.Colors[k] = v end
+    end
+end
+
 task.spawn(function()
     if ler then ler("esp") end
 end)
@@ -1005,24 +1019,24 @@ MainSection:Toggle({
     Title = "ESP",
     Desc = cor({"Liga", "#00FF00"}, {" o ESP"}),
     Icon = "lucide:power",
-    Value = getgenv().ESPConfig.Enabled,
+    Value = env.ESPConfig.Enabled,
     Flag = "ESP",
     Callback = function(v)
-        getgenv().ESPConfig.Enabled = v
+        env.ESPConfig.Enabled = v
         if FirstRunESP then
             FirstRunESP = false
-            if v and getgenv().StartESP then getgenv().StartESP() end
+            if v and env.StartESP then env.StartESP() end
             return
         end
 
         if v then
-            if getgenv().StartESP then 
-                getgenv().StartESP() 
+            if env.StartESP then 
+                env.StartESP() 
                 notificar("Ativado", 2, "lucide:eye")
             end
         else
-            if getgenv().StopESP then 
-                getgenv().StopESP() 
+            if env.StopESP then 
+                env.StopESP() 
                 notificar("Desativado", 2, "lucide:eye-off")
             end
         end
@@ -1033,10 +1047,10 @@ MainSection:Toggle({
     Title = "Team check",
     Desc = cor({"Não", "#FF0000"}, {" mostra se o jogador for do seu "}, {"time", "#00FF00"}),
     Icon = "lucide:shield-check",
-    Value = getgenv().ESPConfig.TeamCheck,
+    Value = env.ESPConfig.TeamCheck,
     Flag = "ESPTeamCheck",
     Callback = function(v)
-        getgenv().ESPConfig.TeamCheck = v
+        env.ESPConfig.TeamCheck = v
     end
 })
 
@@ -1044,10 +1058,10 @@ MainSection:Toggle({
     Title = "Team color",
     Desc = cor({"Aplica a "}, {"cor do time", "#00AAFF"}, {" no ESP"}),
     Icon = "lucide:palette",
-    Value = getgenv().ESPConfig.UseTeamColor,
+    Value = env.ESPConfig.UseTeamColor,
     Flag = "ESPTeamColor",
     Callback = function(v)
-        getgenv().ESPConfig.UseTeamColor = v
+        env.ESPConfig.UseTeamColor = v
     end
 })
 
@@ -1059,7 +1073,7 @@ MainSection:Input({
     Flag = "ESPDistanciaMaxima",
     Callback = function(v)
         local n = tonumber(v)
-        if n then getgenv().ESPConfig.MaxDistance = n end
+        if n then env.ESPConfig.MaxDistance = n end
     end
 })
 
@@ -1069,54 +1083,54 @@ VisualsSection:Toggle({
     Title = "Boxes", 
     Desc = cor({"Desenha uma "}, {"caixa", "#FFAA00"}, {" ao redor do jogador"}),
     Icon = "lucide:box", 
-    Value = getgenv().ESPConfig.Boxes, 
+    Value = env.ESPConfig.Boxes, 
     Flag = "ESPBoxes", 
-    Callback = function(v) getgenv().ESPConfig.Boxes = v end 
+    Callback = function(v) env.ESPConfig.Boxes = v end 
 })
 
 VisualsSection:Toggle({ 
     Title = "Nome", 
     Desc = cor({"Exibe o "}, {"nome", "#FFFFFF"}),
     Icon = "lucide:user", 
-    Value = getgenv().ESPConfig.Names, 
+    Value = env.ESPConfig.Names, 
     Flag = "ESPNome", 
-    Callback = function(v) getgenv().ESPConfig.Names = v end 
+    Callback = function(v) env.ESPConfig.Names = v end 
 })
 
 VisualsSection:Toggle({ 
     Title = "Distância", 
     Desc = cor({"Mostra a "}, {"distância", "#00AAFF"}),
     Icon = "lucide:ruler", 
-    Value = getgenv().ESPConfig.Distance, 
+    Value = env.ESPConfig.Distance, 
     Flag = "ESPDistancia", 
-    Callback = function(v) getgenv().ESPConfig.Distance = v end 
+    Callback = function(v) env.ESPConfig.Distance = v end 
 })
 
 VisualsSection:Toggle({ 
     Title = "Vida", 
     Desc = cor({"Exibe "}, {"a barra de vida", "#FF0000"}),
     Icon = "lucide:heart", 
-    Value = getgenv().ESPConfig.Health, 
+    Value = env.ESPConfig.Health, 
     Flag = "ESPVida", 
-    Callback = function(v) getgenv().ESPConfig.Health = v end 
+    Callback = function(v) env.ESPConfig.Health = v end 
 })
 
 VisualsSection:Toggle({ 
     Title = "Item", 
     Desc = cor({"Mostra o "}, {"item equipado", "#00FF00"}),
     Icon = "lucide:sword", 
-    Value = getgenv().ESPConfig.Weapon, 
+    Value = env.ESPConfig.Weapon, 
     Flag = "ESPItem", 
-    Callback = function(v) getgenv().ESPConfig.Weapon = v end 
+    Callback = function(v) env.ESPConfig.Weapon = v end 
 })
 
 VisualsSection:Toggle({ 
     Title = "Tracers", 
     Desc = cor({"Desenha uma "}, {"linha", "#00FF00"}, {" até o jogador"}),
-    Icon = "lucide:git-commit", 
-    Value = getgenv().ESPConfig.Tracers, 
+    Icon = "lucide:line-dot-right-horizontal", 
+    Value = env.ESPConfig.Tracers, 
     Flag = "ESPTracers", 
-    Callback = function(v) getgenv().ESPConfig.Tracers = v end 
+    Callback = function(v) env.ESPConfig.Tracers = v end 
 })
 
 local ColorsSection = criarsection(ESP, "Cores", "Personalização", "lucide:paint-bucket", false)
@@ -1124,50 +1138,50 @@ local ColorsSection = criarsection(ESP, "Cores", "Personalização", "lucide:pai
 ColorsSection:Colorpicker({
     Title = "Boxes",
     Desc = "Define a cor da box",
-    Default = getgenv().ESPConfig.Colors.Box,
+    Default = env.ESPConfig.Colors.Box,
     Flag = "ESPBoxesCor",
     Callback = function(c)
-        getgenv().ESPConfig.Colors.Box = c
+        env.ESPConfig.Colors.Box = c
     end
 })
 
 ColorsSection:Colorpicker({
     Title = "Nome",
     Desc = "Define a cor do texto do nome",
-    Default = getgenv().ESPConfig.Colors.Name,
+    Default = env.ESPConfig.Colors.Name,
     Flag = "ESPNomeCor",
     Callback = function(c)
-        getgenv().ESPConfig.Colors.Name = c
+        env.ESPConfig.Colors.Name = c
     end
 })
 
 ColorsSection:Colorpicker({
     Title = "Distância",
     Desc = "Define a cor do texto da distância",
-    Default = getgenv().ESPConfig.Colors.Distance,
+    Default = env.ESPConfig.Colors.Distance,
     Flag = "ESPDistanciaCor",
     Callback = function(c)
-        getgenv().ESPConfig.Colors.Distance = c
+        env.ESPConfig.Colors.Distance = c
     end
 })
 
 ColorsSection:Colorpicker({
     Title = "Item",
     Desc = "Define a cor do texto do item",
-    Default = getgenv().ESPConfig.Colors.Weapon,
+    Default = env.ESPConfig.Colors.Weapon,
     Flag = "ESPItemCor",
     Callback = function(c)
-        getgenv().ESPConfig.Colors.Weapon = c
+        env.ESPConfig.Colors.Weapon = c
     end
 })
 
 ColorsSection:Colorpicker({
     Title = "Tracers",
     Desc = "Define a cor da linha",
-    Default = getgenv().ESPConfig.Colors.Tracer,
+    Default = env.ESPConfig.Colors.Tracer,
     Flag = "ESPTracersCor",
     Callback = function(c)
-        getgenv().ESPConfig.Colors.Tracer = c
+        env.ESPConfig.Colors.Tracer = c
     end
 })
 
