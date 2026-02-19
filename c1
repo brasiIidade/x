@@ -1768,7 +1768,7 @@ local function round(n)
 end
 
 local function GetF3X()
-    return getgenv().F3X or _G.F3X
+    return getgenv().F3X
 end
 
 local function UpdateUIBridge()
@@ -1783,7 +1783,6 @@ local function UpdateUIBridge()
 
     local part = f3x.SelectedParts[1]
     if not part then return end
-
     local s = part.Size
     
     InfoParagraph:SetTitle(cor({part.Name, "#00AAFF"}))
@@ -1805,10 +1804,8 @@ SelectionSection:Toggle({
     Desc = cor({"Ativa a ferramenta de "}, {"seleção", "#00FF00"}),
     Icon = "lucide:mouse-pointer-2",
     Callback = function(v)
-        local f3x = GetF3X()
-        if f3x and f3x.Toggle then
-            f3x.Toggle(v)
-        end
+        local f = GetF3X()
+        if f and f.Toggle then f.Toggle(v) end
     end
 })
 
@@ -1842,13 +1839,9 @@ EditSection:Button({
     Desc = cor({"Aplica as "}, {"dimensões", "#00FF00"}, {" na parte selecionada"}),
     Icon = "lucide:check",
     Callback = function()
-        local f3x = GetF3X()
-        if f3x and f3x.ApplySize then
-            f3x.ApplySize(Vector3.new(
-                tonumber(InputX.Value),
-                tonumber(InputY.Value),
-                tonumber(InputZ.Value)
-            ))
+        local f = GetF3X()
+        if f and f.ApplySize then
+            f.ApplySize(Vector3.new(tonumber(InputX.Value), tonumber(InputY.Value), tonumber(InputZ.Value)))
         end
     end
 })
@@ -1908,9 +1901,9 @@ CreateConfigActions = function()
                     return
                 end
                 
-                local f3x = GetF3X()
-                if f3x and f3x.SaveConfig then
-                    local newList = f3x.SaveConfig(CurrentConfigName)
+                local f = GetF3X()
+                if f and f.SaveConfig then
+                    local newList = f.SaveConfig(CurrentConfigName)
                     if newList then 
                         ConfigDropdown:Refresh(newList)
                         notificar("Salvo com sucesso", 3, "lucide:check")
@@ -1930,9 +1923,9 @@ CreateConfigActions = function()
                     return
                 end
 
-                local f3x = GetF3X()
-                if f3x and f3x.ApplyConfig then 
-                    f3x.ApplyConfig(SelectedConfig) 
+                local f = GetF3X()
+                if f and f.ApplyConfig then 
+                    f.ApplyConfig(SelectedConfig) 
                     notificar("Configuração aplicada", 3, "lucide:check")
                 end 
                 CreateConfigActions()
@@ -1949,9 +1942,9 @@ CreateConfigActions = function()
                     return
                 end
 
-                local f3x = GetF3X()
-                if f3x and f3x.DeleteConfig then
-                    local newList = f3x.DeleteConfig(SelectedConfig)
+                local f = GetF3X()
+                if f and f.DeleteConfig then
+                    local newList = f.DeleteConfig(SelectedConfig)
                     if newList then 
                         ConfigDropdown:Refresh(newList) 
                         SelectedConfig = nil
@@ -1976,12 +1969,12 @@ end
 CreateConfigActions()
 
 task.spawn(function()
-    repeat task.wait(0.5) until (getgenv().F3X or _G.F3X) and (getgenv().F3X or _G.F3X).IsReady
-    local f3x = GetF3X()
-    f3x.UpdateUI = UpdateUIBridge
-    f3x.NotifyFunc = notificar
-    if f3x.ListConfigs then
-        ConfigDropdown:Refresh(f3x.ListConfigs())
+    repeat task.wait(0.5) until getgenv().F3X and getgenv().F3X.IsReady
+    local f = GetF3X()
+    f.UpdateUI = UpdateUIBridge
+    f.NotifyFunc = notificar
+    if f.ListConfigs then
+        ConfigDropdown:Refresh(f.ListConfigs())
     end
 end)
 
