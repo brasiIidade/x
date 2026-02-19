@@ -10,19 +10,39 @@ local Services = {
 local LocalPlayer = Services.Players.LocalPlayer
 local Camera = Services.Workspace.CurrentCamera
 
+--// Sistema de Limpeza (Corrige bug de re-execução)
+if getgenv().SilentAimInstance then
+    if getgenv().SilentAimInstance.Connection then 
+        getgenv().SilentAimInstance.Connection:Disconnect() 
+    end
+    if getgenv().SilentAimInstance.GUI then 
+        getgenv().SilentAimInstance.GUI:Destroy() 
+    end
+end
+getgenv().SilentAimInstance = {}
+
 local gethui = gethui or function() return Services.CoreGui end
 local clonefunction = clonefunction or function(f) return f end
 local raycast = clonefunction(Services.Workspace.Raycast)
 local wts = clonefunction(Camera.WorldToScreenPoint)
 local get_mouse = clonefunction(Services.UserInputService.GetMouseLocation)
 
+--// Palavras-chave para identificar armas (Hook)
+local BulletKeywords = {
+    "fire", "shoot", "bullet", "ammo", "projectile", "missile", "rocket", "hit", 
+    "damage", "attack", "cast", "ray", "target", "server", "remote", "action", "mouse", "input", "create"
+}
+
+local function isBulletRemote(name)
+    local n = string.lower(name)
+    for _, k in ipairs(BulletKeywords) do
+        if string.find(n, k) then return true end
+    end
+    return false
+end
+
 local Visuals = {
-    Gui = nil,
-    Circle = nil,
-    Stroke = nil,
-    Highlight = nil,
-    ESP = nil,
-    Labels = {}
+    Gui = nil, Circle = nil, Stroke = nil, Highlight = nil, ESP = nil, Labels = {}
 }
 
 local function InitVisuals()
@@ -33,6 +53,9 @@ local function InitVisuals()
     gui.IgnoreGuiInset = true
     gui.ResetOnSpawn = false
     gui.Parent = gethui()
+    
+    -- Salva para limpeza futura
+    getgenv().SilentAimInstance.GUI = gui
     
     local circle = Instance.new("Frame", gui)
     circle.BackgroundTransparency = 1
@@ -157,7 +180,8 @@ end
 
 local State = { Target = nil, Part = nil }
 
-Services.RunService.RenderStepped:Connect(function()
+--// Loop Principal
+local RenderConnection = Services.RunService.RenderStepped:Connect(function()
     local Config = getgenv().SilentConfig
     
     if not Config or not Config.Enabled then
@@ -200,36 +224,26 @@ Services.RunService.RenderStepped:Connect(function()
             local player = Services.Players:GetPlayerFromCharacter(State.Target)
             local hum = State.Target:FindFirstChild("Humanoid")
             
-            if Config.ESP.ShowName then
-                Visuals.Labels.Name.Text = player and player.Name or State.Target.Name
-                Visuals.Labels.Name.Visible = true
-            else
-                Visuals.Labels.Name.Visible = false
-            end
+            Visuals.Labels.Name.Visible = Config.ESP.ShowName
+            if Config.ESP.ShowName then Visuals.Labels.Name.Text = player and player.Name or State.Target.Name end
             
+            Visuals.Labels.Team.Visible = Config.ESP.ShowTeam
             if Config.ESP.ShowTeam then
                 Visuals.Labels.Team.Text = player and tostring(player.Team) or "NPC"
                 Visuals.Labels.Team.TextColor3 = player and player.TeamColor.Color or Color3.new(1,1,1)
-                Visuals.Labels.Team.Visible = true
-            else
-                Visuals.Labels.Team.Visible = false
             end
             
+            Visuals.Labels.Weapon.Visible = Config.ESP.ShowWeapon
             if Config.ESP.ShowWeapon then
                 local tool = State.Target:FindFirstChildWhichIsA("Tool")
                 Visuals.Labels.Weapon.Text = tool and string.upper(tool.Name) or "NONE"
-                Visuals.Labels.Weapon.Visible = true
-            else
-                Visuals.Labels.Weapon.Visible = false
             end
             
+            Visuals.Labels.Health.Visible = Config.ESP.ShowHealth
             if Config.ESP.ShowHealth and hum then
                 local h, max = math.floor(hum.Health), math.floor(hum.MaxHealth)
                 Visuals.Labels.Health.Text = string.format("[%d / %d]", h, max)
                 Visuals.Labels.Health.TextColor3 = Color3.fromHSV(math.clamp(h/max, 0, 1) * 0.3, 1, 1)
-                Visuals.Labels.Health.Visible = true
-            else
-                Visuals.Labels.Health.Visible = false
             end
         else
             Visuals.ESP.Enabled = false
@@ -240,57 +254,63 @@ Services.RunService.RenderStepped:Connect(function()
     end
 end)
 
+-- Salva conexão para limpeza futura
+getgenv().SilentAimInstance.Connection = RenderConnection
+
+
+--// Lógica do Hook (Solicitada pelo Usuário)
 local mt = getrawmetatable(game)
 local old_nc = mt.__namecall
 setreadonly(mt, false)
 
-local safe_remotes = {"UpdateMouse", "Look", "Camera", "Status", "Animation", "Heartbeat"}
-local function is_safe(n)
-    local ln = string.lower(n)
-    for _, v in ipairs(safe_remotes) do
-        if string.find(ln, string.lower(v)) then return false end
-    end
-    return true
+local function getLegitOffset(config)
+    if not config.UseLegitOffset then return Vector3.zero end
+    return Vector3.new((math.random()-0.5)*0.5, (math.random()-0.5)*0.5, (math.random()-0.5)*0.5)
 end
 
-mt.__namecall = newcclosure(function(obj, ...)
+mt.__namecall = newcclosure(function(self, ...)
     local Config = getgenv().SilentConfig
     local method = getnamecallmethod()
-    local args = {...}
-
-    if Config and Config.Enabled and State.Part and not checkcaller() then
-        if (method == "FireServer" or method == "InvokeServer") and is_safe(obj.Name) then
-            if math.random(1, 100) > Config.HitChance then
-                return old_nc(obj, ...)
-            end
+    
+    if not checkcaller() and Config and Config.Enabled and State.Part then
+        if math.random(1, 100) <= Config.HitChance then
             
-            local offset = Vector3.zero
-            if Config.UseLegitOffset then
-                offset = Vector3.new((math.random()-0.5)*0.5, (math.random()-0.5)*0.5, (math.random()-0.5)*0.5)
-            end
-            
-            local finalPosition = State.Part.Position + offset
-            local cameraPos = Camera.CFrame.Position
-            local direction = (finalPosition - cameraPos).Unit
-            
-            for i, v in ipairs(args) do
-                if typeof(v) == "Vector3" then
-                    -- Lógica original: se magnitude <= 10, é direção. Se maior, é posição.
-                    if v.Magnitude <= 10 then
-                        args[i] = direction
-                    else
-                        args[i] = finalPosition
+            if (method == "FireServer" or method == "InvokeServer") then
+                if isBulletRemote(self.Name) then
+                    local args = {...}
+                    local finalPos = State.Part.Position + getLegitOffset(Config)
+                    local camPos = Camera.CFrame.Position
+                    local direction = (finalPos - camPos).Unit
+                    
+                    for i, v in ipairs(args) do
+                        if typeof(v) == "Vector3" then
+                            -- Se magnitude for pequena (<= 10), assume-se que é Direção (Unit Vector)
+                            -- Caso contrário, assume-se que é Posição
+                            if v.Magnitude <= 10 then
+                                args[i] = direction
+                            else
+                                args[i] = finalPos
+                            end
+                        elseif typeof(v) == "CFrame" then
+                            -- Redireciona o CFrame para olhar para o alvo
+                            args[i] = CFrame.new(camPos, finalPos)
+                        end
                     end
-                elseif typeof(v) == "CFrame" then
-                    -- Restaura o CFrame olhando para o alvo
-                    args[i] = CFrame.new(cameraPos, finalPosition)
+                    return old_nc(self, unpack(args))
                 end
-            end
             
-            return old_nc(obj, unpack(args))
+            elseif method == "Raycast" and self == Services.Workspace then
+                 local args = {...}
+                 local origin = args[1]
+                 local finalPos = State.Part.Position + getLegitOffset(Config)
+                 
+                 -- Recalcula direção para bater no alvo com longo alcance
+                 args[2] = (finalPos - origin).Unit * 10000 
+                 return old_nc(self, unpack(args))
+            end
         end
     end
     
-    return old_nc(obj, ...)
+    return old_nc(self, ...)
 end)
 setreadonly(mt, true)
