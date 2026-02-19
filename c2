@@ -436,9 +436,6 @@ getgenv().SilentConfig = {
 }
 
 local Config = getgenv().SilentConfig
-local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
-local Teams = game:GetService("Teams")
 local LocalPlayer = Players.LocalPlayer
 
 task.spawn(function()
@@ -455,8 +452,8 @@ end
 
 local function GetTeamNames()
     local names = {}
-    if Teams then
-        for _, t in ipairs(Teams:GetTeams()) do table.insert(names, t.Name) end
+    if TeamsService then
+        for _, t in ipairs(TeamsService:GetTeams()) do table.insert(names, t.Name) end
     end
     return names
 end
@@ -464,6 +461,7 @@ end
 do
     local MainSection = criarsection(SilentAim, "Principal", "Controle do silent aim", "lucide:crosshair", true)
 
+    local FirstRun = true
     local ToggleAim = MainSection:Toggle({
         Title = "Silent aim",
         Desc = cor({"Redireciona os "}, {"tiros", "#00FF00"}, {" para o alvo"}),
@@ -473,6 +471,10 @@ do
         Flag = "SilentAim",
         Callback = function(state) 
             Config.Enabled = state
+            if FirstRun then
+                FirstRun = false
+                return
+            end
             if state then
                 notificar("Ativado", 2, "lucide:circle-check")
             else
@@ -546,6 +548,7 @@ do
 
     local FocusSection = criarsection(SilentAim, "Focar", "Focar em jogadores específicos", "lucide:scan-eye", false)
     
+    local FocusFirstRun = true
     FocusSection:Toggle({
         Title = "Modo foco",
         Desc = cor({"Foca "}, {"apenas", "#FFAA00"}, {" em quem está na lista"}),
@@ -555,6 +558,10 @@ do
         Flag = "ModoFocarSilentAim",
         Callback = function(state)
             Config.FocusMode = state
+            if FocusFirstRun then
+                FocusFirstRun = false
+                return
+            end
             notificar("Modo foco: " .. (state and "Ativado" or "Desativado"), 2, "lucide:circle-alert")
         end
     })
