@@ -1,5 +1,5 @@
 return {
-    silent = "silent0.lua",
+    silent = "silent10.lua",
     hitbox = "hitbox.lua",
     esp = "esp.lua",
     tas = "tas.lua",
