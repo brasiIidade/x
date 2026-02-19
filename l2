@@ -94,30 +94,56 @@ if string.find(Executor, "xeno") or string.find(Executor, "solara") then
 end
 
 --// hooks
-local Meta = getrawmetatable(game)
-local OldIndex = Meta.__index
-setreadonly(Meta, false)
+local GhostTable = setmetatable({}, {__mode = "k"})
 
-Meta.__index = newcclosure(function(Self, Key)
-    if not checkcaller() then
-        if Key == "WalkSpeed" then
-            if Self:IsA("Humanoid") then 
-                return 16 
-            end
-        elseif Key == "JumpPower" then
-            if Self:IsA("Humanoid") then 
-                return 50 
-            end
-        elseif Key == "Size" then
-            if Self.Name == "HumanoidRootPart" and Self:IsA("BasePart") then
-                return Vector3.new(2, 2, 1)
-            end
+local function GetGhost(obj, key)
+    return GhostTable[obj] and GhostTable[obj][key]
+end
+
+local function SetGhost(obj, key, val)
+    if not GhostTable[obj] then GhostTable[obj] = {} end
+    GhostTable[obj][key] = val
+end
+
+local OldIndex
+OldIndex = hookmetamethod(game, "__index", NewCClosure(function(self, k)
+    if not CheckCaller() then
+        local ghost = GetGhost(self, k)
+        if ghost ~= nil then return ghost end
+    end
+    return OldIndex(self, k)
+end))
+
+local OldNewIndex
+OldNewIndex = hookmetamethod(game, "__newindex", NewCClosure(function(self, k, v)
+    if not CheckCaller() then
+        local isHum = self:IsA("Humanoid")
+        local isRoot = self:IsA("BasePart") and self.Name == "HumanoidRootPart"
+
+        if (isHum and (k == "WalkSpeed" or k == "JumpPower")) or (isRoot and k == "Size") then
+            SetGhost(self, k, v)
+            return
         end
     end
-    return OldIndex(Self, Key)
-end)
+    return OldNewIndex(self, k, v)
+end))
 
-setreadonly(Meta, true)
+local function InitSpoof(char)
+    local hum = char:WaitForChild("Humanoid", 10)
+    local root = char:WaitForChild("HumanoidRootPart", 10)
+
+    if hum then
+        if not GetGhost(hum, "WalkSpeed") then SetGhost(hum, "WalkSpeed", hum.WalkSpeed) end
+        if not GetGhost(hum, "JumpPower") then SetGhost(hum, "JumpPower", hum.JumpPower) end
+    end
+
+    if root then
+        if not GetGhost(root, "Size") then SetGhost(root, "Size", root.Size) end
+    end
+end
+
+if LocalPlayer.Character then InitSpoof(LocalPlayer.Character) end
+LocalPlayer.CharacterAdded:Connect(InitSpoof)
 
 
 --// ui
