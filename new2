@@ -2788,377 +2788,369 @@ ThemeSection:Dropdown({
 })
 
 --// mapas 
+local Mapas = {
+    [13132367906] = "Tevez",
+    [14511049] = "Delta",
+    [129890257340707] = "Soucre",
+    [134858056613772] = "NovaEra"
+}
 
-local TevezTab = nil
-local DeltaTab = nil
-local SoucreTab = nil
-local NovaEraTab = nil
+local MapaAtual = Mapas[game.PlaceId]
 
-local tevez = game.PlaceId == 13132367906
-local delta = game.PlaceId == 14511049
-local soucre = game.PlaceId == 129890257340707
-local novaera = game.PlaceId == 134858056613772
+if MapaAtual then
+    criarsection(main, "Mapa", "Exclusivos do mapa", "lucide:compass", true)
 
-criarsection(main, "Mapa", "Exclusivos do mapa", "lucide:map", true)
+    if MapaAtual == "Tevez" then
+        local TevezTab = criartab("Tevez", "https://tr.rbxcdn.com/180DAY-84c7c1edcc63c7dfab5712b1ad377133/768/432/Image/Webp/noFilter")
+        
+        task.spawn(function()
+            if ler then ler("tevez") end
+        end)
 
---// tab tevez
-if tevez then
-    TevezTab = criartab("Tevez", "https://tr.rbxcdn.com/180DAY-84c7c1edcc63c7dfab5712b1ad377133/768/432/Image/Webp/noFilter")
-    
-    task.spawn(function()
-        if ler then ler("tevez") end
-    end)
-
-    local LocalSection = criarsection(TevezTab, "Local", "Chat", "lucide:message-circle", true)
-    LocalSection:Input({
-        Title = "Mensagem",
-        Desc = cor({"Digite o "}, {"texto", "#FFFFFF"}, {" para enviar no chat"}),
-        Value = "",
-        InputIcon = "lucide:text-cursor",
-        Placeholder = "Digite aqui...",
-        Callback = function(Value) 
-            if _G.TevezMods then _G.TevezMods.ChatMessage = Value end
-        end
-    })
-    LocalSection:Toggle({
-        Title = "Spam",
-        Desc = cor({"Envia a mensagem "}, {"várias vezes", "#FFAA00"}),
-        Icon = "lucide:repeat",
-        Value = false,
-        Callback = function(state) 
-            if _G.TevezMods and _G.TevezMods.ToggleSpam then _G.TevezMods.ToggleSpam(state) end
-        end
-    })
-    LocalSection:Button({
-        Title = "Enviar",
-        Desc = cor({"Manda", "#00FF00"}, {" a mensagem atual"}),
-        Color = "Green",
-        Icon = "lucide:send",
-        Callback = function()
-            if _G.TevezMods and _G.TevezMods.SendMessage then _G.TevezMods.SendMessage() end
-        end
-    })
-	
-    local SpooferSection = criarsection(TevezTab, "Spoofer", "Alterar dispositivo", "lucide:smartphone", false)
-    SpooferSection:Paragraph({
-        Title = "Spoofer",
-        Desc = cor({"O "}, {"spoofer", "#00AAFF"}, {" permite você alterar o dispositivo para todos"})
-    })
-    SpooferSection:Dropdown({
-        Title = "Dispositivo",
-        Desc = cor({"Selecione o "}, {"dispositivo", "#FFFFFF"}),
-        Icon = "lucide:laptop",
-        Values = { "Mobile", "Computer" },
-        Value = "Computer",
-        Callback = function(option)
-            if _G.TevezMods then _G.TevezMods.SelectedDevice = option end
-        end
-    })
-    SpooferSection:Toggle({
-        Title = "Ativar",
-        Desc = cor({"Altera", "#00FF00"}, {" o dispositivo (reseta o personagem)"}),
-        Icon = "lucide:power",
-        Value = false,
-        Callback = function(v)
-            if _G.TevezMods and _G.TevezMods.ToggleSpoof then _G.TevezMods.ToggleSpoof(v) end
-        end
-    })
-
-	SpooferSection:Dropdown({
-        Title = "AFK",
-        Desc = cor({"Permite "}, {"ativar", "#00FF00"}, {" ou "}, {"desativar", "#FF0000"}, {" o "}, {"AFK", "#FFAA00"}),
-        Icon = "lucide:coffee",
-        Values = { "Ativar", "Desativar" },
-        Value = "Desativar",
-        Callback = function(option)
-            if _G.TevezMods and _G.TevezMods.SetAFK then _G.TevezMods.SetAFK(option == "Ativar") end
-        end
-    })
-	
-
-    local FarmSection = criarsection(TevezTab, "Autofarm", "Farm do banco", "lucide:banknote", false)
-    
-    local StatusParagraph = FarmSection:Paragraph({
-        Title = "Status",
-        Desc = "Aguardando...",
-        Color = "Green",
-        Image = "lucide:activity"
-    })
-    
-    task.spawn(function()
-        repeat task.wait(0.5) until _G.TevezAutoFarm
-        _G.TevezAutoFarm.UpdateCallback = function(msg, money)
-            if StatusParagraph then
-                StatusParagraph:SetDesc(cor({msg, "#AAAAAA"}) .. cor({"\n💰 Farmado: R$ ", "#AAAAAA"}, {tostring(money), "#00FF00"}))
+        local LocalSection = criarsection(TevezTab, "Local", "Chat", "lucide:message-circle", true)
+        LocalSection:Input({
+            Title = "Mensagem",
+            Desc = cor({"Digite o "}, {"texto", "#FFFFFF"}, {" para enviar no chat"}),
+            Value = "",
+            InputIcon = "lucide:text-cursor",
+            Placeholder = "Digite aqui...",
+            Callback = function(Value) 
+                if _G.TevezMods then _G.TevezMods.ChatMessage = Value end
             end
-        end
-    end)
+        })
+        LocalSection:Toggle({
+            Title = "Spam",
+            Desc = cor({"Envia a mensagem "}, {"várias vezes", "#FFAA00"}),
+            Icon = "lucide:repeat",
+            Value = false,
+            Callback = function(state) 
+                if _G.TevezMods and _G.TevezMods.ToggleSpam then _G.TevezMods.ToggleSpam(state) end
+            end
+        })
+        LocalSection:Button({
+            Title = "Enviar",
+            Desc = cor({"Manda", "#00FF00"}, {" a mensagem atual"}),
+            Color = "Green",
+            Icon = "lucide:send",
+            Callback = function()
+                if _G.TevezMods and _G.TevezMods.SendMessage then _G.TevezMods.SendMessage() end
+            end
+        })
+        
+        local SpooferSection = criarsection(TevezTab, "Spoofer", "Alterar dispositivo", "lucide:smartphone", false)
+        SpooferSection:Paragraph({
+            Title = "Spoofer",
+            Desc = cor({"O "}, {"spoofer", "#00AAFF"}, {" permite você alterar o dispositivo para todos"})
+        })
+        SpooferSection:Dropdown({
+            Title = "Dispositivo",
+            Desc = cor({"Selecione o "}, {"dispositivo", "#FFFFFF"}),
+            Icon = "lucide:laptop",
+            Values = { "Mobile", "Computer" },
+            Value = "Computer",
+            Callback = function(option)
+                if _G.TevezMods then _G.TevezMods.SelectedDevice = option end
+            end
+        })
+        SpooferSection:Toggle({
+            Title = "Ativar",
+            Desc = cor({"Altera", "#00FF00"}, {" o dispositivo (reseta o personagem)"}),
+            Icon = "lucide:power",
+            Value = false,
+            Callback = function(v)
+                if _G.TevezMods and _G.TevezMods.ToggleSpoof then _G.TevezMods.ToggleSpoof(v) end
+            end
+        })
 
-    FarmSection:Toggle({
-        Title = "Ativar",
-        Desc = cor({"Inicia", "#00FF00"}, {" o autofarm"}),
-        Icon = "lucide:play",
-        Value = false,
-        Callback = function(v)
-            if _G.TevezAutoFarm then _G.TevezAutoFarm.Toggle(v) end
-        end
-    })
-    
-    FarmSection:Toggle({
-        Title = "Modo seguro",
-        Desc = cor({"Pausa", "#FF0000"}, {" se houver jogadores por perto"}),
-        Icon = "lucide:shield-check",
-        Value = false,
-        Flag = "ModoSeguroAutofarmTevez",
-        Callback = function(v)
-            if _G.TevezAutoFarm then _G.TevezAutoFarm.SafeMode = v end
-        end
-    })
-    
-    FarmSection:Input({
-        Title = "Raio de segurança",
-        Desc = cor({"Distância para "}, {"detectar", "#FF0000"}, {" se há alguém por perto"}),
-        Placeholder = "60",
-        InputIcon = "lucide:radio",
-        Flag = "RaioDeSegurancaAutofarmTevez",
-        Callback = function(v)
-            local n = tonumber(v)
-            if n and _G.TevezAutoFarm then _G.TevezAutoFarm.SafeRadius = n end
-        end
-    })
-
-    local CombatSection = criarsection(TevezTab, "Combate", "Kill aura", "lucide:swords", false)
-    CombatSection:Paragraph({
-        Title = "Kill aura",
-        Color = Color3.fromHex("#FF1D0D"),
-        Desc = cor({"RISCO", "#FF0000"}, {" Você será banido caso alguém te denuncie"})
-    })
-    local KillAuraToggle
-    CombatSection:Toggle({
-        Title = "Permitir",
-        Desc = cor({"Libera", "#00FF00"}, {" o uso do kill-aura"}),
-        Icon = "lucide:lock-open",
-        Value = false,
-        Callback = function(state)
-            if state then
-                if KillAuraToggle then KillAuraToggle:Unlock() end
-                notificar("Permissão concedida", 2, "lucide:unlock")
-            else
-                if KillAuraToggle then 
-                    KillAuraToggle:Set(false)
-                    KillAuraToggle:Lock() 
+        SpooferSection:Dropdown({
+            Title = "AFK",
+            Desc = cor({"Permite "}, {"ativar", "#00FF00"}, {" ou "}, {"desativar", "#FF0000"}, {" o "}, {"AFK", "#FFAA00"}),
+            Icon = "lucide:coffee",
+            Values = { "Ativar", "Desativar" },
+            Value = "Desativar",
+            Callback = function(option)
+                if _G.TevezMods and _G.TevezMods.SetAFK then _G.TevezMods.SetAFK(option == "Ativar") end
+            end
+        })
+        
+        local FarmSection = criarsection(TevezTab, "Autofarm", "Farm do banco", "lucide:banknote", false)
+        
+        local StatusParagraph = FarmSection:Paragraph({
+            Title = "Status",
+            Desc = "Aguardando...",
+            Color = "Green",
+            Image = "lucide:activity"
+        })
+        
+        task.spawn(function()
+            repeat task.wait(0.5) until _G.TevezAutoFarm
+            _G.TevezAutoFarm.UpdateCallback = function(msg, money)
+                if StatusParagraph then
+                    StatusParagraph:SetDesc(cor({msg, "#AAAAAA"}) .. cor({"\n💰 Farmado: R$ ", "#AAAAAA"}, {tostring(money), "#00FF00"}))
                 end
-                notificar("Permissão negada", 2, "lucide:lock")
             end
-        end
-    })
-    KillAuraToggle = CombatSection:Toggle({
-        Title = "Kill aura",
-        Desc = cor({"Mata", "#FF0000"}, {" jogadores próximos"}),
-        Icon = "lucide:skull",
-        Value = false,
-        Callback = function(state)
-            if _G.TevezMods and _G.TevezMods.ToggleAura then
-                _G.TevezMods.ToggleAura(state, KillAuraToggle)
-            end
-        end
-    })
-    if KillAuraToggle then KillAuraToggle:Lock() end
+        end)
 
-    local ShopSection = criarsection(TevezTab, "Loja", "Comprar itens", "lucide:shopping-bag", false)
-    local ItensLoja = { ["AK-47"] = 15000, ["MPT-76"] = 8500, ["UZI"] = 8200, ["M4A1"] = 13000, ["GLOCK 18"] = 4300, ["Colete"] = 15000 }
-    local DropdownValues = {}
-    local DisplayToItem = {}
-    for nome, preco in pairs(ItensLoja) do
-        local display = nome .. " - $" .. preco
-        table.insert(DropdownValues, display)
-        DisplayToItem[display] = nome
+        FarmSection:Toggle({
+            Title = "Ativar",
+            Desc = cor({"Inicia", "#00FF00"}, {" o autofarm"}),
+            Icon = "lucide:play",
+            Value = false,
+            Callback = function(v)
+                if _G.TevezAutoFarm then _G.TevezAutoFarm.Toggle(v) end
+            end
+        })
+        
+        FarmSection:Toggle({
+            Title = "Modo seguro",
+            Desc = cor({"Pausa", "#FF0000"}, {" se houver jogadores por perto"}),
+            Icon = "lucide:shield-check",
+            Value = false,
+            Flag = "ModoSeguroAutofarmTevez",
+            Callback = function(v)
+                if _G.TevezAutoFarm then _G.TevezAutoFarm.SafeMode = v end
+            end
+        })
+        
+        FarmSection:Input({
+            Title = "Raio de segurança",
+            Desc = cor({"Distância para "}, {"detectar", "#FF0000"}, {" se há alguém por perto"}),
+            Placeholder = "60",
+            InputIcon = "lucide:radio",
+            Flag = "RaioDeSegurancaAutofarmTevez",
+            Callback = function(v)
+                local n = tonumber(v)
+                if n and _G.TevezAutoFarm then _G.TevezAutoFarm.SafeRadius = n end
+            end
+        })
+
+        local CombatSection = criarsection(TevezTab, "Combate", "Kill aura", "lucide:swords", false)
+        CombatSection:Paragraph({
+            Title = "Kill aura",
+            Color = Color3.fromHex("#FF1D0D"),
+            Desc = cor({"RISCO", "#FF0000"}, {" Você será banido caso alguém te denuncie"})
+        })
+        local KillAuraToggle
+        CombatSection:Toggle({
+            Title = "Permitir",
+            Desc = cor({"Libera", "#00FF00"}, {" o uso do kill-aura"}),
+            Icon = "lucide:lock-open",
+            Value = false,
+            Callback = function(state)
+                if state then
+                    if KillAuraToggle then KillAuraToggle:Unlock() end
+                    notificar("Permissão concedida", 2, "lucide:unlock")
+                else
+                    if KillAuraToggle then 
+                        KillAuraToggle:Set(false)
+                        KillAuraToggle:Lock() 
+                    end
+                    notificar("Permissão negada", 2, "lucide:lock")
+                end
+            end
+        })
+        KillAuraToggle = CombatSection:Toggle({
+            Title = "Kill aura",
+            Desc = cor({"Mata", "#FF0000"}, {" jogadores próximos"}),
+            Icon = "lucide:skull",
+            Value = false,
+            Callback = function(state)
+                if _G.TevezMods and _G.TevezMods.ToggleAura then
+                    _G.TevezMods.ToggleAura(state, KillAuraToggle)
+                end
+            end
+        })
+        if KillAuraToggle then KillAuraToggle:Lock() end
+
+        local ShopSection = criarsection(TevezTab, "Loja", "Comprar itens", "lucide:shopping-bag", false)
+        local ItensLoja = { ["AK-47"] = 15000, ["MPT-76"] = 8500, ["UZI"] = 8200, ["M4A1"] = 13000, ["GLOCK 18"] = 4300, ["Colete"] = 15000 }
+        local DropdownValues = {}
+        local DisplayToItem = {}
+        for nome, preco in pairs(ItensLoja) do
+            local display = nome .. " - $" .. preco
+            table.insert(DropdownValues, display)
+            DisplayToItem[display] = nome
+        end
+        ShopSection:Dropdown({
+            Title = "Comprar itens",
+            Desc = cor({"Seleciona um "}, {"item", "#FFFFFF"}, {" na loja"}),
+            Icon = "lucide:tag",
+            Values = DropdownValues,
+            Value = "GLOCK 18 - $4300",
+            Callback = function(option)
+                if _G.TevezMods then _G.TevezMods.SelectedShopItem = DisplayToItem[option] end
+            end
+        })
+        ShopSection:Button({
+            Title = "Comprar",
+            Desc = cor({"Compra", "#00FF00"}, {" o item selecionado"}),
+            Icon = "lucide:credit-card",
+            Callback = function()
+                if _G.TevezMods and _G.TevezMods.BuyItem then _G.TevezMods.BuyItem() end
+            end
+        })
+
+        local ModsSection = criarsection(TevezTab, "Mods", "Modifica a arma", "lucide:hammer", false)
+        ModsSection:Input({
+            Title = "Bullets",
+            Desc = cor({"Quantidade de "}, {"balas", "#00AAFF"}, {" por disparo"}),
+            Placeholder = "Valor",
+            InputIcon = "lucide:hash",
+            Flag = "BalasTevez",
+            Callback = function(v)
+                if v == "" then return end
+                if _G.TevezMods then _G.TevezMods.GunConfig.Bullets = tonumber(v) end
+            end
+        })
+        ModsSection:Input({
+            Title = "Spread",
+            Desc = cor({"Muda o "}, {"espalhamento", "#FFAA00"}),
+            Placeholder = "Valor",
+            InputIcon = "lucide:expand",
+            Flag = "SpreadTevez",
+            Callback = function(v)
+                if v == "" then return end
+                if _G.TevezMods then _G.TevezMods.GunConfig.Spread = tonumber(v) end
+            end
+        })
+        ModsSection:Input({
+            Title = "Range",
+            Desc = cor({"O quão "}, {"longe", "#00AAFF"}, {" as balas vão"}),
+            Placeholder = "Valor",
+            InputIcon = "lucide:target",
+            Flag = "RangeTevez",
+            Callback = function(v)
+                if v == "" then return end
+                if _G.TevezMods then _G.TevezMods.GunConfig.Range = tonumber(v) end
+            end
+        })
+        ModsSection:Button({
+            Title = "Aplicar mods",
+            Desc = cor({"Muda", "#00FF00"}, {" os atributos da arma"}),
+            Icon = "lucide:check-circle",
+            Callback = function()
+                if _G.TevezMods and _G.TevezMods.ApplyGunMods then _G.TevezMods.ApplyGunMods() end
+            end
+        })
+
+    elseif MapaAtual == "Delta" then
+        local DeltaTab = criartab("Delta", "https://tr.rbxcdn.com/180DAY-8952e9d8abbff8104b22356f8b66f962/768/432/Image/Webp/noFilter")
+
+        task.spawn(function()
+            if ler then ler("delta") end
+        end)
+
+        local JJSection = criarsection(DeltaTab, "Polichinelos", "Modificar", "lucide:activity", true)
+        
+        JJSection:Input({
+            Title = "Quantidade",
+            Desc = cor({"Valor para "}, {"adicionar ou remover", "#FFFFFF"}),
+            Placeholder = "10",
+            InputIcon = "lucide:hash",
+            Callback = function(v)
+                if _G.DeltaLogic then _G.DeltaLogic.JJValue = v end
+            end
+        })
+
+        JJSection:Button({
+            Title = "Modificar",
+            Desc = cor({"Muda", "#00FF00"}, {" seus polichinelos"}),
+            Icon = "lucide:edit-2",
+            Callback = function()
+                if _G.DeltaLogic and _G.DeltaLogic.SetJJ then _G.DeltaLogic.SetJJ() end
+            end
+        })
+
+        local EcoSection = criarsection(DeltaTab, "Economia", "Dinheiro", "lucide:coins", false)
+
+        EcoSection:Button({
+            Title = "Money",
+            Desc = cor({"Pega", "#00FF00"}, {" 1M de dinheiro"}),
+            Icon = "lucide:gem",
+            Callback = function()
+                if _G.DeltaLogic and _G.DeltaLogic.GetRich then _G.DeltaLogic.GetRich() end
+            end
+        })
+
+        EcoSection:Paragraph({
+            Title = "Observação",
+            Desc = cor({"Money all faz transferências a cada 15 segundos"})
+        })
+
+        EcoSection:Toggle({
+            Title = "Money all",
+            Desc = cor({"Envia", "#00FF00"}, {" dinheiro infinito para todos"}),
+            Icon = "lucide:users",
+            Value = false,
+            Callback = function(v)
+                if _G.DeltaLogic and _G.DeltaLogic.ToggleMoneyAll then _G.DeltaLogic.ToggleMoneyAll(v) end
+            end
+        })
+
+    elseif MapaAtual == "Soucre" then
+        local SoucreTab = criartab("Soucre", "https://tr.rbxcdn.com/180DAY-9b65f927dea36f98c1a720694fd00fd3/768/432/Image/Webp/noFilter")
+
+        task.spawn(function()
+            if ler then ler("soucre") end
+        end)
+
+        local FarmSection = criarsection(SoucreTab, "Entregador", "Autofarm", "lucide:banknote-arrow-up", true)
+
+        local MoneyPara = FarmSection:Paragraph({
+            Title = "Status",
+            Desc = "Dinheiro farmado: $0",
+            Color = "Green",
+            Image = "lucide:coins"
+        })
+
+        task.spawn(function()
+            repeat task.wait(0.5) until _G.SoucreLogic
+            _G.SoucreLogic.UpdateCallback = function(val)
+                if MoneyPara then MoneyPara:SetDesc(cor({"Dinheiro farmado: ", "#AAAAAA"}, {"$", "#00FF00"}, {tostring(val), "#00FF00"})) end
+            end
+        end)
+
+        FarmSection:Toggle({
+            Title = "Autofarm",
+            Desc = cor({"Inicia", "#00FF00"}, {" o autofarm"}),
+            Icon = "lucide:circle-play",
+            Value = false,
+            Callback = function(v)
+                if _G.SoucreLogic then _G.SoucreLogic.Toggle(v) end
+            end
+        })
+
+    elseif MapaAtual == "NovaEra" then
+        local NovaEraTab = criartab("Nova Era", "https://tr.rbxcdn.com/180DAY-9b65f927dea36f98c1a720694fd00fd3/768/432/Image/Webp/noFilter")
+
+        task.spawn(function()
+            if ler then ler("novaera") end
+        end)
+
+        local FarmSection = criarsection(NovaEraTab, "Dinheiro", "Autofarm", "lucide:coins", true)
+
+        local MoneyPara = FarmSection:Paragraph({
+            Title = "Status",
+            Desc = "Dinheiro farmado: $0",
+            Color = "Green",
+            Image = "lucide:coins"
+        })
+
+        task.spawn(function()
+            repeat task.wait(0.5) until _G.NovaEraLogic
+            _G.NovaEraLogic.UpdateCallback = function(val)
+                if MoneyPara then MoneyPara:SetDesc(cor({"Dinheiro farmado: ", "#AAAAAA"}, {"$", "#00FF00"}, {tostring(val), "#00FF00"})) end
+            end
+        end)
+
+        FarmSection:Toggle({
+            Title = "Autofarm",
+            Desc = cor({"Inicia", "#00FF00"}, {" o autofarm de coleta"}),
+            Icon = "lucide:circle-play",
+            Value = false,
+            Callback = function(v)
+                if _G.NovaEraLogic then _G.NovaEraLogic.Toggle(v) end
+            end
+        })
     end
-    ShopSection:Dropdown({
-        Title = "Comprar itens",
-        Desc = cor({"Seleciona um "}, {"item", "#FFFFFF"}, {" na loja"}),
-        Icon = "lucide:tag",
-        Values = DropdownValues,
-        Value = "GLOCK 18 - $4300",
-        Callback = function(option)
-            if _G.TevezMods then _G.TevezMods.SelectedShopItem = DisplayToItem[option] end
-        end
-    })
-    ShopSection:Button({
-        Title = "Comprar",
-        Desc = cor({"Compra", "#00FF00"}, {" o item selecionado"}),
-        Icon = "lucide:credit-card",
-        Callback = function()
-            if _G.TevezMods and _G.TevezMods.BuyItem then _G.TevezMods.BuyItem() end
-        end
-    })
-
-    local ModsSection = criarsection(TevezTab, "Mods", "Modifica a arma", "lucide:hammer", false)
-    ModsSection:Input({
-        Title = "Bullets",
-		Desc = cor({"Quantidade de "}, {"balas", "#00AAFF"}, {" por disparo"}),
-        Placeholder = "Valor",
-        InputIcon = "lucide:hash",
-        Flag = "BalasTevez",
-        Callback = function(v)
-            if v == "" then return end
-            if _G.TevezMods then _G.TevezMods.GunConfig.Bullets = tonumber(v) end
-        end
-    })
-    ModsSection:Input({
-        Title = "Spread",
-		Desc = cor({"Muda o "}, {"espalhamento", "#FFAA00"}),
-        Placeholder = "Valor",
-        InputIcon = "lucide:expand",
-        Flag = "SpreadTevez",
-        Callback = function(v)
-            if v == "" then return end
-            if _G.TevezMods then _G.TevezMods.GunConfig.Spread = tonumber(v) end
-        end
-    })
-    ModsSection:Input({
-        Title = "Range",
-		Desc = cor({"O quão "}, {"longe", "#00AAFF"}, {" as balas vão"}),
-        Placeholder = "Valor",
-        InputIcon = "lucide:target",
-        Flag = "RangeTevez",
-        Callback = function(v)
-            if v == "" then return end
-            if _G.TevezMods then _G.TevezMods.GunConfig.Range = tonumber(v) end
-        end
-    })
-    ModsSection:Button({
-        Title = "Aplicar mods",
-        Desc = cor({"Muda", "#00FF00"}, {" os atributos da arma"}),
-        Icon = "lucide:check-circle",
-        Callback = function()
-            if _G.TevezMods and _G.TevezMods.ApplyGunMods then _G.TevezMods.ApplyGunMods() end
-        end
-    })
-end
-
---// tab delta
-if delta then
-    DeltaTab = criartab("Delta", "https://tr.rbxcdn.com/180DAY-8952e9d8abbff8104b22356f8b66f962/768/432/Image/Webp/noFilter")
-
-    task.spawn(function()
-        if ler then ler("delta") end
-    end)
-
-    local JJSection = criarsection(DeltaTab, "Polichinelos", "Modificar", "lucide:activity", true)
-    
-    JJSection:Input({
-        Title = "Quantidade",
-        Desc = cor({"Valor para "}, {"adicionar ou remover", "#FFFFFF"}),
-        Placeholder = "10",
-        InputIcon = "lucide:hash",
-        Callback = function(v)
-            if _G.DeltaLogic then _G.DeltaLogic.JJValue = v end
-        end
-    })
-
-    JJSection:Button({
-        Title = "Modificar",
-        Desc = cor({"Muda", "#00FF00"}, {" seus polichinelos"}),
-        Icon = "lucide:edit-2",
-        Callback = function()
-            if _G.DeltaLogic and _G.DeltaLogic.SetJJ then _G.DeltaLogic.SetJJ() end
-        end
-    })
-
-    local EcoSection = criarsection(DeltaTab, "Economia", "Dinheiro", "lucide:coins", false)
-
-    EcoSection:Button({
-        Title = "Money",
-        Desc = cor({"Pega", "#00FF00"}, {" 1M de dinheiro"}),
-        Icon = "lucide:gem",
-        Callback = function()
-            if _G.DeltaLogic and _G.DeltaLogic.GetRich then _G.DeltaLogic.GetRich() end
-        end
-    })
-
-    EcoSection:Paragraph({
-        Title = "Observação",
-        Desc = cor({"Money all faz transferências a cada 15 segundos"})
-    })
-
-    EcoSection:Toggle({
-        Title = "Money all",
-        Desc = cor({"Envia", "#00FF00"}, {" dinheiro infinito para todos"}),
-        Icon = "lucide:users",
-        Value = false,
-        Callback = function(v)
-            if _G.DeltaLogic and _G.DeltaLogic.ToggleMoneyAll then _G.DeltaLogic.ToggleMoneyAll(v) end
-        end
-    })
-end
-
---// tab soucre
-if soucre then
-    SoucreTab = criartab("Soucre", "https://tr.rbxcdn.com/180DAY-9b65f927dea36f98c1a720694fd00fd3/768/432/Image/Webp/noFilter")
-
-    task.spawn(function()
-        if ler then ler("soucre") end
-    end)
-
-    local FarmSection = criarsection(SoucreTab, "Entregador", "Autofarm", "lucide:banknote-arrow-up", true)
-
-    local MoneyPara = FarmSection:Paragraph({
-        Title = "Status",
-        Desc = "Dinheiro farmado: $0",
-        Color = "Green",
-        Image = "lucide:coins"
-    })
-
-    task.spawn(function()
-        repeat task.wait(0.5) until _G.SoucreLogic
-        _G.SoucreLogic.UpdateCallback = function(val)
-            if MoneyPara then MoneyPara:SetDesc(cor({"Dinheiro farmado: ", "#AAAAAA"}, {"$", "#00FF00"}, {tostring(val), "#00FF00"})) end
-        end
-    end)
-
-    FarmSection:Toggle({
-        Title = "Autofarm",
-        Desc = cor({"Inicia", "#00FF00"}, {" o autofarm"}),
-        Icon = "lucide:circle-play",
-        Value = false,
-        Callback = function(v)
-            if _G.SoucreLogic then _G.SoucreLogic.Toggle(v) end
-        end
-    })
-end
-
---// tab Nova Era
-if novaera then
-    NovaEraTab = criartab("Nova Era", "https://tr.rbxcdn.com/180DAY-9b65f927dea36f98c1a720694fd00fd3/768/432/Image/Webp/noFilter")
-
-    task.spawn(function()
-        if ler then ler("novaera") end
-    end)
-
-    local FarmSection = criarsection(NovaEraTab, "Dinheiro", "Autofarm", "lucide:coins", true)
-
-    local MoneyPara = FarmSection:Paragraph({
-        Title = "Status",
-        Desc = "Dinheiro farmado: $0",
-        Color = "Green",
-        Image = "lucide:coins"
-    })
-
-    task.spawn(function()
-        repeat task.wait(0.5) until _G.NovaEraLogic
-        _G.NovaEraLogic.UpdateCallback = function(val)
-            if MoneyPara then MoneyPara:SetDesc(cor({"Dinheiro farmado: ", "#AAAAAA"}, {"$", "#00FF00"}, {tostring(val), "#00FF00"})) end
-        end
-    end)
-
-    FarmSection:Toggle({
-        Title = "Autofarm",
-        Desc = cor({"Inicia", "#00FF00"}, {" o autofarm de coleta"}),
-        Icon = "lucide:circle-play",
-        Value = false,
-        Callback = function(v)
-            if _G.NovaEraLogic then _G.NovaEraLogic.Toggle(v) end
-        end
-    })
 end
