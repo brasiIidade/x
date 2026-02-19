@@ -11,5 +11,5 @@ return {
     tevez = "tevez.lua",
     delta = "delta.lua",
     soucre = "soucre.lua",
-    novaera = "novaera5.lua"
+    novaera = "novaera2.lua"
 }
