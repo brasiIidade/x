@@ -5,6 +5,14 @@ local rs = cr(game:GetService("RunService"))
 local ts = cr(game:GetService("TweenService"))
 local lp = cr(plrs.LocalPlayer)
 
+local oK
+oK = hookmetamethod(game, "__namecall", function(self, ...)
+    if not checkcaller() and getnamecallmethod() == "Kick" and self == lp then
+        return
+    end
+    return oK(self, ...)
+end)
+
 local lgc = { Enabled = false, TotalProfit = 0, SessionStart = 0, UpdateCallback = nil }
 getgenv().NovaEraLogic = lgc
 
@@ -16,9 +24,7 @@ local curTw = nil
 local function gMon()
     local ls = lp:FindFirstChild("leaderstats")
     local m = ls and ls:FindFirstChild("Dinheiro")
-    if m then
-        return tonumber(m.Value or m.Text) or 0
-    end
+    if m then return tonumber(m.Value or m.Text) or 0 end
     return 0
 end
 
@@ -55,13 +61,14 @@ local function twTo(t)
         return 
     end
     
-    local spd = 250
+    local spd = 115 
     local ti = TweenInfo.new(d / spd, Enum.EasingStyle.Linear)
     
     if curTw then curTw:Cancel() end
     curTw = ts:Create(hrp, ti, {CFrame = tgCf})
     curTw:Play()
     curTw.Completed:Wait()
+    task.wait(0.1)
 end
 
 local function gPrm(p)
@@ -126,7 +133,7 @@ task.spawn(function()
                         
                         if lgc.Enabled and c.Humanoid.Health > 0 then
                             fireproximityprompt(prm)
-                            task.wait(0.2)
+                            task.wait(0.35)
                         end
                     else
                         task.wait(0.1)
