@@ -22,7 +22,7 @@ f3x.NotifyFunc = nil
 f3x.IsReady = true
 
 if not isfolder("michigun.xyz") then makefolder("michigun.xyz") end
-local fDir = "michigun.xyz/fp3_F3X"
+local fDir = "michigun.xyz/f3x"
 if writefile and not isfolder(fDir) then makefolder(fDir) end
 
 local hlParent
