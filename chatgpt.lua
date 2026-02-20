@@ -13,7 +13,7 @@ _G.ChatGPT.History = {}
 _G.ChatGPT.LastMessage = ""
 
 if not isfolder("michigun.xyz") then makefolder("michigun.xyz") end
-local PromptPath = "michigun.xyz/fp3_ChatGPT.txt"
+local PromptPath = "michigun.xyz/IA.txt"
 if not isfile(PromptPath) then writefile(PromptPath, "Você é uma IA útil dentro do Roblox.") end
 
 local Personality = readfile(PromptPath)
