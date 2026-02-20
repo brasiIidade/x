@@ -579,7 +579,7 @@ do
     FocusSection:Input({
         Title = "Adicionar alvo",
         Desc = cor({"Digite o "}, {"nome", "#00AAFF"}),
-        Placeholder = "NomeDoJogador",
+        Placeholder = "Digite aqui",
         InputIcon = "lucide:user-plus",
         Callback = function(text)
             if not text or text == "" then return end
