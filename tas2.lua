@@ -241,6 +241,29 @@ local function actTas(n)
     end)
 end
 
+tas.UpdateVisuals = function(bC, pC, op)
+    if bC then tas.ColorBot = bC end
+    if pC then tas.ColorPath = pC end
+    if op then tas.VisualOpacity = op end
+
+    for _, d in pairs(tas.Loaded) do
+        if d.VisualFolder then
+            for _, p in ipairs(d.VisualFolder:GetChildren()) do
+                if p:IsA("BoxHandleAdornment") or p:IsA("CylinderHandleAdornment") then
+                    p.Color3 = tas.ColorBot
+                    p.Transparency = tas.VisualOpacity
+                end
+            end
+        end
+        if d.PathParts then
+            for _, p in ipairs(d.PathParts) do
+                p.Color3 = tas.ColorPath
+                p.Transparency = tas.VisualOpacity
+            end
+        end
+    end
+end
+
 tas.StopRecording = function()
     if not tas.Recording then return end
     tas.Recording = false
