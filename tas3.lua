@@ -18,7 +18,6 @@ ui.Name, ui.ResetOnSpawn, ui.Parent = ".", false, gh()
 
 if not isfolder("michigun.xyz") then makefolder("michigun.xyz") end
 local fDir = "michigun.xyz/tas"
-local tagFile = "michigun.xyz/tas/.migrated"
 if writefile and not isfolder(fDir) then makefolder(fDir) end
 
 local env = getgenv()
@@ -44,25 +43,27 @@ tas.VisualOpacity = 0
 local S_KEY = "MICHIGUN.SEGREDO.FP3"
 
 local function s_e(s)
-    local out = ""
+    local out = {}
+    local k_len = #S_KEY
     for i = 1, #s do
-        local k_char = S_KEY:byte(((i - 1) % #S_KEY) + 1)
-        out = out .. string.format("%02x", bit32.bxor(s:byte(i), k_char))
+        local k_char = S_KEY:byte(((i - 1) % k_len) + 1)
+        out[i] = string.format("%02x", bit32.bxor(s:byte(i), k_char))
     end
-    return out
+    return table.concat(out)
 end
 
 local function s_d(hex)
-    local out = ""
+    local out = {}
     local idx = 1
+    local k_len = #S_KEY
     for i = 1, #hex, 2 do
         local byte = tonumber(hex:sub(i, i + 1), 16)
         if not byte then break end
-        local k_char = S_KEY:byte(((idx - 1) % #S_KEY) + 1)
-        out = out .. string.char(bit32.bxor(byte, k_char))
+        local k_char = S_KEY:byte(((idx - 1) % k_len) + 1)
+        out[idx] = string.char(bit32.bxor(byte, k_char))
         idx = idx + 1
     end
-    return out
+    return table.concat(out)
 end
 
 local function sNotif(t, m)
@@ -74,8 +75,9 @@ local function stripHeader(s)
 end
 
 local function migrateFiles()
-    if isfile(tagFile) or not listfiles or not isfolder(fDir) then return end
+    if not listfiles or not isfolder(fDir) then return end
     local files = listfiles(fDir)
+    local yielded = 0
     for i, path in ipairs(files) do
         if path:sub(-5) == ".json" then
             local s, content = pcall(readfile, path)
@@ -83,20 +85,23 @@ local function migrateFiles()
                 local clean = stripHeader(content)
                 if clean:sub(1, 9) ~= "michigun." then
                     local d
-                    pcall(function() d = hs:JSONDecode(content) end)
+                    pcall(function() d = hs:JSONDecode(clean) end)
                     if d and d.Frames then
-                        local name = path:match("([^/\\]+)%.json$") or "file"
                         local rj = hs:JSONEncode(d)
                         local enc = "michigun." .. s_e(rj)
+                        local name = path:match("([^/\\]+)%.json$") or "file"
                         local head = string.format("--[[ TAS do michigun.xyz -> %s ]]--\n", name)
                         writefile(path, head .. enc)
                     end
                 end
             end
         end
-        if i % 5 == 0 then task.wait() end
+        yielded = yielded + 1
+        if yielded >= 5 then
+            task.wait()
+            yielded = 0
+        end
     end
-    writefile(tagFile, "true")
 end
 task.spawn(migrateFiles)
 
@@ -282,14 +287,16 @@ tas.UpdateSelection = function(sL)
                 local p = fDir .. "/" .. n .. ".json"
                 if isfile(p) then
                     local raw = stripHeader(readfile(p))
+                    local d = nil
                     if raw:sub(1, 9) == "michigun." then
-                        pcall(function() 
-                            local d = hs:JSONDecode(s_d(raw:sub(10))) 
-                            if d and d.Frames then 
-                                tas.Loaded[n] = { Frames = d.Frames, Viewports = {}, PathParts = {}, Waiting = false, Playing = false } 
-                            end 
-                        end)
+                        pcall(function() d = hs:JSONDecode(s_d(raw:sub(10))) end)
+                    else
+                        pcall(function() d = hs:JSONDecode(raw) end)
                     end
+                    
+                    if d and d.Frames then 
+                        tas.Loaded[n] = { Frames = d.Frames, Viewports = {}, PathParts = {}, Waiting = false, Playing = false } 
+                    end 
                 end
             end
             if i % 3 == 0 then task.wait() end
