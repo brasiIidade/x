@@ -134,18 +134,35 @@ local function GetTarget(config)
     local tParts = config.TargetPart
     if type(tParts) ~= "table" or #tParts == 0 then tParts = {"Cabeça"} end
 
-    local isRandom = table.find(tParts, "Aleatório")
+    local isRandom = false
+    for i = 1, #tParts do if tParts[i] == "Aleatório" then isRandom = true break end end
 
-    for _, v in ipairs(Services.Players:GetPlayers()) do
+    local wlUsers = {}
+    if config.WhitelistedUsers then
+        for i = 1, #config.WhitelistedUsers do wlUsers[config.WhitelistedUsers[i]] = true end
+    end
+
+    local wlTeams = {}
+    if config.WhitelistedTeams then
+        for i = 1, #config.WhitelistedTeams do wlTeams[config.WhitelistedTeams[i]] = true end
+    end
+
+    local fList = {}
+    if config.FocusList then
+        for i = 1, #config.FocusList do fList[config.FocusList[i]] = true end
+    end
+
+    local players = Services.Players:GetPlayers()
+    for _, v in ipairs(players) do
         if v == LocalPlayer then continue end
         if config.TeamCheck == "Team" and v.Team == LocalPlayer.Team then continue end
         
         local vName = v.Name
-        if table.find(config.WhitelistedUsers, vName) then continue end
+        if wlUsers[vName] then continue end
         
         local vTeam = v.Team and v.Team.Name
-        if vTeam and table.find(config.WhitelistedTeams, vTeam) then continue end
-        if config.FocusMode and not table.find(config.FocusList, vName) then continue end
+        if vTeam and wlTeams[vTeam] then continue end
+        if config.FocusMode and not fList[vName] then continue end
         
         local c = v.Character
         if not c then continue end
@@ -217,6 +234,8 @@ local function GetTarget(config)
     return bestT, bestP
 end
 
+local LastTargetTick = 0
+
 Services.RunService.RenderStepped:Connect(function()
     local Config = getgenv().SilentConfig
     
@@ -229,7 +248,10 @@ Services.RunService.RenderStepped:Connect(function()
         return
     end
 
-    State.Target, State.Part = GetTarget(Config)
+    if tick() - LastTargetTick >= 0.05 then
+        State.Target, State.Part = GetTarget(Config)
+        LastTargetTick = tick()
+    end
     
     if Config.ShowFOV then
         Visuals.Circle.Visible = true
@@ -310,19 +332,32 @@ local BulletKeywords = {
     "damage", "attack", "cast", "ray", "target", "server", "remote", "action", "mouse", "input", "create"
 }
 
-local function is_safe(n)
-    local ln = string.lower(n)
-    for _, v in ipairs(safe_remotes) do
-        if string.find(ln, string.lower(v)) then return false end
+local CheckedSafe = setmetatable({}, {__mode = "k"})
+local CheckedRemotes = setmetatable({}, {__mode = "k"})
+
+local function is_safe(remote)
+    if CheckedSafe[remote] ~= nil then return CheckedSafe[remote] end
+    local ln = string.lower(remote.Name)
+    for i = 1, #safe_remotes do
+        if string.find(ln, string.lower(safe_remotes[i])) then 
+            CheckedSafe[remote] = false
+            return false 
+        end
     end
+    CheckedSafe[remote] = true
     return true
 end
 
-local function isBulletRemote(name)
-    local n = string.lower(name)
-    for _, k in ipairs(BulletKeywords) do
-        if string.find(n, k) then return true end
+local function isBulletRemote(remote)
+    if CheckedRemotes[remote] ~= nil then return CheckedRemotes[remote] end
+    local n = string.lower(remote.Name)
+    for i = 1, #BulletKeywords do
+        if string.find(n, BulletKeywords[i]) then 
+            CheckedRemotes[remote] = true
+            return true 
+        end
     end
+    CheckedRemotes[remote] = false
     return false
 end
 
@@ -339,13 +374,14 @@ mt.__namecall = newcclosure(function(self, ...)
         if math.random(1, 100) <= Config.HitChance then
             
             if (method == "FireServer" or method == "InvokeServer") then
-                if isBulletRemote(self.Name) then
+                if isBulletRemote(self) then
                     local args = {...}
                     local finalPos = State.Part.Position + getLegitOffset(Config)
                     local camPos = Camera.CFrame.Position
                     local direction = (finalPos - camPos).Unit
                     
-                    for i, v in ipairs(args) do
+                    for i = 1, #args do
+                        local v = args[i]
                         if typeof(v) == "Vector3" then
                             if v.Magnitude <= 10 then
                                 args[i] = direction
