@@ -531,7 +531,7 @@ local function BuildUI()
     local redeemIcon = Instance.new("ImageLabel")
     redeemIcon.Size = UDim2.fromOffset(16, 16)
     redeemIcon.Image = ConfigData.Icons.VerifyCheck
-    redeemIcon.ImageColor3 = Color3.fromRGB(0,0,0)
+    redeemIcon.ImageColor3 = Configuration.Colors.TextMain
     redeemIcon.BackgroundTransparency = 1
     redeemIcon.ImageTransparency = 1
     redeemIcon.Parent = redeem
@@ -540,7 +540,7 @@ local function BuildUI()
     redeemText.Size = UDim2.new(0, 0, 0, 20)
     redeemText.AutomaticSize = Enum.AutomaticSize.X
     redeemText.Text = ConfigData.Texts.BtnVerify
-    redeemText.TextColor3 = Color3.fromRGB(0,0,0)
+    redeemText.TextColor3 = Configuration.Colors.TextMain
     redeemText.Font = Enum.Font.GothamBold
     redeemText.TextSize = 13
     redeemText.BackgroundTransparency = 1
@@ -644,13 +644,20 @@ local function BuildUI()
 
     for _, v in pairs(main:GetDescendants()) do
         if v:IsA("GuiObject") then
-            if v.Name == "CloseBtn" then Utils.Tween(v, {TextTransparency = 0}, 0.5)
+            if v.Name == "CloseBtn" then 
+                Utils.Tween(v, {TextTransparency = 0}, 0.5)
+            elseif v == redeem then
+                Utils.Tween(v, {BackgroundTransparency = 0}, 0.5)
             elseif v:IsA("Frame") then
-                local visible = (v == logoContainer or v == statusCard or v == inputFrame or v == sIndicator or v == redeem)
+                local visible = (v == logoContainer or v == statusCard or v == inputFrame or v == sIndicator)
                 Utils.Tween(v, {BackgroundTransparency = visible and 0 or 1}, 0.5)
-            elseif v:IsA("TextLabel") or v:IsA("TextBox") then Utils.Tween(v, {TextTransparency = 0}, 0.5)
-            elseif v:IsA("ImageLabel") then Utils.Tween(v, {ImageTransparency = 0}, 0.5)
-            elseif v:IsA("UIStroke") then Utils.Tween(v, {Transparency = 0}, 0.5) end
+            elseif v:IsA("TextLabel") or v:IsA("TextBox") then 
+                Utils.Tween(v, {TextTransparency = 0}, 0.5)
+            elseif v:IsA("ImageLabel") then 
+                Utils.Tween(v, {ImageTransparency = 0}, 0.5)
+            elseif v:IsA("UIStroke") then 
+                Utils.Tween(v, {Transparency = 0}, 0.5) 
+            end
         end
     end
 end
