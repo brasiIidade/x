@@ -1,6 +1,6 @@
 return {
     silent = "silent.lua",
-    hitbox = "hitbox.lua",
+    hitbox = "hitbox2.lua",
     esp = "esp.lua",
     tas = "tas.lua",
     jj = "jj.lua",
