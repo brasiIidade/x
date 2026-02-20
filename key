@@ -371,18 +371,19 @@ local function BuildUI()
     end
 
     local closeBtn = Instance.new("TextButton")
+    closeBtn.Name = "CloseBtn"
     closeBtn.Size = UDim2.fromOffset(30, 30)
     closeBtn.Position = UDim2.new(1, -35, 0, 5)
     closeBtn.BackgroundTransparency = 1
     closeBtn.Text = "×" 
-    closeBtn.TextColor3 = Configuration.Colors.TextSec
+    closeBtn.TextColor3 = Color3.fromRGB(255, 60, 60)
     closeBtn.TextSize = 24
     closeBtn.Font = Enum.Font.GothamMedium
     closeBtn.TextTransparency = 1
     closeBtn.Parent = main
     
-    closeBtn.MouseEnter:Connect(function() Utils.Tween(closeBtn, {TextColor3 = Configuration.Colors.TextMain}, 0.2) end)
-    closeBtn.MouseLeave:Connect(function() Utils.Tween(closeBtn, {TextColor3 = Configuration.Colors.TextSec}, 0.2) end)
+    closeBtn.MouseEnter:Connect(function() Utils.Tween(closeBtn, {TextColor3 = Color3.fromRGB(255, 100, 100)}, 0.2) end)
+    closeBtn.MouseLeave:Connect(function() Utils.Tween(closeBtn, {TextColor3 = Color3.fromRGB(255, 60, 60)}, 0.2) end)
     closeBtn.MouseButton1Click:Connect(function() PlayAudio(ConfigData.Sounds.Click) CloseMenu() end)
 
     local content = Instance.new("Frame")
@@ -530,7 +531,7 @@ local function BuildUI()
     local redeemIcon = Instance.new("ImageLabel")
     redeemIcon.Size = UDim2.fromOffset(16, 16)
     redeemIcon.Image = ConfigData.Icons.VerifyCheck
-    redeemIcon.ImageColor3 = Configuration.Colors.TextMain
+    redeemIcon.ImageColor3 = Color3.fromRGB(0,0,0)
     redeemIcon.BackgroundTransparency = 1
     redeemIcon.ImageTransparency = 1
     redeemIcon.Parent = redeem
@@ -539,7 +540,7 @@ local function BuildUI()
     redeemText.Size = UDim2.new(0, 0, 0, 20)
     redeemText.AutomaticSize = Enum.AutomaticSize.X
     redeemText.Text = ConfigData.Texts.BtnVerify
-    redeemText.TextColor3 = Configuration.Colors.TextMain
+    redeemText.TextColor3 = Color3.fromRGB(0,0,0)
     redeemText.Font = Enum.Font.GothamBold
     redeemText.TextSize = 13
     redeemText.BackgroundTransparency = 1
