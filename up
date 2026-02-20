@@ -877,6 +877,17 @@ do
         end
     })
 
+MainSection:Toggle({
+        Title = "Team check",
+        Desc = cor({"Ignora", "#FF0000"}, {" jogadores do mesmo time"}),
+        Icon = "lucide:shield-check",
+        Value = Config.TeamCheck,
+        Flag = "TeamCheckHitbox",
+        Callback = function(v)
+            Config.TeamCheck = v
+        end
+    })
+
     local ConfigSection = criarsection(HitboxExpander, "Configuração", "Ajustes visuais e técnicos", "lucide:settings-2", false)
 
     ConfigSection:Input({
@@ -934,17 +945,6 @@ do
     })
 
     local TeamSection = criarsection(HitboxExpander, "Filtros", "Configuração de times", "lucide:users", false)
-
-    TeamSection:Toggle({
-        Title = "Team check",
-        Desc = cor({"Ignora", "#FF0000"}, {" jogadores do mesmo time"}),
-        Icon = "lucide:shield-check",
-        Value = Config.TeamCheck,
-        Flag = "TeamCheckHitbox",
-        Callback = function(v)
-            Config.TeamCheck = v
-        end
-    })
 
     TeamSection:Toggle({
         Title = "Filtrar por time",
