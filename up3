@@ -111,6 +111,10 @@ end
 local OldIndex
 OldIndex = hookmetamethod(game, "__index", NewCClosure(function(self, k)
     if not CheckCaller() then
+        if k == "Size" and typeof(self) == "Instance" and self:IsA("BasePart") and self.Name == "HumanoidRootPart" then
+            local ghost = GetGhost(self, k)
+            return ghost ~= nil and ghost or Vector3.new(2, 2, 1)
+        end
         local ghost = GetGhost(self, k)
         if ghost ~= nil then return ghost end
     end
@@ -119,16 +123,16 @@ end))
 
 local OldNewIndex
 OldNewIndex = hookmetamethod(game, "__newindex", NewCClosure(function(self, k, v)
-    if not CheckCaller() then
+    if not CheckCaller() and typeof(self) == "Instance" then
         local isHum = self:IsA("Humanoid")
         local isRoot = self:IsA("BasePart") and self.Name == "HumanoidRootPart"
 
         if isHum and k == "WalkSpeed" then
             SetGhost(self, k, v)
-            if Config.SpeedEnabled then return end
+            if Config and Config.SpeedEnabled then return end
         elseif isHum and k == "JumpPower" then
             SetGhost(self, k, v)
-            if Config.JumpEnabled then return end
+            if Config and Config.JumpEnabled then return end
         elseif isRoot and k == "Size" then
             SetGhost(self, k, v)
             return
@@ -151,8 +155,16 @@ local function InitSpoof(char)
     end
 end
 
-if LocalPlayer.Character then InitSpoof(LocalPlayer.Character) end
-LocalPlayer.CharacterAdded:Connect(InitSpoof)
+local function HandlePlayer(p)
+    if p.Character then InitSpoof(p.Character) end
+    p.CharacterAdded:Connect(InitSpoof)
+end
+
+local plrs = game:GetService("Players")
+for _, p in ipairs(plrs:GetPlayers()) do
+    HandlePlayer(p)
+end
+plrs.PlayerAdded:Connect(HandlePlayer)
 
 --// ui
 local UI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
