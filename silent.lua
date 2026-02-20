@@ -17,6 +17,17 @@ local raycast = clonefunction(Services.Workspace.Raycast)
 local wts = clonefunction(Camera.WorldToScreenPoint)
 local get_mouse = clonefunction(Services.UserInputService.GetMouseLocation)
 
+local PartMapping = {
+    ["Cabeça"] = {"Head"},
+    ["Tronco"] = {"Torso", "UpperTorso", "LowerTorso", "HumanoidRootPart"},
+    ["Braço direito"] = {"Right Arm", "RightUpperArm", "RightLowerArm", "RightHand"},
+    ["Braço esquerdo"] = {"Left Arm", "LeftUpperArm", "LeftLowerArm", "LeftHand"},
+    ["Perna direita"] = {"Right Leg", "RightUpperLeg", "RightLowerLeg", "RightFoot"},
+    ["Perna esquerda"] = {"Left Leg", "LeftUpperLeg", "LeftLowerLeg", "LeftFoot"}
+}
+
+local AllCategories = {"Cabeça", "Tronco", "Braço direito", "Braço esquerdo", "Perna direita", "Perna esquerda"}
+
 local Visuals = {
     Gui = nil,
     Circle = nil,
@@ -119,6 +130,11 @@ local function GetTarget(config)
     local maxDist = config.MaxDistance
     local priority = config.TargetPriority
     local camPos = Camera.CFrame.Position
+    
+    local tParts = config.TargetPart
+    if type(tParts) ~= "table" or #tParts == 0 then tParts = {"Cabeça"} end
+
+    local isRandom = table.find(tParts, "Aleatório")
 
     for _, v in ipairs(Services.Players:GetPlayers()) do
         if v == LocalPlayer then continue end
@@ -140,40 +156,58 @@ local function GetTarget(config)
         
         if (r.Position - camPos).Magnitude > maxDist then continue end
         
-        local tName = "Head"
-        local tParts = config.TargetPart
-        if type(tParts) == "table" and #tParts > 0 then
-            local pick = tParts[math.random(1, #tParts)]
-            if pick == "Random" then
-                tName = (math.random() > 0.5) and "Head" or "HumanoidRootPart"
-            else
-                tName = pick == "Torso" and "HumanoidRootPart" or pick
+        local partsToCheck = {}
+        if isRandom then
+            local pList = {}
+            for i = 1, #AllCategories do
+                local mapped = PartMapping[AllCategories[i]]
+                for j = 1, #mapped do
+                    local p = c:FindFirstChild(mapped[j])
+                    if p then table.insert(pList, p) end
+                end
+            end
+            if #pList > 0 then
+                table.insert(partsToCheck, pList[math.random(1, #pList)])
+            end
+        else
+            for i = 1, #tParts do
+                local mapped = PartMapping[tParts[i]]
+                if mapped then
+                    for j = 1, #mapped do
+                        local p = c:FindFirstChild(mapped[j])
+                        if p then table.insert(partsToCheck, p) end
+                    end
+                end
             end
         end
         
-        local pObj = c:FindFirstChild(tName) or r
-        local sPos, onScreen = wts(Camera, pObj.Position)
+        if #partsToCheck == 0 then table.insert(partsToCheck, r) end
         
-        if onScreen then
-            local dist = (mouse - Vector2.new(sPos.X, sPos.Y)).Magnitude
-            if dist <= config.FOVSize then
-                if IsVisible(pObj, c, config) then
-                    local isCurrent = (State.Target == c)
-                    local pPhysDist = (pObj.Position - camPos).Magnitude
-                    local effectivePhys = isCurrent and (pPhysDist - 5) or pPhysDist
+        for i = 1, #partsToCheck do
+            local pObj = partsToCheck[i]
+            local sPos, onScreen = wts(Camera, pObj.Position)
+            
+            if onScreen then
+                local dist = (mouse - Vector2.new(sPos.X, sPos.Y)).Magnitude
+                if dist <= config.FOVSize then
+                    if IsVisible(pObj, c, config) then
+                        local isCurrent = (State.Target == c)
+                        local pPhysDist = (pObj.Position - camPos).Magnitude
+                        local effectivePhys = isCurrent and (pPhysDist - 5) or pPhysDist
 
-                    if priority == "Health" then
-                        if h.Health < bestHealth or (h.Health == bestHealth and effectivePhys < bestPhys) then
-                            bestHealth = h.Health
-                            bestPhys = effectivePhys
-                            bestT = c
-                            bestP = pObj
-                        end
-                    else
-                        if effectivePhys < bestPhys then
-                            bestPhys = effectivePhys
-                            bestT = c
-                            bestP = pObj
+                        if priority == "Health" then
+                            if h.Health < bestHealth or (h.Health == bestHealth and effectivePhys < bestPhys) then
+                                bestHealth = h.Health
+                                bestPhys = effectivePhys
+                                bestT = c
+                                bestP = pObj
+                            end
+                        else
+                            if effectivePhys < bestPhys then
+                                bestPhys = effectivePhys
+                                bestT = c
+                                bestP = pObj
+                            end
                         end
                     end
                 end
