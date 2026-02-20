@@ -387,6 +387,7 @@ local function MainLoop()
         while FarmLogic.Enabled and IsOpen() do
             if CheckSafe() then task.wait(0.1) continue end
             if GetMoneyBag() >= 4000 then
+                task.wait(8)
                 SellMoney(false)
                 if not IsOpen() then break end
             else
