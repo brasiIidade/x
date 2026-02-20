@@ -8,7 +8,7 @@ return {
     char = "char.lua",
     chatgpt = "chatgpt.lua",
     player = "player.lua",
-    tevez = "tevez3.lua",
+    tevez = "tevez.lua",
     delta = "delta.lua",
     soucre = "soucre.lua",
     novaera = "novo"
