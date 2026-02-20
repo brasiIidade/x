@@ -16,7 +16,7 @@ getgenv().NovaEraLogic = lgc
 
 local off = Vector3.new(0, -9, 0)
 local sCf = nil
-local v0 = Vector3.zero
+local fS = nil
 local cTw = nil
 
 local function gMon()
@@ -25,24 +25,31 @@ local function gMon()
     return m and (tonumber(m.Value or m.Text) or 0) or 0
 end
 
-local function cGrav(c)
-    if c then
-        local hrp = c:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            local bv = hrp:FindFirstChild("AG")
-            if bv then bv:Destroy() end
-        end
+local function dSt()
+    if fS then
+        if cTw then cTw:Cancel() cTw = nil end
+        local hum = lp.Character and lp.Character:FindFirstChild("Humanoid")
+        if hum then hum.Sit = false end
+        fS:Destroy()
+        fS = nil
     end
-    if cTw then cTw:Cancel() cTw = nil end
 end
 
-local function sGrav(hrp)
-    if not hrp:FindFirstChild("AG") then
-        local bv = Instance.new("BodyVelocity")
-        bv.Name, bv.Velocity, bv.MaxForce, bv.P, bv.Parent = "AG", v0, Vector3.new(9e9, 9e9, 9e9), 9000, hrp
+local function gSt(cf)
+    if not fS then
+        fS = Instance.new("Seat")
+        fS.Name = "FSeat"
+        fS.Transparency = 1
+        fS.CanCollide = false
+        fS.Anchored = true
+        fS.CFrame = cf
+        fS.Parent = ws
     end
-    hrp.AssemblyLinearVelocity = v0
-    hrp.AssemblyAngularVelocity = v0
+    local hum = lp.Character and lp.Character:FindFirstChild("Humanoid")
+    if hum and not hum.Sit then
+        fS:Sit(hum)
+    end
+    return fS
 end
 
 local function gCls(tN)
@@ -75,35 +82,30 @@ local function gCls(tN)
 end
 
 local function twTo(pt, hum)
-    local c = lp.Character
-    local hrp = c and c:FindFirstChild("HumanoidRootPart")
+    local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
     if not hrp then return false end
     
-    sGrav(hrp)
-    
     local tCf = CFrame.new(pt.Position + off)
-    local d = (hrp.Position - tCf.Position).Magnitude
+    local st = gSt(hrp.CFrame)
     
+    local d = (st.Position - tCf.Position).Magnitude
     if d < 1.5 then 
-        hrp.CFrame = tCf
+        st.CFrame = tCf
         return true 
     end
     
-    local spd = 65
+    local spd = 100
     local ti = TweenInfo.new(d / spd, Enum.EasingStyle.Linear)
     
     if cTw then cTw:Cancel() end
-    cTw = ts:Create(hrp, ti, {CFrame = tCf})
+    cTw = ts:Create(st, ti, {CFrame = tCf})
     
     local cnn
     cnn = rs.Heartbeat:Connect(function()
         if not lgc.Enabled or hum.Health <= 0 or not pt.Parent then
             if cTw then cTw:Cancel() end
         else
-            sGrav(hrp)
-            for _, bp in ipairs(c:GetDescendants()) do
-                if bp:IsA("BasePart") then bp.CanCollide = false end
-            end
+            if not hum.Sit then st:Sit(hum) end
         end
     end)
     
@@ -124,15 +126,14 @@ function lgc.Toggle(s)
         lgc.SessionStart = m
         if hrp then
             sCf = hrp.CFrame
-            hrp.CFrame = CFrame.new(hrp.Position + off)
-            sGrav(hrp)
+            gSt(CFrame.new(hrp.Position + off))
         end
     else
-        cGrav(c)
+        dSt()
         lgc.TotalProfit = lgc.TotalProfit + (m - lgc.SessionStart)
         if sCf and hrp then
             hrp.CFrame = sCf
-            hrp.AssemblyLinearVelocity = v0
+            hrp.AssemblyLinearVelocity = Vector3.zero
         end
     end
 end
@@ -146,12 +147,9 @@ task.spawn(function()
     while true do
         if lgc.Enabled then
             local c = lp.Character
-            local hrp = c and c:FindFirstChild("HumanoidRootPart")
             local hum = c and c:FindFirstChild("Humanoid")
             
-            if hrp and hum and hum.Health > 0 then
-                sGrav(hrp)
-                
+            if hum and hum.Health > 0 then
                 local hasL = c:FindFirstChild("Lixo_model") ~= nil
                 local tN = hasL and "Lixeira" or "Lixo"
                 local prm = gCls(tN)
@@ -172,8 +170,7 @@ task.spawn(function()
                                 if chk ~= hasL then break end
                                 if tick() - sT > 5 then break end
                                 
-                                sGrav(hrp)
-                                hrp.CFrame = CFrame.new(pt.Position + off)
+                                if fS then fS.CFrame = CFrame.new(pt.Position + off) end
                                 fireproximityprompt(prm)
                                 task.wait(0.1)
                             until not prm.Parent or not prm.Enabled or not pt.Parent
@@ -185,7 +182,7 @@ task.spawn(function()
                     task.wait(0.1)
                 end
             else
-                cGrav(c)
+                dSt()
                 task.wait(0.5)
             end
         else
