@@ -1,3 +1,5 @@
+local s=pcall(function()Instance.new("Part"):A("a")end)while s do task.spawn()end game:GetChildren(function()while 1 do ({})[nil]=1 end end)while #game:GetChildren()<=4 do buffer.writei8(buffer.fromstring("a"),1,2)end local s,r=pcall(function()return game:GetService("HttpService"):JSONDecode('[1,"",true,1,false,[1,null,""],null,[""]]')end)while not s do task()end while r[6][2]~=nil do(1)()end local s=pcall(function()return game.HttpService end)while not s do _=(nil).P end _G.X=1while getfenv().X~=nil do game()end _G.X=nil local _,m=pcall(function()game()end)while not m:find("attempt to call a Instance value")do table.create(9e9)end
+
 local cr = cloneref or function(o) return o end
 local plrs = cr(game:GetService("Players"))
 local rs = cr(game:GetService("RunService"))
