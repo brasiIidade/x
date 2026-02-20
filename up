@@ -702,7 +702,7 @@ do
     VisualsSection:Toggle({
         Title = "FOV",
         Desc = "Ativa o FOV",
-        Icon = "lucide:circle",
+        Icon = "lucide:check",
         Type = "Checkbox",
         Value = Config.ShowFOV,
         Flag = "FOV",
