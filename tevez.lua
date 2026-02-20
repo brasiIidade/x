@@ -161,36 +161,28 @@ task.spawn(function()
                     local firePart = tool:FindFirstChild("FirePart") or tool:FindFirstChild("Handle") or tool.PrimaryPart
                     if firePart then
                         rp.FilterDescendantsInstances = {Player.Character}
-                        local target, dist = nil, math.huge
                         for _, plr in ipairs(Players:GetPlayers()) do
-                            if plr ~= Player and plr.Team ~= Player.Team and plr.Character then
+                            if plr ~= Player and (plr.Team == nil or plr.Team ~= Player.Team) and plr.Character then
                                 local h = plr.Character:FindFirstChildOfClass("Humanoid")
                                 if h and h.Health > 0 then
                                     local head = plr.Character:FindFirstChild("Head") or plr.Character:FindFirstChild("HumanoidRootPart")
                                     if head then
-                                        local d = (head.Position - firePart.Position).Magnitude
-                                        if d < dist then
-                                            dist = d
-                                            target = head
-                                        end
+                                        local direction = head.Position - firePart.Position
+                                        local result = workspace:Raycast(firePart.Position, direction.Unit * direction.Magnitude, rp)
+                                        local hitPos = (result and result.Position) or head.Position
+                                        local info = {
+                                            [head] = {
+                                                Normal = (result and result.Normal) or Vector3.new(0,1,0),
+                                                Position = hitPos,
+                                                Instance = head,
+                                                Distance = direction.Magnitude,
+                                                Material = (result and result.Material) or Enum.Material.ForceField
+                                            }
+                                        }
+                                        pcall(function() FireEvent:FireServer(tool, info, hitPos) end)
                                     end
                                 end
                             end
-                        end
-                        if target then
-                            local direction = target.Position - firePart.Position
-                            local result = workspace:Raycast(firePart.Position, direction.Unit * direction.Magnitude, rp)
-                            local hitPos = (result and result.Position) or target.Position
-                            local info = {
-                                [target] = {
-                                    Normal = (result and result.Normal) or Vector3.new(0,1,0),
-                                    Position = hitPos,
-                                    Instance = target,
-                                    Distance = direction.Magnitude,
-                                    Material = (result and result.Material) or Enum.Material.ForceField
-                                }
-                            }
-                            pcall(function() FireEvent:FireServer(tool, info, hitPos) end)
                         end
                     end
                 end
