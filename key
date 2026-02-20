@@ -1,5 +1,4 @@
--- anti
-
+-- [[ ANTI-SKID / PROTEÇÕES ]] --
 local function Finalizar(Mensagem)
     print(Mensagem)
     task.wait(0.5)
@@ -79,12 +78,22 @@ if #game:GetChildren() <= 4 then
     Finalizar("skid de EB :(")
 end
 
+-- [[ INICIALIZAÇÃO JUNKIE SDK ]] --
 local Junkie = loadstring(game:HttpGet("https://jnkie.com/sdk/library.lua"))()
 Junkie.service = "key"
 Junkie.identifier = "11133"
 Junkie.provider = "key"
 
--- [[ CONFIGURAÇÃO ]] --
+-- [[ SERVIÇOS ]] --
+local CoreGui = gethui and gethui() or game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local ContentProvider = game:GetService("ContentProvider")
+local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
+local SoundService = game:GetService("SoundService")
+
+-- [[ CONFIGURAÇÕES GERAIS ]] --
 local ConfigData = {
     Texts = {
         Title = "Key system",
@@ -109,139 +118,67 @@ local ConfigData = {
         Error = "rbxassetid://4590662766",
         Hover = "rbxassetid://6895079632",
         Click = "rbxassetid://4590657391"
+    },
+    Icons = {
+        Logo = "rbxthumb://type=Asset&id=88026679106109&w=420&h=420",
+        KeyInput = "rbxassetid://10723415903",
+        VerifyCheck = "rbxassetid://10709790644",
+        LinkExternal = "rbxassetid://10734950309",
+        ToastSuccess = "rbxassetid://10709790537",
+        ToastError = "rbxassetid://10747384394",
+        Close = "rbxassetid://10747384394"
     }
 }
 
--- [[ ÍCONES ]] --
-local Icons = {
-    Logo = "rbxthumb://type=Asset&id=88026679106109&w=420&h=420",
-    KeyInput = "rbxassetid://10723415903",
-    VerifyCheck = "rbxassetid://10709790644",
-    LinkExternal = "rbxassetid://10734950309",
-    ToastSuccess = "rbxassetid://10709790537",
-    ToastError = "rbxassetid://10747384394",
-    Close = "rbxassetid://10747384394"
-}
+-- [[ UTILITÁRIOS ]] --
+local Utils = {}
 
-local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
-local ContentProvider = game:GetService("ContentProvider")
-local Players = game:GetService("Players")
-local Lighting = game:GetService("Lighting")
-local SoundService = game:GetService("SoundService")
-
--- [[ FUNÇÃO DE PRELOAD ]] --
-local function LoadAssets()
-    local assetsToLoad = {}
-    for _, id in pairs(Icons) do
-        local img = Instance.new("ImageLabel")
-        img.Image = id
-        table.insert(assetsToLoad, img)
-    end
-    pcall(function()
-        ContentProvider:PreloadAsync(assetsToLoad)
-    end)
-    for _, instance in pairs(assetsToLoad) do
-        instance:Destroy()
-    end
-end
-
-task.spawn(LoadAssets)
-
-local function PlayAudio(id)
-    local sound = Instance.new("Sound")
-    sound.SoundId = id
-    sound.Volume = 1.2
-    sound.Parent = SoundService
-    sound.PlayOnRemove = true
-    sound:Destroy()
-end
-
-local function GetDynamicGreeting()
-    local hour = tonumber(os.date("%H"))
-    local playerName = Players.LocalPlayer.DisplayName
-    if hour >= 5 and hour < 12 then
-        return string.format(ConfigData.Texts.GreetingMorning, playerName)
-    elseif hour >= 12 and hour < 18 then
-        return string.format(ConfigData.Texts.GreetingAfternoon, playerName)
-    else
-        return string.format(ConfigData.Texts.GreetingEvening, playerName)
-    end
-end
-
-local function hasFileSystemSupport()
-    local hasWritefile = pcall(function() return type(writefile) == "function" end)
-    local hasReadfile = pcall(function() return type(readfile) == "function" end)
-    local hasIsfile = pcall(function() return type(isfile) == "function" end)
-    return hasWritefile and hasReadfile and hasIsfile
-end
-
-local fileSystemSupported = hasFileSystemSupport()
-
-local function saveVerifiedKey(key)
-    if not fileSystemSupported then return false end
-    local ok = pcall(function() writefile("michigun.key.txt", key) end)
-    return ok
-end
-
-local function loadVerifiedKey()
-    if not fileSystemSupported then return nil end
-    local ok, content = pcall(function() return readfile("michigun.key.txt") end)
-    if not ok or not content then return nil end
-    return content
-end
-
-local function isMobile()
+function Utils.IsMobile()
     return UserInputService.TouchEnabled and not UserInputService.MouseEnabled
 end
 
--- [[ CONFIGURAÇÃO VISUAL ]] --
 local Configuration = {
-    ScreenGuiName = "JunkieKeySystemCompact",
+    ScreenGuiName = "\0", -- Nome ofuscado para CoreGui
     Window = {
-        -- Tamanho reduzido conforme solicitado
-        Size = isMobile() and UDim2.new(0.8, 0, 0, 380) or UDim2.new(0, 300, 0, 400)
+        Size = Utils.IsMobile() and UDim2.new(0.85, 0, 0, 360) or UDim2.new(0, 320, 0, 380)
     }, 
     Colors = {
-        -- Paleta mais escura (Deep Dark)
-        Bg = Color3.fromRGB(10, 10, 12), 
-        Surface = Color3.fromRGB(18, 18, 22),
-        SurfaceHighlight = Color3.fromRGB(28, 28, 32),
-        TextMain = Color3.fromRGB(230, 230, 235),
-        TextSec = Color3.fromRGB(140, 140, 150),
-        TextMuted = Color3.fromRGB(80, 80, 90),
-        Border = Color3.fromRGB(35, 35, 40),
-        BorderHighlight = Color3.fromRGB(60, 60, 70),
-        StatusIdle = Color3.fromRGB(100, 100, 110),
-        StatusSuccess = Color3.fromRGB(46, 204, 113),
-        StatusError = Color3.fromRGB(231, 76, 60),
-        StatusVerifying = Color3.fromRGB(241, 196, 15),
-        ButtonVerify = Color3.fromRGB(46, 204, 113),
-        ButtonVerifyHover = Color3.fromRGB(39, 174, 96)
+        Bg = Color3.fromRGB(12, 12, 14), 
+        Surface = Color3.fromRGB(20, 20, 24),
+        SurfaceHighlight = Color3.fromRGB(30, 30, 35),
+        TextMain = Color3.fromRGB(240, 240, 245),
+        TextSec = Color3.fromRGB(150, 150, 160),
+        TextMuted = Color3.fromRGB(90, 90, 100),
+        Border = Color3.fromRGB(40, 40, 45),
+        BorderHighlight = Color3.fromRGB(70, 70, 80),
+        StatusIdle = Color3.fromRGB(110, 110, 120),
+        StatusSuccess = Color3.fromRGB(50, 215, 120),
+        StatusError = Color3.fromRGB(240, 80, 70),
+        StatusVerifying = Color3.fromRGB(250, 200, 20),
+        ButtonVerify = Color3.fromRGB(255, 255, 255),
+        ButtonVerifyHover = Color3.fromRGB(220, 220, 220)
     },
     Animations = {
-        Medium = 0.4,
-        Intro = 0.7,
+        Medium = 0.35,
+        Intro = 0.6,
         Outro = 0.4
     }
 }
 
-local Utils = {}
-
-Utils.Tween = function(obj, props, time, style, dir)
+function Utils.Tween(obj, props, time, style, dir)
     local t = TweenService:Create(obj, TweenInfo.new(time or 0.3, style or Enum.EasingStyle.Quint, dir or Enum.EasingDirection.Out), props)
     t:Play()
     return t
 end
 
-Utils.Round = function(obj, radius)
+function Utils.Round(obj, radius)
     local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, radius or 12)
+    c.CornerRadius = UDim.new(0, radius or 8)
     c.Parent = obj
     return c
 end
 
-Utils.CreateStroke = function(parent, color, thickness, transparency)
+function Utils.Stroke(parent, color, thickness, transparency)
     local stroke = Instance.new("UIStroke")
     stroke.Color = color or Configuration.Colors.Border
     stroke.Thickness = thickness or 1
@@ -251,12 +188,8 @@ Utils.CreateStroke = function(parent, color, thickness, transparency)
     return stroke
 end
 
--- [[ FUNÇÃO DRAGABLE ]] --
-Utils.MakeDraggable = function(gui)
-    local dragging
-    local dragInput
-    local dragStart
-    local startPos
+function Utils.MakeDraggable(gui)
+    local dragging, dragInput, dragStart, startPos
 
     local function update(input)
         local delta = input.Position - dragStart
@@ -290,55 +223,90 @@ Utils.MakeDraggable = function(gui)
     end)
 end
 
-local function SetBlur(enabled)
-    local blur = Lighting:FindFirstChild("JunkieBlurEnhanced")
-    if enabled then
-        if not blur then
-            blur = Instance.new("BlurEffect")
-            blur.Name = "JunkieBlurEnhanced"
-            blur.Size = 0
-            blur.Parent = Lighting
-        end
-        Utils.Tween(blur, {Size = 15}, Configuration.Animations.Intro, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
-    elseif blur then
-        Utils.Tween(blur, {Size = 0}, Configuration.Animations.Outro, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-        task.delay(Configuration.Animations.Outro + 0.1, function() if blur then blur:Destroy() end end)
+local function PlayAudio(id)
+    local sound = Instance.new("Sound")
+    sound.SoundId = id
+    sound.Volume = 1
+    sound.Parent = SoundService
+    sound.PlayOnRemove = true
+    sound:Destroy()
+end
+
+local function GetDynamicGreeting()
+    local hour = tonumber(os.date("%H"))
+    local playerName = Players.LocalPlayer.DisplayName
+    if hour >= 5 and hour < 12 then
+        return string.format(ConfigData.Texts.GreetingMorning, playerName)
+    elseif hour >= 12 and hour < 18 then
+        return string.format(ConfigData.Texts.GreetingAfternoon, playerName)
+    else
+        return string.format(ConfigData.Texts.GreetingEvening, playerName)
     end
 end
 
--- SISTEMA DE NOTIFICAÇÃO
-local ToastSystem = {ActiveToasts = {}, MaxToasts = 3, ToastSpacing = 10}
+-- [[ FILE SYSTEM ]] --
+local function hasFileSystemSupport()
+    return pcall(function() return type(writefile) == "function" and type(readfile) == "function" and type(isfile) == "function" end)
+end
 
-ToastSystem.Create = function(parent, message, toastType, duration)
+local fsSupported = hasFileSystemSupport()
+
+local function saveVerifiedKey(key)
+    if fsSupported then pcall(writefile, "michigun.key.txt", key) end
+end
+
+local function loadVerifiedKey()
+    if not fsSupported then return nil end
+    local ok, content = pcall(readfile, "michigun.key.txt")
+    return ok and content or nil
+end
+
+-- [[ PRELOAD ]] --
+task.spawn(function()
+    local assets = {}
+    for _, id in pairs(ConfigData.Icons) do
+        local img = Instance.new("ImageLabel")
+        img.Image = id
+        table.insert(assets, img)
+    end
+    pcall(function() ContentProvider:PreloadAsync(assets) end)
+    for _, img in pairs(assets) do img:Destroy() end
+end)
+
+-- [[ SISTEMA DE NOTIFICAÇÕES (TOAST) ]] --
+local ToastSystem = {ActiveToasts = {}, MaxToasts = 3, Spacing = 10}
+
+function ToastSystem.Create(parent, message, typeStr, duration)
     if #ToastSystem.ActiveToasts >= ToastSystem.MaxToasts then
         local oldest = table.remove(ToastSystem.ActiveToasts, 1)
         if oldest and oldest.Parent then oldest:Destroy() end
     end
     
-    local isError = toastType == "error"
-    local iconId = isError and Icons.ToastError or Icons.ToastSuccess
+    local isError = typeStr == "error"
+    local iconId = isError and ConfigData.Icons.ToastError or ConfigData.Icons.ToastSuccess
     local accentColor = isError and Configuration.Colors.StatusError or Configuration.Colors.StatusSuccess
 
     local toast = Instance.new("Frame")
-    toast.Name = tick()
-    toast.Size = UDim2.new(0, 0, 0, 45) -- Menor
-    toast.Position = UDim2.new(0.5, 0, 0, 40)
+    toast.Name = "Toast"
+    toast.Size = UDim2.new(0, 0, 0, 40)
+    toast.Position = UDim2.new(0.5, 0, 0, 50)
     toast.AnchorPoint = Vector2.new(0.5, 0)
     toast.BackgroundColor3 = Configuration.Colors.Surface
-    toast.ZIndex = 300
+    toast.ZIndex = 100
     toast.ClipsDescendants = true
     toast.Parent = parent
-    Utils.Round(toast, 8)
-    Utils.CreateStroke(toast, Configuration.Colors.Border, 1, 0)
+    Utils.Round(toast, 6)
+    Utils.Stroke(toast, Configuration.Colors.Border, 1, 0)
     
     local iconContainer = Instance.new("Frame")
-    iconContainer.Size = UDim2.new(0, 45, 1, 0)
-    iconContainer.BackgroundColor3 = Color3.new(0,0,0)
-    iconContainer.BackgroundTransparency = 0.8
+    iconContainer.Size = UDim2.new(0, 40, 1, 0)
+    iconContainer.BackgroundColor3 = accentColor
+    iconContainer.BackgroundTransparency = 0.9
+    iconContainer.BorderSizePixel = 0
     iconContainer.Parent = toast
     
     local iconImg = Instance.new("ImageLabel")
-    iconImg.Size = UDim2.fromOffset(20, 20)
+    iconImg.Size = UDim2.fromOffset(18, 18)
     iconImg.AnchorPoint = Vector2.new(0.5, 0.5)
     iconImg.Position = UDim2.fromScale(0.5, 0.5)
     iconImg.BackgroundTransparency = 1
@@ -347,31 +315,29 @@ ToastSystem.Create = function(parent, message, toastType, duration)
     iconImg.Parent = iconContainer
 
     local text = Instance.new("TextLabel")
-    text.Size = UDim2.new(1, -55, 1, 0)
-    text.Position = UDim2.new(0, 55, 0, 0)
+    text.Size = UDim2.new(1, -50, 1, 0)
+    text.Position = UDim2.new(0, 50, 0, 0)
     text.BackgroundTransparency = 1
     text.Text = tostring(message)
     text.TextColor3 = Configuration.Colors.TextMain
     text.TextSize = 12
     text.Font = Enum.Font.GothamMedium
     text.TextXAlignment = Enum.TextXAlignment.Left
-    text.TextYAlignment = Enum.TextYAlignment.Center
-    text.TextWrapped = true
-    text.ZIndex = 302
+    text.ZIndex = 101
     text.Parent = toast
 
     table.insert(ToastSystem.ActiveToasts, toast)
     ToastSystem.RepositionToasts()
     
-    local width = isMobile() and 260 or 280
-    Utils.Tween(toast, {Size = UDim2.new(0, width, 0, 45)}, Configuration.Animations.Medium, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+    local width = Utils.IsMobile() and 260 or 280
+    Utils.Tween(toast, {Size = UDim2.new(0, width, 0, 40)}, Configuration.Animations.Medium, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
     
     task.delay(duration or 3.5, function()
         if toast.Parent then
-            Utils.Tween(toast, {Position = UDim2.new(0.5, 0, 0, -60), BackgroundTransparency = 1}, Configuration.Animations.Medium)
-            if text then Utils.Tween(text, {TextTransparency = 1}, Configuration.Animations.Medium) end
-            if iconImg then Utils.Tween(iconImg, {ImageTransparency = 1}, Configuration.Animations.Medium) end
-            if toast:FindFirstChild("UIStroke") then Utils.Tween(toast.UIStroke, {Transparency = 1}, Configuration.Animations.Medium) end
+            Utils.Tween(toast, {Position = UDim2.new(0.5, 0, 0, -50), BackgroundTransparency = 1}, Configuration.Animations.Medium)
+            Utils.Tween(text, {TextTransparency = 1}, Configuration.Animations.Medium)
+            Utils.Tween(iconImg, {ImageTransparency = 1}, Configuration.Animations.Medium)
+            Utils.Tween(toast.UIStroke, {Transparency = 1}, Configuration.Animations.Medium)
             
             for i, t in ipairs(ToastSystem.ActiveToasts) do
                 if t == toast then table.remove(ToastSystem.ActiveToasts, i) break end
@@ -383,50 +349,57 @@ ToastSystem.Create = function(parent, message, toastType, duration)
     end)
 end
 
-ToastSystem.RepositionToasts = function()
+function ToastSystem.RepositionToasts()
     for i, toast in ipairs(ToastSystem.ActiveToasts) do
-        local targetY = 40 + ((i - 1) * (45 + ToastSystem.ToastSpacing))
+        local targetY = 50 + ((i - 1) * (40 + ToastSystem.Spacing))
         Utils.Tween(toast, {Position = UDim2.new(0.5, 0, 0, targetY)}, Configuration.Animations.Medium)
     end
 end
 
-local function Build()
-    local parent = game:GetService("CoreGui")
-    local old = parent:FindFirstChild(Configuration.ScreenGuiName)
-    if old then old:Destroy() end
+-- [[ CONSTRUTOR DA UI ]] --
+local function BuildUI()
+    if CoreGui:FindFirstChild(Configuration.ScreenGuiName) then
+        CoreGui[Configuration.ScreenGuiName]:Destroy()
+    end
     
     local screen = Instance.new("ScreenGui")
     screen.Name = Configuration.ScreenGuiName
     screen.ResetOnSpawn = false
     screen.IgnoreGuiInset = true
-    screen.Parent = parent
+    screen.Parent = CoreGui
     
-    -- Fundo levemente mais escuro
     local background = Instance.new("Frame")
     background.Size = UDim2.fromScale(1, 1)
-    background.BackgroundColor3 = Color3.new(0,0,0)
-    background.BackgroundTransparency = 0.4
+    background.BackgroundColor3 = Color3.new(0, 0, 0)
+    background.BackgroundTransparency = 0.5
     background.Parent = screen
     
     local main = Instance.new("Frame")
     main.Size = Configuration.Window.Size
-    main.Position = UDim2.new(0.5, 0, 0.5, 0) 
+    main.Position = UDim2.fromScale(0.5, 0.5)
     main.AnchorPoint = Vector2.new(0.5, 0.5)
     main.BackgroundColor3 = Configuration.Colors.Bg
     main.BackgroundTransparency = 1 
     main.ClipsDescendants = true
     main.Parent = screen
-    Utils.Round(main, 16)
-    
-    -- Ativa o Drag
+    Utils.Round(main, 12)
     Utils.MakeDraggable(main)
     
-    local mainStroke = Utils.CreateStroke(main, Configuration.Colors.Border, 1, 1)
+    local mainStroke = Utils.Stroke(main, Configuration.Colors.Border, 1, 1)
+
+    local blur = Lighting:FindFirstChild("MichigunBlur")
+    if not blur then
+        blur = Instance.new("BlurEffect")
+        blur.Name = "MichigunBlur"
+        blur.Size = 0
+        blur.Parent = Lighting
+    end
 
     local function CloseMenu()
-        SetBlur(false)
-        Utils.Tween(main, {Position = UDim2.new(0.5, 0, 0.5, 100), BackgroundTransparency = 1}, Configuration.Animations.Outro, Enum.EasingStyle.Back, Enum.EasingDirection.In)
-        if mainStroke then Utils.Tween(mainStroke, {Transparency = 1}, Configuration.Animations.Outro) end
+        Utils.Tween(blur, {Size = 0}, Configuration.Animations.Outro)
+        Utils.Tween(background, {BackgroundTransparency = 1}, Configuration.Animations.Outro)
+        Utils.Tween(main, {Position = UDim2.new(0.5, 0, 0.5, 50), BackgroundTransparency = 1}, Configuration.Animations.Outro, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+        Utils.Tween(mainStroke, {Transparency = 1}, Configuration.Animations.Outro)
         
         for _, v in pairs(main:GetDescendants()) do
              if v:IsA("GuiObject") then
@@ -436,66 +409,58 @@ local function Build()
                  if v:IsA("UIStroke") then Utils.Tween(v, {Transparency = 1}, 0.3) end
              end
         end
-        task.delay(Configuration.Animations.Outro + 0.1, function() if screen and screen.Parent then screen:Destroy() end end)
+        task.delay(Configuration.Animations.Outro + 0.1, function() 
+            if screen then screen:Destroy() end 
+            if blur then blur:Destroy() end
+        end)
     end
 
     local closeBtn = Instance.new("TextButton")
-    closeBtn.Name = "CloseBtn"
     closeBtn.Size = UDim2.fromOffset(30, 30)
-    closeBtn.Position = UDim2.new(1, -30, 0, 0)
+    closeBtn.Position = UDim2.new(1, -35, 0, 5)
     closeBtn.BackgroundTransparency = 1
     closeBtn.Text = "×" 
     closeBtn.TextColor3 = Configuration.Colors.TextSec
-    closeBtn.TextSize = 22
+    closeBtn.TextSize = 24
     closeBtn.Font = Enum.Font.GothamMedium
     closeBtn.TextTransparency = 1
     closeBtn.Parent = main
     
-    closeBtn.MouseEnter:Connect(function() 
-        Utils.Tween(closeBtn, {TextColor3 = Configuration.Colors.TextMain}, 0.2)
-    end)
-    closeBtn.MouseLeave:Connect(function() 
-        Utils.Tween(closeBtn, {TextColor3 = Configuration.Colors.TextSec}, 0.2)
-    end)
-    closeBtn.MouseButton1Click:Connect(function()
-        PlayAudio(ConfigData.Sounds.Click)
-        CloseMenu()
-    end)
+    closeBtn.MouseEnter:Connect(function() Utils.Tween(closeBtn, {TextColor3 = Configuration.Colors.TextMain}, 0.2) end)
+    closeBtn.MouseLeave:Connect(function() Utils.Tween(closeBtn, {TextColor3 = Configuration.Colors.TextSec}, 0.2) end)
+    closeBtn.MouseButton1Click:Connect(function() PlayAudio(ConfigData.Sounds.Click) CloseMenu() end)
 
     local content = Instance.new("Frame")
-    content.Name = "Content"
-    content.Size = UDim2.new(1, 0, 1, 0)
+    content.Size = UDim2.fromScale(1, 1)
     content.BackgroundTransparency = 1
     content.Parent = main
     
-    -- Logo reduzido para economizar espaço
     local logoContainer = Instance.new("Frame")
-    logoContainer.Size = UDim2.fromOffset(80, 80)
-    logoContainer.Position = UDim2.new(0.5, 0, 0.12, 0)
+    logoContainer.Size = UDim2.fromOffset(64, 64)
+    logoContainer.Position = UDim2.new(0.5, 0, 0.15, 0)
     logoContainer.AnchorPoint = Vector2.new(0.5, 0.5)
     logoContainer.BackgroundColor3 = Configuration.Colors.Surface
     logoContainer.BackgroundTransparency = 1
     logoContainer.Parent = content
-    Utils.Round(logoContainer, 40)
-    Utils.CreateStroke(logoContainer, Configuration.Colors.Border, 1, 1) 
+    Utils.Round(logoContainer, 32)
+    Utils.Stroke(logoContainer, Configuration.Colors.Border, 1, 1) 
     
     local sIcon = Instance.new("ImageLabel")
-    sIcon.Size = UDim2.fromScale(0.55, 0.55)
+    sIcon.Size = UDim2.fromScale(0.6, 0.6)
     sIcon.Position = UDim2.fromScale(0.5, 0.5)
     sIcon.AnchorPoint = Vector2.new(0.5, 0.5)
-    sIcon.Image = Icons.Logo
+    sIcon.Image = ConfigData.Icons.Logo
     sIcon.ScaleType = Enum.ScaleType.Fit
     sIcon.BackgroundTransparency = 1
     sIcon.ImageTransparency = 1
     sIcon.Parent = logoContainer
     
-    -- Textos
     local greetingLabel = Instance.new("TextLabel")
     greetingLabel.Size = UDim2.new(1, 0, 0, 20)
-    greetingLabel.Position = UDim2.new(0, 0, 0.30, 0)
+    greetingLabel.Position = UDim2.new(0, 0, 0.32, 0)
     greetingLabel.Text = GetDynamicGreeting()
     greetingLabel.TextColor3 = Configuration.Colors.TextMain
-    greetingLabel.TextSize = 15
+    greetingLabel.TextSize = 16
     greetingLabel.Font = Enum.Font.GothamBold
     greetingLabel.BackgroundTransparency = 1
     greetingLabel.TextTransparency = 1
@@ -503,29 +468,28 @@ local function Build()
 
     local subTitle = Instance.new("TextLabel")
     subTitle.Size = UDim2.new(1, 0, 0, 18)
-    subTitle.Position = UDim2.new(0, 0, 0.35, 0)
+    subTitle.Position = UDim2.new(0, 0, 0.38, 0)
     subTitle.Text = ConfigData.Texts.Subtitle
     subTitle.TextColor3 = Configuration.Colors.TextSec
-    subTitle.TextSize = 11
+    subTitle.TextSize = 12
     subTitle.Font = Enum.Font.Gotham
     subTitle.BackgroundTransparency = 1
     subTitle.TextTransparency = 1
     subTitle.Parent = content
     
-    -- Status Card
     local statusCard = Instance.new("Frame")
     statusCard.Size = UDim2.new(0.85, 0, 0, 36)
-    statusCard.Position = UDim2.new(0.5, 0, 0.47, 0)
+    statusCard.Position = UDim2.new(0.5, 0, 0.52, 0)
     statusCard.AnchorPoint = Vector2.new(0.5, 0.5)
     statusCard.BackgroundColor3 = Configuration.Colors.Surface
     statusCard.BackgroundTransparency = 1
     statusCard.Parent = content
-    Utils.Round(statusCard, 8)
-    Utils.CreateStroke(statusCard, Configuration.Colors.Border, 1, 1)
+    Utils.Round(statusCard, 6)
+    Utils.Stroke(statusCard, Configuration.Colors.Border, 1, 1)
     
     local sIndicator = Instance.new("Frame")
     sIndicator.Size = UDim2.new(0, 6, 0, 6)
-    sIndicator.Position = UDim2.new(0, 12, 0.5, 0)
+    sIndicator.Position = UDim2.new(0, 14, 0.5, 0)
     sIndicator.AnchorPoint = Vector2.new(0, 0.5)
     sIndicator.BackgroundColor3 = Configuration.Colors.StatusIdle
     sIndicator.BackgroundTransparency = 1
@@ -534,40 +498,39 @@ local function Build()
 
     local sValue = Instance.new("TextLabel")
     sValue.Size = UDim2.new(1, -35, 1, 0)
-    sValue.Position = UDim2.fromOffset(28, 0)
+    sValue.Position = UDim2.fromOffset(30, 0)
     sValue.Text = ConfigData.Texts.StatusWaiting
     sValue.TextColor3 = Configuration.Colors.TextSec
-    sValue.TextSize = 11
+    sValue.TextSize = 12
     sValue.Font = Enum.Font.GothamMedium
     sValue.TextXAlignment = Enum.TextXAlignment.Left
     sValue.BackgroundTransparency = 1
     sValue.TextTransparency = 1
     sValue.Parent = statusCard
     
-    -- Input Field (Compacto)
     local inputFrame = Instance.new("Frame")
-    inputFrame.Size = UDim2.new(0.85, 0, 0, 42) -- Reduzido
-    inputFrame.Position = UDim2.new(0.5, 0, 0.61, 0)
+    inputFrame.Size = UDim2.new(0.85, 0, 0, 42)
+    inputFrame.Position = UDim2.new(0.5, 0, 0.66, 0)
     inputFrame.AnchorPoint = Vector2.new(0.5, 0.5)
     inputFrame.BackgroundColor3 = Configuration.Colors.Surface
     inputFrame.BackgroundTransparency = 1
     inputFrame.Parent = content
-    Utils.Round(inputFrame, 8)
-    local iStroke = Utils.CreateStroke(inputFrame, Configuration.Colors.Border, 1, 1)
+    Utils.Round(inputFrame, 6)
+    local iStroke = Utils.Stroke(inputFrame, Configuration.Colors.Border, 1, 1)
     
     local inputIcon = Instance.new("ImageLabel")
     inputIcon.Size = UDim2.fromOffset(16, 16)
-    inputIcon.Position = UDim2.new(0, 12, 0.5, 0)
+    inputIcon.Position = UDim2.new(0, 14, 0.5, 0)
     inputIcon.AnchorPoint = Vector2.new(0, 0.5)
-    inputIcon.Image = Icons.KeyInput
+    inputIcon.Image = ConfigData.Icons.KeyInput
     inputIcon.ImageColor3 = Configuration.Colors.TextSec
     inputIcon.BackgroundTransparency = 1
     inputIcon.ImageTransparency = 1
     inputIcon.Parent = inputFrame
 
     local box = Instance.new("TextBox")
-    box.Size = UDim2.new(1, -40, 1, 0)
-    box.Position = UDim2.fromOffset(38, 0)
+    box.Size = UDim2.new(1, -45, 1, 0)
+    box.Position = UDim2.fromOffset(40, 0)
     box.Text = ""
     box.PlaceholderText = ConfigData.Texts.Placeholder
     box.PlaceholderColor3 = Configuration.Colors.TextMuted
@@ -591,29 +554,28 @@ local function Build()
         Utils.Tween(inputIcon, {ImageColor3 = Configuration.Colors.TextSec}, 0.3)
     end)
     
-    -- Botão Verificar (Compacto)
     local redeem = Instance.new("TextButton")
-    redeem.Size = UDim2.new(0.85, 0, 0, 42) -- Reduzido
-    redeem.Position = UDim2.new(0.5, 0, 0.76, 0)
+    redeem.Size = UDim2.new(0.85, 0, 0, 42)
+    redeem.Position = UDim2.new(0.5, 0, 0.81, 0)
     redeem.AnchorPoint = Vector2.new(0.5, 0.5)
     redeem.BackgroundColor3 = Configuration.Colors.ButtonVerify
     redeem.BackgroundTransparency = 1
     redeem.Text = "" 
     redeem.AutoButtonColor = false
     redeem.Parent = content
-    Utils.Round(redeem, 8)
+    Utils.Round(redeem, 6)
     
     local redeemLayout = Instance.new("UIListLayout")
     redeemLayout.FillDirection = Enum.FillDirection.Horizontal
     redeemLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     redeemLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-    redeemLayout.Padding = UDim.new(0, 6)
+    redeemLayout.Padding = UDim.new(0, 8)
     redeemLayout.Parent = redeem
     
     local redeemIcon = Instance.new("ImageLabel")
     redeemIcon.Size = UDim2.fromOffset(16, 16)
-    redeemIcon.Image = Icons.VerifyCheck
-    redeemIcon.ImageColor3 = Configuration.Colors.TextMain
+    redeemIcon.Image = ConfigData.Icons.VerifyCheck
+    redeemIcon.ImageColor3 = Color3.fromRGB(0,0,0)
     redeemIcon.BackgroundTransparency = 1
     redeemIcon.ImageTransparency = 1
     redeemIcon.Parent = redeem
@@ -622,18 +584,16 @@ local function Build()
     redeemText.Size = UDim2.new(0, 0, 0, 20)
     redeemText.AutomaticSize = Enum.AutomaticSize.X
     redeemText.Text = ConfigData.Texts.BtnVerify
-    redeemText.TextColor3 = Configuration.Colors.TextMain
+    redeemText.TextColor3 = Color3.fromRGB(0,0,0)
     redeemText.Font = Enum.Font.GothamBold
     redeemText.TextSize = 13
     redeemText.BackgroundTransparency = 1
     redeemText.TextTransparency = 1
     redeemText.Parent = redeem
 
-    -- Botão Get Key
     local getKey = Instance.new("TextButton")
-    getKey.Name = "GetKeyBtn"
     getKey.Size = UDim2.new(0.85, 0, 0, 30)
-    getKey.Position = UDim2.new(0.5, 0, 0.91, 0)
+    getKey.Position = UDim2.new(0.5, 0, 0.93, 0)
     getKey.AnchorPoint = Vector2.new(0.5, 0.5)
     getKey.BackgroundTransparency = 1
     getKey.Text = ""
@@ -643,12 +603,12 @@ local function Build()
     getKeyLayout.FillDirection = Enum.FillDirection.Horizontal
     getKeyLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     getKeyLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-    getKeyLayout.Padding = UDim.new(0, 5)
+    getKeyLayout.Padding = UDim.new(0, 6)
     getKeyLayout.Parent = getKey
 
     local getKeyIcon = Instance.new("ImageLabel")
     getKeyIcon.Size = UDim2.fromOffset(12, 12)
-    getKeyIcon.Image = Icons.LinkExternal
+    getKeyIcon.Image = ConfigData.Icons.LinkExternal
     getKeyIcon.ImageColor3 = Configuration.Colors.TextSec
     getKeyIcon.BackgroundTransparency = 1
     getKeyIcon.ImageTransparency = 1
@@ -665,38 +625,18 @@ local function Build()
     getKeyText.TextTransparency = 1
     getKeyText.Parent = getKey
     
-    redeem.MouseEnter:Connect(function()
-        PlayAudio(ConfigData.Sounds.Hover)
-        Utils.Tween(redeem, {BackgroundColor3 = Configuration.Colors.ButtonVerifyHover}, 0.2)
-    end)
-    redeem.MouseLeave:Connect(function()
-        Utils.Tween(redeem, {BackgroundColor3 = Configuration.Colors.ButtonVerify}, 0.2)
-    end)
-    
-    getKey.MouseEnter:Connect(function()
-        Utils.Tween(getKeyText, {TextColor3 = Configuration.Colors.TextMain}, 0.2)
-        Utils.Tween(getKeyIcon, {ImageColor3 = Configuration.Colors.TextMain}, 0.2)
-    end)
-    getKey.MouseLeave:Connect(function()
-        Utils.Tween(getKeyText, {TextColor3 = Configuration.Colors.TextSec}, 0.2)
-        Utils.Tween(getKeyIcon, {ImageColor3 = Configuration.Colors.TextSec}, 0.2)
-    end)
+    redeem.MouseEnter:Connect(function() PlayAudio(ConfigData.Sounds.Hover) Utils.Tween(redeem, {BackgroundColor3 = Configuration.Colors.ButtonVerifyHover}, 0.2) end)
+    redeem.MouseLeave:Connect(function() Utils.Tween(redeem, {BackgroundColor3 = Configuration.Colors.ButtonVerify}, 0.2) end)
+    getKey.MouseEnter:Connect(function() Utils.Tween(getKeyText, {TextColor3 = Configuration.Colors.TextMain}, 0.2) Utils.Tween(getKeyIcon, {ImageColor3 = Configuration.Colors.TextMain}, 0.2) end)
+    getKey.MouseLeave:Connect(function() Utils.Tween(getKeyText, {TextColor3 = Configuration.Colors.TextSec}, 0.2) Utils.Tween(getKeyIcon, {ImageColor3 = Configuration.Colors.TextSec}, 0.2) end)
     
     local function SetStatus(state)
-        local color = Configuration.Colors.StatusIdle
-        local text = ConfigData.Texts.StatusWaiting
-        if state == "verifying" then
-            color = Configuration.Colors.StatusVerifying
-            text = ConfigData.Texts.StatusVerifying
-        elseif state == "success" then
-            color = Configuration.Colors.StatusSuccess
-            text = ConfigData.Texts.StatusSuccess
-        elseif state == "error" then
-            color = Configuration.Colors.StatusError
-            text = ConfigData.Texts.StatusError
-        end
-        Utils.Tween(sValue, {TextColor3 = color}, 0.35)
-        Utils.Tween(sIndicator, {BackgroundColor3 = color}, 0.35)
+        local color, text = Configuration.Colors.StatusIdle, ConfigData.Texts.StatusWaiting
+        if state == "verifying" then color, text = Configuration.Colors.StatusVerifying, ConfigData.Texts.StatusVerifying
+        elseif state == "success" then color, text = Configuration.Colors.StatusSuccess, ConfigData.Texts.StatusSuccess
+        elseif state == "error" then color, text = Configuration.Colors.StatusError, ConfigData.Texts.StatusError end
+        Utils.Tween(sValue, {TextColor3 = color}, 0.3)
+        Utils.Tween(sIndicator, {BackgroundColor3 = color}, 0.3)
         sValue.Text = text
     end
     
@@ -740,54 +680,41 @@ local function Build()
         ToastSystem.Create(screen, ConfigData.Texts.ToastCopied, "success")
     end)
     
-    SetBlur(true)
-    Utils.Tween(main, {Position = UDim2.new(0.5, 0, 0.5, 0), BackgroundTransparency = 0}, Configuration.Animations.Intro, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
+    Utils.Tween(blur, {Size = 15}, Configuration.Animations.Intro)
+    Utils.Tween(main, {Position = UDim2.fromScale(0.5, 0.5), BackgroundTransparency = 0}, Configuration.Animations.Intro, Enum.EasingStyle.Exponential)
     Utils.Tween(mainStroke, {Transparency = 0}, Configuration.Animations.Intro)
 
     task.wait(0.1)
 
     for _, v in pairs(main:GetDescendants()) do
-        if v:IsA("GuiObject") and v.Name ~= "MainContainer" then
-            if v.Name == "CloseBtn" then
-                 Utils.Tween(v, {TextTransparency = 0}, 0.5)
+        if v:IsA("GuiObject") then
+            if v.Name == "CloseBtn" then Utils.Tween(v, {TextTransparency = 0}, 0.5)
             elseif v:IsA("Frame") then
-                local shouldBeVisible = (v == logoContainer or v == statusCard or v == inputFrame or v == sIndicator or v == redeem)
-                Utils.Tween(v, {BackgroundTransparency = shouldBeVisible and 0 or 1}, 0.5)
-            elseif v:IsA("TextLabel") or v:IsA("TextBox") then
-                Utils.Tween(v, {TextTransparency = 0}, 0.5)
-            elseif v:IsA("ImageLabel") then
-                Utils.Tween(v, {ImageTransparency = 0}, 0.5)
-            elseif v:IsA("UIStroke") then
-                 Utils.Tween(v, {Transparency = 0}, 0.5)
-            end
+                local visible = (v == logoContainer or v == statusCard or v == inputFrame or v == sIndicator or v == redeem)
+                Utils.Tween(v, {BackgroundTransparency = visible and 0 or 1}, 0.5)
+            elseif v:IsA("TextLabel") or v:IsA("TextBox") then Utils.Tween(v, {TextTransparency = 0}, 0.5)
+            elseif v:IsA("ImageLabel") then Utils.Tween(v, {ImageTransparency = 0}, 0.5)
+            elseif v:IsA("UIStroke") then Utils.Tween(v, {Transparency = 0}, 0.5) end
         end
     end
-    
-    return screen
 end
 
+-- [[ LÓGICA DE VALIDAÇÃO ]] --
 local savedKey = loadVerifiedKey()
-local keyToCheck = savedKey
-if not keyToCheck then
-    keyToCheck = getgenv().SCRIPT_KEY
-end
+local keyToCheck = savedKey or getgenv().SCRIPT_KEY
 
 local result = Junkie.check_key(keyToCheck)
 if result and result.valid then
     if result.message == "KEYLESS" then
         getgenv().SCRIPT_KEY = "KEYLESS"
     elseif result.message == "KEY_VALID" then
-        if not savedKey and keyToCheck then
-            saveVerifiedKey(keyToCheck)
-        end
+        if not savedKey and keyToCheck then saveVerifiedKey(keyToCheck) end
         getgenv().SCRIPT_KEY = keyToCheck
     else
-        Build()
+        BuildUI()
     end
 else
-    Build()
+    BuildUI()
 end
 
-while not getgenv().SCRIPT_KEY do
-    task.wait(0.1)
-end
+while not getgenv().SCRIPT_KEY do task.wait(0.1) end
