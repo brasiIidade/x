@@ -828,8 +828,6 @@ do
 end
 
 --// tab hitbox
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
 
 getgenv().HitboxConfig = {
     Enabled = false,
