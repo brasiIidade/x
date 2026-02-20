@@ -816,6 +816,9 @@ do
 end
 
 --// tab hitbox
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
 getgenv().HitboxConfig = {
     Enabled = false,
     Size = Vector3.new(5,5,5),
@@ -824,7 +827,11 @@ getgenv().HitboxConfig = {
     HideOnShield = false,
     TeamCheck = true,
     TeamFilterEnabled = false,
-    SelectedTeams = {}
+    SelectedTeams = {},
+    WhitelistedUsers = {},
+    WhitelistedTeams = {},
+    FocusList = {},
+    FocusMode = false
 }
 
 local Config = getgenv().HitboxConfig
@@ -833,22 +840,8 @@ task.spawn(function()
     if ler then ler("hitbox") end
 end)
 
-local function GetTeamNames()
-    local t = {}
-    if TeamsService then
-        for _, v in ipairs(TeamsService:GetTeams()) do table.insert(t, v.Name) end
-    end
-    return t
-end
-
 do
     local MainSection = criarsection(HitboxExpander, "Principal", "Controles gerais", "lucide:box", true)
-
-    MainSection:Paragraph({
-        Title = "Modificar hitbox",
-        Image = "lucide:expand",
-        Desc = cor({"Altera o "}, {"tamanho", "#00AAFF"}, {" da hitbox dos inimigos"})
-    })
 
     local FirstRun = true
     MainSection:Toggle({
@@ -964,6 +957,135 @@ do
         Callback = function(option)
             Config.SelectedTeams = option
         end
+    })
+
+    local WhitelistSection = criarsection(HitboxExpander, "Lista de exceções", "Gerenciar amigos e times", "lucide:shield", false)
+    local PlayerWhitelist
+    
+    WhitelistSection:Button({
+        Title = "Atualizar lista",
+        Desc = "Atualiza a lista de jogadores",
+        Icon = "lucide:refresh-cw",
+        Callback = function()
+            if PlayerWhitelist then PlayerWhitelist:Refresh(GetPlayerNames()) end
+            notificar("Lista atualizada", 1, "lucide:refresh-ccw")
+        end
+    })
+
+    PlayerWhitelist = WhitelistSection:Dropdown({
+        Title = "Ignorar jogadores",
+        Desc = cor({"Não", "#FF0000"}, {" foca nesses jogadores"}),
+        Values = GetPlayerNames(),
+        Value = Config.WhitelistedUsers, 
+        Multi = true,
+        AllowNone = true,
+        Callback = function(options) Config.WhitelistedUsers = options end
+    })
+
+    WhitelistSection:Dropdown({
+        Title = "Ignorar times",
+        Desc = cor({"Não", "#FF0000"}, {" foca nesses times"}),
+        Values = GetTeamNames(),
+        Value = Config.WhitelistedTeams,
+        Multi = true,
+        AllowNone = true,
+        Flag = "IgnorarTimesHitbox",
+        Callback = function(options) Config.WhitelistedTeams = options end
+    })
+
+    local FocusSection = criarsection(HitboxExpander, "Focar", "Focar em jogadores específicos", "lucide:scan-eye", false)
+    
+    local FocusFirstRun = true
+    FocusSection:Toggle({
+        Title = "Modo foco",
+        Desc = cor({"Foca "}, {"apenas", "#FFAA00"}, {" em quem está na lista"}),
+        Icon = "lucide:focus",
+        Type = "Checkbox",
+        Value = Config.FocusMode,
+        Flag = "ModoFocarHitbox",
+        Callback = function(state)
+            Config.FocusMode = state
+            if FocusFirstRun then
+                FocusFirstRun = false
+                return
+            end
+            notificar("Modo foco: " .. (state and "Ativado" or "Desativado"), 2, "lucide:circle-alert")
+        end
+    })
+
+    local FocusListParagraph = nil
+    local RemoveDropdown = nil
+
+    local function UpdateFocusUI()
+        if FocusListParagraph then
+            local listStr = table.concat(Config.FocusList, ", ")
+            if listStr == "" then listStr = "Nenhum alvo definido." end
+            FocusListParagraph:SetDesc(listStr)
+        end
+        if RemoveDropdown then
+            RemoveDropdown:Refresh(Config.FocusList)
+        end
+    end
+
+    FocusSection:Input({
+        Title = "Adicionar alvo",
+        Desc = cor({"Digite o "}, {"nome", "#00AAFF"}),
+        Placeholder = "Digite aqui",
+        InputIcon = "lucide:user-plus",
+        Callback = function(text)
+            if not text or text == "" then return end
+            local foundName = nil
+            for _, p in ipairs(Players:GetPlayers()) do
+                if string.sub(p.Name:lower(), 1, #text) == text:lower() then
+                    foundName = p.Name
+                    break
+                end
+            end
+            if foundName then
+                if not table.find(Config.FocusList, foundName) then
+                    table.insert(Config.FocusList, foundName)
+                    UpdateFocusUI()
+                    notificar("Alvo adicionado: " .. foundName, 2, "lucide:check")
+                end
+            else
+                notificar("Jogador não encontrado", 2, "lucide:search-x")
+            end
+        end
+    })
+
+    RemoveDropdown = FocusSection:Dropdown({
+        Title = "Remover da lista",
+        Desc = cor({"Selecione para "}, {"excluir", "#FF0000"}),
+        Values = {},
+        Value = nil,
+        Multi = false,
+        AllowNone = true,
+        Callback = function(val)
+            if val then
+                local idx = table.find(Config.FocusList, val)
+                if idx then
+                    table.remove(Config.FocusList, idx)
+                    UpdateFocusUI()
+                    RemoveDropdown:Select(nil)
+                end
+            end
+        end
+    })
+
+    FocusListParagraph = FocusSection:Paragraph({
+        Title = "Jogadores focados",
+        Desc = "Nenhum alvo",
+        Buttons = {
+            {
+                Icon = "lucide:trash-2",
+                Title = "Limpar",
+                Callback = function()
+                    Config.FocusList = {}
+                    UpdateFocusUI()
+                    notificar("Lista limpa", 2, "lucide:trash")
+                end
+            }
+        }
     })
 end
 
