@@ -233,7 +233,7 @@ local function DownloadSafe(url, tentativas)
         task.wait(1)
     end
     
-    return nil, lastResponse -- Retorna nil se falhar todas
+    return nil, lastResponse
 end
 
 local function LoadPathMap()
@@ -651,8 +651,8 @@ do
     LogicSection:Dropdown({
         Title = "Partes",
         Desc = "Onde o tiro deve ir",
-        Values = { "Random", "Head", "Torso" },
-        Value = {"Random"},
+        Values = { "Aleatório", "Cabeça", "Tronco", "Braço direito", "Braço esquerdo", "Perna direita", "Perna esquerda" },
+        Value = {"Aleatório"},
         Multi = true,
         AllowNone = true,
         Flag = "PartesSilentAim",
