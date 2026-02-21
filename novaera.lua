@@ -21,7 +21,9 @@ local function getMoney()
     local ls = lp:FindFirstChild("leaderstats")
     local din = ls and ls:FindFirstChild("Dinheiro")
     if din then
-        return tonumber(din.Value) or tonumber(din.Text) or 0
+        local val = tostring(din.Value or din.Text or "0")
+        val = val:gsub("%D", "")
+        return tonumber(val) or 0
     end
     return 0
 end
