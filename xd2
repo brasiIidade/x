@@ -3063,6 +3063,7 @@ ThemeSection:Dropdown({
 --// mapas 
 local Mapas = {
     [13132367906] = "Tevez",
+    [16150352] = "Christian",
     [14511049] = "Delta",
     [129890257340707] = "Soucre",
     [134858056613772] = "NovaEra"
@@ -3307,6 +3308,35 @@ if MapaAtual then
                 if _G.TevezMods and _G.TevezMods.ApplyGunMods then _G.TevezMods.ApplyGunMods() end
             end
         })
+
+    elseif MapaAtual == "Christian" then
+
+    local ChristianTab = criartab("Christian", "https://tr.rbxcdn.com/180DAY-048e9d153b3fd43e5ee5207b61b810f7/768/432/Image/Webp/noFilter")
+    
+    local Spoofer = criarsection(ChristianTab, "Spoofer", "Alterar dispositivo", "lucide:smartphone", false)
+    Spoofer:Paragraph({
+        Title = "Spoofer",
+        Desc = cor({"O "}, {"spoofer", "#00AAFF"}, {" permite você alterar o dispositivo para todos"})
+    })
+    Spoofer:Dropdown({
+        Title = "Dispositivo",
+        Desc = cor({"Selecione o "}, {"dispositivo", "#FFFFFF"}),
+        Icon = "lucide:laptop",
+        Values = { "Mobile", "Computer" },
+        Value = "Computer",
+        Callback = function(option)
+            if _G.TevezMods then _G.TevezMods.SelectedDevice = option end
+        end
+    })
+    Spoofer:Toggle({
+        Title = "Ativar",
+        Desc = cor({"Altera", "#00FF00"}, {" o dispositivo (reseta o personagem)"}),
+        Icon = "lucide:power",
+        Value = false,
+        Callback = function(v)
+            if _G.TevezMods and _G.TevezMods.ToggleSpoof then _G.TevezMods.ToggleSpoof(v) end
+        end
+    })
 
     elseif MapaAtual == "Delta" then
         local DeltaTab = criartab("Delta", "https://tr.rbxcdn.com/180DAY-8952e9d8abbff8104b22356f8b66f962/768/432/Image/Webp/noFilter")
