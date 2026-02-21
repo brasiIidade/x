@@ -3282,7 +3282,6 @@ FarmSection:Toggle({
 
     elseif MapaAtual == "NovaEra" then
         local NovaEraTab = criartab("Nova Era", "https://tr.rbxcdn.com/180DAY-9b65f927dea36f98c1a720694fd00fd3/768/432/Image/Webp/noFilter")
-
 task.spawn(function()
     if ler then ler("novaera") end
 end)
@@ -3304,6 +3303,17 @@ task.spawn(function()
         end
     end
 end)
+
+FarmSection:Dropdown({
+    Title = "Modo",
+    Values = {"Lixeiro", "Barbeiro"},
+    Value = "Lixeiro",
+    Callback = function(v)
+        if getgenv().NovaEraLogic and getgenv().NovaEraLogic.SetMode then
+            getgenv().NovaEraLogic.SetMode(v)
+        end
+    end
+})
 
 FarmSection:Toggle({
     Title = "Autofarm",
