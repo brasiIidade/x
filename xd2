@@ -233,7 +233,7 @@ local function DownloadSafe(url, tentativas)
         task.wait(1)
     end
     
-    return nil, lastResponse -- Retorna nil se falhar todas
+    return nil, lastResponse
 end
 
 local function LoadPathMap()
@@ -385,7 +385,7 @@ criarsection(main, "Combate", "Seção de combate", nil, true)
 local SilentAim = criartab("Silent aim", "lucide:crosshair", false)
 local HitboxExpander = criartab("Hitbox expander", "lucide:codesandbox", false)
 local ESP = criartab("ESP", "lucide:view", false)
-local X1 = criartab("1v1", "lucide:person-standing", false)
+local X1 = criartab("PvP", "lucide:person-standing", false)
 
 --// tabs "parkour"
 criarsection(main, "Parkour", "Seção de parkour", nil, true)
@@ -1321,6 +1321,148 @@ X1:Toggle({
             init(newChar)
         end)
         table.insert(slData.binds, b3)
+    end
+})
+
+local logic = {
+    Enabled = false,
+    X = 1.0,
+    Y = 1.0,
+    Z = 1.0,
+    Conn = nil
+}
+
+local btnXM, btnXP, btnYM, btnYP, btnZM, btnZP
+
+local StretchSection = criarsection(X1Tab, "Tela esticada", "Modificar tela", "lucide:fullscreen", true)
+
+StretchSection:Toggle({
+    Title = "Tela esticada",
+    Value = false,
+    Flag = "TelaEsticada",
+    Callback = function(v)
+        logic.Enabled = v
+        if v then
+            if btnXM then btnXM:Unlock() end
+            if btnXP then btnXP:Unlock() end
+            if btnYM then btnYM:Unlock() end
+            if btnYP then btnYP:Unlock() end
+            if btnZM then btnZM:Unlock() end
+            if btnZP then btnZP:Unlock() end
+            
+            if not logic.Conn then
+                logic.Conn = RunService.RenderStepped:Connect(function()
+                    local c = Workspace.CurrentCamera
+                    if c then
+                        c.CFrame = c.CFrame * CFrame.new(
+                            0, 0, 0,
+                            logic.X, 0, 0,
+                            0, logic.Y, 0,
+                            0, 0, logic.Z
+                        )
+                    end
+                end)
+            end
+        else
+            if btnXM then btnXM:Lock() end
+            if btnXP then btnXP:Lock() end
+            if btnYM then btnYM:Lock() end
+            if btnYP then btnYP:Lock() end
+            if btnZM then btnZM:Lock() end
+            if btnZP then btnZP:Lock() end
+            
+            if logic.Conn then
+                logic.Conn:Disconnect()
+                logic.Conn = nil
+            end
+        end
+    end
+})
+
+StretchSection:Divider()
+
+local pX = StretchSection:Paragraph({
+    Title = "Largura",
+    Desc = "1.00"
+})
+
+local gX = StretchSection:Group({})
+
+btnXM = gX:Button({
+    Title = "-",
+    Justify = "Center",
+    Locked = true,
+    Callback = function()
+        logic.X = math.max(0.1, math.floor((logic.X - 0.05) * 100 + 0.5) / 100)
+        pX:SetDesc(string.format("%.2f", logic.X))
+    end
+})
+
+btnXP = gX:Button({
+    Title = "+",
+    Justify = "Center",
+    Locked = true,
+    Callback = function()
+        logic.X = math.min(10.0, math.floor((logic.X + 0.05) * 100 + 0.5) / 100)
+        pX:SetDesc(string.format("%.2f", logic.X))
+    end
+})
+
+StretchSection:Divider()
+
+local pY = StretchSection:Paragraph({
+    Title = "Altura",
+    Desc = "1.00"
+})
+
+local gY = StretchSection:Group({})
+
+btnYM = gY:Button({
+    Title = "-",
+    Justify = "Center",
+    Locked = true,
+    Callback = function()
+        logic.Y = math.max(0.1, math.floor((logic.Y - 0.05) * 100 + 0.5) / 100)
+        pY:SetDesc(string.format("%.2f", logic.Y))
+    end
+})
+
+btnYP = gY:Button({
+    Title = "+",
+    Justify = "Center",
+    Locked = true,
+    Callback = function()
+        logic.Y = math.min(10.0, math.floor((logic.Y + 0.05) * 100 + 0.5) / 100)
+        pY:SetDesc(string.format("%.2f", logic.Y))
+    end
+})
+
+StretchSection:Divider()
+
+local pZ = StretchSection:Paragraph({
+    Title = "Profundidade",
+    Desc = "1.00"
+})
+
+local gZ = StretchSection:Group({})
+
+btnZM = gZ:Button({
+    Title = "-",
+    Justify = "Center",
+    Locked = true,
+    Callback = function()
+        logic.Z = math.max(0.1, math.floor((logic.Z - 0.05) * 100 + 0.5) / 100)
+        pZ:SetDesc(string.format("%.2f", logic.Z))
+    end
+})
+
+btnZP = gZ:Button({
+    Title = "+",
+    Justify = "Center",
+    Locked = true,
+    Callback = function()
+        logic.Z = math.min(10.0, math.floor((logic.Z + 0.05) * 100 + 0.5) / 100)
+        pZ:SetDesc(string.format("%.2f", logic.Z))
     end
 })
 
