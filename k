@@ -3311,10 +3311,32 @@ if MapaAtual then
 
     elseif MapaAtual == "Christian" then
         local ChristianTab = criartab("Christian", "https://tr.rbxcdn.com/180DAY-048e9d153b3fd43e5ee5207b61b810f7/768/432/Image/Webp/noFilter")
+
+if not getgenv().ChristianSpooferConfig then
+    getgenv().ChristianSpooferConfig = {
+        Enabled = false,
+        Device = "Pc"
+    }
+end
+
+if not getgenv().ChristianSpooferHooked then
+    getgenv().ChristianSpooferHooked = true
+    
+    local OldNameCall
+    OldNameCall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+        local method = getnamecallmethod()
         
-task.spawn(function()
-    if ler then ler("christian") end
-end)
+        if not checkcaller() and method == "FireServer" then
+            if tostring(self) == "Dispositivo" and getgenv().ChristianSpooferConfig.Enabled then
+                local args = {...}
+                args[1] = getgenv().ChristianSpooferConfig.Device 
+                return OldNameCall(self, unpack(args))
+            end
+        end
+        
+        return OldNameCall(self, ...)
+    end))
+end
 
 local Spoofer = criarsection(ChristianTab, "Dispositivo", "Modificar dispositivo", "lucide:phone", true)
 
@@ -3327,11 +3349,15 @@ Spoofer:Dropdown({
     Title = "Dispositivo",
     Desc = cor({"Selecione o "}, {"dispositivo", "#FFFFFF"}),
     Icon = "lucide:laptop",
-    Values = { "Mobile", "Computer" },
-    Value = "Mobile",
+    Values = { "Celular", "PC" },
+    Value = "Celular",
     Callback = function(option)
-        if getgenv().ChristianLogic and getgenv().ChristianLogic.SetDevice then
-            getgenv().ChristianLogic.SetDevice(option)
+        if option == "PC" then
+            getgenv().ChristianSpooferConfig.Device = "Pc"
+        elseif option == "Celular" then
+            getgenv().ChristianSpooferConfig.Device = "Mobile"
+        else
+            getgenv().ChristianSpooferConfig.Device = option
         end
     end
 })
@@ -3342,8 +3368,13 @@ Spoofer:Toggle({
     Icon = "lucide:power",
     Value = false,
     Callback = function(v)
-        if getgenv().ChristianLogic and getgenv().ChristianLogic.ToggleSpoofer then
-            getgenv().ChristianLogic.ToggleSpoofer(v)
+        getgenv().ChristianSpooferConfig.Enabled = v
+        
+        if v and LocalPlayer.Character then
+            local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            if humanoid and humanoid.Health > 0 then
+                humanoid.Health = 0
+            end
         end
     end
 })
