@@ -1,146 +1,181 @@
-local lIlI = cloneref or function(a) return a end
+local cr = cloneref or function(a) return a end
 
-local lIIl = lIlI(game:GetService("Players"))
-local IllI = lIlI(game:GetService("Workspace"))
-local IIll = lIlI(game:GetService("RunService"))
-local lIlII = lIlI(lIIl.LocalPlayer)
+local plrs = cr(game:GetService("Players"))
+local ws = cr(game:GetService("Workspace"))
+local rs = cr(game:GetService("RunService"))
+local lp = cr(plrs.LocalPlayer)
 
-local IlIlI = {}
-IlIlI.Ill = false
-IlIlI.lII = 0
-IlIlI.IIl = 0
-IlIlI.UpdateCallback = nil
+local logic = {}
+logic.Enabled = false
+logic.Mode = "Lixeiro"
+logic.Farmed = 0
+logic.InitialMoney = 0
+logic.UpdateCallback = nil
 
-local llIIl = CFrame.new(0, -9, 0)
-local IIlIl = Vector3.zero
-local lIllI = nil
+local offset = CFrame.new(0, -9, 0)
+local zeroVec = Vector3.zero
+local startCF = nil
 
-local function IlIIl()
-    local lI = lIlII:FindFirstChild("leaderstats")
-    local Il = lI and lI:FindFirstChild("Dinheiro")
-    if Il then
-        local l = Il.Value or Il.Text
-        return tonumber(l) or 0
+local function getMoney()
+    local ls = lp:FindFirstChild("leaderstats")
+    local din = ls and ls:FindFirstChild("Dinheiro")
+    if din then
+        return tonumber(din.Value) or tonumber(din.Text) or 0
     end
     return 0
 end
 
-local function lIIlI()
-    local I = lIlII.Character
-    if I then
-        local l = I:FindFirstChild("HumanoidRootPart")
-        if l then
-            local i = l:FindFirstChild("Antigravity")
-            if i then i:Destroy() end
-        end
+local function stopFloat()
+    local char = lp.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        local ag = hrp:FindFirstChild("Antigravity")
+        if ag then ag:Destroy() end
     end
 end
 
-local function IIllI(I)
-    local l = lIlII.Character
-    if l then
-        local i = l:FindFirstChild("HumanoidRootPart")
-        if i then
-            if not i:FindFirstChild("Antigravity") then
-                local L = Instance.new("BodyVelocity")
-                L.Name = "Antigravity"
-                L.Velocity = IIlIl
-                L.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-                L.P = 9000
-                L.Parent = i
-            end
-            i.CFrame = I.CFrame * llIIl
-            i.AssemblyLinearVelocity = IIlIl
-            i.AssemblyAngularVelocity = IIlIl
+local function floatAt(targetCF)
+    local char = lp.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        local ag = hrp:FindFirstChild("Antigravity")
+        if not ag then
+            ag = Instance.new("BodyVelocity")
+            ag.Name = "Antigravity"
+            ag.Velocity = zeroVec
+            ag.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+            ag.P = 9000
+            ag.Parent = hrp
         end
+        hrp.CFrame = targetCF
+        hrp.AssemblyLinearVelocity = zeroVec
+        hrp.AssemblyAngularVelocity = zeroVec
     end
 end
 
-local function llIll(I)
-    if not I then return nil end
-    for _, l in ipairs(I:GetDescendants()) do
-        if l:IsA("ProximityPrompt") and l.Enabled and l.Parent and l.Parent:IsA("BasePart") then
-            return l
+local function getPrompt(parent)
+    if not parent then return nil end
+    for _, v in ipairs(parent:GetDescendants()) do
+        if v:IsA("ProximityPrompt") and v.Enabled and v.Parent and v:IsDescendantOf(ws) then
+            return v
         end
     end
     return nil
 end
 
-function IlIlI.Toggle(I)
-    IlIlI.Ill = I
-    local l = IlIIl()
+function logic.SetMode(m)
+    logic.Mode = m
+end
 
-    if I then
-        IlIlI.IIl = l
-        if lIlII.Character and lIlII.Character:FindFirstChild("HumanoidRootPart") then
-            lIllI = lIlII.Character.HumanoidRootPart.CFrame
+function logic.Toggle(state)
+    logic.Enabled = state
+    local m = getMoney()
+
+    if state then
+        logic.InitialMoney = m
+        local char = lp.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            startCF = hrp.CFrame
         end
     else
-        lIIlI()
-        IlIlI.lII = IlIlI.lII + (l - IlIlI.IIl)
-        if lIllI and lIlII.Character and lIlII.Character:FindFirstChild("HumanoidRootPart") then
-            lIlII.Character.HumanoidRootPart.CFrame = lIllI
-            lIlII.Character.HumanoidRootPart.AssemblyLinearVelocity = IIlIl
+        stopFloat()
+        logic.Farmed = logic.Farmed + (m - logic.InitialMoney)
+        local char = lp.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if startCF and hrp then
+            hrp.CFrame = startCF
+            hrp.AssemblyLinearVelocity = zeroVec
         end
     end
 end
 
 task.spawn(function()
-    while true do
-        if IlIlI.Ill then
-            if IlIlI.UpdateCallback then
-                local I = IlIIl()
-                local l = IlIlI.lII + (I - IlIlI.IIl)
-                IlIlI.UpdateCallback(l)
+    while task.wait(0.5) do
+        if logic.UpdateCallback then
+            if logic.Enabled then
+                local cur = getMoney()
+                logic.UpdateCallback(logic.Farmed + (cur - logic.InitialMoney))
+            else
+                logic.UpdateCallback(logic.Farmed)
             end
-        elseif IlIlI.UpdateCallback then
-            IlIlI.UpdateCallback(IlIlI.lII)
         end
-        task.wait(0.5)
     end
 end)
 
 task.spawn(function()
     while true do
-        if IlIlI.Ill then
-            local I = lIlII.Character
-            if I and I:FindFirstChild("HumanoidRootPart") and I:FindFirstChild("Humanoid") and I.Humanoid.Health > 0 then
-                local l = IllI:FindFirstChild("Trabalhos / SWATntj")
-                local i = l and l:FindFirstChild("Coleta")
-                
-                if i then
-                    local L = I:FindFirstChild("Lixo_model") ~= nil
-                    local ll = L and i:FindFirstChild("Lixeira") or i:FindFirstChild("Lixo")
-                    local lI = llIll(ll)
+        if logic.Enabled then
+            local char = lp.Character
+            local hum = char and char:FindFirstChild("Humanoid")
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            
+            if char and hum and hrp and hum.Health > 0 then
+                if logic.Mode == "Lixeiro" then
+                    local trab = ws:FindFirstChild("Trabalhos / SWATntj")
+                    local col = trab and trab:FindFirstChild("Coleta")
+                    
+                    if col then
+                        local hasBag = char:FindFirstChild("Lixo_model") ~= nil
+                        local targetFolder = hasBag and col:FindFirstChild("Lixeira") or col:FindFirstChild("Lixo")
+                        local prompt = getPrompt(targetFolder)
 
-                    if lI and lI.Parent then
-                        lI.HoldDuration = 0
-                        repeat
-                            if not IlIlI.Ill or I.Humanoid.Health <= 0 then break end
-                            local Il = I:FindFirstChild("Lixo_model") ~= nil
-                            if Il ~= L then break end
-                            
-                            IIllI(lI.Parent)
-                            fireproximityprompt(lI)
-                            task.wait(0.3)
-                        until not lI.Parent or not lI.Enabled
+                        if prompt and prompt.Parent then
+                            prompt.HoldDuration = 0
+                            repeat
+                                if not logic.Enabled or hum.Health <= 0 then break end
+                                if (char:FindFirstChild("Lixo_model") ~= nil) ~= hasBag then break end
+                                
+                                floatAt(prompt.Parent.CFrame * offset)
+                                fireproximityprompt(prompt)
+                                task.wait(0.3)
+                            until not prompt.Parent or not prompt.Enabled
+                        else
+                            stopFloat()
+                            task.wait(0.1)
+                        end
                     else
-                        IIll.Heartbeat:Wait()
+                        stopFloat()
+                        task.wait(0.5)
                     end
-                else
-                    lIIlI()
-                    task.wait(0.5)
+                elseif logic.Mode == "Barbeiro" then
+                    local shop = ws:FindFirstChild("BarberShop")
+                    local found = false
+                    
+                    if shop then
+                        for _, npc in ipairs(shop:GetChildren()) do
+                            if not logic.Enabled or hum.Health <= 0 then break end
+                            local head = npc:FindFirstChild("Head")
+                            local prompt = getPrompt(head)
+                            
+                            if prompt and prompt.Parent then
+                                found = true
+                                prompt.HoldDuration = 0
+                                repeat
+                                    if not logic.Enabled or hum.Health <= 0 then break end
+                                    floatAt(prompt.Parent.CFrame * offset)
+                                    fireproximityprompt(prompt)
+                                    task.wait(0.3)
+                                until not prompt.Parent or not prompt.Enabled
+                            end
+                        end
+                    end
+                    
+                    if not found then
+                        stopFloat()
+                        task.wait(0.5)
+                    end
                 end
             else
-                lIIlI()
+                stopFloat()
                 task.wait(0.5)
             end
         else
-            lIIlI()
+            stopFloat()
             task.wait(0.5)
         end
-        if IlIlI.Ill then IIll.Heartbeat:Wait() end
+        if logic.Enabled then rs.Heartbeat:Wait() end
     end
 end)
 
-_G.NovaEraLogic = IlIlI
+getgenv().NovaEraLogic = logic
