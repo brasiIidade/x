@@ -1352,7 +1352,13 @@ StretchSection:Toggle({
                 RunService:BindToRenderStep("ForceStretchCamera", Enum.RenderPriority.Camera.Value + 1, function()
                     local c = Workspace.CurrentCamera
                     if c then
-                        c.CFrame = c.CFrame * CFrame.new(
+                        local right = c.CFrame.RightVector.Unit
+                        local up = c.CFrame.UpVector.Unit
+                        local look = -c.CFrame.LookVector.Unit
+                        
+                        local cleanCFrame = CFrame.fromMatrix(c.CFrame.Position, right, up, look)
+                        
+                        c.CFrame = cleanCFrame * CFrame.new(
                             0, 0, 0,
                             logic.X, 0, 0,
                             0, logic.Y, 0,
@@ -1433,6 +1439,7 @@ sliderZ = StretchSection:Slider({
         pZ:SetDesc(string.format("%.2f", logic.Z))
     end
 })
+
 
 --// tab tas
 task.spawn(function()
