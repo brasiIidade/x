@@ -1390,7 +1390,7 @@ local pX = StretchSection:Paragraph({
 
 sliderX = StretchSection:Slider({
     Title = "Valor",
-    Value = { Min = 0.10, Max = 1.50, Default = 1.00 },
+    Value = { Min = 0.10, Max = 1.20, Default = 1.00 },
     Step = 0.01,
     Locked = true,
     Flag = "Largura2",
@@ -1410,7 +1410,7 @@ local pY = StretchSection:Paragraph({
 
 sliderY = StretchSection:Slider({
     Title = "Valor",
-    Value = { Min = 0.10, Max = 1.50, Default = 1.00 },
+    Value = { Min = 0.10, Max = 1.30, Default = 1.00 },
     Step = 0.01,
     Locked = true,
     Flag = "Altura2",
@@ -1430,7 +1430,7 @@ local pZ = StretchSection:Paragraph({
 
 sliderZ = StretchSection:Slider({
     Title = "Valor",
-    Value = { Min = 0.10, Max = 1.50, Default = 1.00 },
+    Value = { Min = 0.10, Max = 1.20, Default = 1.00 },
     Step = 0.01,
     Locked = true,
     Flag = "Profundidade2",
