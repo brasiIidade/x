@@ -361,7 +361,7 @@ task.spawn(function()
 end)
 
 --// criar seção
-local function criarsection(tab, title, desc, icon, opened)
+function criarsection(tab, title, desc, icon, opened)
     return tab:Section({
         Title = title,
         Desc = desc,
@@ -371,7 +371,7 @@ local function criarsection(tab, title, desc, icon, opened)
 end
 
 --// criar tab
-local function criartab(title, icon, locked)
+function criartab(title, icon, locked)
     return main:Tab({
         Title = title,
         Icon = icon,
@@ -1334,7 +1334,7 @@ local logic = {
 
 local btnXM, btnXP, btnYM, btnYP, btnZM, btnZP
 
-local StretchSection = criarsection(X1Tab, "Tela esticada", "Modificar tela", "lucide:fullscreen", true)
+local StretchSection = criarsection(X1, "Tela esticada", "Modificar tela", "lucide:fullscreen", true)
 
 StretchSection:Toggle({
     Title = "Tela esticada",
