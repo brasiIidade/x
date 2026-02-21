@@ -151,12 +151,20 @@ task.spawn(function()
                             if prompt and prompt.Parent then
                                 found = true
                                 prompt.HoldDuration = 0
+                                local nextPrompt = 0
+                                
                                 repeat
                                     if not logic.Enabled or hum.Health <= 0 then break end
+                                    
                                     floatAt(prompt.Parent.CFrame * offset)
-                                    fireproximityprompt(prompt)
-                                    task.wait(0.3)
-                                until not prompt.Parent or not prompt.Enabled
+                                    
+                                    if tick() >= nextPrompt then
+                                        fireproximityprompt(prompt)
+                                        nextPrompt = tick() + 0.3
+                                    end
+                                    
+                                    rs.Heartbeat:Wait()
+                                until not prompt.Parent or not prompt.Enabled or not npc.Parent
                             end
                         end
                     end
