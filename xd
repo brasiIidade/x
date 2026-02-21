@@ -1329,10 +1329,10 @@ local logic = {
     X = 1.0,
     Y = 1.0,
     Z = 1.0,
-    Conn = nil
+    IsBound = false
 }
 
-local btnXM, btnXP, btnYM, btnYP, btnZM, btnZP
+local sliderX, sliderY, sliderZ
 
 local StretchSection = criarsection(X1, "Tela esticada", "Modificar tela", "lucide:fullscreen", true)
 
@@ -1343,15 +1343,13 @@ StretchSection:Toggle({
     Callback = function(v)
         logic.Enabled = v
         if v then
-            if btnXM then btnXM:Unlock() end
-            if btnXP then btnXP:Unlock() end
-            if btnYM then btnYM:Unlock() end
-            if btnYP then btnYP:Unlock() end
-            if btnZM then btnZM:Unlock() end
-            if btnZP then btnZP:Unlock() end
+            if sliderX then sliderX:Unlock() end
+            if sliderY then sliderY:Unlock() end
+            if sliderZ then sliderZ:Unlock() end
             
-            if not logic.Conn then
-                logic.Conn = RunService.RenderStepped:Connect(function()
+            if not logic.IsBound then
+                logic.IsBound = true
+                RunService:BindToRenderStep("ForceStretchCamera", Enum.RenderPriority.Camera.Value + 1, function()
                     local c = Workspace.CurrentCamera
                     if c then
                         c.CFrame = c.CFrame * CFrame.new(
@@ -1364,16 +1362,13 @@ StretchSection:Toggle({
                 end)
             end
         else
-            if btnXM then btnXM:Lock() end
-            if btnXP then btnXP:Lock() end
-            if btnYM then btnYM:Lock() end
-            if btnYP then btnYP:Lock() end
-            if btnZM then btnZM:Lock() end
-            if btnZP then btnZP:Lock() end
+            if sliderX then sliderX:Lock() end
+            if sliderY then sliderY:Lock() end
+            if sliderZ then sliderZ:Lock() end
             
-            if logic.Conn then
-                logic.Conn:Disconnect()
-                logic.Conn = nil
+            if logic.IsBound then
+                RunService:UnbindFromRenderStep("ForceStretchCamera")
+                logic.IsBound = false
             end
         end
     end
@@ -1383,27 +1378,18 @@ StretchSection:Divider()
 
 local pX = StretchSection:Paragraph({
     Title = "Largura",
-    Desc = "1.00"
+    Desc = "1.00",
+    Flag = "Largura1"
 })
 
-local gX = StretchSection:Group({})
-
-btnXM = gX:Button({
-    Title = "-",
-    Justify = "Center",
+sliderX = StretchSection:Slider({
+    Title = "Valor",
+    Value = { Min = 0.10, Max = 1.50, Default = 1.00 },
+    Step = 0.01,
     Locked = true,
-    Callback = function()
-        logic.X = math.max(0.1, math.floor((logic.X - 0.05) * 100 + 0.5) / 100)
-        pX:SetDesc(string.format("%.2f", logic.X))
-    end
-})
-
-btnXP = gX:Button({
-    Title = "+",
-    Justify = "Center",
-    Locked = true,
-    Callback = function()
-        logic.X = math.min(10.0, math.floor((logic.X + 0.05) * 100 + 0.5) / 100)
+    Flag = "Largura2",
+    Callback = function(value)
+        logic.X = value
         pX:SetDesc(string.format("%.2f", logic.X))
     end
 })
@@ -1412,27 +1398,18 @@ StretchSection:Divider()
 
 local pY = StretchSection:Paragraph({
     Title = "Altura",
-    Desc = "1.00"
+    Desc = "1.00",
+    Flag = "Altura1"
 })
 
-local gY = StretchSection:Group({})
-
-btnYM = gY:Button({
-    Title = "-",
-    Justify = "Center",
+sliderY = StretchSection:Slider({
+    Title = "Valor",
+    Value = { Min = 0.10, Max = 1.50, Default = 1.00 },
+    Step = 0.01,
     Locked = true,
-    Callback = function()
-        logic.Y = math.max(0.1, math.floor((logic.Y - 0.05) * 100 + 0.5) / 100)
-        pY:SetDesc(string.format("%.2f", logic.Y))
-    end
-})
-
-btnYP = gY:Button({
-    Title = "+",
-    Justify = "Center",
-    Locked = true,
-    Callback = function()
-        logic.Y = math.min(10.0, math.floor((logic.Y + 0.05) * 100 + 0.5) / 100)
+    Flag = "Altura2",
+    Callback = function(value)
+        logic.Y = value
         pY:SetDesc(string.format("%.2f", logic.Y))
     end
 })
@@ -1441,31 +1418,21 @@ StretchSection:Divider()
 
 local pZ = StretchSection:Paragraph({
     Title = "Profundidade",
-    Desc = "1.00"
+    Desc = "1.00",
+    Flag = "Profundidade1"
 })
 
-local gZ = StretchSection:Group({})
-
-btnZM = gZ:Button({
-    Title = "-",
-    Justify = "Center",
+sliderZ = StretchSection:Slider({
+    Title = "Valor",
+    Value = { Min = 0.10, Max = 1.50, Default = 1.00 },
+    Step = 0.01,
     Locked = true,
-    Callback = function()
-        logic.Z = math.max(0.1, math.floor((logic.Z - 0.05) * 100 + 0.5) / 100)
+    Flag = "Profundidade2",
+    Callback = function(value)
+        logic.Z = value
         pZ:SetDesc(string.format("%.2f", logic.Z))
     end
 })
-
-btnZP = gZ:Button({
-    Title = "+",
-    Justify = "Center",
-    Locked = true,
-    Callback = function()
-        logic.Z = math.min(10.0, math.floor((logic.Z + 0.05) * 100 + 0.5) / 100)
-        pZ:SetDesc(string.format("%.2f", logic.Z))
-    end
-})
-
 
 --// tab tas
 task.spawn(function()
