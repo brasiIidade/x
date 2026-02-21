@@ -12,7 +12,7 @@ logic.Farmed = 0
 logic.InitialMoney = 0
 logic.UpdateCallback = nil
 
-local PROFUNDIDADE = -13
+local PROFUNDIDADE = -20
 local offset = CFrame.new(0, PROFUNDIDADE, 0)
 local zeroVec = Vector3.zero
 local startCF = nil
