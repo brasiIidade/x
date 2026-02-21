@@ -3,7 +3,7 @@ return {
     hitbox = "hitbox.lua",
     esp = "esp.lua",
     tas = "tas.lua",
-    jj = "jj.lua",
+    jj = "jj3.lua",
     f3x = "f3x.lua",
     char = "char.lua",
     chatgpt = "chatgpt.lua",
