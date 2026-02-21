@@ -4,7 +4,7 @@ return {
     esp = "esp.lua",
     tas = "tas",
     jj = "jj.lua",
-    f3x = "f3x2.lua",
+    f3x = "f3x3.lua",
     char = "char.lua",
     chatgpt = "chatgpt.lua",
     player = "player.lua",
