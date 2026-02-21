@@ -22,37 +22,47 @@ local function Notify(msg)
     end
 end
 
-local TevezLogic = {}
-TevezLogic.ChatMessage = ""
-TevezLogic.Spamming = false
-TevezLogic.SelectedDevice = "Computer"
-TevezLogic.SpoofEnabled = false
-TevezLogic.SelectedShopItem = "GLOCK 18"
-TevezLogic.Aura = false
-TevezLogic.Active = true
-TevezLogic.GunConfig = { Bullets = nil, Spread = nil, Range = nil }
-
-_G.TevezMods = TevezLogic
+if not _G.TevezMods then
+    _G.TevezMods = {
+        ChatMessage = "",
+        Spamming = false,
+        SelectedDevice = "Computer",
+        SpoofEnabled = false,
+        SelectedShopItem = "GLOCK 18",
+        Aura = false,
+        Active = true,
+        GunConfig = { Bullets = nil, Spread = nil, Range = nil }
+    }
+end
+local TevezLogic = _G.TevezMods
 
 function TevezLogic.ToggleSpoof(state)
     TevezLogic.SpoofEnabled = state
-    if state and Player.Character and Player.Character:FindFirstChild("Humanoid") then
-        Player.Character.Humanoid.Health = 0
+    if Player.Character then
+        local hum = Player.Character:FindFirstChildOfClass("Humanoid")
+        if hum and hum.Health > 0 then
+            hum.Health = 0
+        end
     end
 end
 
-if MapaAtual == "Tevez" or MapaAtual == "Christian" then
+if not getgenv().SpooferHooked then
+    getgenv().SpooferHooked = true
+    
     local OldNameCall
     OldNameCall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
         local method = getnamecallmethod()
-        if method == "FireServer" and TevezLogic.SpoofEnabled then
-            local selfName = tostring(self)
-            if (MapaAtual == "Tevez" and selfName == "Device") or (MapaAtual == "Christian" and selfName == "Dispositivo") then
-                local args = {...}
-                args[1] = TevezLogic.SelectedDevice 
-                return OldNameCall(self, unpack(args))
+        
+        if not checkcaller() and method == "FireServer" then
+            if _G.TevezMods and _G.TevezMods.SpoofEnabled then
+                if self.Name == "Device" or self.Name == "Dispositivo" then
+                    local args = {...}
+                    args[1] = _G.TevezMods.SelectedDevice 
+                    return OldNameCall(self, unpack(args))
+                end
             end
         end
+        
         return OldNameCall(self, ...)
     end))
 end
