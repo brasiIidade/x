@@ -361,7 +361,7 @@ task.spawn(function()
 end)
 
 --// criar seção
-local function criarsection(tab, title, desc, icon, opened)
+function criarsection(tab, title, desc, icon, opened)
     return tab:Section({
         Title = title,
         Desc = desc,
@@ -371,7 +371,7 @@ local function criarsection(tab, title, desc, icon, opened)
 end
 
 --// criar tab
-local function criartab(title, icon, locked)
+function criartab(title, icon, locked)
     return main:Tab({
         Title = title,
         Icon = icon,
@@ -385,7 +385,7 @@ criarsection(main, "Combate", "Seção de combate", nil, true)
 local SilentAim = criartab("Silent aim", "lucide:crosshair", false)
 local HitboxExpander = criartab("Hitbox expander", "lucide:codesandbox", false)
 local ESP = criartab("ESP", "lucide:view", false)
-local X1 = criartab("1v1", "lucide:person-standing", false)
+local X1 = criartab("PvP", "lucide:person-standing", false)
 
 --// tabs "parkour"
 criarsection(main, "Parkour", "Seção de parkour", nil, true)
@@ -1321,6 +1321,122 @@ X1:Toggle({
             init(newChar)
         end)
         table.insert(slData.binds, b3)
+    end
+})
+
+local logic = {
+    Enabled = false,
+    X = 1.0,
+    Y = 1.0,
+    Z = 1.0,
+    IsBound = false
+}
+
+local sliderX, sliderY, sliderZ
+
+local StretchSection = criarsection(X1, "Tela esticada", "Modificar tela", "lucide:fullscreen", true)
+
+StretchSection:Toggle({
+    Title = "Tela esticada",
+    Value = false,
+    Flag = "TelaEsticada",
+    Callback = function(v)
+        logic.Enabled = v
+        if v then
+            if sliderX then sliderX:Unlock() end
+            if sliderY then sliderY:Unlock() end
+            if sliderZ then sliderZ:Unlock() end
+            
+            if not logic.IsBound then
+                logic.IsBound = true
+                RunService:BindToRenderStep("ForceStretchCamera", Enum.RenderPriority.Camera.Value + 1, function()
+                    local c = Workspace.CurrentCamera
+                    if c then
+                        local right = c.CFrame.RightVector.Unit
+                        local up = c.CFrame.UpVector.Unit
+                        local look = -c.CFrame.LookVector.Unit
+                        
+                        local cleanCFrame = CFrame.fromMatrix(c.CFrame.Position, right, up, look)
+                        
+                        c.CFrame = cleanCFrame * CFrame.new(
+                            0, 0, 0,
+                            logic.X, 0, 0,
+                            0, logic.Y, 0,
+                            0, 0, logic.Z
+                        )
+                    end
+                end)
+            end
+        else
+            if sliderX then sliderX:Lock() end
+            if sliderY then sliderY:Lock() end
+            if sliderZ then sliderZ:Lock() end
+            
+            if logic.IsBound then
+                RunService:UnbindFromRenderStep("ForceStretchCamera")
+                logic.IsBound = false
+            end
+        end
+    end
+})
+
+StretchSection:Divider()
+
+local pX = StretchSection:Paragraph({
+    Title = "Largura",
+    Desc = "1.00",
+    Flag = "Largura1"
+})
+
+sliderX = StretchSection:Slider({
+    Title = "Valor",
+    Value = { Min = 0.10, Max = 1.20, Default = 1.00 },
+    Step = 0.01,
+    Locked = true,
+    Flag = "Largura2",
+    Callback = function(value)
+        logic.X = value
+        pX:SetDesc(string.format("%.2f", logic.X))
+    end
+})
+
+StretchSection:Divider()
+
+local pY = StretchSection:Paragraph({
+    Title = "Altura",
+    Desc = "1.00",
+    Flag = "Altura1"
+})
+
+sliderY = StretchSection:Slider({
+    Title = "Valor",
+    Value = { Min = 0.10, Max = 1.30, Default = 1.00 },
+    Step = 0.01,
+    Locked = true,
+    Flag = "Altura2",
+    Callback = function(value)
+        logic.Y = value
+        pY:SetDesc(string.format("%.2f", logic.Y))
+    end
+})
+
+StretchSection:Divider()
+
+local pZ = StretchSection:Paragraph({
+    Title = "Profundidade",
+    Desc = "1.00",
+    Flag = "Profundidade1"
+})
+
+sliderZ = StretchSection:Slider({
+    Title = "Valor",
+    Value = { Min = 0.10, Max = 1.20, Default = 1.00 },
+    Step = 0.01,
+    Locked = true,
+    Flag = "Profundidade2",
+    Callback = function(value)
+        logic.Z = value
+        pZ:SetDesc(string.format("%.2f", logic.Z))
     end
 })
 
@@ -3282,7 +3398,6 @@ FarmSection:Toggle({
 
     elseif MapaAtual == "NovaEra" then
         local NovaEraTab = criartab("Nova Era", "https://tr.rbxcdn.com/180DAY-9b65f927dea36f98c1a720694fd00fd3/768/432/Image/Webp/noFilter")
-
 task.spawn(function()
     if ler then ler("novaera") end
 end)
@@ -3304,6 +3419,17 @@ task.spawn(function()
         end
     end
 end)
+
+FarmSection:Dropdown({
+    Title = "Modo",
+    Values = {"Lixeiro", "Barbeiro"},
+    Value = "Lixeiro",
+    Callback = function(v)
+        if getgenv().NovaEraLogic and getgenv().NovaEraLogic.SetMode then
+            getgenv().NovaEraLogic.SetMode(v)
+        end
+    end
+})
 
 FarmSection:Toggle({
     Title = "Autofarm",
