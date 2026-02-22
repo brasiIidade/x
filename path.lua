@@ -2,7 +2,6 @@ return {
     silent = "silent.lua",
     treino = "treino.lua",
     combate = "combate.lua",
-    char = "char.lua",
     player = "player.lua",
     tevez = "tevez.lua",
     delta = "delta.lua",
