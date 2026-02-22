@@ -3,6 +3,7 @@ return {
     hitbox = "hitbox.lua",
     esp = "esp.lua",
     tas = "tas.lua",
+    combate = "combate.lua",
     jj = "jj.lua",
     f3x = "f3x.lua",
     char = "char.lua",
