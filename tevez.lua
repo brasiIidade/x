@@ -119,7 +119,7 @@ function TevezLogic.ApplyGunMods()
     if TevezLogic.GunConfig.Range then 
         changes = changes + ModifyGunProp("Range", TevezLogic.GunConfig.Range) 
     end
-    Notify("Alterações aplicadas em: " .. tostring(changes) .. " tabelas")
+    Notify("AlteraÃ§Ãµes aplicadas em: " .. tostring(changes) .. " tabelas")
 end
 
 function TevezLogic.ToggleAura(state, toggleUI)
