@@ -508,7 +508,7 @@ end
 function DeltaLogic.SetJJ()
     if not dPoli then return end
     local n = tonumber(DeltaLogic.JJValue)
-    if not n or n <= 0 then return end
+    if not n or n == 0 then return end
     dPoli:FireServer("Add", n)
     Notify(tostring(n) .. " polichinelos adicionados")
 end
@@ -516,8 +516,8 @@ end
 function DeltaLogic.GetRich()
     if not dDecM then return end
     local n = tonumber(DeltaLogic.GetRichValue)
-    if not n or n <= 0 then return end
-    dDecM:FireServer(n * -1, "BuyMilitaryPass")
+    if not n or n == 0 then return end
+    dDecM:FireServer(-n, "BuyMilitaryPass")
     Notify(tostring(n) .. " adicionado")
 end
 
@@ -574,30 +574,37 @@ local function alvoValido(plr)
     return false
 end
 
+local ultimoTiro = 0
+
 task.spawn(function()
-    while task.wait(0.1) do
-        if not DeltaLogic.KillAuraAtiva then continue end
-        if not damageRemote or not fxRemote then continue end
-        
-        local armaNome = obterArmaEquipada()
-        if not armaNome then continue end
-        
-        for _, plr in ipairs(plrs:GetPlayers()) do
-            local valido, cabeca = alvoValido(plr)
+    while task.wait() do
+        -- Agora usando if aninhado no lugar de "continue" para o ofuscador não surtar
+        if DeltaLogic.KillAuraAtiva and damageRemote and fxRemote then
+            local armaNome = obterArmaEquipada()
             
-            if valido then
-                pcall(function()
-                    fxRemote:FireServer(armaNome, cabeca.Position)
-                end)
-                
-                pcall(function()
-                    damageRemote:FireServer(armaNome, cabeca.Position, cabeca)
-                end)
+            if armaNome then
+                if tick() - ultimoTiro >= 0.1 then 
+                    ultimoTiro = tick()
+                    
+                    for _, plr in ipairs(plrs:GetPlayers()) do
+                        local valido, cabeca = alvoValido(plr)
+                        
+                        if valido then
+                            pcall(function()
+                                fxRemote:FireServer(armaNome, cabeca.Position)
+                            end)
+                            
+                            pcall(function()
+                                -- Argumentos passados direto, sem usar unpack()
+                                damageRemote:FireServer(armaNome, cabeca.Position, cabeca)
+                            end)
+                        end
+                    end
+                end
             end
         end
     end
 end)
-
 
     elseif MapaAtual == "NovaEra" then
         -- [[ NOVA ERA ]] --
