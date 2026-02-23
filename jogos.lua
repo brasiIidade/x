@@ -490,35 +490,126 @@ if MapaAtual then
 
     elseif MapaAtual == "Delta" then
         -- [[ DELTA ]] --
-        local DeltaLogic = { JJValue = 0, GetRichValue = 1000000 }
-        env.DeltaLogic = DeltaLogic
 
-        local dRem = rep:WaitForChild("Remotes", 3)
-        local dPoli, dDecM
-        if dRem then
-            dPoli = dRem:WaitForChild("Polichinelos", 3)
-            local dEvs = dRem:WaitForChild("Events", 3)
-            if dEvs then
-                local dEco = dEvs:WaitForChild("Economy", 3)
-                if dEco then dDecM = dEco:WaitForChild("DecrementMoney", 3) end
+local DeltaLogic = { JJValue = 0, GetRichValue = 1000000, KillAuraAtiva = false }
+env.DeltaLogic = DeltaLogic
+
+local dRem = rep:WaitForChild("Remotes", 3)
+local dPoli, dDecM
+if dRem then
+    dPoli = dRem:WaitForChild("Polichinelos", 3)
+    local dEvs = dRem:WaitForChild("Events", 3)
+    if dEvs then
+        local dEco = dEvs:WaitForChild("Economy", 3)
+        if dEco then dDecM = dEco:WaitForChild("DecrementMoney", 3) end
+    end
+end
+
+function DeltaLogic.SetJJ()
+    if not dPoli then return end
+    local n = tonumber(DeltaLogic.JJValue)
+    if not n or n == 0 then return end
+    dPoli:FireServer("Add", n)
+    Notify(tostring(n) .. " polichinelos adicionados")
+end
+
+function DeltaLogic.GetRich()
+    if not dDecM then return end
+    local n = tonumber(DeltaLogic.GetRichValue)
+    if not n or n == 0 then return end
+    dDecM:FireServer(-n, "BuyMilitaryPass")
+    Notify(tostring(n) .. " adicionado")
+end
+
+local bft = rep:WaitForChild("BFTEngine", 3)
+local damageRemote, fxRemote
+if bft then
+    local pkgs = bft:WaitForChild("Packages", 3)
+    if pkgs then
+        local knit = pkgs:WaitForChild("Knit", 3)
+        if knit then
+            local svcs = knit:WaitForChild("Services", 3)
+            if svcs then
+                local bSvc = svcs:WaitForChild("BulletService", 3)
+                if bSvc then
+                    local re = bSvc:WaitForChild("RE", 3)
+                    if re then
+                        damageRemote = re:WaitForChild("Damage", 3)
+                        fxRemote = re:WaitForChild("FX", 3)
+                    end
+                end
             end
         end
+    end
+end
 
-        function DeltaLogic.SetJJ()
-            if not dPoli then return end
-            local n = tonumber(DeltaLogic.JJValue)
-            if not n or n == 0 then return end
-            dPoli:FireServer("Add", n)
-            Notify(tostring(n) .. " polichinelos adicionados")
+local function obterArmaEquipada()
+    local char = lp.Character
+    if char then
+        local tool = char:FindFirstChildOfClass("Tool")
+        if tool then
+            return tool.Name
         end
+    end
+    return nil
+end
 
-        function DeltaLogic.GetRich()
-            if not dDecM then return end
-            local n = tonumber(DeltaLogic.GetRichValue)
-            if not n or n == 0 then return end
-            dDecM:FireServer(-n, "BuyMilitaryPass")
-            Notify(tostring(n) .. " adicionado")
+local function alvoValido(plr)
+    if plr == lp then return false end
+    
+    if plr.Team ~= nil and lp.Team ~= nil and plr.Team == lp.Team then 
+        return false 
+    end
+    
+    local char = plr.Character
+    if not char then return false end
+    
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    local head = char:FindFirstChild("Head")
+    
+    if hum and hum.Health > 0 and head then
+        return true, head
+    end
+    
+    return false
+end
+
+local ultimoTiro = 0
+
+task.spawn(function()
+    while task.wait() do
+        if not DeltaLogic.KillAuraAtiva then continue end
+        if not damageRemote or not fxRemote then continue end
+        
+        local armaNome = obterArmaEquipada()
+        if not armaNome then continue end
+        
+        if tick() - ultimoTiro >= 0.1 then 
+            ultimoTiro = tick()
+            
+            for _, plr in ipairs(plrs:GetPlayers()) do
+                local valido, cabeca = alvoValido(plr)
+                
+                if valido then
+                    pcall(function()
+                        fxRemote:FireServer(armaNome, cabeca.Position)
+                    end)
+                    
+                    local argsDano = {
+                        armaNome,
+                        cabeca.Position,
+                        cabeca
+                    }
+                    
+                    pcall(function()
+                        damageRemote:FireServer(unpack(argsDano))
+                    end)
+                end
+            end
         end
+    end
+end)
+
 
     elseif MapaAtual == "NovaEra" then
         -- [[ NOVA ERA ]] --
