@@ -3359,6 +3359,21 @@ Spoofer:Toggle({
     getgenv().notificar = notificar
 end
 
+local CombatSection = criarsection(DeltaTab, "Combate", "Kill aura", "lucide:swords", false)
+
+CombatSection:Toggle({
+    Title = "Kill aura",
+    Desc = cor({"Mata", "#FF0000"}, {" todos os inimigos ao redor"}),
+    Icon = "lucide:skull",
+    Value = false,
+    Callback = function(state)
+        if getgenv().DeltaLogic then 
+            getgenv().DeltaLogic.KillAuraAtiva = state 
+        end
+    end
+})
+
+
 local JJSection = criarsection(DeltaTab, "Polichinelos", "Modificar", "lucide:activity", true)
 
 JJSection:Input({
