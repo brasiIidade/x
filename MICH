@@ -33,46 +33,6 @@ local function burlar()
 	fke:Enable()
 end
 
--- anti deobfuscation/anti env logger/anti tamper
-local hooked = false
-if not rawequal(_25mspredefine, nil) then -- this probably doesnt work
-    do hooked = true end
-    do return [[Stop hooking my shit]], error("<3"), assert(false, "<3"), (nil)() end
-    do return nil end -- incase they hook return to block ^... - sincerely, debug.setstack
-end
-local string_lower_result = debug.traceback():lower()
-if string_lower_result:find("sandbox") or string_lower_result:find("unveilr") or string_lower_result:find("httpspy2") then
-    do hooked = true end
-    do return [[Stop hooking my shit]], error("<3"), assert(false, "<3"), (nil)() end
-    do return nil end
-end
-if isfunctionhooked then
-    if (http and http.request and isfunctionhooked(http.request)) or (request and isfunctionhooked(request)) or (http_request and isfunctionhooked(http_request)) or (httprequest and isfunctionhooked(httprequest)) then
-        do hooked = true end
-        do return [[Stop hooking my shit]], error("<3"), assert(false, "<3"), (nil)() end
-        do return nil end -- incase they hook return to block ^... - sincerely, debug.setstack
-    end
-    if hookfunction then
-        local f = function() end
-        if isfunctionhooked(f) then
-            do hooked = true end
-            do return [[Stop hooking my shit]], error("<3"), assert(false, "<3"), (nil)() end
-            do return nil end  -- incase they hook return to block ^... - sincerely, debug.setstack
-        end
-        hookfunction(f, function() print("hi") end)
-        if not isfunctionhooked(f) then
-            do hooked = true end
-            do return [[Stop hooking my shit]], error("<3"), assert(false, "<3"), (nil)() end
-            do return nil end  -- incase they hook return to block ^... - sincerely, debug.setstack
-        end
-    end
-end
-if not getmetatable or not setmetatable or not type or not select or type(select(2, pcall(getmetatable, setmetatable({}, {__index = function(self, ...) while true do end end})))['__index']) ~= 'function' or not pcall or not debug or not rawget or not rawset or not pcall(rawset,{}," "," ") or getmetatable(require) or getmetatable(print) or getmetatable(error) or ({debug.info(print,'a')})[1]~=0 or ({debug.info(tostring,'a')})[1]~=0 or ({debug.info(print,'a')})[2]~=true or not select or not getfenv or select(1, pcall(getfenv, 69)) == true or not select(2, pcall(rawget, debug, "info")) or #(((select(2, pcall(rawget, debug, "info")))(getfenv, "n")))<=1 or #(((select(2, pcall(rawget, debug, "info")))(print, "n")))<=1 or not (select(2, pcall(rawget, debug, "info")))(print, "s") == "[C]" or not (select(2, pcall(rawget, debug, "info")))(require, "s") == "[C]" or (select(2, pcall(rawget, debug, "info")))((function()end), "s") == "[C]" or not select(1, pcall(debug.info, coroutine.wrap(function() end)(), 's')) == false then
-    do hooked = true end
-    do return [[Stop hooking my shit]], error("<3"), assert(false, "<3"), (nil)() end
-    do return nil end  -- incase they hook return to block ^... - sincerely, debug.setstack
-end
-
 --// serviços
 local cloneref = cloneref or function(o) return o end
 local Players = cloneref(game:GetService("Players"))
@@ -3398,6 +3358,21 @@ Spoofer:Toggle({
      if type(notificar) == "function" then
     getgenv().notificar = notificar
 end
+
+local CombatSection = criarsection(DeltaTab, "Combate", "Kill aura", "lucide:swords", false)
+
+CombatSection:Toggle({
+    Title = "Kill aura",
+    Desc = cor({"Mata", "#FF0000"}, {" todos os inimigos ao redor"}),
+    Icon = "lucide:skull",
+    Value = false,
+    Callback = function(state)
+        if getgenv().DeltaLogic then 
+            getgenv().DeltaLogic.KillAuraAtiva = state 
+        end
+    end
+})
+
 
 local JJSection = criarsection(DeltaTab, "Polichinelos", "Modificar", "lucide:activity", true)
 
