@@ -24,9 +24,7 @@ end
 
 local function protecao(c)
     if not c then return false end
-    local itens = c:GetChildren()
-    for i = 1, #itens do
-        local v = itens[i]
+    for _, v in ipairs(c:GetChildren()) do
         if is_a(v, "Tool") then
             local n = v.Name:lower()
             if n:find("escudo") or n:find("shield") then
@@ -104,10 +102,7 @@ local loop = run.Heartbeat:Connect(function()
         return
     end
 
-    local lista = plrs:GetPlayers()
-    for i = 1, #lista do
-        local p = lista[i]
-        
+    for _, p in ipairs(plrs:GetPlayers()) do
         if valida(p) then
             local root = p.Character.HumanoidRootPart
             
@@ -128,6 +123,8 @@ local loop = run.Heartbeat:Connect(function()
             root.CanCollide = false
             root.Material = Enum.Material.ForceField
             
+            local teamColor = p.TeamColor and p.TeamColor.Color or Color3.new(1, 0, 0)
+            
             if cfg.Transparency < 1 then
                 if not luzes[p] then
                     local h = inst_new("Highlight")
@@ -135,7 +132,7 @@ local loop = run.Heartbeat:Connect(function()
                     h.Adornee = root
                     h.FillTransparency = cfg.Transparency
                     h.OutlineTransparency = cfg.Transparency
-                    h.FillColor = p.TeamColor.Color
+                    h.FillColor = teamColor
                     local suc, tar = pcall(gethui)
                     h.Parent = (suc and tar) and tar or core
                     luzes[p] = h
@@ -143,7 +140,7 @@ local loop = run.Heartbeat:Connect(function()
                     luzes[p].Adornee = root
                     luzes[p].FillTransparency = cfg.Transparency
                     luzes[p].OutlineTransparency = cfg.Transparency
-                    luzes[p].FillColor = p.TeamColor.Color
+                    luzes[p].FillColor = teamColor
                 end
             elseif luzes[p] then
                 luzes[p]:Destroy()
@@ -240,7 +237,8 @@ local function upd()
 
         if cfg.Chams then
             c.hl.Adornee = char
-            c.hl.FillColor = p.TeamColor and p.TeamColor.Color or Color3.new(1, 0, 0)
+            local teamColor = p.TeamColor and p.TeamColor.Color or Color3.new(1, 0, 0)
+            c.hl.FillColor = teamColor
             c.hl.Enabled = true
         else
             c.hl.Enabled = false
