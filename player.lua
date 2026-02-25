@@ -17,6 +17,7 @@ local inst = Instance.new
 
 if not isfolder("michigun.xyz") then makefolder("michigun.xyz") end
 
+--[[PLAYER]]
 local state = {
     last_pos = nil,
     death_cf = nil,
@@ -464,6 +465,7 @@ task.spawn(function()
 end)
 
 
+--[[CHAR]]
 env.Avatar = env.Avatar or {}
 local av = env.Avatar
 

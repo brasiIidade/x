@@ -135,21 +135,23 @@ local function GetTarget(config)
     if type(tParts) ~= "table" or #tParts == 0 then tParts = {"Cabeça"} end
 
     local isRandom = false
-    for i = 1, #tParts do if tParts[i] == "Aleatório" then isRandom = true break end end
+    for _, v in ipairs(tParts) do 
+        if v == "Aleatório" then isRandom = true break end 
+    end
 
     local wlUsers = {}
     if config.WhitelistedUsers then
-        for i = 1, #config.WhitelistedUsers do wlUsers[config.WhitelistedUsers[i]] = true end
+        for _, v in ipairs(config.WhitelistedUsers) do wlUsers[v] = true end
     end
 
     local wlTeams = {}
     if config.WhitelistedTeams then
-        for i = 1, #config.WhitelistedTeams do wlTeams[config.WhitelistedTeams[i]] = true end
+        for _, v in ipairs(config.WhitelistedTeams) do wlTeams[v] = true end
     end
 
     local fList = {}
     if config.FocusList then
-        for i = 1, #config.FocusList do fList[config.FocusList[i]] = true end
+        for _, v in ipairs(config.FocusList) do fList[v] = true end
     end
 
     local players = Services.Players:GetPlayers()
@@ -176,10 +178,10 @@ local function GetTarget(config)
         local partsToCheck = {}
         if isRandom then
             local pList = {}
-            for i = 1, #AllCategories do
-                local mapped = PartMapping[AllCategories[i]]
-                for j = 1, #mapped do
-                    local p = c:FindFirstChild(mapped[j])
+            for _, cat in ipairs(AllCategories) do
+                local mapped = PartMapping[cat]
+                for _, partName in ipairs(mapped) do
+                    local p = c:FindFirstChild(partName)
                     if p then table.insert(pList, p) end
                 end
             end
@@ -187,11 +189,11 @@ local function GetTarget(config)
                 table.insert(partsToCheck, pList[math.random(1, #pList)])
             end
         else
-            for i = 1, #tParts do
-                local mapped = PartMapping[tParts[i]]
+            for _, partName in ipairs(tParts) do
+                local mapped = PartMapping[partName]
                 if mapped then
-                    for j = 1, #mapped do
-                        local p = c:FindFirstChild(mapped[j])
+                    for _, partName2 in ipairs(mapped) do
+                        local p = c:FindFirstChild(partName2)
                         if p then table.insert(partsToCheck, p) end
                     end
                 end
@@ -200,8 +202,7 @@ local function GetTarget(config)
         
         if #partsToCheck == 0 then table.insert(partsToCheck, r) end
         
-        for i = 1, #partsToCheck do
-            local pObj = partsToCheck[i]
+        for _, pObj in ipairs(partsToCheck) do
             local sPos, onScreen = wts(Camera, pObj.Position)
             
             if onScreen then
@@ -334,8 +335,8 @@ local CheckedRemotes = setmetatable({}, {__mode = "k"})
 local function is_safe(remote)
     if CheckedSafe[remote] ~= nil then return CheckedSafe[remote] end
     local ln = string.lower(remote.Name)
-    for i = 1, #safe_remotes do
-        if string.find(ln, string.lower(safe_remotes[i])) then 
+    for _, v in ipairs(safe_remotes) do
+        if string.find(ln, string.lower(v)) then 
             CheckedSafe[remote] = false
             return false 
         end
@@ -347,8 +348,8 @@ end
 local function isBulletRemote(remote)
     if CheckedRemotes[remote] ~= nil then return CheckedRemotes[remote] end
     local n = string.lower(remote.Name)
-    for i = 1, #BulletKeywords do
-        if string.find(n, BulletKeywords[i]) then 
+    for _, v in ipairs(BulletKeywords) do
+        if string.find(n, v) then 
             CheckedRemotes[remote] = true
             return true 
         end
@@ -369,7 +370,6 @@ setreadonly(mt, false)
 local getnamecallmethod = getnamecallmethod
 local checkcaller = checkcaller
 local typeof = typeof
-local unpack = unpack or table.unpack
 local CFrame_new = CFrame.new
 
 mt.__namecall = newcclosure(function(self, ...)
