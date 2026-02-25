@@ -16,16 +16,60 @@ local cam = cr(ws.CurrentCamera)
 local unp = table.unpack or unpack
 local env = getgenv()
 
+-- Verificação de segurança para cloneref
+local function safeCloneref(obj)
+    local success, result = pcall(function()
+        return cloneref(obj)
+    end)
+    return success and result or obj
+end
+
+-- Verificação de segurança para serviços
+local function safeGetService(name)
+    local success, result = pcall(function()
+        return game:GetService(name)
+    end)
+    if not success then return nil end
+    return cr(result)
+end
+
 if not isfolder("michigun.xyz") then makefolder("michigun.xyz") end
 
 -- [[ TAS ]] --
 local stEnums = {}
 for _, e in ipairs(Enum.HumanoidStateType:GetEnumItems()) do stEnums[e.Value] = e end
 
+-- Função wrapper segura para conexões de eventos
+local function safeConnect(signal, callback)
+    local success, conn = pcall(function()
+        return signal:Connect(callback)
+    end)
+    return success and conn or nil
+end
+
+-- Função wrapper segura para Heartbeat
+local function safeHeartbeat(callback)
+    return safeConnect(rs.Heartbeat, callback)
+end
+
+-- Função wrapper segura para Stepped
+local function safeStepped(callback)
+    return safeConnect(rs.Stepped, callback)
+end
+
 local gh = gethui or function() return cg end
 if gh():FindFirstChild(".") then gh():FindFirstChild("."):Destroy() end
+
+-- Verificação segura do gethui
+local function safeGethui()
+    local success, result = pcall(function()
+        return gethui()
+    end)
+    return success and result or cg
+end
+
 local ui = Instance.new("ScreenGui")
-ui.Name, ui.ResetOnSpawn, ui.Parent = ".", false, gh()
+ui.Name, ui.ResetOnSpawn, ui.Parent = ".", false, safeGethui()
 
 local tas_fDir = "michigun.xyz/tas"
 if writefile and not isfolder(tas_fDir) then makefolder(tas_fDir) end
