@@ -7,15 +7,6 @@ local cg = cr(game:GetService("CoreGui"))
 local tcs = cr(game:GetService("TextChatService"))
 local hs = cr(game:GetService("HttpService"))
 
-local srv = {
-    Players = plrs,
-    RunService = rs,
-    Workspace = ws,
-    CoreGui = cg,
-    TextChatService = tcs,
-    HttpService = hs
-}
-
 local lp = plrs.LocalPlayer
 local cam = ws.CurrentCamera
 local env = getgenv()
@@ -26,7 +17,6 @@ local inst = Instance.new
 
 if not isfolder("michigun.xyz") then makefolder("michigun.xyz") end
 
--- [[ PLAYER MANIPULATION ]] --
 local state = {
     last_pos = nil,
     death_cf = nil,
@@ -55,9 +45,11 @@ end
 local function find_player(str)
     if not str or str == "" then return nil end
     str = str:lower()
-    for _, p in ipairs(srv.Players:GetPlayers()) do
+    for _, p in ipairs(plrs:GetPlayers()) do
         if p ~= lp then
-            if p.Name:lower():sub(1, #str) == str or p.DisplayName:lower():sub(1, #str) == str then
+            local pn = p.Name:lower()
+            local pd = p.DisplayName:lower()
+            if pn:sub(1, #str) == str or pd:sub(1, #str) == str then
                 return p
             end
         end
@@ -102,7 +94,9 @@ local function monitor_object(obj)
         end
         
         update()
-        state.connections[obj] = obj:GetPropertyChangedSignal("Text"):Connect(update)
+        if not state.connections[obj] then
+            state.connections[obj] = obj:GetPropertyChangedSignal("Text"):Connect(update)
+        end
     end
 end
 
@@ -117,7 +111,9 @@ local function scan_ui_layer(layer)
         task.wait() 
         pcall(monitor_object, v)
     end)
-    table.insert(state.connections, conn)
+    if not state.connections[conn] then
+        table.insert(state.connections, conn)
+    end
 end
 
 local function clear_spoof()
@@ -150,7 +146,7 @@ local function update_anon_visuals()
         end
         
         scan_ui_layer(lp:WaitForChild("PlayerGui"))
-        pcall(function() scan_ui_layer(srv.CoreGui) end)
+        pcall(function() scan_ui_layer(cg) end)
         if char then scan_ui_layer(char) end
     else
         clear_spoof()
@@ -158,6 +154,16 @@ local function update_anon_visuals()
         if char then
             local hum = char:FindFirstChild("Humanoid")
             if hum then hum.DisplayName = lp.DisplayName end
+        end
+    end
+end
+
+local function set_transparency(trans)
+    for _, v in ipairs(lp.Character:GetDescendants()) do
+        if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
+            v.Transparency = trans
+        elseif v:IsA("Decal") then
+            v.Transparency = trans
         end
     end
 end
@@ -175,12 +181,12 @@ local function toggle_invis(bool)
         task.wait(0.15)
         
         local s = inst("Seat")
-        s.Name = srv.HttpService:GenerateGUID(false)
+        s.Name = hs:GenerateGUID(false)
         s.Transparency = 1
         s.CanCollide = false
         s.Anchored = false
         s.Position = v3(-25.95, 84, 3537.55)
-        s.Parent = srv.Workspace
+        s.Parent = ws
         
         local w = inst("Weld")
         w.Part0 = s
@@ -194,24 +200,11 @@ local function toggle_invis(bool)
         s.CFrame = saved_cf
         cam.CameraType = old_cam
         
-        for _, v in ipairs(lp.Character:GetDescendants()) do
-            if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
-                v.Transparency = 0.5
-            elseif v:IsA("Decal") then
-                v.Transparency = 0.5
-            end
-        end
+        set_transparency(0.5)
     else
         if state.seat then state.seat:Destroy() end
         state.seat = nil
-        
-        for _, v in ipairs(lp.Character:GetDescendants()) do
-            if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
-                v.Transparency = 0
-            elseif v:IsA("Decal") then
-                v.Transparency = 0
-            end
-        end
+        set_transparency(0)
     end
 end
 
@@ -250,7 +243,7 @@ local function start_fling(target_name)
 
     local start_time = tick()
 
-    state.fling_conn = srv.RunService.Heartbeat:Connect(function()
+    state.fling_conn = rs.Heartbeat:Connect(function()
         local cfg = get_cfg()
         
         if tick() - start_time >= 2 then
@@ -327,7 +320,7 @@ end)
 
 if lp.Character then hook_character(lp.Character) end
 
-srv.RunService.RenderStepped:Connect(function()
+rs.RenderStepped:Connect(function()
     local cfg = get_cfg()
     if not cfg then return end
     
@@ -348,15 +341,13 @@ srv.RunService.RenderStepped:Connect(function()
     end
 end)
 
-srv.RunService.Stepped:Connect(function()
+rs.Stepped:Connect(function()
     local cfg = get_cfg()
     if not cfg or not cfg.Noclip then return end
     
     local c = lp.Character
     if c then
-        local parts = c:GetDescendants()
-        for i = 1, #parts do
-            local v = parts[i]
+        for _, v in ipairs(c:GetDescendants()) do
             if v:IsA("BasePart") and v.CanCollide then 
                 v.CanCollide = false 
             end
@@ -408,8 +399,8 @@ OldNc = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
     return OldNc(self, ...)
 end))
 
-if srv.TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
-    srv.TextChatService.OnIncomingMessage = function(msg)
+if tcs.ChatVersion == Enum.ChatVersion.TextChatService then
+    tcs.OnIncomingMessage = function(msg)
         local cfg = get_cfg()
         local props = inst("TextChatMessageProperties")
         
@@ -473,7 +464,6 @@ task.spawn(function()
 end)
 
 
--- [[ AVATAR / SKINS ]] --
 env.Avatar = env.Avatar or {}
 local av = env.Avatar
 
@@ -484,17 +474,6 @@ av.SkinFolder = "michigun.xyz/skins"
 if not isfolder(av.SkinFolder) then makefolder(av.SkinFolder) end
 
 local function s_ton(v) return v and tonumber(v) or nil end
-
-local function f_plr(n)
-    if not n or type(n) ~= "string" or n == "" then return nil end
-    n = n:lower()
-    for _, p in ipairs(plrs:GetPlayers()) do
-        local pn = p.Name and p.Name:lower()
-        local pd = p.DisplayName and p.DisplayName:lower()
-        if (pn and pn:sub(1, #n) == n) or (pd and pd:sub(1, #n) == n) then return p end
-    end
-    return nil
-end
 
 local function morph(c, fn, fid, d)
     if not c then return end
@@ -552,7 +531,7 @@ av.ApplySkin = function(tgt)
 end
 
 av.ApplySkinToOther = function(tn, si, sf)
-    local tp = f_plr(tn)
+    local tp = find_player(tn)
     if not tp or not tp.Character then return end
     local fid, fn = nil, si
     if sf then
@@ -573,7 +552,7 @@ av.ApplySkinToOther = function(tn, si, sf)
 end
 
 av.RestoreOther = function(tn)
-    local tp = f_plr(tn)
+    local tp = find_player(tn)
     if not tp or not tp.Character then return end
     local k, d = pcall(function() return plrs:GetHumanoidDescriptionFromUserId(tp.UserId) end)
     if k and d then morph(tp.Character, tp.Name, tp.UserId, d) end
