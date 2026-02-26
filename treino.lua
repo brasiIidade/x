@@ -342,7 +342,27 @@ end
 
 tas.ToggleAll = function(e)
     tas.ReqPlay = e
-    if e then for n in pairs(tas.Loaded) do actTas(n) end else for n in pairs(tas.Loaded) do clrTas(n) end stpMov() chkPlay() end
+    -- Debug: verificar se Loaded tem dados
+    local count = 0
+    for _ in pairs(tas.Loaded) do count = count + 1 end
+    if count == 0 then
+        sNotif("TAS", "Nenhum TAS selecionado!")
+        return
+    end
+    if e then 
+        for n in pairs(tas.Loaded) do 
+            local success, err = pcall(function()
+                actTas(n)
+            end)
+            if not success then
+                sNotif("TAS", "Erro ao iniciar: " .. tostring(err))
+            end
+        end 
+    else 
+        for n in pairs(tas.Loaded) do clrTas(n) end 
+        stpMov() 
+        chkPlay() 
+    end
 end
 
 tas.ManualStopPlayback = function()
