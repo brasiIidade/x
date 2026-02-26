@@ -16,66 +16,21 @@ local cam = cr(ws.CurrentCamera)
 local unp = table.unpack or unpack
 local env = getgenv()
 
--- Verificação de segurança para cloneref
-local function safeCloneref(obj)
-    local success, result = pcall(function()
-        return cloneref(obj)
-    end)
-    return success and result or obj
-end
-
--- Verificação de segurança para serviços
-local function safeGetService(name)
-    local success, result = pcall(function()
-        return game:GetService(name)
-    end)
-    if not success then return nil end
-    return cr(result)
-end
-
 if not isfolder("michigun.xyz") then makefolder("michigun.xyz") end
 
 -- [[ TAS ]] --
 local stEnums = {}
 for _, e in ipairs(Enum.HumanoidStateType:GetEnumItems()) do stEnums[e.Value] = e end
 
--- Função wrapper segura para conexões de eventos
-local function safeConnect(signal, callback)
-    local success, conn = pcall(function()
-        return signal:Connect(callback)
-    end)
-    return success and conn or nil
-end
-
--- Função wrapper segura para Heartbeat
-local function safeHeartbeat(callback)
-    return safeConnect(rs.Heartbeat, callback)
-end
-
--- Função wrapper segura para Stepped
-local function safeStepped(callback)
-    return safeConnect(rs.Stepped, callback)
-end
-
 local gh = gethui or function() return cg end
 if gh():FindFirstChild(".") then gh():FindFirstChild("."):Destroy() end
-
--- Verificação segura do gethui
-local function safeGethui()
-    local success, result = pcall(function()
-        return gethui()
-    end)
-    return success and result or cg
-end
-
 local ui = Instance.new("ScreenGui")
-ui.Name, ui.ResetOnSpawn, ui.Parent = ".", false, safeGethui()
+ui.Name, ui.ResetOnSpawn, ui.Parent = ".", false, gh()
 
 local tas_fDir = "michigun.xyz/tas"
 if writefile and not isfolder(tas_fDir) then makefolder(tas_fDir) end
 
 env.TAS = env.TAS or {}
-_G.TAS = env.TAS
 local tas = env.TAS
 
 tas.Loaded = tas.Loaded or {}
@@ -146,7 +101,7 @@ local function mkVp(pt)
     cl.Parent, cl.Transparency, cl.Material, cl.CFrame = vpf, 0, Enum.Material.Neon, CFrame.new()
     local mx = math.max(cl.Size.X, cl.Size.Y, cl.Size.Z)
     vpc.CFrame = CFrame.new(0, mx, mx * 2.5) * CFrame.Angles(math.rad(-20), math.rad(180), 0)
-    local cnn = safeStepped(function()
+    local cnn = rs.Stepped:Connect(function()
         if not pt then return end
         local ps, vs = cam:WorldToScreenPoint(pt.Position)
         vpf.Position, vpf.Visible = UDim2.fromOffset(ps.X - 75, ps.Y - 75), vs
@@ -342,27 +297,7 @@ end
 
 tas.ToggleAll = function(e)
     tas.ReqPlay = e
-    -- Debug: verificar se Loaded tem dados
-    local count = 0
-    for _ in pairs(tas.Loaded) do count = count + 1 end
-    if count == 0 then
-        sNotif("TAS", "Nenhum TAS selecionado!")
-        return
-    end
-    if e then 
-        for n in pairs(tas.Loaded) do 
-            local success, err = pcall(function()
-                actTas(n)
-            end)
-            if not success then
-                sNotif("TAS", "Erro ao iniciar: " .. tostring(err))
-            end
-        end 
-    else 
-        for n in pairs(tas.Loaded) do clrTas(n) end 
-        stpMov() 
-        chkPlay() 
-    end
+    if e then for n in pairs(tas.Loaded) do actTas(n) end else for n in pairs(tas.Loaded) do clrTas(n) end stpMov() chkPlay() end
 end
 
 tas.ManualStopPlayback = function()
