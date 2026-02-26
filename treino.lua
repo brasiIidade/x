@@ -75,6 +75,7 @@ local tas_fDir = "michigun.xyz/tas"
 if writefile and not isfolder(tas_fDir) then makefolder(tas_fDir) end
 
 env.TAS = env.TAS or {}
+_G.TAS = env.TAS
 local tas = env.TAS
 
 tas.Loaded = tas.Loaded or {}
@@ -145,7 +146,7 @@ local function mkVp(pt)
     cl.Parent, cl.Transparency, cl.Material, cl.CFrame = vpf, 0, Enum.Material.Neon, CFrame.new()
     local mx = math.max(cl.Size.X, cl.Size.Y, cl.Size.Z)
     vpc.CFrame = CFrame.new(0, mx, mx * 2.5) * CFrame.Angles(math.rad(-20), math.rad(180), 0)
-    local cnn = rs.Stepped:Connect(function()
+    local cnn = safeStepped(function()
         if not pt then return end
         local ps, vs = cam:WorldToScreenPoint(pt.Position)
         vpf.Position, vpf.Visible = UDim2.fromOffset(ps.X - 75, ps.Y - 75), vs
