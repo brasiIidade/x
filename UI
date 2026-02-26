@@ -1563,7 +1563,8 @@ PlaybackSection:Slider({
 })
 
 task.spawn(function()
-    repeat task.wait(0.5) until getgenv().TAS and getgenv().TAS.IsReady
+    local function getTAS() return getgenv().TAS or _G.TAS end
+    repeat task.wait(0.5) until getTAS() and getTAS().IsReady
     getgenv().TAS.NotifyFunc = notificar 
 
     local oldStop = getgenv().TAS.StopRecording
