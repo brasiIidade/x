@@ -1439,7 +1439,8 @@ sliderZ = StretchSection:Slider({
 
 
 --// tab tas
-local tas = getgenv().TAS or _G.TAS
+local function getTAS() return getgenv().TAS or _G.TAS end
+local tas = getTAS()
 local TASDropdown
 local StopButton
 local DeleteButton
