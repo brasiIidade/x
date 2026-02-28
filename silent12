@@ -268,89 +268,99 @@ local function getLegitOffset(config)
     return Vector3.new((math.random()-0.5)*0.5, (math.random()-0.5)*0.5, (math.random()-0.5)*0.5)
 end
 
+-- hook
 local mt = getrawmetatable(game)
-local old_nc = mt.__namecall
-setreadonly(mt, false)
+local old_namecall = mt.__namecall
 
 local getnamecallmethod = getnamecallmethod
 local checkcaller = checkcaller
-local typeof = typeof
-local unpack = unpack or table.unpack
-local tpack = table.pack
-local math_random = math.random
+local get_env = getgenv
+local type_of = typeof
+
 local CFrame_new = CFrame.new
 local Ray_new = Ray.new
+local random_chance = math.random
+local unpack_args = table.unpack or unpack
 
-local HANDLED_METHODS = {
-    FireServer                  = true,
-    InvokeServer                = true,
-    Raycast                     = true,
-    FindPartOnRay               = true,
-    findPartOnRay               = true,
-    FindPartOnRayWithIgnoreList = true,
-    FindPartOnRayWithWhitelist  = true,
-}
-
-local LEGACY_RAY_METHODS = {
-    FindPartOnRay               = true,
-    findPartOnRay               = true,
-    FindPartOnRayWithIgnoreList = true,
-    FindPartOnRayWithWhitelist  = true,
-}
+setreadonly(mt, false)
 
 mt.__namecall = newcclosure(function(self, ...)
     local method = getnamecallmethod()
 
-    if checkcaller() then return old_nc(self, ...) end
+    if checkcaller() then 
+        return old_namecall(self, ...) 
+    end
 
-    local Config = getgenv().SilentConfig
+    local Config = get_env().SilentConfig
+    local alvoAtual = State.Part
 
-    if Config and Config.Enabled and State.Part then
-        if not HANDLED_METHODS[method] then
-            return old_nc(self, ...)
+    if Config and Config.Enabled and alvoAtual then
+        
+        local isRaycastLegado = (method == "FindPartOnRayWithIgnoreList" or method == "FindPartOnRayWithWhitelist" or method == "FindPartOnRay" or method == "findPartOnRay")
+        local isRaycastNovo = (method == "Raycast")
+        local isMetodoDeTiro = (method == "FireServer" or method == "InvokeServer")
+
+        if not (isRaycastLegado or isRaycastNovo or isMetodoDeTiro) then
+            return old_namecall(self, ...)
         end
 
-        if math_random(1, 100) <= (Config.HitChance or 100) then
-            local args = tpack(...)
-            local finalPos = State.Part.Position + getLegitOffset(Config)
+        local chanceDefinida = Config.HitChance or 100
+        if random_chance(1, 100) <= chanceDefinida then
+            
+            local args = {...}
+            local posicaoFinalAlvo = alvoAtual.Position + getLegitOffset(Config)
+
 
             if self == Services.Workspace then
-                if LEGACY_RAY_METHODS[method] then
-                    local a_ray = args[1]
-                    if a_ray and typeof(a_ray) == "Ray" then
-                        local origin = a_ray.Origin
-                        args[1] = Ray_new(origin, (finalPos - origin).Unit * 10000)
-                        return old_nc(self, unpack(args, 1, args.n))
+                
+                if isRaycastLegado then
+                    local raioAntigo = args[1]
+                    
+                    if raioAntigo and type_of(raioAntigo) == "Ray" then
+                        local origemDoTiro = raioAntigo.Origin
+                        local direcaoPerfeita = (posicaoFinalAlvo - origemDoTiro).Unit * 10000
+                        
+                        args[1] = Ray_new(origemDoTiro, direcaoPerfeita)
+                        return old_namecall(self, unpack_args(args))
                     end
-                elseif method == "Raycast" then
-                    local origin = args[1]
-                    if origin and typeof(origin) == "Vector3" then
-                        args[2] = (finalPos - origin).Unit * 10000
-                        return old_nc(self, unpack(args, 1, args.n))
+                
+                elseif isRaycastNovo then
+                    local origemDoTiro = args[1]
+                    
+                    if origemDoTiro and type_of(origemDoTiro) == "Vector3" then
+                        local direcaoPerfeita = (posicaoFinalAlvo - origemDoTiro).Unit * 10000 
+                        
+                        args[2] = direcaoPerfeita
+                        return old_namecall(self, unpack_args(args))
                     end
                 end
             end
-
-            if (method == "FireServer" or method == "InvokeServer") and isBulletRemote(self) then
-                local camPos = Camera.CFrame.Position
-                local direction = (finalPos - camPos).Unit
-
-                for i = 1, args.n do
-                    local v = args[i]
-                    local t = typeof(v)
-                    if t == "Vector3" then
-                        args[i] = v.Magnitude <= 10 and direction or finalPos
-                    elseif t == "CFrame" then
-                        args[i] = CFrame_new(camPos, finalPos)
+            
+            if isMetodoDeTiro and isBulletRemote(self) then
+                local posicaoCamera = Camera.CFrame.Position
+                local direcaoCameraAlvo = (posicaoFinalAlvo - posicaoCamera).Unit
+                
+                for i = 1, #args do
+                    local valorAtual = args[i]
+                    
+                    if type_of(valorAtual) == "Vector3" then
+                        if valorAtual.Magnitude <= 10 then
+                            args[i] = direcaoCameraAlvo
+                        else
+                            args[i] = posicaoFinalAlvo
+                        end
+                        
+                    elseif type_of(valorAtual) == "CFrame" then
+                        args[i] = CFrame_new(posicaoCamera, posicaoFinalAlvo)
                     end
                 end
-
-                return old_nc(self, unpack(args, 1, args.n))
+                
+                return old_namecall(self, unpack_args(args))
             end
         end
     end
 
-    return old_nc(self, ...)
+    return old_namecall(self, ...)
 end)
 
 setreadonly(mt, true)
