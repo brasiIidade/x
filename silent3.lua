@@ -330,8 +330,7 @@ local BulletKeywords = {
 }
 
 -- Specific remotes that need special handling
-local ProjectileRemotes = {"Projectile", "projectile"}
-local ProjectileIndex = 2 -- The index of the Vector3 position argument (2nd argument)
+local ProjectileRemotes = {"Projectile", "projectile", "_Projectile", "_projectile"}
 
 local CheckedSafe = setmetatable({}, {__mode = "k"})
 local CheckedRemotes = setmetatable({}, {__mode = "k"})
