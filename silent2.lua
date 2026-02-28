@@ -396,8 +396,8 @@ mt.__namecall = newcclosure(function(self, ...)
                 args[2] = (finalPos - origin).Unit * 10000 
                 return old_nc(self, unpack(args))
                 
-            -- Nova lógica para o GunSystem (Fire e Visuals) restrita ao mapa do Cristian (16150352)
-            elseif (self.Name == "Fire" or self.Name == "Visuals") and game.PlaceId == 16150352 then
+            -- Nova lógica para o GunSystem (Fire e Visuals)
+            elseif self.Name == "Fire" or self.Name == "Visuals" then
                 if type(args[2]) == "table" then
                     for k, v in pairs(args[2]) do
                         if type(v) == "table" and v.Position then
@@ -426,6 +426,7 @@ mt.__namecall = newcclosure(function(self, ...)
                     end
                 end
                 
+                -- Substitui a terceira argumentação que é a Hit Position no Fire remote
                 if self.Name == "Fire" and args[3] and typeof(args[3]) == "Vector3" then
                     args[3] = finalPos
                 end
