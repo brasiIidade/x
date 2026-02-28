@@ -277,102 +277,77 @@ local checkcaller = checkcaller
 local typeof = typeof
 local unpack = unpack or table.unpack
 local tpack = table.pack
+local math_random = math.random
 local CFrame_new = CFrame.new
 local Ray_new = Ray.new
-local tick = tick
-local math_random = math.random
 
-local RAY_METHODS = {
+local HANDLED_METHODS = {
+    FireServer                  = true,
+    InvokeServer                = true,
     Raycast                     = true,
     FindPartOnRay               = true,
     findPartOnRay               = true,
     FindPartOnRayWithIgnoreList = true,
     FindPartOnRayWithWhitelist  = true,
 }
-local REMOTE_METHODS = {
-    FireServer   = true,
-    InvokeServer = true,
+
+local LEGACY_RAY_METHODS = {
+    FindPartOnRay               = true,
+    findPartOnRay               = true,
+    FindPartOnRayWithIgnoreList = true,
+    FindPartOnRayWithWhitelist  = true,
 }
-local HANDLED_METHODS = {}
-for k in next, RAY_METHODS    do HANDLED_METHODS[k] = true end
-for k in next, REMOTE_METHODS do HANDLED_METHODS[k] = true end
-
-local cached_config = nil
-local config_tick   = 0
-
-local function handleLegacyRay(self, args, finalPos)
-    local ray = args[1]
-    if ray and typeof(ray) == "Ray" then
-        local origin = ray.Origin
-        args[1] = Ray_new(origin, (finalPos - origin).Unit * 10000)
-        return old_nc(self, unpack(args, 1, args.n))
-    end
-end
-
-local function handleRaycast(self, args, finalPos)
-    local origin = args[1]
-    if origin and typeof(origin) == "Vector3" then
-        args[2] = (finalPos - origin).Unit * 10000
-        return old_nc(self, unpack(args, 1, args.n))
-    end
-end
-
-local function handleRemote(self, args, finalPos)
-    if not isBulletRemote(self) then return end
-
-    local camPos    = Camera.CFrame.Position
-    local direction = (finalPos - camPos).Unit
-
-    for i = 1, args.n do
-        local v = args[i]
-        local t = typeof(v)
-        if t == "Vector3" then
-            args[i] = v.Magnitude <= 10 and direction or finalPos
-        elseif t == "CFrame" then
-            args[i] = CFrame_new(camPos, finalPos)
-        end
-    end
-
-    return old_nc(self, unpack(args, 1, args.n))
-end
 
 mt.__namecall = newcclosure(function(self, ...)
     local method = getnamecallmethod()
+
     if checkcaller() then return old_nc(self, ...) end
 
-    local now = tick()
-    if now - config_tick > 0.5 then
-        cached_config = getgenv().SilentConfig
-        config_tick   = now
-    end
+    local Config = getgenv().SilentConfig
 
-    local Config = cached_config
-    if not (Config and Config.Enabled and State.Part) then
-        return old_nc(self, ...)
-    end
-
-    if not HANDLED_METHODS[method] then
-        return old_nc(self, ...)
-    end
-
-    local hitChance = Config.HitChance or 100
-    if hitChance < 100 and math_random(1, 100) > hitChance then
-        return old_nc(self, ...)
-    end
-
-    local args     = tpack(...)         -- table.pack preserva args.n corretamente
-    local finalPos = State.Part.Position + getLegitOffset(Config)
-
-    if self == Services.Workspace then
-        if RAY_METHODS[method] and method ~= "Raycast" then
-            return handleLegacyRay(self, args, finalPos) or old_nc(self, ...)
-        elseif method == "Raycast" then
-            return handleRaycast(self, args, finalPos) or old_nc(self, ...)
+    if Config and Config.Enabled and State.Part then
+        if not HANDLED_METHODS[method] then
+            return old_nc(self, ...)
         end
-    end
 
-    if REMOTE_METHODS[method] then
-        return handleRemote(self, args, finalPos) or old_nc(self, ...)
+        if math_random(1, 100) <= (Config.HitChance or 100) then
+            local args = tpack(...)
+            local finalPos = State.Part.Position + getLegitOffset(Config)
+
+            if self == Services.Workspace then
+                if LEGACY_RAY_METHODS[method] then
+                    local a_ray = args[1]
+                    if a_ray and typeof(a_ray) == "Ray" then
+                        local origin = a_ray.Origin
+                        args[1] = Ray_new(origin, (finalPos - origin).Unit * 10000)
+                        return old_nc(self, unpack(args, 1, args.n))
+                    end
+                elseif method == "Raycast" then
+                    local origin = args[1]
+                    if origin and typeof(origin) == "Vector3" then
+                        args[2] = (finalPos - origin).Unit * 10000
+                        return old_nc(self, unpack(args, 1, args.n))
+                    end
+                end
+            end
+
+            if (method == "FireServer" or method == "InvokeServer") and isBulletRemote(self) then
+                local camPos = Camera.CFrame.Position
+                local direction = (finalPos - camPos).Unit
+
+                for i = 1, args.n do
+                    local v = args[i]
+                    local t = typeof(v)
+                    if t == "Vector3" then
+                        args[i] = v.Magnitude <= 10 and direction or finalPos
+                    elseif t == "CFrame" then
+                        args[i] = CFrame_new(camPos, finalPos)
+                    end
+                end
+
+                return old_nc(self, unpack(args, 1, args.n))
+            end
+        end
     end
 
     return old_nc(self, ...)
