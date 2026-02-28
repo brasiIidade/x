@@ -367,78 +367,86 @@ local mt = getrawmetatable(game)
 local old_nc = mt.__namecall
 setreadonly(mt, false)
 
-local mt = getrawmetatable(game)
-local old_nc = mt.__namecall
-setreadonly(mt, false)
-
 local getnamecallmethod = getnamecallmethod
 local checkcaller = checkcaller
 local typeof = typeof
 local CFrame_new = CFrame.new
-local Ray_new = Ray.new -- Necessário para os métodos antigos
+local Ray_new = Ray.new
+local unpack = table.unpack or unpack
+
+-- Dicionário para checagem super rápida O(1). 
+-- Corta o lag instantaneamente descartando namecalls que não são tiros.
+local ValidMethods = {
+    ["Raycast"] = true,
+    ["FindPartOnRayWithIgnoreList"] = true,
+    ["FindPartOnRayWithWhitelist"] = true,
+    ["FindPartOnRay"] = true,
+    ["findPartOnRay"] = true,
+    ["FireServer"] = true,
+    ["InvokeServer"] = true
+}
 
 mt.__namecall = newcclosure(function(self, ...)
     local method = getnamecallmethod()
     
+    -- 1. FAST FAIL: Se não for um método relevante, vaza da função na hora.
+    if not ValidMethods[method] then
+        return old_nc(self, ...)
+    end
+
     if checkcaller() then return old_nc(self, ...) end
 
     local Config = getgenv().SilentConfig
     
-    if Config and Config.Enabled and State.Part then
-        -- Verifica se o método chamado é um dos que precisamos manipular
-        if method ~= "FireServer" and method ~= "InvokeServer" and method ~= "Raycast" 
-        and method ~= "FindPartOnRayWithIgnoreList" and method ~= "FindPartOnRayWithWhitelist" 
-        and method ~= "FindPartOnRay" and method ~= "findPartOnRay" then
-            return old_nc(self, ...)
-        end
+    -- 2. Só puxa e processa o alvo se tiver passado do filtro acima
+    if not Config or not Config.Enabled or not State.Part then
+        return old_nc(self, ...)
+    end
 
-        if math.random(1, 100) <= (Config.HitChance or 100) then
-            local args = {...}
-            
-            -- State.Part é onde o seu código lida com a mira "Aleatório"
-            local finalPos = State.Part.Position + getLegitOffset(Config)
+    if math.random(1, 100) > (Config.HitChance or 100) then
+        return old_nc(self, ...)
+    end
 
-            -- 1. Tratamento de Raycasting (Novo e Antigo)
-            if self == Services.Workspace then
-                -- Jogos antigos (Como o ID 2069320852)
-                if method == "FindPartOnRayWithIgnoreList" or method == "FindPartOnRayWithWhitelist" or method == "FindPartOnRay" or method == "findPartOnRay" then
-                    local a_ray = args[1]
-                    if a_ray and typeof(a_ray) == "Ray" then
-                        local origin = a_ray.Origin
-                        local direction = (finalPos - origin).Unit * 10000
-                        args[1] = Ray_new(origin, direction)
-                        return old_nc(self, unpack(args))
-                    end
-                -- Jogos mais recentes
-                elseif method == "Raycast" then
-                    local origin = args[1]
-                    if origin and typeof(origin) == "Vector3" then
-                        args[2] = (finalPos - origin).Unit * 10000 
-                        return old_nc(self, unpack(args))
-                    end
-                end
+    local args = {...}
+    local finalPos = State.Part.Position + getLegitOffset(Config)
+
+    -- 3. Tratamento de Raycasting (Super limpo)
+    if self == Services.Workspace then
+        if method == "Raycast" then
+            local origin = args[1]
+            if typeof(origin) == "Vector3" then
+                args[2] = (finalPos - origin).Unit * 10000 
+                return old_nc(self, unpack(args))
             end
-
-            -- 2. Tratamento para Remotes (Balas baseadas em eventos de servidor)
-            if (method == "FireServer" or method == "InvokeServer") and isBulletRemote(self) then
-                local camPos = Camera.CFrame.Position
-                local direction = (finalPos - camPos).Unit
-                
-                for i = 1, #args do
-                    local v = args[i]
-                    if typeof(v) == "Vector3" then
-                        if v.Magnitude <= 10 then
-                            args[i] = direction
-                        else
-                            args[i] = finalPos
-                        end
-                    elseif typeof(v) == "CFrame" then
-                        args[i] = CFrame_new(camPos, finalPos)
-                    end
-                end
+        else
+            local a_ray = args[1]
+            if typeof(a_ray) == "Ray" then
+                args[1] = Ray_new(a_ray.Origin, (finalPos - a_ray.Origin).Unit * 10000)
                 return old_nc(self, unpack(args))
             end
         end
+
+    -- 4. Tratamento de Remotes
+    elseif isBulletRemote(self) then
+        local camPos = Camera.CFrame.Position
+        local direction = (finalPos - camPos).Unit
+        
+        -- Cache de typeof e otimização do loop
+        for i = 1, #args do
+            local v = args[i]
+            local t = typeof(v)
+            
+            if t == "Vector3" then
+                if v.Magnitude <= 10 then
+                    args[i] = direction
+                else
+                    args[i] = finalPos
+                end
+            elseif t == "CFrame" then
+                args[i] = CFrame_new(camPos, finalPos)
+            end
+        end
+        return old_nc(self, unpack(args))
     end
     
     return old_nc(self, ...)
