@@ -1,5 +1,5 @@
 return {
-    silent = "silent",
+    silent = "silent2",
     treino = "treino.lua",
     combate = "combate.lua",
     player = "player.lua",

@@ -364,7 +364,7 @@ local function getLegitOffset(config)
 end
 
 -- ==========================================
--- HOOK PRINCIPAL (NAMECALL)
+-- HOOK PRINCIPAL (NAMECALL SUPER PODEROSO)
 -- ==========================================
 local mt = getrawmetatable(game)
 local old_nc = mt.__namecall
@@ -383,70 +383,73 @@ mt.__namecall = newcclosure(function(self, ...)
     local Config = getgenv().SilentConfig
     
     if Config and Config.Enabled and State.Part then
-        if method ~= "FireServer" and method ~= "InvokeServer" and method ~= "Raycast" then
+        if method ~= "FireServer" and method ~= "InvokeServer" and not string.find(method, "Ray") then
             return old_nc(self, ...)
         end
 
         if math.random(1, 100) <= Config.HitChance then
+            local args = {...}
             
-            -- LÓGICA ESPECÍFICA PARA O JOGO SOLICITADO (ID: 2069320852)
-            if game.PlaceId == 2069320852 then
-                if method == "FireServer" then
-                    local args = {...}
-                    
-                    -- Intercepta o remote de dano
-                    if self.Name == "_Projectile" then
-                        -- args[1] -> Token (Mantém intacto)
-                        -- args[2] -> DamageObject (Mantém intacto)
-                        -- args[3] -> Parte alvo atingida (Altera para o nosso alvo do Silent Aim)
-                        -- args[4] -> O Jogador local (Mantém intacto)
-                        if typeof(args[3]) == "Instance" and args[3]:IsA("BasePart") then
-                            args[3] = State.Part
-                            return old_nc(self, unpack(args))
-                        end
-                        
-                    -- Intercepta o remote visual (partículas/efeitos)
-                    elseif self.Name == "Projectile" then
-                        -- args[1] -> Parte alvo atingida (Altera para o nosso alvo do Silent Aim)
-                        -- args[2] -> Posição do tiro (Vector3)
-                        if typeof(args[1]) == "Instance" and typeof(args[2]) == "Vector3" then
-                            args[1] = State.Part
-                            args[2] = State.Part.Position + getLegitOffset(Config)
-                            return old_nc(self, unpack(args))
-                        end
-                    end
+            -- 1. SISTEMA DE FÍSICA E RAYCAST (Redirecionamento Visual)
+            -- Intercepta o Raycast moderno
+            if method == "Raycast" and self == Services.Workspace then
+                local origin = args[1]
+                local finalPos = State.Part.Position + getLegitOffset(Config)
+                args[2] = (finalPos - origin).Unit * 10000 
+                return old_nc(self, unpack(args))
+            end
+            
+            -- Intercepta os Raycasts Legados (É ISSO AQUI QUE FAZ A BALA DESSE MAPA ACERTAR LOCALMENTE)
+            if (method == "FindPartOnRayWithIgnoreList" or method == "FindPartOnRayWithWhitelist" or method == "FindPartOnRay") and self == Services.Workspace then
+                local oldRay = args[1]
+                if oldRay then
+                    local finalPos = State.Part.Position + getLegitOffset(Config)
+                    local newDirection = (finalPos - oldRay.Origin).Unit * 10000
+                    args[1] = Ray.new(oldRay.Origin, newDirection)
+                    return old_nc(self, unpack(args))
                 end
             end
 
-            -- LÓGICA GLOBAL (Para Raycasts e jogos normais)
-            if method == "Raycast" and self == Services.Workspace then
-                local args = {...}
-                local origin = args[1]
-                local finalPos = State.Part.Position + getLegitOffset(Config)
-                -- Altera a direção do Raycast nativo do jogo para mirar perfeitamente no inimigo
-                args[2] = (finalPos - origin).Unit * 10000 
-                return old_nc(self, unpack(args))
+            -- 2. SISTEMA DE REMOTES (Redirecionamento de Dano e Partículas)
+            if method == "FireServer" then
                 
-            -- Lógica para remotes genéricos APENAS se não for o jogo específico
-            elseif isBulletRemote(self) and game.PlaceId ~= 2069320852 then
-                local args = {...}
-                local finalPos = State.Part.Position + getLegitOffset(Config)
-                local camPos = Camera.CFrame.Position
-                local direction = (finalPos - camPos).Unit
-                
-                for i = 1, #args do
-                    local v = args[i]
-                    if typeof(v) == "Vector3" then
-                        if v.Magnitude <= 10 then
-                            args[i] = direction
-                        else
-                            args[i] = finalPos
-                        end
-                    elseif typeof(v) == "CFrame" then
-                        args[i] = CFrame_new(camPos, finalPos)
+                -- >> LÓGICA EXCLUSIVA DO JOGO 2069320852 <<
+                if game.PlaceId == 2069320852 then
+                    -- Altera apenas o necessário e força a substituição bruta
+                    if self.Name == "_Projectile" then
+                        -- args: [1]=Token, [2]=BulletDamage, [3]=Parte_Atingida, [4]=LocalPlayer
+                        args[3] = State.Part 
+                        return old_nc(self, unpack(args))
+                        
+                    elseif self.Name == "Projectile" then
+                        -- args: [1]=Parte_Atingida, [2]=Posição
+                        args[1] = State.Part
+                        args[2] = State.Part.Position + getLegitOffset(Config)
+                        return old_nc(self, unpack(args))
                     end
                 end
-                return old_nc(self, unpack(args))
+
+                -- >> LÓGICA UNIVERSAL PARA OUTROS JOGOS <<
+                if isBulletRemote(self) and game.PlaceId ~= 2069320852 then
+                    local finalPos = State.Part.Position + getLegitOffset(Config)
+                    local camPos = Camera.CFrame.Position
+                    local direction = (finalPos - camPos).Unit
+                    
+                    for i = 1, #args do
+                        local v = args[i]
+                        if typeof(v) == "Vector3" then
+                            if v.Magnitude <= 10 then
+                                args[i] = direction
+                            else
+                                args[i] = finalPos
+                            end
+                        elseif typeof(v) == "CFrame" then
+                            args[i] = CFrame_new(camPos, finalPos)
+                        end
+                    end
+                    return old_nc(self, unpack(args))
+                end
+                
             end
         end
     end
