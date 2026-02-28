@@ -325,9 +325,12 @@ end)
 
 local safe_remotes = {"UpdateMouse", "Look", "Camera", "Status", "Animation", "Heartbeat"}
 local BulletKeywords = {
-    "fire", "shoot", "bullet", "ammo", "projectile", "missile", "rocket", "hit", 
+    "fire", "shoot", "bullet", "ammo", "missile", "rocket", "hit", 
     "damage", "attack", "cast", "ray", "target", "server", "remote", "action", "mouse", "input", "create"
 }
+
+-- Specific remotes that need special handling
+local ProjectileRemotes = {"Projectile", "projectile", "_Projectile", "_projectile"}
 
 local CheckedSafe = setmetatable({}, {__mode = "k"})
 local CheckedRemotes = setmetatable({}, {__mode = "k"})
@@ -356,6 +359,38 @@ local function isBulletRemote(remote)
     end
     CheckedRemotes[remote] = false
     return false
+end
+
+-- Check if the remote is a Projectile remote that needs special handling
+local function isProjectileRemote(remote)
+    local n = string.lower(remote.Name)
+    for _, v in ipairs(ProjectileRemotes) do
+        if n == string.lower(v) then
+            return true
+        end
+    end
+    return false
+end
+
+-- Handle Projectile remote specifically
+-- Format 1 (Projectile): (HumanoidRootPart, Vector3.new(x, y, z))
+-- Format 2 (_Projectile): (string, DamageInstance, BodyPart, Player)
+local function handleProjectileRemote(args, config)
+    -- Format 2: _Projectile - Replace the body part (3rd argument)
+    if args[3] and typeof(args[3]) == "Instance" and args[3]:IsA("BasePart") then
+        args[3] = State.Part
+        return args
+    end
+    
+    -- Format 1: Projectile - Replace the Vector3 position (2nd argument)
+    local finalPos = State.Part.Position + getLegitOffset(config)
+    if args[1] and typeof(args[1]) == "Instance" and args[1]:IsA("BasePart") then
+        if args[2] and typeof(args[2]) == "Vector3" then
+            args[2] = finalPos
+        end
+    end
+    
+    return args
 end
 
 local function getLegitOffset(config)
@@ -390,6 +425,9 @@ mt.__namecall = newcclosure(function(self, ...)
                 local origin = args[1]
                 local finalPos = State.Part.Position + getLegitOffset(Config)
                 args[2] = (finalPos - origin).Unit * 10000 
+                return old_nc(self, unpack(args))
+            elseif isProjectileRemote(self) then
+                local args = handleProjectileRemote({...}, Config)
                 return old_nc(self, unpack(args))
             elseif isBulletRemote(self) then
                 local args = {...}

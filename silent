@@ -325,12 +325,9 @@ end)
 
 local safe_remotes = {"UpdateMouse", "Look", "Camera", "Status", "Animation", "Heartbeat"}
 local BulletKeywords = {
-    "fire", "shoot", "bullet", "ammo", "missile", "rocket", "hit", 
+    "fire", "shoot", "bullet", "ammo", "projectile", "missile", "rocket", "hit", 
     "damage", "attack", "cast", "ray", "target", "server", "remote", "action", "mouse", "input", "create"
 }
-
--- Specific remotes that need special handling
-local ProjectileRemotes = {"Projectile", "projectile", "_Projectile", "_projectile"}
 
 local CheckedSafe = setmetatable({}, {__mode = "k"})
 local CheckedRemotes = setmetatable({}, {__mode = "k"})
@@ -361,38 +358,14 @@ local function isBulletRemote(remote)
     return false
 end
 
--- Check if the remote is a Projectile remote that needs special handling
-local function isProjectileRemote(remote)
-    local n = string.lower(remote.Name)
-    for _, v in ipairs(ProjectileRemotes) do
-        if n == string.lower(v) then
-            return true
-        end
-    end
-    return false
-end
-
--- Handle Projectile remote specifically
--- Format: (HumanoidRootPart, Vector3.new(x, y, z))
-local function handleProjectileRemote(args, config)
-    local finalPos = State.Part.Position + getLegitOffset(config)
-    
-    -- Check if first arg is a character part (HumanoidRootPart)
-    if args[1] and typeof(args[1]) == "Instance" and args[1]:IsA("BasePart") then
-        -- Replace the Vector3 position (2nd argument) with the target position
-        if args[2] and typeof(args[2]) == "Vector3" then
-            args[2] = finalPos
-        end
-    end
-    
-    return args
-end
-
 local function getLegitOffset(config)
     if not config.UseLegitOffset then return Vector3.zero end
     return Vector3.new((math.random()-0.5)*0.5, (math.random()-0.5)*0.5, (math.random()-0.5)*0.5)
 end
 
+-- ==========================================
+-- HOOK PRINCIPAL (NAMECALL)
+-- ==========================================
 local mt = getrawmetatable(game)
 local old_nc = mt.__namecall
 setreadonly(mt, false)
@@ -415,17 +388,47 @@ mt.__namecall = newcclosure(function(self, ...)
         end
 
         if math.random(1, 100) <= Config.HitChance then
+            
+            -- LÓGICA ESPECÍFICA PARA O JOGO SOLICITADO (ID: 2069320852)
+            if game.PlaceId == 2069320852 then
+                if method == "FireServer" then
+                    local args = {...}
+                    
+                    -- Intercepta o remote de dano
+                    if self.Name == "_Projectile" then
+                        -- args[1] -> Token (Mantém intacto)
+                        -- args[2] -> DamageObject (Mantém intacto)
+                        -- args[3] -> Parte alvo atingida (Altera para o nosso alvo do Silent Aim)
+                        -- args[4] -> O Jogador local (Mantém intacto)
+                        if typeof(args[3]) == "Instance" and args[3]:IsA("BasePart") then
+                            args[3] = State.Part
+                            return old_nc(self, unpack(args))
+                        end
+                        
+                    -- Intercepta o remote visual (partículas/efeitos)
+                    elseif self.Name == "Projectile" then
+                        -- args[1] -> Parte alvo atingida (Altera para o nosso alvo do Silent Aim)
+                        -- args[2] -> Posição do tiro (Vector3)
+                        if typeof(args[1]) == "Instance" and typeof(args[2]) == "Vector3" then
+                            args[1] = State.Part
+                            args[2] = State.Part.Position + getLegitOffset(Config)
+                            return old_nc(self, unpack(args))
+                        end
+                    end
+                end
+            end
+
+            -- LÓGICA GLOBAL (Para Raycasts e jogos normais)
             if method == "Raycast" and self == Services.Workspace then
                 local args = {...}
                 local origin = args[1]
                 local finalPos = State.Part.Position + getLegitOffset(Config)
+                -- Altera a direção do Raycast nativo do jogo para mirar perfeitamente no inimigo
                 args[2] = (finalPos - origin).Unit * 10000 
                 return old_nc(self, unpack(args))
-            elseif isProjectileRemote(self) then
-                -- Handle Projectile remote: (HumanoidRootPart, Vector3 position)
-                local args = handleProjectileRemote({...}, Config)
-                return old_nc(self, unpack(args))
-            elseif isBulletRemote(self) then
+                
+            -- Lógica para remotes genéricos APENAS se não for o jogo específico
+            elseif isBulletRemote(self) and game.PlaceId ~= 2069320852 then
                 local args = {...}
                 local finalPos = State.Part.Position + getLegitOffset(Config)
                 local camPos = Camera.CFrame.Position
