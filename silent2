@@ -323,6 +323,41 @@ Services.RunService.RenderStepped:Connect(function()
     end
 end)
 
+local safe_remotes = {"UpdateMouse", "Look", "Camera", "Status", "Animation", "Heartbeat"}
+local BulletKeywords = {
+    "fire", "shoot", "bullet", "ammo", "projectile", "missile", "rocket", "hit", 
+    "damage", "attack", "cast", "ray", "target", "server", "remote", "action", "mouse", "input", "create", "visual"
+}
+
+local CheckedSafe = setmetatable({}, {__mode = "k"})
+local CheckedRemotes = setmetatable({}, {__mode = "k"})
+
+local function is_safe(remote)
+    if CheckedSafe[remote] ~= nil then return CheckedSafe[remote] end
+    local ln = string.lower(remote.Name)
+    for _, v in ipairs(safe_remotes) do
+        if string.find(ln, string.lower(v)) then 
+            CheckedSafe[remote] = false
+            return false 
+        end
+    end
+    CheckedSafe[remote] = true
+    return true
+end
+
+local function isBulletRemote(remote)
+    if CheckedRemotes[remote] ~= nil then return CheckedRemotes[remote] end
+    local n = string.lower(remote.Name)
+    for _, v in ipairs(BulletKeywords) do
+        if string.find(n, v) then 
+            CheckedRemotes[remote] = true
+            return true 
+        end
+    end
+    CheckedRemotes[remote] = false
+    return false
+end
+
 local function getLegitOffset(config)
     if not config.UseLegitOffset then return Vector3.zero end
     return Vector3.new((math.random()-0.5)*0.5, (math.random()-0.5)*0.5, (math.random()-0.5)*0.5)
@@ -330,7 +365,6 @@ end
 
 local mt = getrawmetatable(game)
 local old_nc = mt.__namecall
-local old_idx = mt.__index
 setreadonly(mt, false)
 
 local getnamecallmethod = getnamecallmethod
@@ -338,22 +372,30 @@ local checkcaller = checkcaller
 local typeof = typeof
 local CFrame_new = CFrame.new
 
--- Engana o mouse do script do GunSystem (v_u_6.Hit.Position)
-mt.__index = newcclosure(function(self, idx)
-    if not checkcaller() then
-        local Config = getgenv().SilentConfig
-        if Config and Config.Enabled and State.Part then
-            if self:IsA("Mouse") and math.random(1, 100) <= Config.HitChance then
-                if idx == "Hit" then
-                    return CFrame_new(State.Part.Position + getLegitOffset(Config))
-                elseif idx == "Target" then
-                    return State.Part
-                end
+local function modifyTable(tab, targetPart, finalPos, camPos)
+    for i, v in pairs(tab) do
+        if type(v) == "table" then
+            modifyTable(v, targetPart, finalPos, camPos)
+        elseif type(i) == "string" then
+            local l = string.lower(i)
+            if l == "position" or l == "hit" or l == "p" or l == "pos" then
+                tab[i] = finalPos
+            elseif l == "instance" or l == "part" or l == "target" or l == "t" then
+                tab[i] = targetPart
             end
+        elseif typeof(v) == "Vector3" then
+            if v.Magnitude > 10 then
+                tab[i] = finalPos
+            else
+                tab[i] = (finalPos - camPos).Unit
+            end
+        elseif typeof(v) == "CFrame" then
+            tab[i] = CFrame_new(camPos, finalPos)
+        elseif typeof(v) == "Instance" and v:IsA("BasePart") then
+            tab[i] = targetPart
         end
     end
-    return old_idx(self, idx)
-end)
+end
 
 mt.__namecall = newcclosure(function(self, ...)
     local method = getnamecallmethod()
@@ -363,75 +405,25 @@ mt.__namecall = newcclosure(function(self, ...)
     local Config = getgenv().SilentConfig
     
     if Config and Config.Enabled and State.Part then
+        if method ~= "FireServer" and method ~= "InvokeServer" and method ~= "Raycast" then
+            return old_nc(self, ...)
+        end
+
         if math.random(1, 100) <= Config.HitChance then
-            local args = {...}
-            local finalPos = State.Part.Position + getLegitOffset(Config)
-            local camPos = Camera.CFrame.Position
-
-            -- Hook Raycast e FindPartOnRay do Workspace nativo
-            if self == Services.Workspace then
-                if method == "Raycast" then
-                    local origin = args[1]
-                    args[2] = (finalPos - origin).Unit * (args[2].Magnitude or 10000)
-                    return old_nc(self, unpack(args))
-                elseif method == "FindPartOnRay" or method == "FindPartOnRayWithIgnoreList" or method == "FindPartOnRayWithWhitelist" then
-                    local ray = args[1]
-                    if typeof(ray) == "Ray" then
-                        args[1] = Ray.new(ray.Origin, (finalPos - ray.Origin).Unit * 10000)
-                        return old_nc(self, unpack(args))
-                    end
-                end
-            end
-
-            -- Hook Tabela FireServer
-            if method == "FireServer" or method == "InvokeServer" then
-                local remoteName = tostring(self.Name)
+            if method == "Raycast" and self == Services.Workspace then
+                local args = {...}
+                local origin = args[1]
+                local finalPos = State.Part.Position + getLegitOffset(Config)
+                args[2] = (finalPos - origin).Unit * 10000 
+                return old_nc(self, unpack(args))
+            elseif isBulletRemote(self) then
+                local args = {...}
+                local finalPos = State.Part.Position + getLegitOffset(Config)
+                local camPos = Camera.CFrame.Position
                 
-                if remoteName == "Fire" or remoteName == "Visuals" then
-                    local newArgs = {}
-                    for i, v in ipairs(args) do newArgs[i] = v end
-                    
-                    if type(newArgs[2]) == "table" then
-                        local newTable = {}
-                        for k, v in pairs(newArgs[2]) do
-                            if type(v) == "table" and (v.Position or v.Distance) then
-                                local hitEntry = {}
-                                for key, val in pairs(v) do hitEntry[key] = val end
-                                
-                                -- Recalcula a distância com base na origem real do tiro
-                                local origin = Camera.CFrame.Position
-                                if hitEntry.Position and hitEntry.Distance then
-                                    local originalDir = (hitEntry.Position - origin).Unit
-                                    origin = hitEntry.Position - (originalDir * hitEntry.Distance)
-                                end
-
-                                hitEntry.Position = finalPos
-                                hitEntry.Distance = (finalPos - origin).Magnitude
-                                -- Define a Normal para cima para não ser pego pelo AC
-                                hitEntry.Normal = Vector3.new(0, 1, 0)
-                                
-                                if remoteName == "Fire" then
-                                    hitEntry.Instance = State.Part
-                                    hitEntry.Size = State.Part.Size
-                                    hitEntry.Material = State.Part.Material
-                                elseif remoteName == "Visuals" then
-                                    hitEntry.Material = tostring(State.Part.Material)
-                                end
-                                
-                                newTable[k] = hitEntry
-                            else
-                                newTable[k] = v
-                            end
-                        end
-                        newArgs[2] = newTable
-                    end
-                    
-                    if remoteName == "Fire" and typeof(newArgs[3]) == "Vector3" then
-                        newArgs[3] = finalPos
-                    end
-                    
-                    return old_nc(self, unpack(newArgs))
-                end
+                modifyTable(args, State.Part, finalPos, camPos)
+                
+                return old_nc(self, unpack(args))
             end
         end
     end
