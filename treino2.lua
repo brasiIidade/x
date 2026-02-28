@@ -325,10 +325,10 @@ jjs.Config = jjs.Config or {
     Running = false,
     StartValue = 1,
     EndValue = 100,
-    DelayValue = 1.5,
+    DelayValue = 3,
     RandomDelay = false,
-    RandomMin = 1,
-    RandomMax = 3,
+    RandomMin = 2.5,
+    RandomMax = 4,
     JumpEnabled = false,
     SpacingEnabled = false,
     ReverseEnabled = false,
@@ -361,22 +361,14 @@ local function up(s)
 end
 
 local function ph(n)
-    if n == 0 then
-        return ""
-    end
-    if n == 100 then
-        return "cem"
-    end
+    if n == 0 then return "" end
+    if n == 100 then return "cem" end
     local hv = math.floor(n / 100)
     local rv = n % 100
     local p = {}
-    if hv > 0 then
-        table.insert(p, h[hv])
-    end
+    if hv > 0 then table.insert(p, h[hv]) end
     if rv > 0 then
-        if #p > 0 then
-            table.insert(p, "e")
-        end
+        if #p > 0 then table.insert(p, "e") end
         if rv < 20 then
             table.insert(p, u[rv])
         else
@@ -393,51 +385,21 @@ end
 
 local function nt(n)
     n = tonumber(n)
-    if not n then
-        return "N/A"
-    end
-    if n == 0 then
-        return "ZERO"
-    end
-    local g = {}
+    if not n or n == 0 then return n == 0 and "ZERO" or "N/A" end
+    local g, x = {}, {}
     local temp = n
     while temp > 0 do
         table.insert(g, temp % 1000)
         temp = math.floor(temp / 1000)
     end
-    local x = {}
     for i = #g, 1, -1 do
         local v = g[i]
         if v ~= 0 then
             local txt = ph(v)
-            if i == 2 then
-                if v == 1 then
-                    txt = "mil"
-                else
-                    txt = txt .. " mil"
-                end
-            end
-            if i == 3 then
-                if v == 1 then
-                    txt = "um milhão"
-                else
-                    txt = txt .. " milhões"
-                end
-            end
-            if i == 4 then
-                if v == 1 then
-                    txt = "um bilhão"
-                else
-                    txt = txt .. " bilhões"
-                end
-            end
-            if i == 5 then
-                if v == 1 then
-                    txt = "um trilhão"
-                else
-                    txt = txt .. " trilhões"
-                end
-            end
+            if i == 2 then txt = (v == 1 and "mil" or txt .. " mil")
+            elseif i == 3 then txt = (v == 1 and "um milhão" or txt .. " milhões")
+            elseif i == 4 then txt = (v == 1 and "um bilhão" or txt .. " bilhões")
+            elseif i == 5 then txt = (v == 1 and "um trilhão" or txt .. " trilhões") end
             table.insert(x, txt)
         end
     end
@@ -445,56 +407,42 @@ local function nt(n)
 end
 
 local function sc(m)
-    task.spawn(function()
-        local s = tostring(m)
-        local done = false
-        if tcs.ChatVersion == Enum.ChatVersion.TextChatService then
-             local c = tcs:FindFirstChild("TextChannels")
-             local tgt = c and c:FindFirstChild("RBXGeneral")
-             if tgt then
-                 pcall(function()
-                     tgt:SendAsync(s)
-                 end)
-                 done = true
-             end
+    local s = tostring(m)
+    if tcs.ChatVersion == Enum.ChatVersion.TextChatService then
+        local c = tcs:FindFirstChild("TextChannels")
+        local tgt = c and c:FindFirstChild("RBXGeneral")
+        if tgt then
+            pcall(function() tgt:SendAsync(s) end)
+            return
         end
-        if not done then
-            local ev = rep:FindFirstChild("DefaultChatSystemChatEvents")
-            local req = ev and ev:FindFirstChild("SayMessageRequest")
-            if req then
-                pcall(function()
-                    req:FireServer(s, "All")
-                end)
-            end
-        end
-    end)
+    end
+    
+    local ev = rep:FindFirstChild("DefaultChatSystemChatEvents")
+    local req = ev and ev:FindFirstChild("SayMessageRequest")
+    if req then
+        pcall(function() req:FireServer(s, "All") end)
+    end
 end
 
 local function gc()
     local c = lp.Character
-    if c and c:FindFirstChild("Humanoid") and c:FindFirstChild("HumanoidRootPart") then
-        return c
-    end
-    return nil
+    return (c and c:FindFirstChild("Humanoid") and c:FindFirstChild("HumanoidRootPart")) and c or nil
 end
 
 local function aj()
     local c = gc()
     if c then
-        local h = c.Humanoid
-        if h:GetState() ~= Enum.HumanoidStateType.Jumping and h:GetState() ~= Enum.HumanoidStateType.Freefall then
-            h:ChangeState(Enum.HumanoidStateType.Jumping)
+        local hum = c.Humanoid
+        if hum:GetState() ~= Enum.HumanoidStateType.Jumping and hum:GetState() ~= Enum.HumanoidStateType.Freefall then
+            hum:ChangeState(Enum.HumanoidStateType.Jumping)
         end
     end
 end
 
 local function as()
     local c = gc()
-    if not c then
-        return
-    end
-    local h = c.Humanoid
-    local r = c.HumanoidRootPart
+    if not c then return end
+    local h, r = c.Humanoid, c.HumanoidRootPart
     h.AutoRotate = false
     local nv = Instance.new("NumberValue")
     local tw = ts:Create(nv, TweenInfo.new(0.3, Enum.EasingStyle.Sine), {Value = 360 * (math.random(1,2)==1 and 1 or -1)})
@@ -510,9 +458,7 @@ local function as()
     tw.Completed:Connect(function()
         cn:Disconnect()
         nv:Destroy()
-        if h then
-            h.AutoRotate = true
-        end
+        if h then h.AutoRotate = true end
     end)
     tw:Play()
 end
@@ -525,8 +471,8 @@ jjs.Start = function()
     task.spawn(function()
         local s = tonumber(c.StartValue) or 1
         local e = tonumber(c.EndValue) or 100
-        local dir = 1
-        if c.ReverseEnabled then s, e, dir = e, s, -1 end
+        local dir = (c.ReverseEnabled and s < e) and -1 or 1
+        if c.ReverseEnabled then s, e = e, s end
         
         local currentMode = c.Mode
         if currentMode == "Padrão" and rep:FindFirstChild("Remotes") and rep.Remotes:FindFirstChild("Polichinelos") then
@@ -557,15 +503,13 @@ jjs.Start = function()
         for i = s, e, dir do
             if not c.Running then break end
             cnt = cnt + 1
-            
             jjs.State.Current = i
-            local rem = tot - cnt
-            local delay = ft or (c.RandomDelay and ((tonumber(c.RandomMin) or 1) + math.random() * ((tonumber(c.RandomMax) or 3) - (tonumber(c.RandomMin) or 1))) or (tonumber(c.DelayValue) or 1.5))
-            local timeLeft = rem * delay
-            jjs.State.FinishTimestamp = tick() + timeLeft + delay
+            
+            local delay = ft or (c.RandomDelay and (math.random(c.RandomMin * 10, c.RandomMax * 10) / 10) or (tonumber(c.DelayValue) or 3))
+            jjs.State.FinishTimestamp = tick() + ((tot - cnt) * delay)
             
             local txt = nt(i)
-            local sf = (c.CustomSuffix and c.CustomSuffix ~= "") and c.CustomSuffix or c.Suffix
+            local sf = (c.CustomSuffix ~= "") and c.CustomSuffix or c.Suffix
             local fn = c.SpacingEnabled and (txt .. " " .. sf) or (txt .. sf)
             
             if currentMode == "JJ (Delta)" then
@@ -577,11 +521,11 @@ jjs.Start = function()
                 task.wait(0.2)
                 pcall(function()
                     vim:SendKeyEvent(true, Enum.KeyCode.C, false, game)
-                    task.wait()
+                    task.wait(0.05)
                     vim:SendKeyEvent(false, Enum.KeyCode.C, false, game)
                     task.wait(0.2)
                     vim:SendKeyEvent(true, Enum.KeyCode.C, false, game)
-                    task.wait()
+                    task.wait(0.05)
                     vim:SendKeyEvent(false, Enum.KeyCode.C, false, game)
                 end)
                 task.wait(0.1)
@@ -590,21 +534,15 @@ jjs.Start = function()
                 as()
             else 
                 sc(fn)
-                if c.JumpEnabled then
-                    aj()
-                end
+                if c.JumpEnabled then aj() end
             end
             
-            if i ~= e then
-                task.wait(delay)
-            end
+            if i ~= e then task.wait(delay) end
         end
         
         c.Running = false
         jjs.State.Running = false
-        if dt then
-            dt:Stop()
-        end
+        if dt then dt:Stop() end
     end)
 end
 
