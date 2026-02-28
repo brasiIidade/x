@@ -396,37 +396,47 @@ mt.__namecall = newcclosure(function(self, ...)
                 args[2] = (finalPos - origin).Unit * 10000 
                 return old_nc(self, unpack(args))
                 
-            -- Nova lógica para o GunSystem (Fire e Visuals)
-            elseif self.Name == "Fire" or self.Name == "Visuals" then
+            elseif (self.Name == "Fire" or self.Name == "Visuals") and game.PlaceId == 16150352 then
+                local newArgs2 = {}
+                
                 if type(args[2]) == "table" then
                     for k, v in pairs(args[2]) do
                         if type(v) == "table" and v.Position then
-                            v.Position = finalPos
+                            local newHit = {}
+                            for key, val in pairs(v) do
+                                newHit[key] = val
+                            end
                             
-                            if v.Instance ~= nil then
-                                v.Instance = State.Part
+                            newHit.Position = finalPos
+                            
+                            if newHit.Instance ~= nil then
+                                newHit.Instance = State.Part
                             end
-                            if v.Distance then
-                                v.Distance = distance
+                            if newHit.Distance then
+                                newHit.Distance = distance
                             end
-                            if v.Normal then
-                                v.Normal = direction
+                            if newHit.Normal then
+                                newHit.Normal = direction
                             end
-                            if v.Size then
-                                v.Size = State.Part.Size
+                            if newHit.Size then
+                                newHit.Size = State.Part.Size
                             end
-                            if v.Material then
+                            if newHit.Material then
                                 if type(v.Material) == "string" then
-                                    v.Material = tostring(State.Part.Material)
+                                    newHit.Material = tostring(State.Part.Material)
                                 else
-                                    v.Material = State.Part.Material
+                                    newHit.Material = State.Part.Material
                                 end
                             end
+                            
+                            newArgs2[k] = newHit
+                        else
+                            newArgs2[k] = v
                         end
                     end
+                    args[2] = newArgs2
                 end
                 
-                -- Substitui a terceira argumentação que é a Hit Position no Fire remote
                 if self.Name == "Fire" and args[3] and typeof(args[3]) == "Vector3" then
                     args[3] = finalPos
                 end
