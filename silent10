@@ -272,18 +272,16 @@ local mt = getrawmetatable(game)
 local old_nc = mt.__namecall
 setreadonly(mt, false)
 
--- Cache de funções globais
 local getnamecallmethod = getnamecallmethod
 local checkcaller = checkcaller
 local typeof = typeof
 local unpack = unpack or table.unpack
+local tpack = table.pack
 local CFrame_new = CFrame.new
 local Ray_new = Ray.new
 local tick = tick
 local math_random = math.random
-local select = select
 
--- Lookup tables O(1)
 local RAY_METHODS = {
     Raycast                     = true,
     FindPartOnRay               = true,
@@ -299,38 +297,33 @@ local HANDLED_METHODS = {}
 for k in next, RAY_METHODS    do HANDLED_METHODS[k] = true end
 for k in next, REMOTE_METHODS do HANDLED_METHODS[k] = true end
 
--- Tabela reutilizável (evita alocação a cada disparo)
-local args_cache = {}
-
--- Cache do config (atualizado a cada 0.5s)
 local cached_config = nil
 local config_tick   = 0
 
--- Handlers
-local function handleLegacyRay(self, args, count, finalPos)
+local function handleLegacyRay(self, args, finalPos)
     local ray = args[1]
     if ray and typeof(ray) == "Ray" then
         local origin = ray.Origin
         args[1] = Ray_new(origin, (finalPos - origin).Unit * 10000)
-        return old_nc(self, unpack(args, 1, count))
+        return old_nc(self, unpack(args, 1, args.n))
     end
 end
 
-local function handleRaycast(self, args, count, finalPos)
+local function handleRaycast(self, args, finalPos)
     local origin = args[1]
     if origin and typeof(origin) == "Vector3" then
         args[2] = (finalPos - origin).Unit * 10000
-        return old_nc(self, unpack(args, 1, count))
+        return old_nc(self, unpack(args, 1, args.n))
     end
 end
 
-local function handleRemote(self, args, count, finalPos)
+local function handleRemote(self, args, finalPos)
     if not isBulletRemote(self) then return end
 
-    local camPos   = Camera.CFrame.Position
+    local camPos    = Camera.CFrame.Position
     local direction = (finalPos - camPos).Unit
 
-    for i = 1, count do
+    for i = 1, args.n do
         local v = args[i]
         local t = typeof(v)
         if t == "Vector3" then
@@ -340,15 +333,13 @@ local function handleRemote(self, args, count, finalPos)
         end
     end
 
-    return old_nc(self, unpack(args, 1, count))
+    return old_nc(self, unpack(args, 1, args.n))
 end
 
--- Hook principal
 mt.__namecall = newcclosure(function(self, ...)
     local method = getnamecallmethod()
     if checkcaller() then return old_nc(self, ...) end
 
-    -- Atualiza cache do config a cada 0.5s
     local now = tick()
     if now - config_tick > 0.5 then
         cached_config = getgenv().SilentConfig
@@ -369,29 +360,19 @@ mt.__namecall = newcclosure(function(self, ...)
         return old_nc(self, ...)
     end
 
-    -- Popula tabela reutilizável sem alocar nova
-    local count = select('#', ...)
-    for i = 1, count do
-        args_cache[i] = select(i, ...)
-    end
-    for i = count + 1, #args_cache do
-        args_cache[i] = nil
-    end
-
+    local args     = tpack(...)         -- table.pack preserva args.n corretamente
     local finalPos = State.Part.Position + getLegitOffset(Config)
 
-    -- Raycasting
     if self == Services.Workspace then
         if RAY_METHODS[method] and method ~= "Raycast" then
-            return handleLegacyRay(self, args_cache, count, finalPos) or old_nc(self, ...)
+            return handleLegacyRay(self, args, finalPos) or old_nc(self, ...)
         elseif method == "Raycast" then
-            return handleRaycast(self, args_cache, count, finalPos) or old_nc(self, ...)
+            return handleRaycast(self, args, finalPos) or old_nc(self, ...)
         end
     end
 
-    -- Remotes
     if REMOTE_METHODS[method] then
-        return handleRemote(self, args_cache, count, finalPos) or old_nc(self, ...)
+        return handleRemote(self, args, finalPos) or old_nc(self, ...)
     end
 
     return old_nc(self, ...)
