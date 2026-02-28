@@ -397,27 +397,33 @@ mt.__namecall = newcclosure(function(self, ...)
 
                 local remoteName = self.Name
                 
-                -- Interceptação específica para o Remote GunSystem (Fire/Visuals)
+                -- Interceptação específica para Fire e Visuals
                 if remoteName == "Fire" or remoteName == "Visuals" then
                     local newArgs = {}
                     for i, v in ipairs(args) do newArgs[i] = v end
                     
-                    -- Deep Copy da tabela de Hits (arg 2)
                     if type(newArgs[2]) == "table" then
                         local newTable = {}
                         for k, v in pairs(newArgs[2]) do
-                            if type(v) == "table" then
+                            if type(v) == "table" and (v.Position or v.Distance) then
                                 local hitEntry = {}
+                                -- Copia os valores antigos para manter a estrutura original intacta
                                 for key, val in pairs(v) do hitEntry[key] = val end
                                 
-                                -- Sobrescreve dados do tiro
+                                -- Atualiza com os dados do Silent Aim
                                 hitEntry.Position = finalPos
-                                hitEntry.Instance = State.Part
-                                hitEntry.Normal = direction
                                 hitEntry.Distance = distance
+                                hitEntry.Normal = direction
                                 
-                                if hitEntry.Material then
-                                    hitEntry.Material = (type(hitEntry.Material) == "string") and tostring(State.Part.Material) or State.Part.Material
+                                -- O remote Fire exige Instância, Tamanho e Material em formato Enum
+                                if remoteName == "Fire" then
+                                    hitEntry.Instance = State.Part
+                                    hitEntry.Size = State.Part.Size
+                                    hitEntry.Material = State.Part.Material
+                                
+                                -- O remote Visuals não tem Instance/Size e exige Material em formato String
+                                elseif remoteName == "Visuals" then
+                                    hitEntry.Material = tostring(State.Part.Material)
                                 end
                                 
                                 newTable[k] = hitEntry
@@ -428,14 +434,14 @@ mt.__namecall = newcclosure(function(self, ...)
                         newArgs[2] = newTable
                     end
                     
-                    -- Altera Vector3 direto (comum no argumento 3 do Fire)
+                    -- Altera o argumento 3 do Fire que é um Vector3 puro
                     if remoteName == "Fire" and typeof(newArgs[3]) == "Vector3" then
                         newArgs[3] = finalPos
                     end
                     
                     return old_nc(self, unpack(newArgs))
 
-                -- Lógica genérica para outros Remotes
+                -- Lógica genérica para outros Remotes de tiro
                 elseif isBulletRemote(self) then
                     for i = 1, #args do
                         local v = args[i]
