@@ -940,8 +940,6 @@ end)
 
         -- bala infinita
     getgenv().ApexLogic.ToggleInfiniteAmmo = function(ativar)
-    getgenv().InfiniteAmmoEnabled = ativar
-
     if not ativar then
         if getgenv().InfiniteAmmoConnection then
             getgenv().InfiniteAmmoConnection:Disconnect()
@@ -954,13 +952,7 @@ end)
         getgenv().InfiniteAmmoConnection:Disconnect()
     end
 
-    getgenv().InfiniteAmmoConnection = RunService.RenderStepped:Connect(function()
-        if not getgenv().InfiniteAmmoEnabled then
-            getgenv().InfiniteAmmoConnection:Disconnect()
-            getgenv().InfiniteAmmoConnection = nil
-            return
-        end
-
+    getgenv().InfiniteAmmoConnection = RunService.Heartbeat:Connect(function()
         local bp   = lp:FindFirstChild("Backpack")
         local char = lp.Character
 
@@ -969,7 +961,7 @@ end)
             for _, tool in ipairs(parent:GetChildren()) do
                 if tool:IsA("Tool") then
                     local ammo = tool:FindFirstChild("Ammo")
-                    if ammo and ammo:IsA("DoubleConstrainedValue") then
+                    if ammo then
                         ammo.Value = ammo.MaxValue
                     end
                 end
@@ -977,7 +969,7 @@ end)
         end
 
         forcar(bp)
-        if char then forcar(char) end
+        forcar(char)
     end)
 end
 
