@@ -1,1177 +1,842 @@
---[[
-    jogos.lua
-    Interface pública preservada:
-        getgenv().TAS           → módulo TAS completo
-        getgenv().JJs / _G.JJs  → módulo JJs completo
-        getgenv().F3X           → módulo F3X completo
-        _G.ChatGPT              → módulo ChatGPT completo
-]]
+local cr = cloneref or function(o) return o end
+local plrs = cr(game:GetService("Players"))
+local ws = cr(game:GetService("Workspace"))
+local rs = cr(game:GetService("RunService"))
+local hs = cr(game:GetService("HttpService"))
+local tcs = cr(game:GetService("TextChatService"))
+local rep = cr(game:GetService("ReplicatedStorage"))
+local vim = cr(game:GetService("VirtualInputManager"))
+local ts = cr(game:GetService("TweenService"))
+local cg = cr(game:GetService("CoreGui"))
+local uis = cr(game:GetService("UserInputService"))
 
--- ─────────────────────────────────────────────
--- Serviços
--- ─────────────────────────────────────────────
-local cloneref        = cloneref or function(o) return o end
-local Players         = cloneref(game:GetService("Players"))
-local Workspace       = cloneref(game:GetService("Workspace"))
-local RunService      = cloneref(game:GetService("RunService"))
-local HttpService     = cloneref(game:GetService("HttpService"))
-local TextChat        = cloneref(game:GetService("TextChatService"))
-local ReplicatedStorage = cloneref(game:GetService("ReplicatedStorage"))
-local VirtualInput    = cloneref(game:GetService("VirtualInputManager"))
-local TweenService    = cloneref(game:GetService("TweenService"))
-local CoreGui         = cloneref(game:GetService("CoreGui"))
+local lp = cr(plrs.LocalPlayer)
+local cam = cr(ws.CurrentCamera)
 
-local LocalPlayer = Players.LocalPlayer
-local Camera      = Workspace.CurrentCamera
-local env         = getgenv()
+local unp = table.unpack or unpack
+local env = getgenv()
 
 if not isfolder("michigun.xyz") then makefolder("michigun.xyz") end
 
-local function safeGui()
-    local ok, hui = pcall(gethui)
-    return (ok and hui) and hui or CoreGui
-end
+-- [[ TAS ]] --
+local stEnums = {}
+for _, e in ipairs(Enum.HumanoidStateType:GetEnumItems()) do stEnums[e.Value] = e end
 
--- ═══════════════════════════════════════════════════════
--- TAS
--- ═══════════════════════════════════════════════════════
-local TAS_FOLDER = "michigun.xyz/tas"
-if writefile and not isfolder(TAS_FOLDER) then makefolder(TAS_FOLDER) end
+local gh = gethui or function() return cg end
+if gh():FindFirstChild(".") then gh():FindFirstChild("."):Destroy() end
+local ui = Instance.new("ScreenGui")
+ui.Name, ui.ResetOnSpawn, ui.Parent = ".", false, gh()
 
--- ScreenGui para viewports
-local tasGui = Instance.new("ScreenGui")
-tasGui.Name, tasGui.ResetOnSpawn = ".", false
-local existingGui = safeGui():FindFirstChild(".")
-if existingGui then existingGui:Destroy() end
-tasGui.Parent = safeGui()
-
--- Enum de estados do humanoid cacheado
-local humanoidStateEnums = {}
-for _, item in ipairs(Enum.HumanoidStateType:GetEnumItems()) do
-    humanoidStateEnums[item.Value] = item
-end
+local tas_fDir = "michigun.xyz/tas"
+if writefile and not isfolder(tas_fDir) then makefolder(tas_fDir) end
 
 env.TAS = env.TAS or {}
-local TAS = env.TAS
+local tas = env.TAS
 
-TAS.Loaded       = TAS.Loaded    or {}
-TAS.Selection    = TAS.Selection or {}
-TAS.Recording    = false
-TAS.ReqPlay      = false
-TAS.RecFrames    = {}
-TAS.CurrentName  = ""
-TAS.RecConn      = nil
-TAS.IsReady      = true
-TAS.LastJump     = false
-TAS.ActRad       = 1
-TAS.ActH         = 1.5
-TAS.ActAng       = 10
-TAS.ColorBot     = Color3.fromRGB(0, 255, 0)
-TAS.ColorPath    = Color3.fromRGB(0, 255, 0)
-TAS.VisualOpacity = 0
-TAS.NotifyFunc   = nil
-TAS.UpdateButtonState = nil
+tas.Loaded = tas.Loaded or {}
+tas.Selection = tas.Selection or {}
+tas.Recording = false
+tas.ReqPlay = false
+tas.RecFrames = {}
+tas.CurrentName = ""
+tas.RecConn = nil
+tas.IsReady = true
+tas.LastJump = false
+tas.ActRad = 1
+tas.ActH = 1.5
+tas.ActAng = 10
+tas.ColorBot = Color3.fromRGB(0, 255, 0)
+tas.ColorPath = Color3.fromRGB(0, 255, 0)
+tas.VisualOpacity = 0
 
--- ── Utilitários internos TAS ──
-
-local function tasNotify(title, msg)
-    if TAS.NotifyFunc then TAS.NotifyFunc(title .. ": " .. msg, 3, "lucide:info") end
+local function sNotif(t, m)
+    if tas.NotifyFunc then tas.NotifyFunc(t .. ": " .. m, 3, "lucide:info") end
 end
 
-local function tasStopMovement()
-    local char = LocalPlayer.Character
-    local hum  = char and char:FindFirstChildOfClass("Humanoid")
-    if hum then
-        hum.AutoRotate = true
-        hum:Move(Vector3.zero)
-    end
-
-    local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-    local touchGui  = playerGui and playerGui:FindFirstChild("TouchGui")
-    if touchGui then
-        touchGui.Enabled = false
-        task.spawn(function()
-            for _ = 1, 10 do
-                if touchGui then touchGui.Enabled = true end
-                task.wait(0.1)
-            end
-        end)
+local function stpMov()
+    local c = lp.Character
+    local h = c and c:FindFirstChildOfClass("Humanoid")
+    if h then h.AutoRotate = true h:Move(Vector3.zero) end
+    local pg = lp:FindFirstChild("PlayerGui")
+    local tg = pg and pg:FindFirstChild("TouchGui")
+    if tg then 
+        tg.Enabled = false 
+        task.spawn(function() for i=1,10 do if tg then tg.Enabled = true end task.wait(0.1) end end)
     end
 end
 
-local function tasUpdateButtonState()
-    local isPlaying = false
-    for _, data in pairs(TAS.Loaded) do
-        if data.Playing then isPlaying = true; break end
-    end
-    if TAS.UpdateButtonState then TAS.UpdateButtonState(isPlaying) end
+local function chkPlay()
+    local ip = false
+    for _, d in pairs(tas.Loaded) do if d.Playing then ip = true break end end
+    if tas.UpdateButtonState then tas.UpdateButtonState(ip) end
 end
 
--- ── Captura e aplicação de frames ──
-
-local function captureFrame()
-    local char = LocalPlayer.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    local hum  = char and char:FindFirstChildOfClass("Humanoid")
-    if not root or not hum then return nil end
-
-    local cf = {root.CFrame:GetComponents()}
-    local vel = root.AssemblyLinearVelocity
-
-    return {
-        cf    = cf,
-        vel   = { vel.X, vel.Y, vel.Z },
-        jump  = hum.Jump,
-        state = hum:GetState().Value,
-    }
+local function capFr()
+    local c = lp.Character
+    local hrp, hum = c and c:FindFirstChild("HumanoidRootPart"), c and c:FindFirstChildOfClass("Humanoid")
+    if not hrp or not hum then return end
+    return { cf = {hrp.CFrame:GetComponents()}, vel = {hrp.AssemblyLinearVelocity.X, hrp.AssemblyLinearVelocity.Y, hrp.AssemblyLinearVelocity.Z}, jump = hum.Jump, state = hum:GetState().Value }
 end
 
-local function applyFrame(frame, root, hum)
-    if not frame or not root or not hum then return end
-
-    if frame.cf then
-        root.CFrame = CFrame.new(table.unpack(frame.cf))
+local function appFr(f, hrp, hum)
+    if not f or not hrp or not hum then return end
+    if f.cf then hrp.CFrame = CFrame.new(f.cf[1], f.cf[2], f.cf[3], f.cf[4], f.cf[5], f.cf[6], f.cf[7], f.cf[8], f.cf[9], f.cf[10], f.cf[11], f.cf[12]) end
+    if f.vel then hrp.AssemblyLinearVelocity = Vector3.new(f.vel[1], f.vel[2], f.vel[3]) end
+    if f.jump ~= tas.LastJump then
+        if f.jump then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+        tas.LastJump = f.jump
     end
-
-    if frame.vel then
-        root.AssemblyLinearVelocity = Vector3.new(table.unpack(frame.vel))
-    end
-
-    if frame.jump ~= TAS.LastJump then
-        if frame.jump then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
-        TAS.LastJump = frame.jump
-    end
-
-    local stateEnum = humanoidStateEnums[frame.state]
-    if stateEnum then
-        if stateEnum ~= Enum.HumanoidStateType.Jumping and hum:GetState() ~= stateEnum then
-            hum:ChangeState(stateEnum)
-        end
-        hum.AutoRotate = false
+    local recSt = stEnums[f.state]
+    if recSt then
+        if recSt ~= Enum.HumanoidStateType.Jumping and hum:GetState() ~= recSt then hum:ChangeState(recSt) end
+        hum.AutoRotate = false 
     end
 end
 
--- ── Viewport (preview visual no início do TAS) ──
-
-local function createViewport(part)
-    local vpFrame = Instance.new("ViewportFrame")
-    local vpCamera = Instance.new("Camera")
-
-    vpFrame.Parent               = tasGui
-    vpFrame.BackgroundTransparency = 1
-    vpFrame.Size                 = UDim2.new(0, 150, 0, 150)
-    vpFrame.ZIndex               = 10
-    vpCamera.Parent              = vpFrame
-
-    local clone = part:Clone()
-    clone.Transparency = 0
-    clone.Material     = Enum.Material.Neon
-    clone.CFrame       = CFrame.new()
-    clone.Parent       = vpFrame
-
-    local maxDim = math.max(clone.Size.X, clone.Size.Y, clone.Size.Z)
-    vpCamera.CFrame = CFrame.new(0, maxDim, maxDim * 2.5)
-        * CFrame.Angles(math.rad(-20), math.rad(180), 0)
-
-    local connection = RunService.Stepped:Connect(function()
-        if not part or not part.Parent then return end
-        local screenPos, visible = Camera:WorldToScreenPoint(part.Position)
-        vpFrame.Position = UDim2.fromOffset(screenPos.X - 75, screenPos.Y - 75)
-        vpFrame.Visible  = visible
-        clone.CFrame     = CFrame.Angles(0, tick() % (math.pi * 2), 0)
+local function mkVp(pt)
+    local vpf, vpc = Instance.new("ViewportFrame"), Instance.new("Camera")
+    vpf.Parent, vpf.BackgroundTransparency, vpf.Size, vpf.ZIndex = ui, 1, UDim2.new(0, 150, 0, 150), 10
+    vpc.Parent = vpf
+    local cl = pt:Clone()
+    cl.Parent, cl.Transparency, cl.Material, cl.CFrame = vpf, 0, Enum.Material.Neon, CFrame.new()
+    local mx = math.max(cl.Size.X, cl.Size.Y, cl.Size.Z)
+    vpc.CFrame = CFrame.new(0, mx, mx * 2.5) * CFrame.Angles(math.rad(-20), math.rad(180), 0)
+    local cnn = rs.Stepped:Connect(function()
+        if not pt then return end
+        local ps, vs = cam:WorldToScreenPoint(pt.Position)
+        vpf.Position, vpf.Visible = UDim2.fromOffset(ps.X - 75, ps.Y - 75), vs
+        cl.CFrame = CFrame.Angles(0, tick() % (math.pi * 2), 0)
     end)
-
-    return { Frame = vpFrame, Connection = connection, Part = part }
+    return { Frame = vpf, Connection = cnn, Part = pt }
 end
 
--- ── Construção do path visual ──
+local function clrTas(n)
+    local d = tas.Loaded[n]
+    if not d then return end
+    if d.MarkerConn then d.MarkerConn:Disconnect() end
+    if d.PlayConn then d.PlayConn:Disconnect() end
+    stpMov()
+    if d.VisualFolder then d.VisualFolder:Destroy() end
+    if d.Viewports then for _, v in ipairs(d.Viewports) do if v.Connection then v.Connection:Disconnect() end if v.Frame then v.Frame:Destroy() end end end
+    if d.PathParts then for _, p in ipairs(d.PathParts) do if p then p:Destroy() end end end
+    d.VisualFolder, d.Viewports, d.PathParts, d.Waiting, d.Playing = nil, {}, {}, false, false
+    chkPlay()
+end
 
-local function buildPathVisuals(frames, parent)
-    local parts = {}
-    if not frames or #frames < 2 then return parts end
-
-    for i = 1, #frames - 1 do
-        local a, b = frames[i], frames[i + 1]
-        if a.cf and b.cf then
-            local startPos = Vector3.new(a.cf[1], a.cf[2], a.cf[3])
-            local endPos   = Vector3.new(b.cf[1], b.cf[2], b.cf[3])
-            local distance = (endPos - startPos).Magnitude
-
-            if distance > 0.05 then
-                local cylinder = Instance.new("CylinderHandleAdornment")
-                cylinder.Radius       = 0.05
-                cylinder.Height       = distance
-                cylinder.CFrame       = CFrame.new(startPos:Lerp(endPos, 0.5), endPos)
-                cylinder.Color3       = TAS.ColorPath
-                cylinder.Transparency = TAS.VisualOpacity
-                cylinder.Adornee      = Workspace.Terrain
-                cylinder.ZIndex       = 0
-                cylinder.Parent       = parent
-                table.insert(parts, cylinder)
+local function bldPth(fs, pf)
+    local pts = {}
+    if not fs or #fs < 2 then return pts end
+    for i = 1, #fs - 1 do
+        if fs[i].cf and fs[i+1].cf then
+            local sp = Vector3.new(fs[i].cf[1], fs[i].cf[2], fs[i].cf[3])
+            local ep = Vector3.new(fs[i+1].cf[1], fs[i+1].cf[2], fs[i+1].cf[3])
+            local dst = (ep - sp).Magnitude
+            if dst > 0.05 then
+                local pt = Instance.new("CylinderHandleAdornment")
+                pt.Radius, pt.Height, pt.CFrame, pt.Color3, pt.Transparency, pt.Adornee, pt.ZIndex, pt.Parent = 0.05, dst, CFrame.new(sp:Lerp(ep, 0.5), ep), tas.ColorPath, tas.VisualOpacity, ws.Terrain, 0, pf
+                table.insert(pts, pt)
             end
         end
     end
-
-    return parts
+    return pts
 end
 
--- ── Limpeza de um TAS ──
-
-local function clearTasEntry(name)
-    local data = TAS.Loaded[name]
-    if not data then return end
-
-    if data.MarkerConn then data.MarkerConn:Disconnect() end
-    if data.PlayConn   then data.PlayConn:Disconnect() end
-
-    tasStopMovement()
-
-    if data.VisualFolder then data.VisualFolder:Destroy() end
-
-    if data.Viewports then
-        for _, vp in ipairs(data.Viewports) do
-            if vp.Connection then vp.Connection:Disconnect() end
-            if vp.Frame      then vp.Frame:Destroy() end
-        end
+local function actTas(n)
+    local d = tas.Loaded[n]
+    if not d or not d.Frames or #d.Frames == 0 or d.Waiting or d.Playing then return end
+    clrTas(n)
+    d.Waiting = true
+    local c = d.Frames[1].cf
+    local cf = CFrame.new(c[1], c[2], c[3], c[4], c[5], c[6], c[7], c[8], c[9], c[10], c[11], c[12])
+    local fldr = Instance.new("Folder")
+    fldr.Name, fldr.Parent = "_" .. n, gh()
+    d.VisualFolder = fldr
+    local function mkM(nm, sz, c_frame, cl, tr, isC)
+        local p = isC and Instance.new("CylinderHandleAdornment") or Instance.new("BoxHandleAdornment")
+        if isC then p.Radius, p.Height = sz.X, sz.Y else p.Size = sz end
+        p.Name, p.CFrame, p.Color3, p.Transparency, p.Adornee, p.ZIndex, p.Parent = nm, c_frame, cl, tr, ws.Terrain, 1, fldr
+        return p
     end
-
-    if data.PathParts then
-        for _, part in ipairs(data.PathParts) do
-            if part then part:Destroy() end
+    local bc, tr = tas.ColorBot, tas.VisualOpacity
+    mkM("Tor", Vector3.new(2, 2, 1), cf, bc, tr, false)
+    mkM("LLg", Vector3.new(1, 2, 1), cf * CFrame.new(-0.5, -2, 0), bc, tr, false)
+    mkM("RLg", Vector3.new(1, 2, 1), cf * CFrame.new(0.5, -2, 0), bc, tr, false)
+    mkM("LAm", Vector3.new(1, 2, 1), cf * CFrame.new(-1.5, 0, 0), bc, tr, false)
+    mkM("RAm", Vector3.new(1, 2, 1), cf * CFrame.new(1.5, 0.5, -1) * CFrame.Angles(math.rad(90), 0, 0), bc, tr, false)
+    local dm = Instance.new("Part")
+    dm.Size, dm.CFrame, dm.Transparency, dm.Anchored, dm.CanCollide = Vector3.new(2, 2, 1), cf, 1, true, false
+    table.insert(d.Viewports, mkVp(dm))
+    d.PathParts = bldPth(d.Frames, fldr)
+    
+    d.MarkerConn = rs.Heartbeat:Connect(function()
+        local char = lp.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        local dlt = hrp.Position - cf.Position
+        if Vector3.new(dlt.X, 0, dlt.Z).Magnitude <= tas.ActRad and math.abs(dlt.Y) <= tas.ActH and hrp.CFrame.LookVector:Dot(cf.LookVector) >= math.cos(math.rad(tas.ActAng)) then
+            if d.MarkerConn then d.MarkerConn:Disconnect() end
+            if d.VisualFolder then d.VisualFolder:Destroy() end
+            for _, v in ipairs(d.Viewports) do if v.Connection then v.Connection:Disconnect() end if v.Frame then v.Frame:Destroy() end end
+            for _, p in ipairs(d.PathParts) do if p then p:Destroy() end end
+            d.Waiting, d.Playing = false, true
+            chkPlay()
+            local stT = tick()
+            
+            local lastC = lp.Character
+            local cachedHrp = lastC and lastC:FindFirstChild("HumanoidRootPart")
+            local cachedHum = lastC and lastC:FindFirstChildOfClass("Humanoid")
+            
+            d.PlayConn = rs.Heartbeat:Connect(function()
+                local currC = lp.Character
+                if currC ~= lastC then
+                    lastC = currC
+                    cachedHrp = currC and currC:FindFirstChild("HumanoidRootPart")
+                    cachedHum = currC and currC:FindFirstChildOfClass("Humanoid")
+                end
+                
+                local cIdx = math.floor((tick() - stT) * 60) + 1
+                if cIdx > #d.Frames then stpMov() if d.PlayConn then d.PlayConn:Disconnect() end d.Playing = false chkPlay() return end
+                appFr(d.Frames[cIdx], cachedHrp, cachedHum)
+            end)
         end
-    end
-
-    data.VisualFolder = nil
-    data.Viewports    = {}
-    data.PathParts    = {}
-    data.Waiting      = false
-    data.Playing      = false
-
-    tasUpdateButtonState()
-end
-
--- ── Construção dos visuais do boneco ──
-
-local function buildBotVisuals(folder, startCFrame, color, opacity)
-    local function makeAdornment(name, isBox, size, offset, angleOffset)
-        local adorn = isBox
-            and Instance.new("BoxHandleAdornment")
-            or  Instance.new("CylinderHandleAdornment")
-
-        if isBox then
-            adorn.Size = size
-        else
-            adorn.Radius = size.X
-            adorn.Height = size.Y
-        end
-
-        local cf = offset and (startCFrame * CFrame.new(offset)) or startCFrame
-        if angleOffset then cf = cf * angleOffset end
-
-        adorn.Name         = name
-        adorn.CFrame       = cf
-        adorn.Color3       = color
-        adorn.Transparency = opacity
-        adorn.Adornee      = Workspace.Terrain
-        adorn.ZIndex       = 1
-        adorn.Parent       = folder
-    end
-
-    makeAdornment("Torso",    true,  Vector3.new(2, 2, 1),   nil)
-    makeAdornment("LeftLeg",  true,  Vector3.new(1, 2, 1),   Vector3.new(-0.5, -2, 0))
-    makeAdornment("RightLeg", true,  Vector3.new(1, 2, 1),   Vector3.new( 0.5, -2, 0))
-    makeAdornment("LeftArm",  true,  Vector3.new(1, 2, 1),   Vector3.new(-1.5,  0, 0))
-    makeAdornment("RightArm", true,  Vector3.new(1, 2, 1),   Vector3.new( 1.5,  0.5, -1),
-        CFrame.Angles(math.rad(90), 0, 0))
-end
-
--- ── Ativação (waiting + playback) ──
-
-local function activateTas(name)
-    local data = TAS.Loaded[name]
-    if not data or not data.Frames or #data.Frames == 0 then return end
-    if data.Waiting or data.Playing then return end
-
-    clearTasEntry(name)
-    data.Waiting = true
-
-    local firstFrame = data.Frames[1].cf
-    local startCFrame = CFrame.new(table.unpack(firstFrame))
-
-    -- Pasta de visuais
-    local folder = Instance.new("Folder")
-    folder.Name   = "_" .. name
-    folder.Parent = safeGui()
-    data.VisualFolder = folder
-
-    -- Boneco visual
-    buildBotVisuals(folder, startCFrame, TAS.ColorBot, TAS.VisualOpacity)
-
-    -- Viewport
-    local dummyPart = Instance.new("Part")
-    dummyPart.Size        = Vector3.new(2, 2, 1)
-    dummyPart.CFrame      = startCFrame
-    dummyPart.Transparency = 1
-    dummyPart.Anchored    = true
-    dummyPart.CanCollide  = false
-    table.insert(data.Viewports, createViewport(dummyPart))
-
-    -- Path visual
-    data.PathParts = buildPathVisuals(data.Frames, folder)
-
-    -- Aguarda jogador chegar na posição de início
-    data.MarkerConn = RunService.Heartbeat:Connect(function()
-        local char = LocalPlayer.Character
-        local root = char and char:FindFirstChild("HumanoidRootPart")
-        if not root then return end
-
-        local delta        = root.Position - startCFrame.Position
-        local horizontalDist = Vector3.new(delta.X, 0, delta.Z).Magnitude
-        local verticalDist   = math.abs(delta.Y)
-        local lookAlignment  = root.CFrame.LookVector:Dot(startCFrame.LookVector)
-
-        local inRadius  = horizontalDist <= TAS.ActRad
-        local inHeight  = verticalDist   <= TAS.ActH
-        local inAngle   = lookAlignment  >= math.cos(math.rad(TAS.ActAng))
-
-        if not (inRadius and inHeight and inAngle) then return end
-
-        -- Chegou na posição — inicia playback
-        data.MarkerConn:Disconnect()
-        folder:Destroy()
-        for _, vp in ipairs(data.Viewports) do
-            if vp.Connection then vp.Connection:Disconnect() end
-            if vp.Frame      then vp.Frame:Destroy() end
-        end
-        for _, part in ipairs(data.PathParts) do
-            if part then part:Destroy() end
-        end
-
-        data.Waiting  = false
-        data.Playing  = true
-        tasUpdateButtonState()
-
-        local startTime = tick()
-        local lastChar  = LocalPlayer.Character
-        local cachedRoot = lastChar and lastChar:FindFirstChild("HumanoidRootPart")
-        local cachedHum  = lastChar and lastChar:FindFirstChildOfClass("Humanoid")
-
-        data.PlayConn = RunService.Heartbeat:Connect(function()
-            local currentChar = LocalPlayer.Character
-            if currentChar ~= lastChar then
-                lastChar   = currentChar
-                cachedRoot = currentChar and currentChar:FindFirstChild("HumanoidRootPart")
-                cachedHum  = currentChar and currentChar:FindFirstChildOfClass("Humanoid")
-            end
-
-            local frameIndex = math.floor((tick() - startTime) * 60) + 1
-            if frameIndex > #data.Frames then
-                tasStopMovement()
-                data.PlayConn:Disconnect()
-                data.Playing = false
-                tasUpdateButtonState()
-                return
-            end
-
-            applyFrame(data.Frames[frameIndex], cachedRoot, cachedHum)
-        end)
     end)
 end
 
--- ── API pública TAS ──
+tas.UpdateVisuals = function(bC, pC, op)
+    if bC ~= nil then tas.ColorBot = bC end
+    if pC ~= nil then tas.ColorPath = pC end
+    if op ~= nil then tas.VisualOpacity = op end
 
-TAS.UpdateVisuals = function(botColor, pathColor, opacity)
-    if botColor  ~= nil then TAS.ColorBot      = botColor  end
-    if pathColor ~= nil then TAS.ColorPath     = pathColor end
-    if opacity   ~= nil then TAS.VisualOpacity = opacity   end
-
-    for _, data in pairs(TAS.Loaded) do
-        if data.VisualFolder then
-            for _, adorn in ipairs(data.VisualFolder:GetChildren()) do
-                if adorn:IsA("BoxHandleAdornment") or adorn:IsA("CylinderHandleAdornment") then
-                    adorn.Color3       = TAS.ColorBot
-                    adorn.Transparency = TAS.VisualOpacity
+    for _, d in pairs(tas.Loaded) do
+        if d.VisualFolder then
+            for _, p in ipairs(d.VisualFolder:GetChildren()) do
+                if p:IsA("BoxHandleAdornment") or p:IsA("CylinderHandleAdornment") then
+                    p.Color3 = tas.ColorBot
+                    p.Transparency = tas.VisualOpacity
                 end
             end
         end
-        if data.PathParts then
-            for _, part in ipairs(data.PathParts) do
-                part.Color3       = TAS.ColorPath
-                part.Transparency = TAS.VisualOpacity
+        if d.PathParts then
+            for _, p in ipairs(d.PathParts) do
+                p.Color3 = tas.ColorPath
+                p.Transparency = tas.VisualOpacity
             end
         end
     end
 end
 
-TAS.StartRecording = function()
-    if TAS.Recording then return end
-    TAS.RecFrames = {}
-    TAS.Recording = true
+tas.StopRecording = function()
+    if not tas.Recording then return end
+    tas.Recording = false
+    if tas.RecConn then tas.RecConn:Disconnect() tas.RecConn = nil end
+    sNotif("TAS", string.format("Gravação parada (%.2fs)", #tas.RecFrames * (1/60)))
+end
 
-    local accumulator = 0
-    local idleTimer   = 0
-    local FRAME_RATE  = 1 / 60
-
-    TAS.RecConn = RunService.Heartbeat:Connect(function(dt)
-        local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if root then
-            idleTimer = root.AssemblyLinearVelocity.Magnitude < 0.2 and (idleTimer + dt) or 0
-        end
-
-        if idleTimer >= 1 then
-            TAS.StopRecording()
-            return
-        end
-
-        accumulator = accumulator + dt
-        while accumulator >= FRAME_RATE do
-            accumulator = accumulator - FRAME_RATE
-            local frame = captureFrame()
-            if frame then table.insert(TAS.RecFrames, frame) end
-        end
+tas.StartRecording = function()
+    if tas.Recording then return end
+    tas.RecFrames, tas.Recording = {}, true
+    local acc, idl = 0, 0
+    tas.RecConn = rs.Heartbeat:Connect(function(dt)
+        local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then idl = hrp.AssemblyLinearVelocity.Magnitude < 0.2 and idl + dt or 0 end
+        if idl >= 1 then tas.StopRecording() return end
+        acc = acc + dt
+        while acc >= (1/60) do acc = acc - (1/60) local f = capFr() if f then table.insert(tas.RecFrames, f) end end
     end)
-
-    tasNotify("TAS", "Gravação iniciada")
+    sNotif("TAS", "Gravação iniciada")
 end
 
-TAS.StopRecording = function()
-    if not TAS.Recording then return end
-    TAS.Recording = false
-    if TAS.RecConn then TAS.RecConn:Disconnect(); TAS.RecConn = nil end
-    tasNotify("TAS", string.format("Gravação parada (%.2fs)", #TAS.RecFrames / 60))
+tas.SaveCurrent = function()
+    if not tas.CurrentName or tas.CurrentName == "" or #tas.RecFrames == 0 then return end
+    local rj = hs:JSONEncode({ Version = 1, Frames = tas.RecFrames })
+    writefile(tas_fDir .. "/" .. tas.CurrentName .. ".json", rj)
+    tas.RecFrames = {}
+    return tas.GetSaved()
 end
 
-TAS.SaveCurrent = function()
-    if not TAS.CurrentName or TAS.CurrentName == "" then return nil end
-    if #TAS.RecFrames == 0 then return nil end
-
-    local encoded = HttpService:JSONEncode({ Version = 1, Frames = TAS.RecFrames })
-    writefile(TAS_FOLDER .. "/" .. TAS.CurrentName .. ".json", encoded)
-    TAS.RecFrames = {}
-
-    return TAS.GetSaved()
+tas.GetSaved = function()
+    local out = {}
+    if listfiles then for _, f in ipairs(listfiles(tas_fDir)) do if f:sub(-5) == ".json" then out[#out + 1] = f:match("([^/]+)%.json$") end end end
+    return out
 end
 
-TAS.GetSaved = function()
-    local result = {}
-    if listfiles then
-        for _, path in ipairs(listfiles(TAS_FOLDER)) do
-            if path:sub(-5) == ".json" then
-                table.insert(result, path:match("([^/]+)%.json$"))
-            end
-        end
-    end
-    return result
-end
-
-TAS.UpdateSelection = function(selection)
-    TAS.Selection = type(selection) == "table" and selection or { selection }
-
-    -- Remove entradas que não estão mais na seleção
-    for name in pairs(TAS.Loaded) do
-        if not table.find(TAS.Selection, name) then
-            clearTasEntry(name)
-            TAS.Loaded[name] = nil
-        end
-    end
-
-    -- Carrega novas entradas
+tas.UpdateSelection = function(sL)
+    tas.Selection = type(sL) ~= "table" and {sL} or sL
+    for n in pairs(tas.Loaded) do local ok = false for _, v in ipairs(tas.Selection) do if v == n then ok = true break end end if not ok then clrTas(n) tas.Loaded[n] = nil end end
     task.spawn(function()
-        for i, name in ipairs(TAS.Selection) do
-            if not TAS.Loaded[name] and name ~= "" then
-                local path = TAS_FOLDER .. "/" .. name .. ".json"
-                if isfile(path) then
-                    local raw = readfile(path)
-                    local decoded
-                    pcall(function() decoded = HttpService:JSONDecode(raw) end)
-
-                    if decoded and decoded.Frames then
-                        TAS.Loaded[name] = {
-                            Frames    = decoded.Frames,
-                            Viewports = {},
-                            PathParts = {},
-                            Waiting   = false,
-                            Playing   = false,
-                        }
-                    end
+        for i, n in ipairs(tas.Selection) do
+            if not tas.Loaded[n] and n ~= "" then
+                local p = tas_fDir .. "/" .. n .. ".json"
+                if isfile(p) then
+                    local raw = readfile(p)
+                    local d = nil
+                    pcall(function() d = hs:JSONDecode(raw) end)
+                    
+                    if d and d.Frames then 
+                        tas.Loaded[n] = { Frames = d.Frames, Viewports = {}, PathParts = {}, Waiting = false, Playing = false } 
+                    end 
                 end
             end
             if i % 3 == 0 then task.wait() end
         end
-
-        if TAS.ReqPlay then
-            for name in pairs(TAS.Loaded) do activateTas(name) end
-        end
+        if tas.ReqPlay then for n in pairs(tas.Loaded) do actTas(n) end end
     end)
 end
 
-TAS.DeleteSelected = function()
-    if #TAS.Selection == 0 then return end
-
-    for _, name in ipairs(TAS.Selection) do
-        local path = TAS_FOLDER .. "/" .. name .. ".json"
-        if isfile(path) and delfile then delfile(path) end
-        clearTasEntry(name)
-        TAS.Loaded[name] = nil
+tas.DeleteSelected = function()
+    if #tas.Selection == 0 then return end
+    for _, n in ipairs(tas.Selection) do
+        local p = tas_fDir .. "/" .. n .. ".json"
+        if isfile(p) and delfile then delfile(p) end
+        clrTas(n)
+        tas.Loaded[n] = nil
     end
-
-    TAS.Selection = {}
-    return TAS.GetSaved()
+    tas.Selection = {}
+    return tas.GetSaved()
 end
 
-TAS.ToggleAll = function(enable)
-    TAS.ReqPlay = enable
-    if enable then
-        for name in pairs(TAS.Loaded) do activateTas(name) end
-    else
-        for name in pairs(TAS.Loaded) do clearTasEntry(name) end
-        tasStopMovement()
-        tasUpdateButtonState()
-    end
+tas.ToggleAll = function(e)
+    tas.ReqPlay = e
+    if e then for n in pairs(tas.Loaded) do actTas(n) end else for n in pairs(tas.Loaded) do clrTas(n) end stpMov() chkPlay() end
 end
 
-TAS.ManualStopPlayback = function()
-    for _, data in pairs(TAS.Loaded) do
-        if data.Playing and data.PlayConn then
-            tasStopMovement()
-            data.PlayConn:Disconnect()
-            data.Playing = false
-        end
-    end
-    tasUpdateButtonState()
+tas.ManualStopPlayback = function()
+    for _, d in pairs(tas.Loaded) do if d.Playing and d.PlayConn then stpMov() d.PlayConn:Disconnect() d.Playing = false end end
+    chkPlay()
 end
 
--- Comandos de chat para TAS
-local function handleChatCommand(message)
-    message = message:lower()
-    if message == "/e gravar" then TAS.StartRecording()
-    elseif message == "/e parar" then TAS.StopRecording()
-    end
+local function chCmd(m)
+    m = m:lower()
+    if m == "/e gravar" then tas.StartRecording() elseif m == "/e parar" then tas.StopRecording() end
 end
-
-if TextChat.ChatVersion == Enum.ChatVersion.TextChatService then
-    TextChat.OnIncomingMessage = function(msg)
-        if msg.TextSource and msg.TextSource.UserId == LocalPlayer.UserId then
-            handleChatCommand(msg.Text)
-        end
-    end
+if tcs.ChatVersion == Enum.ChatVersion.TextChatService then
+    tcs.OnIncomingMessage = function(m) if m.TextSource and m.TextSource.UserId == lp.UserId then chCmd(m.Text) end end
 else
-    LocalPlayer.Chatted:Connect(handleChatCommand)
+    lp.Chatted:Connect(chCmd)
 end
 
--- ═══════════════════════════════════════════════════════
--- JJs (Jumping Jacks)
--- ═══════════════════════════════════════════════════════
+
+-- [[ JJs ]] --
 env.JJs = env.JJs or {}
-_G.JJs  = env.JJs
+_G.JJs = env.JJs 
 
-local JJs = env.JJs
-
-JJs.Config = JJs.Config or {
-    Running        = false,
-    StartValue     = 1,
-    EndValue       = 100,
-    DelayValue     = 3,
-    RandomDelay    = false,
-    RandomMin      = 2.5,
-    RandomMax      = 4,
-    JumpEnabled    = false,
+local jjs = env.JJs
+jjs.Config = jjs.Config or {
+    Running = false,
+    StartValue = 1,
+    EndValue = 100,
+    DelayValue = 3,
+    RandomDelay = false,
+    RandomMin = 2.5,
+    RandomMax = 4,
+    JumpEnabled = false,
     SpacingEnabled = false,
     ReverseEnabled = false,
-    FinishInTime   = false,
+    FinishInTime = false,
     FinishTotalTime = 60,
-    Suffix         = "!",
-    CustomSuffix   = "",
-    Mode           = "Padrão",
+    Suffix = "!",
+    CustomSuffix = "",
+    Mode = "Padrão"
 }
 
-JJs.State = {
-    Running          = false,
-    Current          = 0,
-    Total            = 0,
-    FinishTimestamp  = 0,
+jjs.State = {
+    Running = false,
+    Current = 0,
+    Total = 0,
+    FinishTimestamp = 0
 }
 
--- ── Conversor de números para extenso (PT-BR) ──
+local u = {[0]="zero",[1]="um",[2]="dois",[3]="três",[4]="quatro",[5]="cinco",[6]="seis",[7]="sete",[8]="oito",[9]="nove",[10]="dez",[11]="onze",[12]="doze",[13]="treze",[14]="quatorze",[15]="quinze",[16]="dezesseis",[17]="dezessete",[18]="dezoito",[19]="dezenove"}
+local t = {[2]="vinte",[3]="trinta",[4]="quarenta",[5]="cinquenta",[6]="sessenta",[7]="setenta",[8]="oitenta",[9]="noventa"}
+local h = {[1]="cento",[2]="duzentos",[3]="trezentos",[4]="quatrocentos",[5]="quinhentos",[6]="seiscentos",[7]="setecentos",[8]="oitocentos",[9]="novecentos"}
+local ac = {["á"]="Á",["à"]="À",["ã"]="Ã",["â"]="Â",["é"]="É",["ê"]="Ê",["í"]="Í",["ó"]="Ó",["ô"]="Ô",["õ"]="Õ",["ú"]="Ú",["ç"]="Ç"}
 
-local UNITS = {
-    [0]="zero",[1]="um",[2]="dois",[3]="três",[4]="quatro",[5]="cinco",
-    [6]="seis",[7]="sete",[8]="oito",[9]="nove",[10]="dez",[11]="onze",
-    [12]="doze",[13]="treze",[14]="quatorze",[15]="quinze",[16]="dezesseis",
-    [17]="dezessete",[18]="dezoito",[19]="dezenove",
-}
-local TENS = {
-    [2]="vinte",[3]="trinta",[4]="quarenta",[5]="cinquenta",
-    [6]="sessenta",[7]="setenta",[8]="oitenta",[9]="noventa",
-}
-local HUNDREDS = {
-    [1]="cento",[2]="duzentos",[3]="trezentos",[4]="quatrocentos",
-    [5]="quinhentos",[6]="seiscentos",[7]="setecentos",[8]="oitocentos",[9]="novecentos",
-}
-local ACCENTS = {
-    ["á"]="Á",["à"]="À",["ã"]="Ã",["â"]="Â",["é"]="É",["ê"]="Ê",
-    ["í"]="Í",["ó"]="Ó",["ô"]="Ô",["õ"]="Õ",["ú"]="Ú",["ç"]="Ç",
-}
-
-local function toUpperPTBR(str)
-    local result = ""
-    for _, code in utf8.codes(str) do
-        local char = utf8.char(code)
-        result = result .. (ACCENTS[char] or string.upper(char))
+local function up(s)
+    local r = ""
+    for _, c in utf8.codes(s) do
+        local ch = utf8.char(c)
+        r = r .. (ac[ch] or string.upper(ch))
     end
-    return result
+    return r
 end
 
-local function hundredsToWords(n)
-    if n == 0   then return "" end
+local function ph(n)
+    if n == 0 then return "" end
     if n == 100 then return "cem" end
-
-    local parts      = {}
-    local hundredVal = math.floor(n / 100)
-    local remainder  = n % 100
-
-    if hundredVal > 0 then table.insert(parts, HUNDREDS[hundredVal]) end
-
-    if remainder > 0 then
-        if #parts > 0 then table.insert(parts, "e") end
-        if remainder < 20 then
-            table.insert(parts, UNITS[remainder])
+    local hv = math.floor(n / 100)
+    local rv = n % 100
+    local p = {}
+    if hv > 0 then table.insert(p, h[hv]) end
+    if rv > 0 then
+        if #p > 0 then table.insert(p, "e") end
+        if rv < 20 then
+            table.insert(p, u[rv])
         else
-            table.insert(parts, TENS[math.floor(remainder / 10)])
-            local unitVal = remainder % 10
-            if unitVal > 0 then
-                table.insert(parts, "e")
-                table.insert(parts, UNITS[unitVal])
+            table.insert(p, t[math.floor(rv/10)])
+            local uv = rv % 10
+            if uv > 0 then 
+                table.insert(p, "e")
+                table.insert(p, u[uv]) 
             end
         end
     end
-
-    return table.concat(parts, " ")
+    return table.concat(p, " ")
 end
 
-local function numberToWords(n)
+local function nt(n)
     n = tonumber(n)
-    if not n      then return "N/A" end
-    if n == 0     then return "ZERO" end
-
-    local groups = {}
-    local temp   = n
+    if not n or n == 0 then return n == 0 and "ZERO" or "N/A" end
+    local g, x = {}, {}
+    local temp = n
     while temp > 0 do
-        table.insert(groups, temp % 1000)
+        table.insert(g, temp % 1000)
         temp = math.floor(temp / 1000)
     end
-
-    local parts = {}
-    for i = #groups, 1, -1 do
-        local val = groups[i]
-        if val ~= 0 then
-            local text = hundredsToWords(val)
-            if     i == 2 then text = val == 1 and "mil" or text .. " mil"
-            elseif i == 3 then text = val == 1 and "um milhão"  or text .. " milhões"
-            elseif i == 4 then text = val == 1 and "um bilhão"  or text .. " bilhões"
-            elseif i == 5 then text = val == 1 and "um trilhão" or text .. " trilhões"
-            end
-            table.insert(parts, text)
+    for i = #g, 1, -1 do
+        local v = g[i]
+        if v ~= 0 then
+            local txt = ph(v)
+            if i == 2 then txt = (v == 1 and "mil" or txt .. " mil")
+            elseif i == 3 then txt = (v == 1 and "um milhão" or txt .. " milhões")
+            elseif i == 4 then txt = (v == 1 and "um bilhão" or txt .. " bilhões")
+            elseif i == 5 then txt = (v == 1 and "um trilhão" or txt .. " trilhões") end
+            table.insert(x, txt)
         end
     end
-
-    return toUpperPTBR(table.concat(parts, " e "))
+    return up(table.concat(x, " e "))
 end
 
--- ── Envio de chat ──
-
-local function sendChatMessage(message)
-    local text = tostring(message)
-
-    if TextChat.ChatVersion == Enum.ChatVersion.TextChatService then
-        local channels = TextChat:FindFirstChild("TextChannels")
-        local channel  = channels and (channels:FindFirstChild("RBXGeneral") or channels:FindFirstChildOfClass("TextChannel"))
-        if channel then pcall(channel.SendAsync, channel, text) end
-        return
+local function sc(m)
+    local s = tostring(m)
+    if tcs.ChatVersion == Enum.ChatVersion.TextChatService then
+        local c = tcs:FindFirstChild("TextChannels")
+        local tgt = c and c:FindFirstChild("RBXGeneral")
+        if tgt then
+            pcall(function() tgt:SendAsync(s) end)
+            return
+        end
     end
-
-    local events = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
-    local remote = events and events:FindFirstChild("SayMessageRequest")
-    if remote then pcall(remote.FireServer, remote, text, "All") end
-end
-
--- ── Ações de personagem ──
-
-local function getCharacterIfAlive()
-    local char = LocalPlayer.Character
-    if not char then return nil end
-    local hum  = char:FindFirstChild("Humanoid")
-    local root = char:FindFirstChild("HumanoidRootPart")
-    return (hum and root) and char or nil
-end
-
-local function doJump()
-    local char = getCharacterIfAlive()
-    if not char then return end
-    local hum   = char.Humanoid
-    local state = hum:GetState()
-    if state ~= Enum.HumanoidStateType.Jumping and state ~= Enum.HumanoidStateType.Freefall then
-        hum:ChangeState(Enum.HumanoidStateType.Jumping)
+    
+    local ev = rep:FindFirstChild("DefaultChatSystemChatEvents")
+    local req = ev and ev:FindFirstChild("SayMessageRequest")
+    if req then
+        pcall(function() req:FireServer(s, "All") end)
     end
 end
 
-local function doSpin()
-    local char = getCharacterIfAlive()
-    if not char then return end
+local function gc()
+    local c = lp.Character
+    return (c and c:FindFirstChild("Humanoid") and c:FindFirstChild("HumanoidRootPart")) and c or nil
+end
 
-    local hum  = char.Humanoid
-    local root = char.HumanoidRootPart
-    hum.AutoRotate = false
+local function aj()
+    local c = gc()
+    if c then
+        local hum = c.Humanoid
+        if hum:GetState() ~= Enum.HumanoidStateType.Jumping and hum:GetState() ~= Enum.HumanoidStateType.Freefall then
+            hum:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end
+end
 
-    local tracker   = Instance.new("NumberValue")
-    local direction = math.random(1, 2) == 1 and 1 or -1
-    local tween     = TweenService:Create(tracker, TweenInfo.new(0.3, Enum.EasingStyle.Sine), { Value = 360 * direction })
-    local baseRot   = root.CFrame.Rotation
-
-    local conn
-    conn = RunService.Heartbeat:Connect(function()
-        if root and root.Parent then
-            root.CFrame = CFrame.new(root.Position) * baseRot * CFrame.Angles(0, math.rad(tracker.Value), 0)
+local function as()
+    local c = gc()
+    if not c then return end
+    local h, r = c.Humanoid, c.HumanoidRootPart
+    h.AutoRotate = false
+    local nv = Instance.new("NumberValue")
+    local tw = ts:Create(nv, TweenInfo.new(0.3, Enum.EasingStyle.Sine), {Value = 360 * (math.random(1,2)==1 and 1 or -1)})
+    local b = r.CFrame.Rotation
+    local cn
+    cn = rs.Heartbeat:Connect(function()
+        if r and r.Parent then
+            r.CFrame = CFrame.new(r.Position) * b * CFrame.Angles(0, math.rad(nv.Value), 0)
         else
-            conn:Disconnect()
+            cn:Disconnect()
         end
     end)
-
-    tween.Completed:Connect(function()
-        conn:Disconnect()
-        tracker:Destroy()
-        if hum then hum.AutoRotate = true end
+    tw.Completed:Connect(function()
+        cn:Disconnect()
+        nv:Destroy()
+        if h then h.AutoRotate = true end
     end)
-
-    tween:Play()
+    tw:Play()
 end
 
-local function pressKey(keyCode)
-    pcall(function()
-        VirtualInput:SendKeyEvent(true,  keyCode, false, game)
-        task.wait(0.05)
-        VirtualInput:SendKeyEvent(false, keyCode, false, game)
-    end)
-end
-
--- ── API pública JJs ──
-
-JJs.Start = function()
-    local cfg = JJs.Config
-    if cfg.Running then return end
-    cfg.Running = true
-
+jjs.Start = function()
+    local c = jjs.Config
+    if c.Running then return end
+    c.Running = true
+    
     task.spawn(function()
-        local startVal = tonumber(cfg.StartValue) or 1
-        local endVal   = tonumber(cfg.EndValue)   or 100
-        local step     = (cfg.ReverseEnabled and startVal < endVal) and -1 or 1
-        if cfg.ReverseEnabled then startVal, endVal = endVal, startVal end
-
-        -- Detecta modo baseado no jogo
-        local mode = cfg.Mode
-        if mode == "Padrão" then
-            local remotes = ReplicatedStorage:FindFirstChild("Remotes")
-            if remotes and remotes:FindFirstChild("Polichinelos") then
-                mode = "JJ (Delta)"
+        local s = tonumber(c.StartValue) or 1
+        local e = tonumber(c.EndValue) or 100
+        local dir = (c.ReverseEnabled and s < e) and -1 or 1
+        if c.ReverseEnabled then s, e = e, s end
+        
+        local currentMode = c.Mode
+        if currentMode == "Padrão" and rep:FindFirstChild("Remotes") and rep.Remotes:FindFirstChild("Polichinelos") then
+            currentMode = "JJ (Delta)"
+        end
+        
+        local tot = math.abs(e - s) + 1
+        local cnt = 0
+        local ft = c.FinishInTime and ((tonumber(c.FinishTotalTime) or 60) / math.max(1, tot)) or nil
+        
+        jjs.State.Running = true
+        jjs.State.Total = tot
+        jjs.State.Current = 0
+        
+        local dt = nil
+        if currentMode == "JJ (Delta)" then
+            local ch = gc()
+            if ch then
+                local a = Instance.new("Animation")
+                a.AnimationId = "rbxassetid://105471471504794"
+                dt = ch.Humanoid:LoadAnimation(a)
+                dt.Priority = Enum.AnimationPriority.Action
             end
+            local rm = rep:FindFirstChild("Remotes") and rep.Remotes:FindFirstChild("Polichinelos")
+            if rm then pcall(function() rm:FireServer("Prepare") rm:FireServer("Start") end) end
         end
 
-        local total    = math.abs(endVal - startVal) + 1
-        local count    = 0
-        local timePerJJ = cfg.FinishInTime and ((tonumber(cfg.FinishTotalTime) or 60) / math.max(1, total)) or nil
-
-        JJs.State.Running = true
-        JJs.State.Total   = total
-        JJs.State.Current = 0
-
-        -- Animação Delta
-        local deltaAnim = nil
-        if mode == "JJ (Delta)" then
-            local char = getCharacterIfAlive()
-            if char then
-                local anim = Instance.new("Animation")
-                anim.AnimationId = "rbxassetid://105471471504794"
-                deltaAnim = char.Humanoid:LoadAnimation(anim)
-                deltaAnim.Priority = Enum.AnimationPriority.Action
-            end
-
-            local remotes = ReplicatedStorage:FindFirstChild("Remotes")
-            local remote  = remotes and remotes:FindFirstChild("Polichinelos")
-            if remote then
-                pcall(remote.FireServer, remote, "Prepare")
-                pcall(remote.FireServer, remote, "Start")
-            end
-        end
-
-        for i = startVal, endVal, step do
-            if not cfg.Running then break end
-            count = count + 1
-            JJs.State.Current = i
-
-            local delay = timePerJJ
-                or (cfg.RandomDelay
-                    and (math.random(cfg.RandomMin * 10, cfg.RandomMax * 10) / 10)
-                    or  (tonumber(cfg.DelayValue) or 3))
-
-            JJs.State.FinishTimestamp = tick() + ((total - count) * delay)
-
-            local suffix  = (cfg.CustomSuffix ~= "") and cfg.CustomSuffix or cfg.Suffix
-            local text    = numberToWords(i)
-            local message = cfg.SpacingEnabled and (text .. " " .. suffix) or (text .. suffix)
-
-            if mode == "JJ (Delta)" then
-                local remotes = ReplicatedStorage:FindFirstChild("Remotes")
-                local remote  = remotes and remotes:FindFirstChild("Polichinelos")
-                if remote then pcall(remote.FireServer, remote, "Add", 1) end
-                if deltaAnim then deltaAnim:Play() end
-
-            elseif mode == "Canguru" then
-                sendChatMessage(message)
+        for i = s, e, dir do
+            if not c.Running then break end
+            cnt = cnt + 1
+            jjs.State.Current = i
+            
+            local delay = ft or (c.RandomDelay and (math.random(c.RandomMin * 10, c.RandomMax * 10) / 10) or (tonumber(c.DelayValue) or 3))
+            jjs.State.FinishTimestamp = tick() + ((tot - cnt) * delay)
+            
+            local txt = nt(i)
+            local sf = (c.CustomSuffix ~= "") and c.CustomSuffix or c.Suffix
+            local fn = c.SpacingEnabled and (txt .. " " .. sf) or (txt .. sf)
+            
+            if currentMode == "JJ (Delta)" then
+                local rm = rep:FindFirstChild("Remotes") and rep.Remotes:FindFirstChild("Polichinelos")
+                if rm then pcall(function() rm:FireServer("Add", 1) end) end
+                if dt then dt:Play() end
+            elseif currentMode == "Canguru" then
+                sc(fn)
                 task.wait(0.2)
-                pressKey(Enum.KeyCode.C)
-                task.wait(0.2)
-                pressKey(Enum.KeyCode.C)
+                pcall(function()
+                    vim:SendKeyEvent(true, Enum.KeyCode.C, false, game)
+                    task.wait(0.05)
+                    vim:SendKeyEvent(false, Enum.KeyCode.C, false, game)
+                    task.wait(0.2)
+                    vim:SendKeyEvent(true, Enum.KeyCode.C, false, game)
+                    task.wait(0.05)
+                    vim:SendKeyEvent(false, Enum.KeyCode.C, false, game)
+                end)
                 task.wait(0.1)
-                doJump()
+                aj()
                 task.wait(0.2)
-                doSpin()
-
-            else
-                sendChatMessage(message)
-                if cfg.JumpEnabled then doJump() end
+                as()
+            else 
+                sc(fn)
+                if c.JumpEnabled then aj() end
             end
-
-            if i ~= endVal then task.wait(delay) end
+            
+            if i ~= e then task.wait(delay) end
         end
-
-        cfg.Running       = false
-        JJs.State.Running = false
-        if deltaAnim then deltaAnim:Stop() end
+        
+        c.Running = false
+        jjs.State.Running = false
+        if dt then dt:Stop() end
     end)
 end
 
-JJs.Stop = function()
-    JJs.Config.Running = false
-    JJs.State.Running  = false
+jjs.Stop = function()
+    jjs.Config.Running = false
+    jjs.State.Running = false
 end
 
--- ═══════════════════════════════════════════════════════
--- F3X
--- ═══════════════════════════════════════════════════════
-local F3X_FOLDER = "michigun.xyz/f3x"
-if writefile and not isfolder(F3X_FOLDER) then makefolder(F3X_FOLDER) end
-
+-- [[ F3X ]] --
 env.F3X = env.F3X or {}
-local F3X = env.F3X
+local f3x = env.F3X
 
-F3X.Enabled       = false
-F3X.SelectedParts = {}
-F3X.Highlights    = {}
-F3X.UndoStack     = {}
-F3X.RedoStack     = {}
-F3X.ModifiedParts = {}
-F3X.UpdateUI      = nil
-F3X.NotifyFunc    = nil
-F3X.IsReady       = true
+f3x.Enabled = false
+f3x.SelectedParts = {}
+f3x.Highlights = {}
+f3x.UndoStack = {}
+f3x.RedoStack = {}
+f3x.ModifiedParts = {}
+f3x.UpdateUI = nil
+f3x.NotifyFunc = nil
+f3x.IsReady = true
 
--- ── Highlights de seleção ──
+local f3x_fDir = "michigun.xyz/f3x"
+if writefile and not isfolder(f3x_fDir) then makefolder(f3x_fDir) end
 
-local highlightContainer = nil
-
-local function getHighlightContainer()
-    if highlightContainer and highlightContainer.Parent then return highlightContainer end
-    highlightContainer = Instance.new("Folder")
-    highlightContainer.Name   = "F3XHighlights"
-    highlightContainer.Parent = safeGui()
-    return highlightContainer
+local hlParent
+local function getHlParent()
+    if hlParent then return hlParent end
+    local s, t = pcall(function() return gethui() end)
+    hlParent = (s and t) and t or cg
+    return hlParent
 end
 
-local function clearHighlights()
-    for _, hl in ipairs(F3X.Highlights) do if hl then hl:Destroy() end end
-    table.clear(F3X.Highlights)
+local function clrHl()
+    for _, h in ipairs(f3x.Highlights) do if h then h:Destroy() end end
+    table.clear(f3x.Highlights)
 end
 
-local function addHighlight(part)
+local function mkHl(p)
     task.defer(function()
-        if not part or not part.Parent then return end
-        local hl                 = Instance.new("Highlight")
-        hl.Name                  = HttpService:GenerateGUID(false)
-        hl.FillTransparency      = 1
-        hl.OutlineTransparency   = 0
-        hl.OutlineColor          = Color3.fromRGB(0, 255, 255)
-        hl.Adornee               = part
-        hl.Parent                = getHighlightContainer()
-        table.insert(F3X.Highlights, hl)
+        if not p or not p.Parent then return end
+        local h = Instance.new("Highlight")
+        h.Name = hs:GenerateGUID(false)
+        h.FillTransparency = 1
+        h.OutlineTransparency = 0
+        h.OutlineColor = Color3.fromRGB(0, 255, 255)
+        h.Adornee = p
+        h.Parent = getHlParent()
+        table.insert(f3x.Highlights, h)
     end)
 end
 
--- ── Undo/Redo ──
-
-local function pushUndo()
-    local snapshot = {}
-    for _, part in ipairs(F3X.SelectedParts) do
-        snapshot[part] = part.Size
-    end
-    table.insert(F3X.UndoStack, snapshot)
-    table.clear(F3X.RedoStack)
+f3x.ClearSelection = function()
+    table.clear(f3x.SelectedParts)
+    clrHl()
+    if f3x.UpdateUI then task.defer(f3x.UpdateUI) end
 end
 
--- ── Resolução de path ──
+local function pushU()
+    local s = {}
+    for _, p in ipairs(f3x.SelectedParts) do s[p] = p.Size end
+    table.insert(f3x.UndoStack, s)
+    table.clear(f3x.RedoStack)
+end
 
-local function resolveObjectPath(path)
-    local segments = {}
-    for segment in path:gmatch("[^%.]+") do table.insert(segments, segment) end
+f3x.ApplySize = function(v)
+    if #f3x.SelectedParts == 0 then return end
+    pushU()
+    for _, p in ipairs(f3x.SelectedParts) do
+        p.Size = v
+        f3x.ModifiedParts[p] = v
+    end
+    if f3x.UpdateUI then task.defer(f3x.UpdateUI) end
+end
 
-    local current = game
-    for _, segment in ipairs(segments) do
-        if segment ~= "Game" then
-            current = current:FindFirstChild(segment)
-            if not current then return nil end
+f3x.Undo = function()
+    local s = table.remove(f3x.UndoStack)
+    if not s then return end
+    local r = {}
+    for p, sz in pairs(s) do
+        r[p] = p.Size
+        p.Size = sz
+        f3x.ModifiedParts[p] = sz
+    end
+    table.insert(f3x.RedoStack, r)
+    if f3x.UpdateUI then task.defer(f3x.UpdateUI) end
+end
+
+f3x.Redo = function()
+    local s = table.remove(f3x.RedoStack)
+    if not s then return end
+    local u = {}
+    for p, sz in pairs(s) do
+        u[p] = p.Size
+        p.Size = sz
+        f3x.ModifiedParts[p] = sz
+    end
+    table.insert(f3x.UndoStack, u)
+    if f3x.UpdateUI then task.defer(f3x.UpdateUI) end
+end
+
+f3x.ListConfigs = function()
+    local o = {}
+    if listfiles then for _, f in ipairs(listfiles(f3x_fDir)) do if f:sub(-5) == ".json" then o[#o + 1] = f:match("([^/]+)%.json$") end end end
+    return o
+end
+
+f3x.SaveConfig = function(n)
+    if not n or n == "" then if f3x.NotifyFunc then f3x.NotifyFunc("F3X: Nome inválido", 3, "lucide:alert-circle") end return nil end
+    local d = { PlaceId = game.PlaceId, Parts = {} }
+    for p, sz in pairs(f3x.ModifiedParts) do
+        if p and p.Parent then
+            d.Parts[#d.Parts + 1] = { Path = p:GetFullName(), CFrame = { p.CFrame:GetComponents() }, Size = { sz.X, sz.Y, sz.Z } }
         end
     end
-    return current
+    local rj = hs:JSONEncode(d)
+    writefile(f3x_fDir .. "/" .. n .. ".json", rj)
+    return f3x.ListConfigs()
 end
 
--- ── API pública F3X ──
-
-F3X.ClearSelection = function()
-    table.clear(F3X.SelectedParts)
-    clearHighlights()
-    if F3X.UpdateUI then task.defer(F3X.UpdateUI) end
-end
-
-F3X.ApplySize = function(size)
-    if #F3X.SelectedParts == 0 then return end
-    pushUndo()
-    for _, part in ipairs(F3X.SelectedParts) do
-        part.Size            = size
-        F3X.ModifiedParts[part] = size
-    end
-    if F3X.UpdateUI then task.defer(F3X.UpdateUI) end
-end
-
-F3X.Undo = function()
-    local snapshot = table.remove(F3X.UndoStack)
-    if not snapshot then return end
-
-    local redoSnapshot = {}
-    for part, size in pairs(snapshot) do
-        redoSnapshot[part]      = part.Size
-        part.Size               = size
-        F3X.ModifiedParts[part] = size
-    end
-    table.insert(F3X.RedoStack, redoSnapshot)
-    if F3X.UpdateUI then task.defer(F3X.UpdateUI) end
-end
-
-F3X.Redo = function()
-    local snapshot = table.remove(F3X.RedoStack)
-    if not snapshot then return end
-
-    local undoSnapshot = {}
-    for part, size in pairs(snapshot) do
-        undoSnapshot[part]      = part.Size
-        part.Size               = size
-        F3X.ModifiedParts[part] = size
-    end
-    table.insert(F3X.UndoStack, undoSnapshot)
-    if F3X.UpdateUI then task.defer(F3X.UpdateUI) end
-end
-
-F3X.ListConfigs = function()
-    local result = {}
-    if listfiles then
-        for _, path in ipairs(listfiles(F3X_FOLDER)) do
-            if path:sub(-5) == ".json" then
-                table.insert(result, path:match("([^/]+)%.json$"))
-            end
+local function getObj(path)
+    local segs = {}
+    for s in path:gmatch("[^%.]+") do table.insert(segs, s) end
+    local cur = game
+    for _, s in ipairs(segs) do
+        if s ~= "Game" then
+            cur = cur:FindFirstChild(s)
+            if not cur then return nil end
         end
     end
-    return result
+    return cur
 end
 
-F3X.SaveConfig = function(name)
-    if not name or name == "" then
-        if F3X.NotifyFunc then F3X.NotifyFunc("F3X: Nome inválido", 3, "lucide:alert-circle") end
-        return nil
+f3x.ApplyConfig = function(n)
+    if not n then return end
+    local p = f3x_fDir .. "/" .. n .. ".json"
+    if not isfile(p) then return end
+    local c = readfile(p)
+    local d = nil
+    
+    pcall(function() d = hs:JSONDecode(c) end)
+
+    if not d then return end
+    if d.PlaceId ~= game.PlaceId then 
+        if f3x.NotifyFunc then f3x.NotifyFunc("F3X: Config de outro mapa", 3, "lucide:alert-circle") end 
+        return 
     end
 
-    local data = { PlaceId = game.PlaceId, Parts = {} }
-    for part, size in pairs(F3X.ModifiedParts) do
-        if part and part.Parent then
-            table.insert(data.Parts, {
-                Path   = part:GetFullName(),
-                CFrame = { part.CFrame:GetComponents() },
-                Size   = { size.X, size.Y, size.Z },
-            })
-        end
-    end
+    for _, v in ipairs(d.Parts or {}) do
+        local targetCf = CFrame.new(unp(v.CFrame))
+        local foundPart = nil
 
-    writefile(F3X_FOLDER .. "/" .. name .. ".json", HttpService:JSONEncode(data))
-    return F3X.ListConfigs()
-end
-
-F3X.ApplyConfig = function(name)
-    if not name then return end
-
-    local path = F3X_FOLDER .. "/" .. name .. ".json"
-    if not isfile(path) then return end
-
-    local data
-    pcall(function() data = HttpService:JSONDecode(readfile(path)) end)
-    if not data then return end
-
-    if data.PlaceId ~= game.PlaceId then
-        if F3X.NotifyFunc then F3X.NotifyFunc("F3X: Config de outro mapa", 3, "lucide:alert-circle") end
-        return
-    end
-
-    for _, entry in ipairs(data.Parts or {}) do
-        local targetCFrame = CFrame.new(table.unpack(entry.CFrame))
-        local found        = nil
-
-        -- Tenta pelo path direto primeiro
-        local direct = resolveObjectPath(entry.Path)
-        if direct and direct:IsA("BasePart")
-        and (direct.Position - targetCFrame.Position).Magnitude < 2 then
-            found = direct
-        end
-
-        -- Fallback: busca por nome + posição
-        if not found then
-            for _, obj in ipairs(Workspace:GetDescendants()) do
-                if obj:IsA("BasePart") and obj:GetFullName() == entry.Path
-                and (obj.Position - targetCFrame.Position).Magnitude < 2 then
-                    found = obj
-                    break
+        local obj = getObj(v.Path)
+        if obj and obj:IsA("BasePart") and (obj.Position - targetCf.Position).Magnitude < 2 then
+            foundPart = obj
+        else
+            for _, o in ipairs(ws:GetDescendants()) do
+                if o:IsA("BasePart") and o:GetFullName() == v.Path then
+                    if (o.Position - targetCf.Position).Magnitude < 2 then
+                        foundPart = o
+                        break
+                    end
                 end
             end
         end
-
-        if found then
-            found.Size               = Vector3.new(table.unpack(entry.Size))
-            F3X.ModifiedParts[found] = found.Size
+        
+        if foundPart then
+            foundPart.Size = Vector3.new(unp(v.Size))
+            f3x.ModifiedParts[foundPart] = foundPart.Size
         end
     end
 end
 
-F3X.DeleteConfig = function(name)
-    if not name then
-        if F3X.NotifyFunc then F3X.NotifyFunc("F3X: Nenhuma seleção", 3, "lucide:alert-circle") end
-        return nil
-    end
-    delfile(F3X_FOLDER .. "/" .. name .. ".json")
-    return F3X.ListConfigs()
+f3x.DeleteConfig = function(n)
+    if not n then if f3x.NotifyFunc then f3x.NotifyFunc("F3X: Nenhuma seleção", 3, "lucide:alert-circle") end return nil end
+    delfile(f3x_fDir .. "/" .. n .. ".json")
+    return f3x.ListConfigs()
 end
 
-F3X.Toggle = function(enabled)
-    F3X.Enabled = enabled
-    if not enabled then F3X.ClearSelection() end
+f3x.Toggle = function(s)
+    f3x.Enabled = s
+    if not s then f3x.ClearSelection() end
 end
 
--- Mouse click para seleção
-if LocalPlayer then
-    local mouse = LocalPlayer:GetMouse()
-    mouse.Button1Down:Connect(function()
-        if not F3X.Enabled then return end
-
-        local target = mouse.Target
-        if not target or not target:IsA("BasePart") then return end
-
-        -- Toggle se já está selecionado
-        for i, part in ipairs(F3X.SelectedParts) do
-            if part == target then
-                table.remove(F3X.SelectedParts, i)
-                clearHighlights()
-                for _, selected in ipairs(F3X.SelectedParts) do addHighlight(selected) end
-                if F3X.UpdateUI then task.defer(F3X.UpdateUI) end
+local f3xMouseConn
+if lp then
+    local ms = lp:GetMouse()
+    f3xMouseConn = ms.Button1Down:Connect(function()
+        if not f3x.Enabled then return end
+        local t = ms.Target
+        if not t or not t:IsA("BasePart") then return end
+        
+        for i, p in ipairs(f3x.SelectedParts) do
+            if p == t then
+                table.remove(f3x.SelectedParts, i)
+                clrHl()
+                for _, sp in ipairs(f3x.SelectedParts) do mkHl(sp) end
+                if f3x.UpdateUI then task.defer(f3x.UpdateUI) end
                 return
             end
         end
-
-        -- Verifica compatibilidade de tamanho com a seleção existente
-        if #F3X.SelectedParts > 0 then
-            local ref  = F3X.SelectedParts[1].Size
-            local tSz  = target.Size
-            if math.abs(ref.X - tSz.X) > 1
-            or math.abs(ref.Y - tSz.Y) > 1
-            or math.abs(ref.Z - tSz.Z) > 1 then
+        
+        if #f3x.SelectedParts > 0 then
+            local ref = f3x.SelectedParts[1].Size
+            local ts = t.Size
+            if math.abs(ref.X - ts.X) > 1 or math.abs(ref.Y - ts.Y) > 1 or math.abs(ref.Z - ts.Z) > 1 then
                 return
             end
         end
-
-        table.insert(F3X.SelectedParts, target)
-        addHighlight(target)
-        if F3X.UpdateUI then task.defer(F3X.UpdateUI) end
+        
+        table.insert(f3x.SelectedParts, t)
+        mkHl(t)
+        if f3x.UpdateUI then task.defer(f3x.UpdateUI) end
     end)
 end
 
--- ═══════════════════════════════════════════════════════
--- ChatGPT / IA
--- ═══════════════════════════════════════════════════════
-local HttpRequest = request or (http and http.request) or http_request or (syn and syn.request)
-
-local IA_PROMPT_PATH = "michigun.xyz/IA.txt"
-if not isfile(IA_PROMPT_PATH) then
-    writefile(IA_PROMPT_PATH, "Você é uma IA útil dentro do Roblox.")
-end
+-- [[ ChatGPT / IA ]] --
+local HttpRequest = request or http and http.request or http_request or syn and syn.request
 
 _G.ChatGPT = _G.ChatGPT or {}
-local ChatGPT = _G.ChatGPT
+_G.ChatGPT.History = {}
+_G.ChatGPT.LastMessage = ""
 
-ChatGPT.LastMessage = ""
-ChatGPT.History     = {{ role = "system", content = readfile(IA_PROMPT_PATH) }}
+local PromptPath = "michigun.xyz/IA.txt"
+if not isfile(PromptPath) then writefile(PromptPath, "Você é uma IA útil dentro do Roblox.") end
 
--- ── Utilitários internos ──
+local Personality = readfile(PromptPath)
+_G.ChatGPT.History = {{role = "system", content = Personality}}
 
-local function extractCodeBlock(text)
-    local code = text:match("```lua\n?(.-)```") or text:match("```\n?(.-)```")
-    if code then
-        local cleanText = text:gsub("```lua\n?.-```", ""):gsub("```\n?.-```", "")
-        return code, cleanText
+local function extractLuaCode(responseText)
+    local luaCode = responseText:match("```lua\n?(.-)```") or responseText:match("```\n?(.-)```")
+    if luaCode then
+        local cleanText = responseText:gsub("```lua\n?.-```", ""):gsub("```\n?.-```", "")
+        return luaCode, cleanText
     end
-    return nil, text
+    return nil, responseText
 end
 
--- ── API pública ChatGPT ──
+_G.ChatGPT.Ask = function(promptText)
+    table.insert(_G.ChatGPT.History, {role = "user", content = promptText})
 
-ChatGPT.Ask = function(prompt)
-    table.insert(ChatGPT.History, { role = "user", content = prompt })
-
-    local ok, response = pcall(function()
+    local success, response = pcall(function()
         return HttpRequest({
-            Url     = "https://text.pollinations.ai/openai",
-            Method  = "POST",
-            Headers = { ["Content-Type"] = "application/json" },
-            Body    = HttpService:JSONEncode({
-                messages = ChatGPT.History,
-                model    = "openai",
-            }),
+            Url = "https://text.pollinations.ai/openai",
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = hs:JSONEncode({
+                messages = _G.ChatGPT.History,
+                model = "openai"
+            })
         })
     end)
 
-    if not ok or not response then
+    if not success or not response then
         return "Erro de conexão com a API.", nil
     end
 
-    local aiText      = ""
-    local decodeOk, decoded = pcall(HttpService.JSONDecode, HttpService, response.Body)
-
-    if decodeOk and decoded and decoded.choices and decoded.choices[1] then
+    local aiText = ""
+    local decodeSuccess, decoded = pcall(function() return hs:JSONDecode(response.Body) end)
+    
+    if decodeSuccess and decoded.choices and decoded.choices[1] then
         aiText = decoded.choices[1].message.content
     else
         aiText = response.Body
     end
 
-    local code, cleanMessage = extractCodeBlock(aiText)
-    ChatGPT.LastMessage = cleanMessage
+    local luaCode, cleanMessage = extractLuaCode(aiText)
 
-    table.insert(ChatGPT.History, { role = "assistant", content = aiText })
+    _G.ChatGPT.LastMessage = cleanMessage
+    table.insert(_G.ChatGPT.History, {role = "assistant", content = aiText})
 
-    return cleanMessage, code
+    return cleanMessage, luaCode
 end
 
-ChatGPT.SendToChat = function(message)
-    if not message or message == "" then return end
-    sendChatMessage(tostring(message))
+_G.ChatGPT.SendToChat = function(msg)
+    if not msg or msg == "" then return end
+    
+    local msgString = tostring(msg)
+    
+    if tcs.ChatVersion == Enum.ChatVersion.TextChatService then
+        local channels = tcs:WaitForChild("TextChannels", 2)
+        if channels then
+            local target = channels:FindFirstChild("RBXGeneral") or channels:FindFirstChildOfClass("TextChannel")
+            if target then
+                target:SendAsync(msgString)
+            end
+        end
+    else
+        local events = rep:FindFirstChild("DefaultChatSystemChatEvents")
+        if events then
+            local say = events:FindFirstChild("SayMessageRequest")
+            if say then
+                say:FireServer(msgString, "All")
+            end
+        end
+    end
 end
