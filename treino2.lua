@@ -81,32 +81,102 @@ local function chkPlay()
     if tas.UpdateButtonState then tas.UpdateButtonState(ip) end
 end
 
+-- Cache de AnimationTracks carregadas: [animId] = AnimationTrack
+local loadedTracks = {}
+
+local function getTrack(animator, animId)
+    if loadedTracks[animId] then return loadedTracks[animId] end
+    local anim = Instance.new("Animation")
+    anim.AnimationId = animId
+    local ok, track = pcall(function() return animator:LoadAnimation(anim) end)
+    anim:Destroy()
+    if ok and track then
+        loadedTracks[animId] = track
+        return track
+    end
+end
+
 local function capFr()
     local c = lp.Character
     local hrp, hum = c and c:FindFirstChild("HumanoidRootPart"), c and c:FindFirstChildOfClass("Humanoid")
     if not hrp or not hum then return end
+
+    -- Captura todas as AnimationTracks ativas com posição e velocidade
+    local animator = hum:FindFirstChildOfClass("Animator")
+    local anims = {}
+    if animator then
+        for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+            table.insert(anims, {
+                id       = track.Animation.AnimationId,
+                pos      = track.TimePosition,
+                speed    = track.Speed,
+                weight   = track.WeightCurrent,
+            })
+        end
+    end
+
     return {
         cf    = { hrp.CFrame:GetComponents() },
         vel   = { hrp.AssemblyLinearVelocity.X, hrp.AssemblyLinearVelocity.Y, hrp.AssemblyLinearVelocity.Z },
         jump  = hum.Jump,
-        state = hum:GetState().Value
+        state = hum:GetState().Value,
+        anims = anims,
     }
 end
 
 local function appFr(f, hrp, hum)
     if not f or not hrp or not hum then return end
+
+    -- Posição e velocidade
     if f.cf then
         hrp.CFrame = CFrame.new(f.cf[1],f.cf[2],f.cf[3],f.cf[4],f.cf[5],f.cf[6],f.cf[7],f.cf[8],f.cf[9],f.cf[10],f.cf[11],f.cf[12])
     end
     if f.vel then hrp.AssemblyLinearVelocity = Vector3.new(f.vel[1], f.vel[2], f.vel[3]) end
+
+    -- Estado do Humanoid (pulo, queda, etc)
     if f.jump ~= tas.LastJump then
         if f.jump then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
         tas.LastJump = f.jump
     end
     local recSt = stEnums[f.state]
     if recSt then
-        if recSt ~= Enum.HumanoidStateType.Jumping and hum:GetState() ~= recSt then hum:ChangeState(recSt) end
+        if recSt ~= Enum.HumanoidStateType.Jumping and hum:GetState() ~= recSt then
+            hum:ChangeState(recSt)
+        end
         hum.AutoRotate = false
+    end
+
+    -- Animações: sincroniza tracks ativas com o frame gravado
+    local animator = hum:FindFirstChildOfClass("Animator")
+    if animator and f.anims then
+        -- IDs que devem estar tocando nesse frame
+        local shouldPlay = {}
+        for _, a in ipairs(f.anims) do shouldPlay[a.id] = a end
+
+        -- Para tracks que não deveriam estar tocando
+        for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+            local id = track.Animation.AnimationId
+            if not shouldPlay[id] then
+                track:Stop(0)
+            end
+        end
+
+        -- Aplica/sincroniza tracks que devem estar tocando
+        for _, a in ipairs(f.anims) do
+            local track = getTrack(animator, a.id)
+            if track then
+                if not track.IsPlaying then
+                    track:Play(0, a.weight, a.speed)
+                end
+                -- Sincroniza posição da animação (evita deriva)
+                if math.abs(track.TimePosition - a.pos) > 0.05 then
+                    track.TimePosition = a.pos
+                end
+                if track.Speed ~= a.speed then
+                    track:AdjustSpeed(a.speed)
+                end
+            end
+        end
     end
 end
 
@@ -269,6 +339,7 @@ local function actTas(n)
                     lastC       = currC
                     cachedHrp   = currC and currC:FindFirstChild("HumanoidRootPart")
                     cachedHum   = currC and currC:FindFirstChildOfClass("Humanoid")
+                    loadedTracks = {}   -- limpa cache de tracks ao respawnar
                 end
                 local cIdx = math.floor((tick() - stT) * 60) + 1
                 if cIdx > #d.Frames then
@@ -427,6 +498,7 @@ if tcs.ChatVersion == Enum.ChatVersion.TextChatService then
 else
     lp.Chatted:Connect(chCmd)
 end
+
 
 -- jjs
 env.JJs = nil
