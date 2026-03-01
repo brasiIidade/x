@@ -986,7 +986,6 @@ getgenv().ApexLogic.ToggleInfiniteAmmo = function(ativar)
                     and self.Name == "Ammo"
                     and k == "Value"
                 then
-                    -- bloqueia a escrita — mantém no MaxValue
                     return oldNI(self, k, self.MaxValue)
                 end
             end
