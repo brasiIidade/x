@@ -1,28 +1,19 @@
---[[
-    Backend - Hitbox Expander + ESP
-    Interface pública preservada:
-        getgenv().HitboxConfig  → tabela mutada diretamente pela UI
-        getgenv().ESPConfig     → tabela mutada diretamente pela UI
-        getgenv().StartESP()    → liga o ESP
-        getgenv().StopESP()     → desliga o ESP
-]]
-
--- ─────────────────────────────────────────────
--- Bloco de compatibilidade: jogo específico
--- ─────────────────────────────────────────────
 if game.PlaceId == 2069320852 then
     local oldFireServer
     oldFireServer = hookfunction(Instance.new("RemoteEvent").FireServer, function(remote, ...)
-        if remote.Name == "ClientKick" and ... == "HitBox" then
+        if remote.Name ~= "ClientKick" then
+            return oldFireServer(remote, ...)
+        end
+
+        if select(1, ...) == "HitBox" then
             return
         end
+
         return oldFireServer(remote, ...)
     end)
 end
 
--- ─────────────────────────────────────────────
--- Serviços e atalhos
--- ─────────────────────────────────────────────
+-- servicos
 local cr        = cloneref or function(o) return o end
 local Players   = cr(game:GetService("Players"))
 local RunService = cr(game:GetService("RunService"))
@@ -31,9 +22,7 @@ local HttpService = cr(game:GetService("HttpService"))
 
 local LocalPlayer = Players.LocalPlayer
 
--- ─────────────────────────────────────────────
--- Utilitários internos
--- ─────────────────────────────────────────────
+
 local function safeGui()
     local ok, hui = pcall(gethui)
     return (ok and hui) and hui or CoreGui
@@ -52,11 +41,10 @@ local function isShielded(character)
     return false
 end
 
--- ─────────────────────────────────────────────
+
 -- HITBOX
--- ─────────────────────────────────────────────
-local hitboxSaved = {}   -- estado original por jogador
-local hitboxLights = {}  -- highlights por jogador
+local hitboxSaved = {}
+local hitboxLights = {}
 
 local function hitboxConfig()
     return getgenv().HitboxConfig
@@ -181,18 +169,15 @@ end)
 
 Players.PlayerRemoving:Connect(hitboxCleanPlayer)
 
--- ─────────────────────────────────────────────
+
 -- ESP
--- ─────────────────────────────────────────────
 local env = getgenv()
 
--- Estado persistente (mantido igual para não quebrar reloads)
 env.espConns = env.espConns or {}
 env.espStore = env.espStore or {}
 env.espHold  = env.espHold  or nil
 
--- Config pública (inicializa só se ainda não existir,
--- pois a UI pode ter definido antes de carregar o backend)
+
 env.ESPConfig = env.ESPConfig or {
     Enabled  = false,
     TeamCheck = false,
@@ -238,7 +223,7 @@ local function espAddPlayer(player)
         labels    = {},
     }
 
-    -- Highlight
+    -- hl
     local hl = entry.highlight
     hl.Name                = HttpService:GenerateGUID(false)
     hl.FillColor           = Color3.new(1, 0, 0)
@@ -249,7 +234,7 @@ local function espAddPlayer(player)
     hl.Enabled             = false
     hl.Parent              = container
 
-    -- BillboardGui
+    -- gui
     local bb = entry.billboard
     bb.Name         = HttpService:GenerateGUID(false)
     bb.Size         = UDim2.new(0, 200, 0, 60)
@@ -304,7 +289,7 @@ local function espUpdate()
             continue
         end
 
-        -- Highlight (chams)
+        -- chams
         if cfg.Chams then
             entry.highlight.Adornee  = char
             entry.highlight.FillColor = (player.TeamColor and player.TeamColor.Color) or Color3.new(1, 0, 0)
@@ -313,13 +298,13 @@ local function espUpdate()
             entry.highlight.Enabled = false
         end
 
-        -- Billboard labels
+        -- labels
         local showBillboard = cfg.Name or cfg.Health or cfg.WeaponN or cfg.Studs
         if showBillboard then
             entry.billboard.Adornee = head
             entry.billboard.Enabled = true
 
-            -- Nome
+            -- nome
             local lblName = entry.labels.name
             if cfg.Name then
                 lblName.Text    = player.Name
@@ -328,7 +313,7 @@ local function espUpdate()
                 lblName.Visible = false
             end
 
-            -- Vida
+            -- vida
             local lblHealth = entry.labels.health
             if cfg.Health then
                 local hp = math.floor(hum.Health)
@@ -339,7 +324,7 @@ local function espUpdate()
                 lblHealth.Visible = false
             end
 
-            -- Item na mão
+            -- item
             local lblWeapon = entry.labels.weapon
             if cfg.WeaponN then
                 local tool = char:FindFirstChildOfClass("Tool")
@@ -349,7 +334,7 @@ local function espUpdate()
                 lblWeapon.Visible = false
             end
 
-            -- Distância
+            -- dist
             local lblStuds = entry.labels.studs
             if cfg.Studs then
                 local dist = lroot and (lroot.Position - root.Position).Magnitude or 0
@@ -364,7 +349,7 @@ local function espUpdate()
     end
 end
 
--- Interface pública usada pela UI
+-- UI
 env.StopESP = function()
     for _, conn in pairs(env.espConns) do conn:Disconnect() end
     table.clear(env.espConns)
