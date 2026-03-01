@@ -181,25 +181,27 @@ local function appFr(f, hrp, hum)
     end
 end
 
-local function mkVp(worldPart)
+local function mkVp(worldPos, sz)
     local vpf, vpc = Instance.new("ViewportFrame"), Instance.new("Camera")
     vpf.Parent, vpf.BackgroundTransparency, vpf.Size, vpf.ZIndex = ui, 1, UDim2.new(0, 150, 0, 150), 10
     vpc.Parent = vpf
-    local cl = worldPart:Clone()
-    cl.Parent       = vpf
+    local cl = Instance.new("Part")
+    cl.Size, cl.Anchored, cl.CanCollide = sz, true, false
     cl.Transparency = 0
     cl.Material     = Enum.Material.Neon
     cl.CFrame       = CFrame.new()
-    local mx = math.max(cl.Size.X, cl.Size.Y, cl.Size.Z)
+    cl.Parent       = vpf
+    local mx = math.max(sz.X, sz.Y, sz.Z)
     vpc.CFrame = CFrame.new(0, mx, mx * 2.5) * CFrame.Angles(math.rad(-20), math.rad(180), 0)
+    local active = true
     local cnn = rs.Stepped:Connect(function()
-        if not worldPart or not worldPart.Parent then return end
-        local ps, vs = cam:WorldToScreenPoint(worldPart.Position)
+        if not active then return end
+        local ps, vs = cam:WorldToScreenPoint(worldPos)
         vpf.Position = UDim2.fromOffset(ps.X - 75, ps.Y - 75)
         vpf.Visible  = vs
         cl.CFrame    = CFrame.Angles(0, tick() % (math.pi * 2), 0)
     end)
-    return { Frame = vpf, Connection = cnn, Part = worldPart }
+    return { Frame = vpf, Connection = cnn, Deactivate = function() active = false end }
 end
 
 -- Limpa visuals e conexões de um TAS.
@@ -218,9 +220,9 @@ local function clrTas(n, playingOnly)
         if d.Adornments then
             for _, a in ipairs(d.Adornments) do if a and a.Parent then a:Destroy() end end
         end
-        if d.MarkerPart then d.MarkerPart:Destroy(); d.MarkerPart = nil end
         if d.Viewports then
             for _, v in ipairs(d.Viewports) do
+                if v.Deactivate then v.Deactivate() end
                 if v.Connection then v.Connection:Disconnect() end
                 if v.Frame      then v.Frame:Destroy() end
             end
@@ -290,17 +292,8 @@ local function actTas(n)
     mkM("LAm", Vector3.new(1, 2, 1), cf * CFrame.new(-1.5,  0,  0),                                     false)
     mkM("RAm", Vector3.new(1, 2, 1), cf * CFrame.new( 1.5, 0.5, -1) * CFrame.Angles(math.rad(90),0,0), false)
 
-    local dm = Instance.new("Part")
-    dm.Size         = Vector3.new(2, 2, 1)
-    dm.CFrame       = cf
-    dm.Transparency = 1
-    dm.Anchored     = true
-    dm.CanCollide   = false
-    dm.Parent       = workspace
-    d.MarkerPart    = dm
-
     d.Viewports = {}
-    table.insert(d.Viewports, mkVp(dm))
+    table.insert(d.Viewports, mkVp(cf.Position, Vector3.new(2, 2, 1)))
     d.PathParts = bldPth(d.Frames)
 
     d.MarkerConn = rs.Heartbeat:Connect(function()
@@ -318,8 +311,8 @@ local function actTas(n)
                 for _, a in ipairs(d.Adornments) do if a and a.Parent then a:Destroy() end end
                 d.Adornments = {}
             end
-            if d.MarkerPart then d.MarkerPart:Destroy(); d.MarkerPart = nil end
             for _, v in ipairs(d.Viewports) do
+                if v.Deactivate then v.Deactivate() end
                 if v.Connection then v.Connection:Disconnect() end
                 if v.Frame      then v.Frame:Destroy() end
             end
