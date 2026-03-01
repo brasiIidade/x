@@ -317,6 +317,9 @@ end
 
 
 -- jjs
+env.JJs = nil
+_G.JJs = nil
+
 env.JJs = env.JJs or {}
 _G.JJs = env.JJs 
 
@@ -351,16 +354,15 @@ local t = {[2]="vinte",[3]="trinta",[4]="quarenta",[5]="cinquenta",[6]="sessenta
 local h = {[1]="cento",[2]="duzentos",[3]="trezentos",[4]="quatrocentos",[5]="quinhentos",[6]="seiscentos",[7]="setecentos",[8]="oitocentos",[9]="novecentos"}
 local ac = {["á"]="Á",["à"]="À",["ã"]="Ã",["â"]="Â",["é"]="É",["ê"]="Ê",["í"]="Í",["ó"]="Ó",["ô"]="Ô",["õ"]="Õ",["ú"]="Ú",["ç"]="Ç"}
 
-local InputBar = tcs:FindFirstChildOfClass("ChatInputBarConfiguration")
-
 local function sc(m)
     pcall(function()
-        if InputBar and InputBar.TargetTextChannel then
-            InputBar.TargetTextChannel:SendAsync(tostring(m))
-        else
-            local general = tcs:WaitForChild("TextChannels"):WaitForChild("RBXGeneral")
-            general:SendAsync(tostring(m))
+        local inputBar = tcs:FindFirstChildOfClass("ChatInputBarConfiguration")
+        if inputBar and inputBar.TargetTextChannel then
+            inputBar.TargetTextChannel:SendAsync(tostring(m))
+            return
         end
+        local general = tcs:WaitForChild("TextChannels"):WaitForChild("RBXGeneral")
+        general:SendAsync(tostring(m))
     end)
 end
 
@@ -462,7 +464,7 @@ jjs.Start = function()
     local c = jjs.Config
     if c.Running then return end
     c.Running = true
-    
+
     task.spawn(function()
         local s = tonumber(c.StartValue) or 1
         local e = tonumber(c.EndValue) or 100
@@ -473,15 +475,15 @@ jjs.Start = function()
         if currentMode == "Padrão" and rep:FindFirstChild("Remotes") and rep.Remotes:FindFirstChild("Polichinelos") then
             currentMode = "JJ (Delta)"
         end
-        
+
         local tot = math.abs(e - s) + 1
         local cnt = 0
         local ft = c.FinishInTime and ((tonumber(c.FinishTotalTime) or 60) / math.max(1, tot)) or nil
-        
+
         jjs.State.Running = true
         jjs.State.Total = tot
         jjs.State.Current = 0
-        
+
         local dt = nil
         if currentMode == "JJ (Delta)" then
             local ch = gc()
@@ -499,14 +501,14 @@ jjs.Start = function()
             if not c.Running then break end
             cnt = cnt + 1
             jjs.State.Current = i
-            
+
             local delay = ft or (c.RandomDelay and (math.random(c.RandomMin * 10, c.RandomMax * 10) / 10) or (tonumber(c.DelayValue) or 3))
             jjs.State.FinishTimestamp = tick() + ((tot - cnt) * delay)
-            
+
             local txt = nt(i)
             local sf = (c.CustomSuffix ~= "") and c.CustomSuffix or c.Suffix
             local fn = c.SpacingEnabled and (txt .. " " .. sf) or (txt .. sf)
-            
+
             if currentMode == "JJ (Delta)" then
                 local rm = rep:FindFirstChild("Remotes") and rep.Remotes:FindFirstChild("Polichinelos")
                 if rm then pcall(function() rm:FireServer("Add", 1) end) end
@@ -531,10 +533,10 @@ jjs.Start = function()
                 sc(fn)
                 if c.JumpEnabled then aj() end
             end
-            
+
             if i ~= e then task.wait(delay) end
         end
-        
+
         c.Running = false
         jjs.State.Running = false
         if dt then dt:Stop() end
