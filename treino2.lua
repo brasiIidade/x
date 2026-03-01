@@ -409,41 +409,58 @@ end
 
 local function sc(m)
     local s = tostring(m)
-    local textBox = nil
-    local coreGui = game:GetService("CoreGui")
-    local playerGui = lp:FindFirstChild("PlayerGui")
+    
+    -- Tenta pegar a TextBox do chat
+    local chatGui = players.LocalPlayer.PlayerGui:FindFirstChild("Chat")
+        or players.LocalPlayer.PlayerGui:FindFirstChild("BubbleChat")
+    
+    local chatFrame = chatGui and (
+        chatGui:FindFirstChild("Frame_MainChat", true)
+        or chatGui:FindFirstChild("ChatBar", true)
+        or chatGui:FindFirstChild("TextBox", true)
+    )
+    
+    local textBox = chatFrame and (
+        (chatFrame:IsA("TextBox") and chatFrame)
+        or chatFrame:FindFirstChildWhichIsA("TextBox", true)
+    )
+    
+    if not textBox then
+        -- Fallback: abre o chat via teclado e aguarda a TextBox aparecer
+        vim:SendKeyEvent(true, Enum.KeyCode.Slash, false, game)
+        task.wait(0.05)
+        vim:SendKeyEvent(false, Enum.KeyCode.Slash, false, game)
+        task.wait(0.15)
+        
+        -- Tenta novamente após abrir
+        chatGui = players.LocalPlayer.PlayerGui:FindFirstChild("Chat")
+        chatFrame = chatGui and chatGui:FindFirstChildWhichIsA("TextBox", true)
+        textBox = chatFrame
+    end
+    
+    if not textBox then return end
 
-    if coreGui:FindFirstChild("ExperienceChat") then
-        textBox = coreGui.ExperienceChat:FindFirstChildWhichIsA("TextBox", true)
+    -- Foca na TextBox (ativa o evento de "digitando")
+    textBox:CaptureFocus()
+    task.wait(0.05)
+
+    -- Digita caractere por caractere simulando humano
+    textBox.Text = ""
+    for i = 1, #s do
+        if not jjs.Config.Running then break end
+        textBox.Text = string.sub(s, 1, i)
+        -- Dispara evento de mudança de texto (FocusLost não, só Input)
+        task.wait(math.random(40, 120) / 1000) -- 40~120ms por char, humano
     end
 
-    if not textBox and playerGui and playerGui:FindFirstChild("Chat") then
-        textBox = playerGui.Chat:FindFirstChild("ChatBar", true)
-    end
+    task.wait(math.random(80, 200) / 1000) -- pausa antes de enviar
 
-    if textBox then
-        pcall(function()
-            textBox:CaptureFocus()
-            task.wait(0.02)
-            textBox.Text = s
-            task.wait(0.02)
-            textBox:ReleaseFocus(true)
-        end)
-    else
-        if tcs.ChatVersion == Enum.ChatVersion.TextChatService then
-            local c = tcs:FindFirstChild("TextChannels")
-            local tgt = c and c:FindFirstChild("RBXGeneral")
-            if tgt then
-                pcall(function() tgt:SendAsync(s) end)
-            end
-        else
-            local ev = rep:FindFirstChild("DefaultChatSystemChatEvents")
-            local req = ev and ev:FindFirstChild("SayMessageRequest")
-            if req then
-                pcall(function() req:FireServer(s, "All") end)
-            end
-        end
-    end
+    -- Envia com Enter
+    vim:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
+    task.wait(0.05)
+    vim:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
+    
+    task.wait(0.1)
 end
 
 local function gc()
