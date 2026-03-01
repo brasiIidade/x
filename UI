@@ -3505,13 +3505,18 @@ elseif MapaAtual == "Apex" then
                     local soundList     = {}
                     local equippedTool  = nil
                     local isReadyToSpam = false 
+                    local rng = Random.new()
 
                     local function refreshSounds()
                         local found = {}
+                        local uniqueIds = {}
                         for _, obj in ipairs(game:GetDescendants()) do
                             if obj:IsA("Sound") and obj.SoundId ~= "" then
-                                table.insert(found, obj)
-                                if #found >= 50 then break end
+                                if not uniqueIds[obj.SoundId] then
+                                    uniqueIds[obj.SoundId] = true
+                                    table.insert(found, obj)
+                                    if #found >= 200 then break end
+                                end
                             end
                         end
                         soundList = found
@@ -3565,39 +3570,23 @@ elseif MapaAtual == "Apex" then
                         local humanoid = char:FindFirstChildOfClass("Humanoid")
                         if not humanoid then return false end
 
-                        local currentWeapon = char:FindFirstChildOfClass("Tool")
-                        local targetWeapon = (isValidWeapon(currentWeapon) and currentWeapon) or findWeaponInBag()
+                        humanoid:UnequipTools()
+                        task.wait(0.5)
+
+                        local targetWeapon = findWeaponInBag()
                         
                         if not targetWeapon then return false end
 
-                        if targetWeapon.Parent ~= char then
-                            humanoid:EquipTool(targetWeapon)
-                            if not waitForWeapon(targetWeapon.Name) then return false end
-                        end
+                        humanoid:EquipTool(targetWeapon)
+                        if not waitForWeapon(targetWeapon.Name) then return false end
                         
                         task.wait(1)
 
                         sessionToken = findSessionToken()
                         if not sessionToken then return false end
 
-                        local bag = LocalPlayer:FindFirstChild("Backpack")
-                        local secondWeapon = nil
-                        if bag then
-                            for _, item in ipairs(bag:GetChildren()) do
-                                if item:IsA("Tool") and item ~= targetWeapon then
-                                    secondWeapon = item
-                                    break
-                                end
-                            end
-                        end
-
-                        if secondWeapon then
-                            humanoid:EquipTool(secondWeapon)
-                            if waitForWeapon(secondWeapon.Name) then task.wait(0.5) end
-                        else
-                            humanoid:UnequipTools()
-                            task.wait(0.5)
-                        end
+                        humanoid:UnequipTools()
+                        task.wait(0.5)
 
                         humanoid:EquipTool(targetWeapon)
                         if not waitForWeapon(targetWeapon.Name) then return false end
@@ -3650,20 +3639,22 @@ elseif MapaAtual == "Apex" then
                             continue
                         end
 
-                        for i = 1, #soundList do
-                            if not getgenv().SpamAtivo or not equippedTool or not isReadyToSpam then break end
+                        local totalSons = #soundList
+                        if totalSons > 0 then
+                            for i = 1, 15 do
+                                if not getgenv().SpamAtivo or not equippedTool or not isReadyToSpam then break end
 
-                            local sound = soundList[i]
-                            if sound and sound.Parent then
-                                local originalVolume = sound.Volume
-                                sound.Volume = 10
-                                pcall(fireClient.FireServer, fireClient, sessionToken, "PlaySound", sound, nil)
-                                sound.Volume = originalVolume
+                                local sound = soundList[rng:NextInteger(1, totalSons)]
+                                if sound and sound.Parent then
+                                    local originalVolume = sound.Volume
+                                    sound.Volume = 10
+                                    pcall(fireClient.FireServer, fireClient, sessionToken, "PlaySound", sound, nil)
+                                    sound.Volume = originalVolume
+                                end
+                                task.wait()
                             end
-
-                            if i % 10 == 0 then task.wait() end
                         end
-                        task.wait(0.1)
+                        task.wait()
                     end
                 end)
             else
