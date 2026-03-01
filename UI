@@ -211,84 +211,6 @@ main:CreateTopbarButton("Discord", "geist:logo-discord", function()
     notificar("Link copiado!", 5, "geist:logo-discord")
 end, 990)
 
---// links
-
-local BaseURL = "https://michigun.xyz/api/raw/"
-local FilePaths = {}
-
-local function DownloadSafe(url, tentativas)
-    tentativas = tentativas or 3
-    local lastResponse
-    
-    for i = 1, tentativas do
-        local success, response = pcall(function()
-            return game:HttpGet(url)
-        end)
-
-        if success and type(response) == "string" and response:sub(1,4) ~= "404:" then
-            return response
-        end
-
-        lastResponse = response
-        task.wait(1)
-    end
-    
-    return nil, lastResponse
-end
-
-local function LoadPathMap()
-    local url = BaseURL .. "path.lua?t=" .. tostring(os.time())
-    local content = DownloadSafe(url, 5)
-
-    if content then
-        local func = loadstring(content)
-        if func then
-            FilePaths = func()
-        end
-    else
-        if notificar then
-            notificar("Erro: não foi possivel carregar.", 5, "lucide:wifi-off")
-        end
-    end
-end
-
-LoadPathMap()
-
-local function ler(key)
-    if not next(FilePaths) then
-        task.wait(1)
-        if not next(FilePaths) then return end
-    end
-
-    local rawName = FilePaths[key]
-    if not rawName then 
-        if notificar then
-            notificar("Erro: '" .. tostring(key) .. "' não encontrado", 3, "lucide:alert-circle")
-        end
-        return 
-    end
-
-    local fileName = rawName:match("^%s*(.-)%s*$")
-    local url = BaseURL .. fileName .. "?t=" .. tostring(os.time())
-    
-    task.spawn(function()
-        local scriptContent = DownloadSafe(url, 3)
-
-        if scriptContent then
-            local func = loadstring(scriptContent)
-            if func then
-                func()
-            end
-        else
-            if notificar then
-                notificar("Falha ao baixar: " .. fileName, 3, "lucide:wifi-off")
-            else
-                warn("Erro: " .. fileName)
-            end
-        end
-    end)
-end
-
 --[[ 
 uso: Title = cor({"Teste", "#FF0000"}, {" arroz"}),
 ]]--
@@ -402,16 +324,71 @@ local Player = criartab("Player", "solar:user-bold", false)
 --// tab "config"
 local Configs = criartab("Configurações", "lucide:settings", false)
 
-if type(ler) == "function" then
-    local scripts = {"combate", "treino", "silent", "player", "jogos"}
-    for _, nome in ipairs(scripts) do
-        task.spawn(function()
-            pcall(ler, nome)
-        end)
+-- load
+local BASE_URL = "https://michigun.xyz/api/raw/"
+local FilePaths = {}
+
+local function download(url, tentativas)
+    for i = 1, tentativas or 3 do
+        local ok, res = pcall(game.HttpGet, game, url)
+        if ok and type(res) == "string" and res:sub(1, 4) ~= "404:" then
+            return res
+        end
+        task.wait(1)
     end
+    return nil
 end
 
---// tab silent
+local function exec(content, nome)
+    local fn, err = loadstring(content)
+    if not fn then
+        warn("[Loader] Erro ao compilar '" .. nome .. "': " .. tostring(err))
+        return false
+    end
+    local ok, err2 = pcall(fn)
+    if not ok then
+        warn("[Loader] Erro ao executar '" .. nome .. "': " .. tostring(err2))
+        return false
+    end
+    return true
+end
+
+local function carregarPaths()
+    local content = download(BASE_URL .. "path.lua?t=" .. os.time(), 5)
+    if not content then
+        if notificar then notificar("Falha ao carregar path.lua", 5, "lucide:wifi-off") end
+        return false
+    end
+    local fn = loadstring(content)
+    if fn then FilePaths = fn() end
+    return next(FilePaths) ~= nil
+end
+
+local function ler(key)
+    local nome = FilePaths[key]
+    if not nome then
+        warn("[Loader] Chave não encontrada: " .. key)
+        return
+    end
+
+    nome = nome:match("^%s*(.-)%s*$")
+    local content = download(BASE_URL .. nome)
+    if not content then
+        if notificar then notificar("Falha ao baixar: " .. nome, 3, "lucide:wifi-off") end
+        return
+    end
+    exec(content, nome)
+end
+
+if not carregarPaths() then return end
+
+local paralelos = { "combate", "treino", "silent", "player", "jogos" }
+for _, nome in ipairs(paralelos) do
+    task.spawn(ler, nome)
+end
+
+
+-- silent
 getgenv().SilentConfig = {
     Enabled = false,
     TeamCheck = "Team",
