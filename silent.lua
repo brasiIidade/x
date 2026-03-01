@@ -90,7 +90,12 @@ local function InitVisuals()
     Visuals.Stroke = stroke
     Visuals.Highlight = hl
     Visuals.ESP = esp
-    Visuals.Labels = { Name = createLabel(1), Team = createLabel(2, nil, Color3.new(0.8, 0.8, 0.8)), Weapon = createLabel(3), Health = createLabel(4, Enum.Font.Code) }
+    Visuals.Labels = {
+        Name = createLabel(1),
+        Team = createLabel(2, nil, Color3.new(0.8, 0.8, 0.8)),
+        Weapon = createLabel(3),
+        Health = createLabel(4, Enum.Font.Code)
+    }
 end
 InitVisuals()
 
@@ -212,6 +217,7 @@ Services.RunService.RenderStepped:Connect(function()
         Visuals.Circle.Visible = false
         Visuals.Highlight.Enabled = false
         Visuals.ESP.Enabled = false
+        for _, l in pairs(Visuals.Labels) do l.Visible = false end
         State.Target = nil
         State.Part = nil
         return
@@ -222,6 +228,7 @@ Services.RunService.RenderStepped:Connect(function()
         LastTargetTick = tick()
     end
     
+    -- FOV
     if Config.ShowFOV then
         Visuals.Circle.Visible = true
         Visuals.Circle.Size = UDim2.fromOffset(Config.FOVSize * 2, Config.FOVSize * 2)
@@ -233,14 +240,62 @@ Services.RunService.RenderStepped:Connect(function()
     end
     
     if State.Target then
+        -- Highlight
         Visuals.Highlight.Adornee = State.Target
         Visuals.Highlight.FillColor = Config.HighlightColor
         Visuals.Highlight.OutlineColor = Config.HighlightColor
         Visuals.Highlight.Enabled = Config.ShowHighlight
-        -- Configuração de ESP removida para encurtar
+
+        -- ESP/HUD
+        if Config.ESP and Config.ESP.Enabled then
+            local player = Services.Players:GetPlayerFromCharacter(State.Target)
+            local humanoid = State.Target:FindFirstChild("Humanoid")
+            local root = State.Target:FindFirstChild("HumanoidRootPart")
+
+            Visuals.ESP.Adornee = root
+            Visuals.ESP.Enabled = true
+
+            -- Nome
+            Visuals.Labels.Name.Text = player and player.Name or ""
+            Visuals.Labels.Name.Visible = Config.ESP.ShowName
+
+            -- Time
+            if player and player.Team then
+                Visuals.Labels.Team.Text = player.Team.Name
+                Visuals.Labels.Team.TextColor3 = player.Team.TeamColor.Color
+            else
+                Visuals.Labels.Team.Text = ""
+            end
+            Visuals.Labels.Team.Visible = Config.ESP.ShowTeam
+
+            -- Vida
+            if humanoid then
+                local hp = math.floor(humanoid.Health)
+                local maxHp = math.floor(humanoid.MaxHealth)
+                local ratio = hp / math.max(maxHp, 1)
+                Visuals.Labels.Health.Text = string.format("HP: %d/%d", hp, maxHp)
+                Visuals.Labels.Health.TextColor3 = Color3.new(1 - ratio, ratio, 0)
+                Visuals.Labels.Health.Visible = Config.ESP.ShowHealth
+            else
+                Visuals.Labels.Health.Visible = false
+            end
+
+            -- Arma/Item
+            if Config.ESP.ShowWeapon then
+                local tool = State.Target:FindFirstChildOfClass("Tool")
+                Visuals.Labels.Weapon.Text = tool and tool.Name or "Nenhum"
+                Visuals.Labels.Weapon.Visible = true
+            else
+                Visuals.Labels.Weapon.Visible = false
+            end
+        else
+            Visuals.ESP.Enabled = false
+            for _, l in pairs(Visuals.Labels) do l.Visible = false end
+        end
     else
         Visuals.Highlight.Enabled = false
         Visuals.ESP.Enabled = false
+        for _, l in pairs(Visuals.Labels) do l.Visible = false end
     end
 end)
 
@@ -268,7 +323,6 @@ local function getLegitOffset(config)
     return Vector3.new((math.random()-0.5)*0.5, (math.random()-0.5)*0.5, (math.random()-0.5)*0.5)
 end
 
--- hook
 local mt = getrawmetatable(game)
 local old_nc = mt.__namecall
 setreadonly(mt, false)
@@ -295,7 +349,6 @@ mt.__namecall = newcclosure(function(self, ...)
 
         if math.random(1, 100) <= (Config.HitChance or 100) then
             local args = {...}
-            
             local finalPos = State.Part.Position + getLegitOffset(Config)
 
             if self == Services.Workspace then

@@ -315,8 +315,10 @@ else
     lp.Chatted:Connect(chCmd)
 end
 
+-- jjs
+env.JJs = nil
+_G.JJs = nil
 
--- [[ JJs ]] --
 env.JJs = env.JJs or {}
 _G.JJs = env.JJs 
 
@@ -351,6 +353,61 @@ local t = {[2]="vinte",[3]="trinta",[4]="quarenta",[5]="cinquenta",[6]="sessenta
 local h = {[1]="cento",[2]="duzentos",[3]="trezentos",[4]="quatrocentos",[5]="quinhentos",[6]="seiscentos",[7]="setecentos",[8]="oitocentos",[9]="novecentos"}
 local ac = {["á"]="Á",["à"]="À",["ã"]="Ã",["â"]="Â",["é"]="É",["ê"]="Ê",["í"]="Í",["ó"]="Ó",["ô"]="Ô",["õ"]="Õ",["ú"]="Ú",["ç"]="Ç"}
 
+-- RemoteChat
+local RemoteChat = {}
+local Connections = {}
+local CurrentChannel
+local InputBar = tcs:FindFirstChildOfClass("ChatInputBarConfiguration")
+
+local ChatMethods = {
+    [Enum.ChatVersion.LegacyChatService] = function(Message)
+        if CurrentChannel then
+            CurrentChannel:SendAsync(Message)
+            return
+        end
+        local channels = tcs:FindFirstChild("TextChannels")
+        local general = channels and channels:FindFirstChild("RBXGeneral")
+        if general then
+            general:SendAsync(Message)
+            return
+        end
+        local ChatUI = lp:WaitForChild("PlayerGui", 95):FindFirstChild("Chat")
+        if ChatUI then
+            local ChatBar = ChatUI:FindFirstChild("ChatBar", true)
+            if ChatBar then
+                ChatBar:CaptureFocus()
+                ChatBar.Text = Message
+                ChatBar:ReleaseFocus(true)
+            end
+        end
+    end,
+    [Enum.ChatVersion.TextChatService] = function(Message)
+        if CurrentChannel then
+            CurrentChannel:SendAsync(Message)
+        end
+    end,
+}
+
+function RemoteChat:Send(Message)
+    pcall(ChatMethods[tcs.ChatVersion], Message)
+end
+
+if InputBar then
+    if typeof(InputBar.TargetTextChannel) == "Instance" and InputBar.TargetTextChannel:IsA("TextChannel") then
+        CurrentChannel = InputBar.TargetTextChannel
+    end
+    table.insert(Connections, InputBar.Changed:Connect(function(Prop)
+        if Prop == "TargetTextChannel" and typeof(InputBar.TargetTextChannel) == "Instance" and InputBar.TargetTextChannel:IsA("TextChannel") then
+            CurrentChannel = InputBar.TargetTextChannel
+        end
+    end))
+end
+
+local function sc(m)
+    RemoteChat:Send(tostring(m))
+end
+
+-- Extenso
 local function up(s)
     local r = ""
     for _, c in utf8.codes(s) do
@@ -406,24 +463,6 @@ local function nt(n)
     return up(table.concat(x, " e "))
 end
 
-local function sc(m)
-    local s = tostring(m)
-    if tcs.ChatVersion == Enum.ChatVersion.TextChatService then
-        local c = tcs:FindFirstChild("TextChannels")
-        local tgt = c and c:FindFirstChild("RBXGeneral")
-        if tgt then
-            pcall(function() tgt:SendAsync(s) end)
-            return
-        end
-    end
-    
-    local ev = rep:FindFirstChild("DefaultChatSystemChatEvents")
-    local req = ev and ev:FindFirstChild("SayMessageRequest")
-    if req then
-        pcall(function() req:FireServer(s, "All") end)
-    end
-end
-
 local function gc()
     local c = lp.Character
     return (c and c:FindFirstChild("Humanoid") and c:FindFirstChild("HumanoidRootPart")) and c or nil
@@ -467,26 +506,26 @@ jjs.Start = function()
     local c = jjs.Config
     if c.Running then return end
     c.Running = true
-    
+
     task.spawn(function()
         local s = tonumber(c.StartValue) or 1
         local e = tonumber(c.EndValue) or 100
         local dir = (c.ReverseEnabled and s < e) and -1 or 1
         if c.ReverseEnabled then s, e = e, s end
-        
+
         local currentMode = c.Mode
         if currentMode == "Padrão" and rep:FindFirstChild("Remotes") and rep.Remotes:FindFirstChild("Polichinelos") then
             currentMode = "JJ (Delta)"
         end
-        
+
         local tot = math.abs(e - s) + 1
         local cnt = 0
         local ft = c.FinishInTime and ((tonumber(c.FinishTotalTime) or 60) / math.max(1, tot)) or nil
-        
+
         jjs.State.Running = true
         jjs.State.Total = tot
         jjs.State.Current = 0
-        
+
         local dt = nil
         if currentMode == "JJ (Delta)" then
             local ch = gc()
@@ -504,14 +543,14 @@ jjs.Start = function()
             if not c.Running then break end
             cnt = cnt + 1
             jjs.State.Current = i
-            
+
             local delay = ft or (c.RandomDelay and (math.random(c.RandomMin * 10, c.RandomMax * 10) / 10) or (tonumber(c.DelayValue) or 3))
             jjs.State.FinishTimestamp = tick() + ((tot - cnt) * delay)
-            
+
             local txt = nt(i)
             local sf = (c.CustomSuffix ~= "") and c.CustomSuffix or c.Suffix
             local fn = c.SpacingEnabled and (txt .. " " .. sf) or (txt .. sf)
-            
+
             if currentMode == "JJ (Delta)" then
                 local rm = rep:FindFirstChild("Remotes") and rep.Remotes:FindFirstChild("Polichinelos")
                 if rm then pcall(function() rm:FireServer("Add", 1) end) end
@@ -532,14 +571,14 @@ jjs.Start = function()
                 aj()
                 task.wait(0.2)
                 as()
-            else 
+            else
                 sc(fn)
                 if c.JumpEnabled then aj() end
             end
-            
+
             if i ~= e then task.wait(delay) end
         end
-        
+
         c.Running = false
         jjs.State.Running = false
         if dt then dt:Stop() end

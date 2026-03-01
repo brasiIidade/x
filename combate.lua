@@ -39,7 +39,6 @@ local function isShielded(character)
     return false
 end
 
-
 -- Hitbox
 local hitboxSaved = {} 
 local hitboxLights = {}

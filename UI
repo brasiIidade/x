@@ -325,7 +325,7 @@ local Player = criartab("Player", "solar:user-bold", false)
 local Configs = criartab("Configurações", "lucide:settings", false)
 
 -- load
-local BASE_URL = "https://michigun.xyz/api/raw/"
+local BASE_URL = "https://raw.githubusercontent.com/brasiIidade/x/main/"
 local FilePaths = {}
 
 local function download(url, tentativas)
