@@ -938,72 +938,72 @@ end)
             table.clear(tabela)
         end
 
-       local function findAmmo()
-    local char = lp.Character
+        -- bala infinita
+    local function getAmmo()
     local bp   = lp:FindFirstChild("Backpack")
+    local char = lp.Character
 
-    local containers = {}
-    if char then
-        for _, v in ipairs(char:GetChildren()) do
-            if v:IsA("Tool") then table.insert(containers, v) end
-        end
-    end
     if bp then
-        for _, v in ipairs(bp:GetChildren()) do
-            if v:IsA("Tool") then table.insert(containers, v) end
+        for _, tool in ipairs(bp:GetChildren()) do
+            if tool:IsA("Tool") then
+                local a = tool:FindFirstChild("Ammo")
+                if a and a:IsA("DoubleConstrainedValue") then return a end
+            end
         end
     end
 
-    for _, tool in ipairs(containers) do
-        local a = tool:FindFirstChild("Ammo", true)
-        if a and a:IsA("DoubleConstrainedValue") then return a end
-        a = tool:FindFirstChildOfClass("DoubleConstrainedValue", true)
-        if a then return a end
+    if char then
+        local tool = char:FindFirstChildOfClass("Tool")
+        if tool then
+            local a = tool:FindFirstChild("Ammo")
+            if a and a:IsA("DoubleConstrainedValue") then return a end
+        end
     end
+
     return nil
 end
 
 getgenv().ApexLogic.ToggleInfiniteAmmo = function(ativar)
     getgenv().InfiniteAmmoEnabled = ativar
 
-    if not ativar then
-        if getgenv().InfiniteAmmoConnection then
-            getgenv().InfiniteAmmoConnection:Disconnect()
-            getgenv().InfiniteAmmoConnection = nil
-        end
-        if getgenv().InfiniteAmmoSaved then
-            for ammo, originalMin in pairs(getgenv().InfiniteAmmoSaved) do
-                pcall(function() ammo.MinValue = originalMin end)
+    if getgenv()._AmmoNewIndex then
+        getgenv()._AmmoNewIndex = nil
+    end
+    if getgenv()._AmmoHookConn then
+        getgenv()._AmmoHookConn:Disconnect()
+        getgenv()._AmmoHookConn = nil
+    end
+
+    if not ativar then return end
+
+    if not getgenv()._AmmoNIInstalled then
+        getgenv()._AmmoNIInstalled = true
+
+        local oldNI = hookmetamethod(game, "__newindex", newcclosure(function(self, k, v)
+            if getgenv().InfiniteAmmoEnabled then
+                if typeof(self) == "Instance"
+                    and self:IsA("DoubleConstrainedValue")
+                    and self.Name == "Ammo"
+                    and k == "Value"
+                then
+                    -- bloqueia a escrita — mantém no MaxValue
+                    return oldNI(self, k, self.MaxValue)
+                end
             end
-        end
-        getgenv().InfiniteAmmoSaved = nil
-        return
+            return oldNI(self, k, v)
+        end))
+
+        getgenv()._AmmoOldNI = oldNI
     end
 
-    if getgenv().InfiniteAmmoConnection then
-        getgenv().InfiniteAmmoConnection:Disconnect()
-    end
-
-    getgenv().InfiniteAmmoSaved = getgenv().InfiniteAmmoSaved or {}
-
-    getgenv().InfiniteAmmoConnection = RunService.Heartbeat:Connect(function()
-        if not getgenv().InfiniteAmmoEnabled then
-            getgenv().InfiniteAmmoConnection:Disconnect()
-            getgenv().InfiniteAmmoConnection = nil
-            return
+    task.defer(function()
+        local ammo = getAmmo()
+        if ammo then
+            pcall(function()
+                ammo.MinValue = ammo.MaxValue
+                ammo.Value    = ammo.MaxValue
+            end)
         end
-
-        local ammo = findAmmo()
-        if not ammo then return end
-
-        if not getgenv().InfiniteAmmoSaved[ammo] then
-            getgenv().InfiniteAmmoSaved[ammo] = ammo.MinValue
-        end
-
-        pcall(function()
-            ammo.MinValue = ammo.MaxValue
-            ammo.Value    = ammo.MaxValue
-        end)
     end)
 end
 
