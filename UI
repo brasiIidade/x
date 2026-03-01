@@ -3681,7 +3681,7 @@ elseif MapaAtual == "Apex" then
 
         TrollTab:Toggle({
             Title = "Spammar sons",
-            Desc = cor({"Precisa", "#00FF00"}, {" de uma arma."}, {" Esses sons tocam para todos.", "#FF0000"}),
+            Desc = cor({"Precisa", "#FF0000"}, {" de uma arma."}, {" Esses sons tocam para todos.", "#03F916"}),
             Icon = "lucide:audio-lines",
             Value = false,
             Callback = function(v)
