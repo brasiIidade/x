@@ -1163,8 +1163,7 @@ end)
 
                     local totalSons = #soundList
                     if totalSons > 0 then
-                        -- 30 disparos por ciclo, sem wait entre eles
-                        for i = 1, 30 do
+                        for i = 1, 20 do
                             if not getgenv().SpamAtivo or not equippedTool or not isReadyToSpam then break end
                             local sound = soundList[rng:NextInteger(1, totalSons)]
                             if sound and sound.Parent then
@@ -1173,9 +1172,10 @@ end)
                                 pcall(fireClient.FireServer, fireClient, sessionToken, "PlaySound", sound, nil)
                                 sound.Volume = originalVolume
                             end
+                            task.wait(0.05)
                         end
                     end
-                    task.wait() -- apenas 1 yield por ciclo
+                    task.wait(0.1)
                 end
             end)
         end
