@@ -6,6 +6,8 @@ local ws = cr(game:GetService("Workspace"))
 local cg = cr(game:GetService("CoreGui"))
 local tcs = cr(game:GetService("TextChatService"))
 local rep = cr(game:GetService("ReplicatedStorage"))
+local uis = cr(game:GetService("UserInputService"))
+local ts  = cr(game:GetService("TweenService"))
 
 local lp = plrs.LocalPlayer
 local env = getgenv()
@@ -929,9 +931,6 @@ end)
         getgenv()._ApexSpamMasterConns = getgenv()._ApexSpamMasterConns or {}
         getgenv()._ApexSpamCharConns   = getgenv()._ApexSpamCharConns or {}
 
-        local uis = game:GetService("UserInputService")
-        local ts  = game:GetService("TweenService")
-
         local function limparConns(tabela)
             for _, conn in ipairs(tabela) do
                 if typeof(conn) == "RBXScriptConnection" and conn.Connected then
@@ -1050,19 +1049,36 @@ end)
                     if not hrp then return end
                     local vp = cam.ViewportSize
                     local cx, cy = vp.X/2, vp.Y/2
-                    local sp, vis = cam:WorldToViewportPoint(routeConfig.startAt.Position + Vector3.new(0,3,0))
+                    local target = routeConfig.startAt.Position + Vector3.new(0,3,0)
                     local meters = math.floor((hrp.Position - routeConfig.startAt.Position).Magnitude)
                     distText.Text = meters .. "m"
+
+                    local camCF   = cam.CFrame
+                    local dir     = (target - camCF.Position)
+                    local forward = camCF.LookVector
+                    local onScreen = forward:Dot(dir.Unit) > 0
+
+                    local sp = cam:WorldToScreenPoint(target)
                     local sx, sy = sp.X, sp.Y
-                    if not vis then sx, sy = vp.X-sx, vp.Y-sy end
-                    local dx, dy = sx-cx, sy-cy
-                    if vis and sx>EDGE and sx<vp.X-EDGE and sy>EDGE and sy<vp.Y-EDGE then
-                        wrap.Rotation, wrap.Position = 0, UDim2.fromOffset(sx, sy-10)
+
+                    local dx, dy = sx - cx, sy - cy
+
+                    if onScreen and sx > EDGE and sx < vp.X-EDGE and sy > EDGE and sy < vp.Y-EDGE then
+                        wrap.Rotation = 0
+                        wrap.Position = UDim2.fromOffset(sx, sy - 10)
                     else
-                        local sc = math.min((cx-EDGE)/(math.abs(dx)+1e-4), (cy-EDGE)/(math.abs(dy)+1e-4))
-                        wrap.Rotation = math.deg(math.atan2(dx,-dy))
-                        wrap.Position = UDim2.fromOffset(cx+dx*sc, cy+dy*sc)
+                        if not onScreen then
+                            dx, dy = -dx, -dy
+                            if math.abs(dx) < 1 and math.abs(dy) < 1 then dx = 1 end
+                        end
+                        local sc = math.min(
+                            (cx - EDGE) / (math.abs(dx) + 1e-4),
+                            (cy - EDGE) / (math.abs(dy) + 1e-4)
+                        )
+                        wrap.Rotation = math.deg(math.atan2(dx, -dy))
+                        wrap.Position = UDim2.fromOffset(cx + dx*sc, cy + dy*sc)
                     end
+
                     local sz = math.floor(32*(1+math.sin((tick()-tick0)*3.5)*0.06))
                     circle.Size = UDim2.new(0,sz,0,sz)
                     distText.TextColor3 = (meters<12 and tick()%0.5<0.25) and Color3.fromRGB(255,80,80) or Color3.fromRGB(220,180,180)
@@ -1222,14 +1238,20 @@ end)
             end
 
             getgenv().IniciarRota = function()
-                if getgenv()._RouteAtivo then
-                    if getgenv().notificar then getgenv().notificar("Rota já está ativa.", 3, "lucide:alert-circle") end
-                    return
+                if getgenv()._RouteTriggerConn then
+                    pcall(function() getgenv()._RouteTriggerConn:Disconnect() end)
+                    getgenv()._RouteTriggerConn = nil
                 end
+                if getgenv()._RouteRemoveMarker   then pcall(getgenv()._RouteRemoveMarker)   ; getgenv()._RouteRemoveMarker   = nil end
+                if getgenv()._RouteRemoveWaypoint then pcall(getgenv()._RouteRemoveWaypoint) ; getgenv()._RouteRemoveWaypoint = nil end
+                getgenv()._RouteAtivo = false
+
                 getgenv()._RouteAtivo = true
 
                 local removeMarker   = buildClone(routeConfig.startAt)
                 local removeWaypoint = buildWaypoint()
+                getgenv()._RouteRemoveMarker   = removeMarker
+                getgenv()._RouteRemoveWaypoint = removeWaypoint
 
                 local ragChar     = ws:FindFirstChild(lp.Name)
                 local ragdoll     = ragChar and ragChar:FindFirstChild("Ragdoll")
@@ -1252,6 +1274,7 @@ end)
 
                     activated = true
                     triggerConn:Disconnect()
+                    getgenv()._RouteTriggerConn = nil
                     removeWaypoint()
                     removeMarker()
 
@@ -1317,6 +1340,7 @@ end)
                             end
                         end)
                     end)
+                getgenv()._RouteTriggerConn = triggerConn
                 end)
             end
         end
