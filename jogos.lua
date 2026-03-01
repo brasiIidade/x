@@ -977,8 +977,9 @@ end)
                 local tool = char:FindFirstChildOfClass("Tool")
                 if not tool then return end
 
-                local ammo = tool:FindFirstChildOfClass("DoubleConstrainedValue")
-                if not ammo then return end
+                -- busca pelo nome exato "Ammo" dentro da tool e de todos os descendentes
+                local ammo = tool:FindFirstChild("Ammo", true)
+                if not ammo or not ammo:IsA("DoubleConstrainedValue") then return end
 
                 if not getgenv().InfiniteAmmoOriginalMin then
                     getgenv().InfiniteAmmoOriginalMin = ammo.MinValue
@@ -1162,7 +1163,8 @@ end)
 
                     local totalSons = #soundList
                     if totalSons > 0 then
-                        for i = 1, 15 do
+                        -- 30 disparos por ciclo, sem wait entre eles
+                        for i = 1, 30 do
                             if not getgenv().SpamAtivo or not equippedTool or not isReadyToSpam then break end
                             local sound = soundList[rng:NextInteger(1, totalSons)]
                             if sound and sound.Parent then
@@ -1171,10 +1173,9 @@ end)
                                 pcall(fireClient.FireServer, fireClient, sessionToken, "PlaySound", sound, nil)
                                 sound.Volume = originalVolume
                             end
-                            task.wait()
                         end
                     end
-                    task.wait()
+                    task.wait() -- apenas 1 yield por ciclo
                 end
             end)
         end
