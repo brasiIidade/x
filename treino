@@ -316,7 +316,7 @@ else
 end
 
 
--- [[ JJs ]] --
+-- jjs
 env.JJs = env.JJs or {}
 _G.JJs = env.JJs 
 
@@ -351,7 +351,7 @@ local t = {[2]="vinte",[3]="trinta",[4]="quarenta",[5]="cinquenta",[6]="sessenta
 local h = {[1]="cento",[2]="duzentos",[3]="trezentos",[4]="quatrocentos",[5]="quinhentos",[6]="seiscentos",[7]="setecentos",[8]="oitocentos",[9]="novecentos"}
 local ac = {["á"]="Á",["à"]="À",["ã"]="Ã",["â"]="Â",["é"]="É",["ê"]="Ê",["í"]="Í",["ó"]="Ó",["ô"]="Ô",["õ"]="Õ",["ú"]="Ú",["ç"]="Ç"}
 
--- RemoteChat
+-- chat
 local RemoteChat = {}
 local CurrentChannel
 local Players = game:GetService("Players")
