@@ -261,7 +261,14 @@ end
 
 tas.GetSaved = function()
     local out = {}
-    if listfiles then for _, f in ipairs(listfiles(tas_fDir)) do if f:sub(-5) == ".json" then out[#out + 1] = f:match("([^/]+)%.json$") end end end
+    if listfiles then
+        for _, f in ipairs(listfiles(tas_fDir)) do
+            if f:sub(-5) == ".json" then
+                local name = f:match("([^/\\]+)%.json$")
+                if name then out[#out + 1] = name end
+            end
+        end
+    end
     return out
 end
 
