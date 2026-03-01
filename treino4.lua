@@ -317,7 +317,6 @@ end
 
 
 -- [[ JJs ]] --
-
 env.JJs = env.JJs or {}
 _G.JJs = env.JJs 
 
@@ -409,79 +408,30 @@ end
 
 local function sc(m)
     local s = tostring(m)
-    local textBox = nil
-
-    -- 1. TextChatService (novo chat)
-    if tcs and tcs.ChatVersion == Enum.ChatVersion.TextChatService then
-        -- A barra do chat fica no CoreGui ou PlayerGui
-        local coreGui = game:GetService("CoreGui")
-        
-        -- Tenta via CoreGui (padrão do novo chat)
-        local chatWindowGui = coreGui:FindFirstChild("RobloxGui", true)
-        if chatWindowGui then
-            textBox = chatWindowGui:FindFirstChildWhichIsA("TextBox", true)
-        end
-        
-        -- Tenta via PlayerGui como fallback
-        if not textBox then
-            local pgui = lp.PlayerGui
-            for _, gui in ipairs(pgui:GetChildren()) do
-                textBox = gui:FindFirstChildWhichIsA("TextBox", true)
-                if textBox then break end
-            end
+    if tcs.ChatVersion == Enum.ChatVersion.TextChatService then
+        local c = tcs:FindFirstChild("TextChannels")
+        local tgt = c and c:FindFirstChild("RBXGeneral")
+        if tgt then
+            pcall(function() tgt:SendAsync(s) end)
+            return
         end
     end
-
-    -- 2. Chat legado (BubbleChat / ClassicChat)
-    if not textBox then
-        local pgui = lp.PlayerGui
-        local chatGui = pgui:FindFirstChild("Chat")
-        if chatGui then
-            -- Estrutura clássica: Chat > Frame_MainChat > ChatBar > TextBox
-            textBox = chatGui:FindFirstChild("TextBox", true)
-                or chatGui:FindFirstChildWhichIsA("TextBox", true)
-        end
+    
+    local ev = rep:FindFirstChild("DefaultChatSystemChatEvents")
+    local req = ev and ev:FindFirstChild("SayMessageRequest")
+    if req then
+        pcall(function() req:FireServer(s, "All") end)
     end
+end
 
-    -- 3. Fallback: abre o chat com "/" e espera a TextBox surgir
-    if not textBox then
-        vim:SendKeyEvent(true, Enum.KeyCode.Slash, false, game)
-        task.wait(0.05)
-        vim:SendKeyEvent(false, Enum.KeyCode.Slash, false, game)
-        task.wait(0.2)
-
-        local pgui = lp.PlayerGui
-        for _, gui in ipairs(pgui:GetDescendants()) do
-            if gui:IsA("TextBox") then
-                textBox = gui
-                break
-            end
-        end
-        
-        if not textBox then
-            local coreGui = game:GetService("CoreGui")
-            for _, gui in ipairs(coreGui:GetDescendants()) do
-                if gui:IsA("TextBox") then
-                    textBox = gui
-                    break
-                end
-            end
-        end
-    end
-
-    if not textBox then return end
-
-    -- Foca, cola e envia
-    textBox:CaptureFocus()
-    task.wait(0.05)
-    textBox.Text = s
-    task.wait(0.08)
-
-    -- Enter para enviar
-    vim:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
-    task.wait(0.05)
-    vim:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
-    task.wait(0.1)
+local function scSpecial(m)
+    local remote = game:GetService("ReplicatedStorage")
+        :WaitForChild("Assets")
+        :WaitForChild("Remotes")
+        :WaitForChild("ServerCommands")
+    pcall(function()
+        remote:FireServer(tostring(m))
+    end)
 end
 
 local function gc()
@@ -533,10 +483,14 @@ jjs.Start = function()
         local e = tonumber(c.EndValue) or 100
         local dir = (c.ReverseEnabled and s < e) and -1 or 1
         if c.ReverseEnabled then s, e = e, s end
+
+        local isSpecialMap = (game.PlaceId == 13132367906)
         
         local currentMode = c.Mode
-        if currentMode == "Padrão" and rep:FindFirstChild("Remotes") and rep.Remotes:FindFirstChild("Polichinelos") then
-            currentMode = "JJ (Delta)"
+        if not isSpecialMap then
+            if currentMode == "Padrão" and rep:FindFirstChild("Remotes") and rep.Remotes:FindFirstChild("Polichinelos") then
+                currentMode = "JJ (Delta)"
+            end
         end
         
         local tot = math.abs(e - s) + 1
@@ -548,7 +502,7 @@ jjs.Start = function()
         jjs.State.Current = 0
         
         local dt = nil
-        if currentMode == "JJ (Delta)" then
+        if not isSpecialMap and currentMode == "JJ (Delta)" then
             local ch = gc()
             if ch then
                 local a = Instance.new("Animation")
@@ -572,7 +526,10 @@ jjs.Start = function()
             local sf = (c.CustomSuffix ~= "") and c.CustomSuffix or c.Suffix
             local fn = c.SpacingEnabled and (txt .. " " .. sf) or (txt .. sf)
             
-            if currentMode == "JJ (Delta)" then
+            if isSpecialMap then
+                scSpecial(fn)
+                if c.JumpEnabled then aj() end
+            elseif currentMode == "JJ (Delta)" then
                 local rm = rep:FindFirstChild("Remotes") and rep.Remotes:FindFirstChild("Polichinelos")
                 if rm then pcall(function() rm:FireServer("Add", 1) end) end
                 if dt then dt:Play() end
