@@ -1641,7 +1641,6 @@ RecordSection:Button({
 
 
 --// tab JJs
-
 local ETAParagraph = JJs:Paragraph({
     Title = "Status",
     Desc  = "Aguardando...",
@@ -1974,7 +1973,6 @@ ChatGPT:Button({
 })
 
 --// tab F3X
-
 local InfoParagraph
 local InputX, InputY, InputZ
 local ConfigDropdown
