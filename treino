@@ -351,25 +351,29 @@ local t = {[2]="vinte",[3]="trinta",[4]="quarenta",[5]="cinquenta",[6]="sessenta
 local h = {[1]="cento",[2]="duzentos",[3]="trezentos",[4]="quatrocentos",[5]="quinhentos",[6]="seiscentos",[7]="setecentos",[8]="oitocentos",[9]="novecentos"}
 local ac = {["á"]="Á",["à"]="À",["ã"]="Ã",["â"]="Â",["é"]="É",["ê"]="Ê",["í"]="Í",["ó"]="Ó",["ô"]="Ô",["õ"]="Õ",["ú"]="Ú",["ç"]="Ç"}
 
--- RemoteChat (baseado no código que você passou)
+-- RemoteChat
 local RemoteChat = {}
 local CurrentChannel
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
+local PlayerGui = Player:WaitForChild("PlayerGui", 95)
 local InputBar = tcs:FindFirstChildOfClass("ChatInputBarConfiguration")
 
 local ChatMethods = {
     [Enum.ChatVersion.LegacyChatService] = function(Message)
-        local ChatUI = lp.PlayerGui:FindFirstChild("Chat")
+        local ChatUI = PlayerGui:FindFirstChild("Chat")
         if CurrentChannel then
             CurrentChannel:SendAsync(Message)
         elseif ChatUI then
-            local ChatBar = ChatUI:FindFirstChild("Frame", true) and
-                ChatUI.Frame:FindFirstChild("ChatBarParentFrame", true) and
-                ChatUI.Frame.ChatBarParentFrame:FindFirstChild("ChatBar", true)
-            if ChatBar then
-                ChatBar:CaptureFocus()
-                ChatBar.Text = Message
-                ChatBar:ReleaseFocus(true)
-            end
+            local ChatFrame = ChatUI:WaitForChild("Frame", 95)
+            local CBPF = ChatFrame:WaitForChild("ChatBarParentFrame", 95)
+            local Frame = CBPF:WaitForChild("Frame", 95)
+            local BF = Frame:WaitForChild("BoxFrame", 95)
+            local ChatFM = BF:WaitForChild("Frame", 95)
+            local ChatBar = ChatFM:FindFirstChild("ChatBar", 95)
+            ChatBar:CaptureFocus()
+            ChatBar.Text = Message
+            ChatBar:ReleaseFocus(true)
         end
     end,
     [Enum.ChatVersion.TextChatService] = function(Message)
@@ -503,13 +507,9 @@ jjs.Start = function()
         local dir = (c.ReverseEnabled and s < e) and -1 or 1
         if c.ReverseEnabled then s, e = e, s end
 
-        local isSpecialMap = (game.PlaceId == 13132367906)
-
         local currentMode = c.Mode
-        if not isSpecialMap then
-            if currentMode == "Padrão" and rep:FindFirstChild("Remotes") and rep.Remotes:FindFirstChild("Polichinelos") then
-                currentMode = "JJ (Delta)"
-            end
+        if currentMode == "Padrão" and rep:FindFirstChild("Remotes") and rep.Remotes:FindFirstChild("Polichinelos") then
+            currentMode = "JJ (Delta)"
         end
         
         local tot = math.abs(e - s) + 1
@@ -521,7 +521,7 @@ jjs.Start = function()
         jjs.State.Current = 0
         
         local dt = nil
-        if not isSpecialMap and currentMode == "JJ (Delta)" then
+        if currentMode == "JJ (Delta)" then
             local ch = gc()
             if ch then
                 local a = Instance.new("Animation")
@@ -545,11 +545,7 @@ jjs.Start = function()
             local sf = (c.CustomSuffix ~= "") and c.CustomSuffix or c.Suffix
             local fn = c.SpacingEnabled and (txt .. " " .. sf) or (txt .. sf)
             
-            if isSpecialMap then
-                -- Usa RemoteChat que dispara o SendingMessage do jogo naturalmente
-                sc(fn)
-                if c.JumpEnabled then aj() end
-            elseif currentMode == "JJ (Delta)" then
+            if currentMode == "JJ (Delta)" then
                 local rm = rep:FindFirstChild("Remotes") and rep.Remotes:FindFirstChild("Polichinelos")
                 if rm then pcall(function() rm:FireServer("Add", 1) end) end
                 if dt then dt:Play() end
