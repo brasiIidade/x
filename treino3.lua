@@ -409,57 +409,78 @@ end
 
 local function sc(m)
     local s = tostring(m)
-    
-    -- Tenta pegar a TextBox do chat
-    local chatGui = players.LocalPlayer.PlayerGui:FindFirstChild("Chat")
-        or players.LocalPlayer.PlayerGui:FindFirstChild("BubbleChat")
-    
-    local chatFrame = chatGui and (
-        chatGui:FindFirstChild("Frame_MainChat", true)
-        or chatGui:FindFirstChild("ChatBar", true)
-        or chatGui:FindFirstChild("TextBox", true)
-    )
-    
-    local textBox = chatFrame and (
-        (chatFrame:IsA("TextBox") and chatFrame)
-        or chatFrame:FindFirstChildWhichIsA("TextBox", true)
-    )
-    
+    local textBox = nil
+
+    -- 1. TextChatService (novo chat)
+    if tcs and tcs.ChatVersion == Enum.ChatVersion.TextChatService then
+        -- A barra do chat fica no CoreGui ou PlayerGui
+        local coreGui = game:GetService("CoreGui")
+        
+        -- Tenta via CoreGui (padrão do novo chat)
+        local chatWindowGui = coreGui:FindFirstChild("RobloxGui", true)
+        if chatWindowGui then
+            textBox = chatWindowGui:FindFirstChildWhichIsA("TextBox", true)
+        end
+        
+        -- Tenta via PlayerGui como fallback
+        if not textBox then
+            local pgui = lp.PlayerGui
+            for _, gui in ipairs(pgui:GetChildren()) do
+                textBox = gui:FindFirstChildWhichIsA("TextBox", true)
+                if textBox then break end
+            end
+        end
+    end
+
+    -- 2. Chat legado (BubbleChat / ClassicChat)
     if not textBox then
-        -- Fallback: abre o chat via teclado e aguarda a TextBox aparecer
+        local pgui = lp.PlayerGui
+        local chatGui = pgui:FindFirstChild("Chat")
+        if chatGui then
+            -- Estrutura clássica: Chat > Frame_MainChat > ChatBar > TextBox
+            textBox = chatGui:FindFirstChild("TextBox", true)
+                or chatGui:FindFirstChildWhichIsA("TextBox", true)
+        end
+    end
+
+    -- 3. Fallback: abre o chat com "/" e espera a TextBox surgir
+    if not textBox then
         vim:SendKeyEvent(true, Enum.KeyCode.Slash, false, game)
         task.wait(0.05)
         vim:SendKeyEvent(false, Enum.KeyCode.Slash, false, game)
-        task.wait(0.15)
+        task.wait(0.2)
+
+        local pgui = lp.PlayerGui
+        for _, gui in ipairs(pgui:GetDescendants()) do
+            if gui:IsA("TextBox") then
+                textBox = gui
+                break
+            end
+        end
         
-        -- Tenta novamente após abrir
-        chatGui = players.LocalPlayer.PlayerGui:FindFirstChild("Chat")
-        chatFrame = chatGui and chatGui:FindFirstChildWhichIsA("TextBox", true)
-        textBox = chatFrame
+        if not textBox then
+            local coreGui = game:GetService("CoreGui")
+            for _, gui in ipairs(coreGui:GetDescendants()) do
+                if gui:IsA("TextBox") then
+                    textBox = gui
+                    break
+                end
+            end
+        end
     end
-    
+
     if not textBox then return end
 
-    -- Foca na TextBox (ativa o evento de "digitando")
+    -- Foca, cola e envia
     textBox:CaptureFocus()
     task.wait(0.05)
+    textBox.Text = s
+    task.wait(0.08)
 
-    -- Digita caractere por caractere simulando humano
-    textBox.Text = ""
-    for i = 1, #s do
-        if not jjs.Config.Running then break end
-        textBox.Text = string.sub(s, 1, i)
-        -- Dispara evento de mudança de texto (FocusLost não, só Input)
-        task.wait(math.random(40, 120) / 1000) -- 40~120ms por char, humano
-    end
-
-    task.wait(math.random(80, 200) / 1000) -- pausa antes de enviar
-
-    -- Envia com Enter
+    -- Enter para enviar
     vim:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
     task.wait(0.05)
     vim:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
-    
     task.wait(0.1)
 end
 
