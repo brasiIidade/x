@@ -351,50 +351,6 @@ local t = {[2]="vinte",[3]="trinta",[4]="quarenta",[5]="cinquenta",[6]="sessenta
 local h = {[1]="cento",[2]="duzentos",[3]="trezentos",[4]="quatrocentos",[5]="quinhentos",[6]="seiscentos",[7]="setecentos",[8]="oitocentos",[9]="novecentos"}
 local ac = {["á"]="Á",["à"]="À",["ã"]="Ã",["â"]="Â",["é"]="É",["ê"]="Ê",["í"]="Í",["ó"]="Ó",["ô"]="Ô",["õ"]="Õ",["ú"]="Ú",["ç"]="Ç"}
 
-local RemoteChat = {}
-local CurrentChannel
-local InputBar = tcs:FindFirstChildOfClass("ChatInputBarConfiguration")
-
-local ChatMethods = {
-    [Enum.ChatVersion.LegacyChatService] = function(Message)
-        local PlayerGui = lp:WaitForChild("PlayerGui", 95)
-        local ChatUI = PlayerGui:FindFirstChild("Chat")
-        if CurrentChannel then
-            CurrentChannel:SendAsync(Message)
-        elseif ChatUI then
-            local ChatFrame = ChatUI:WaitForChild("Frame", 95)
-            local CBPF = ChatFrame:WaitForChild("ChatBarParentFrame", 95)
-            local Frame = CBPF:WaitForChild("Frame", 95)
-            local BF = Frame:WaitForChild("BoxFrame", 95)
-            local ChatFM = BF:WaitForChild("Frame", 95)
-            local ChatBar = ChatFM:FindFirstChild("ChatBar", 95)
-            ChatBar:CaptureFocus()
-            ChatBar.Text = Message
-            ChatBar:ReleaseFocus(true)
-        end
-    end,
-    [Enum.ChatVersion.TextChatService] = function(Message)
-        if CurrentChannel then
-            CurrentChannel:SendAsync(Message)
-        end
-    end,
-}
-
-function RemoteChat:Send(Message)
-    pcall(ChatMethods[tcs.ChatVersion], Message)
-end
-
-if InputBar then
-    if typeof(InputBar.TargetTextChannel) == "Instance" and InputBar.TargetTextChannel:IsA("TextChannel") then
-        CurrentChannel = InputBar.TargetTextChannel
-    end
-    InputBar.Changed:Connect(function(Prop)
-        if Prop == "TargetTextChannel" and typeof(InputBar.TargetTextChannel) == "Instance" and InputBar.TargetTextChannel:IsA("TextChannel") then
-            CurrentChannel = InputBar.TargetTextChannel
-        end
-    end)
-end
-
 local function up(s)
     local r = ""
     for _, c in utf8.codes(s) do
@@ -429,7 +385,7 @@ end
 
 local function nt(n)
     n = tonumber(n)
-    if not n or n == 0 then return n == 0 and "ZERO" or "N/A" end
+    if not n or n == 0 then return n == 0 and "ZERO" or "N/A" or "N/A" end
     local g, x = {}, {}
     local temp = n
     while temp > 0 do
@@ -451,7 +407,20 @@ local function nt(n)
 end
 
 local function sc(m)
-    RemoteChat:Send(tostring(m))
+    local s = tostring(m)
+    if game.PlaceId == 13132367906 then
+        local remote = rep
+            :WaitForChild("Assets")
+            :WaitForChild("Remotes")
+            :WaitForChild("ServerCommands")
+        pcall(function() remote:FireServer(s) end)
+    else
+        local ev = rep:FindFirstChild("DefaultChatSystemChatEvents")
+        local req = ev and ev:FindFirstChild("SayMessageRequest")
+        if req then
+            pcall(function() req:FireServer(s, "All") end)
+        end
+    end
 end
 
 local function gc()
