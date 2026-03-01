@@ -3609,10 +3609,23 @@ elseif MapaAtual == "Apex" then
         local Mods    = criarsection(ApexTab, "Modificações", "Modificações de arma", "lucide:chevrons-left-right-ellipsis", false)
         local TrollTab = criarsection(ApexTab, "Troll", "Funções de troll", "https://pngfre.com/wp-content/uploads/1000117874.png", true)
 
+    ApexTab:Button({
+    Title    = "Invadir base",
+    Desc     = "Autoexplicativo",
+    Icon     = "lucide:log-in",
+    Color    = Color3.fromRGB(200, 40, 40),
+    Callback = function()
+        if getgenv().IniciarRota then
+            getgenv().IniciarRota()
+        end
+    end
+})
+
        Mods:Toggle({
     Title    = "Bala infinita",
     Desc     = cor({"Congela", "#00FF00"}, {" a munição da arma"}),
     Icon     = "lucide:infinity",
+    Flag     = "ApexBalaInfinita",
     Value    = false,
     Callback = function(v)
         if v then

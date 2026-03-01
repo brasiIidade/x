@@ -929,6 +929,9 @@ end)
         getgenv()._ApexSpamMasterConns = getgenv()._ApexSpamMasterConns or {}
         getgenv()._ApexSpamCharConns   = getgenv()._ApexSpamCharConns or {}
 
+        local uis = game:GetService("UserInputService")
+        local ts  = game:GetService("TweenService")
+
         local function limparConns(tabela)
             for _, conn in ipairs(tabela) do
                 if typeof(conn) == "RBXScriptConnection" and conn.Connected then
@@ -938,7 +941,387 @@ end)
             table.clear(tabela)
         end
 
-        -- sons
+        -- invadir base
+        do
+            local routeConfig = {
+                markerColor  = Color3.fromRGB(220, 50, 50),
+                accentColor  = Color3.fromRGB(220, 50, 50),
+                walkSpeed    = 0.3,
+                stepDelay    = 0.28,
+                triggerDist  = 1,
+                triggerVert  = 1.5,
+                triggerAngle = 10,
+                startAt = CFrame.new(1635, 1, -105),
+                enterAt = CFrame.new(1633, 1, -127) * CFrame.Angles(0, math.rad(90), 0),
+                walkTo  = CFrame.new(1633, 1, -129.5),
+                route = {
+                    CFrame.new(1633, 1, -132),  CFrame.new(1633, 1, -135),
+                    CFrame.new(1636, 1, -139),  CFrame.new(1640, 1, -145),
+                    CFrame.new(1644, 1, -150),  CFrame.new(1648, 1, -155),
+                    CFrame.new(1650, 1, -160),  CFrame.new(1650, 1, -165),
+                    CFrame.new(1650, 1, -175),  CFrame.new(1650, 1, -185),
+                    CFrame.new(1650, 1, -195),  CFrame.new(1650, 1, -205),
+                    CFrame.new(1650, 1, -215),  CFrame.new(1650, 1, -225),
+                    CFrame.new(1650, 1, -235),  CFrame.new(1650, 1, -245),
+                    CFrame.new(1650, 1, -255),  CFrame.new(1650, 1, -265),
+                    CFrame.new(1650, 1, -275),  CFrame.new(1635, 1, -286),
+                }
+            }
+
+            local function toggleNoclip(state) getgenv().PlayerConfig.Noclip = state end
+
+            local function getPlayer()
+                local c = lp.Character
+                return c, c and c:FindFirstChild("HumanoidRootPart"), c and c:FindFirstChildOfClass("Humanoid")
+            end
+
+            local function newCorner(parent, scale)
+                local c = Instance.new("UICorner", parent)
+                c.CornerRadius = UDim.new(scale or 1, 0)
+            end
+
+            local function newStroke(parent, color, thick, transp)
+                local s = Instance.new("UIStroke", parent)
+                s.Color, s.Thickness, s.Transparency = color, thick or 1.5, transp or 0
+            end
+
+            local function buildClone(cf)
+                local parts = {}
+                local function addBox(name, size, frame)
+                    local p = Instance.new("BoxHandleAdornment")
+                    p.Size, p.Name, p.CFrame = size, name, frame
+                    p.Color3, p.Transparency = routeConfig.markerColor, 0
+                    p.Adornee, p.ZIndex, p.Parent = ws.Terrain, 1, ws.Terrain
+                    table.insert(parts, p)
+                end
+                addBox("body", Vector3.new(2, 2, 1), cf)
+                addBox("legL", Vector3.new(1, 2, 1), cf * CFrame.new(-0.5, -2,  0))
+                addBox("legR", Vector3.new(1, 2, 1), cf * CFrame.new( 0.5, -2,  0))
+                addBox("armL", Vector3.new(1, 2, 1), cf * CFrame.new(-1.5,  0,  0))
+                addBox("armR", Vector3.new(1, 2, 1), cf * CFrame.new( 1.5,  0.5, -1) * CFrame.Angles(math.rad(90), 0, 0))
+                return function()
+                    for _, p in ipairs(parts) do if p and p.Parent then p:Destroy() end end
+                    parts = {}
+                end
+            end
+
+            local function buildWaypoint()
+                local guiRef = (gethui and gethui()) or cg
+                local screen = Instance.new("ScreenGui")
+                screen.Name, screen.ResetOnSpawn, screen.IgnoreGuiInset = "_ui", false, true
+                screen.ZIndexBehavior, screen.Parent = Enum.ZIndexBehavior.Sibling, guiRef
+
+                local wrap = Instance.new("Frame")
+                wrap.Size, wrap.AnchorPoint, wrap.BackgroundTransparency = UDim2.new(0,44,0,62), Vector2.new(0.5,0.5), 1
+                wrap.ZIndex, wrap.Parent = 10, screen
+
+                local circle = Instance.new("Frame")
+                circle.Size, circle.AnchorPoint = UDim2.new(0,32,0,32), Vector2.new(0.5,0)
+                circle.Position, circle.BackgroundColor3 = UDim2.new(0.5,0,0,0), Color3.fromRGB(12,5,5)
+                circle.BackgroundTransparency, circle.BorderSizePixel = 0.25, 0
+                circle.ZIndex, circle.Parent = 10, wrap
+                newCorner(circle) ; newStroke(circle, routeConfig.accentColor, 1.8)
+
+                local arrow = Instance.new("TextLabel")
+                arrow.Size, arrow.AnchorPoint, arrow.Position = UDim2.new(0,18,0,18), Vector2.new(0.5,0.5), UDim2.new(0.5,0,0.5,0)
+                arrow.BackgroundTransparency, arrow.TextColor3 = 1, routeConfig.accentColor
+                arrow.TextStrokeTransparency, arrow.TextStrokeColor3 = 0.2, Color3.fromRGB(0,0,0)
+                arrow.TextScaled, arrow.Font, arrow.Text = true, Enum.Font.GothamBold, "▼"
+                arrow.ZIndex, arrow.Parent = 11, circle
+
+                local distBg = Instance.new("Frame")
+                distBg.Size, distBg.AnchorPoint, distBg.Position = UDim2.new(0,44,0,18), Vector2.new(0.5,0), UDim2.new(0.5,0,1,5)
+                distBg.BackgroundColor3, distBg.BackgroundTransparency, distBg.BorderSizePixel = Color3.fromRGB(10,4,4), 0.2, 0
+                distBg.ZIndex, distBg.Parent = 10, wrap
+                newCorner(distBg) ; newStroke(distBg, Color3.fromRGB(140,30,30), 1, 0.4)
+
+                local distText = Instance.new("TextLabel")
+                distText.Size, distText.BackgroundTransparency = UDim2.new(1,0,1,0), 1
+                distText.TextColor3, distText.TextStrokeTransparency = Color3.fromRGB(220,180,180), 0.3
+                distText.TextStrokeColor3, distText.Font = Color3.fromRGB(0,0,0), Enum.Font.GothamBold
+                distText.TextSize, distText.ZIndex, distText.Parent = 11, 11, distBg
+
+                local cam   = ws.CurrentCamera
+                local EDGE  = 50
+                local tick0 = tick()
+
+                local loop = rs.Heartbeat:Connect(function()
+                    local _, hrp = getPlayer()
+                    if not hrp then return end
+                    local vp = cam.ViewportSize
+                    local cx, cy = vp.X/2, vp.Y/2
+                    local sp, vis = cam:WorldToViewportPoint(routeConfig.startAt.Position + Vector3.new(0,3,0))
+                    local meters = math.floor((hrp.Position - routeConfig.startAt.Position).Magnitude)
+                    distText.Text = meters .. "m"
+                    local sx, sy = sp.X, sp.Y
+                    if not vis then sx, sy = vp.X-sx, vp.Y-sy end
+                    local dx, dy = sx-cx, sy-cy
+                    if vis and sx>EDGE and sx<vp.X-EDGE and sy>EDGE and sy<vp.Y-EDGE then
+                        wrap.Rotation, wrap.Position = 0, UDim2.fromOffset(sx, sy-10)
+                    else
+                        local sc = math.min((cx-EDGE)/(math.abs(dx)+1e-4), (cy-EDGE)/(math.abs(dy)+1e-4))
+                        wrap.Rotation = math.deg(math.atan2(dx,-dy))
+                        wrap.Position = UDim2.fromOffset(cx+dx*sc, cy+dy*sc)
+                    end
+                    local sz = math.floor(32*(1+math.sin((tick()-tick0)*3.5)*0.06))
+                    circle.Size = UDim2.new(0,sz,0,sz)
+                    distText.TextColor3 = (meters<12 and tick()%0.5<0.25) and Color3.fromRGB(255,80,80) or Color3.fromRGB(220,180,180)
+                end)
+
+                return function()
+                    loop:Disconnect()
+                    if screen and screen.Parent then screen:Destroy() end
+                end
+            end
+
+            local function buildLoadScreen(totalSteps)
+                local guiRef = (gethui and gethui()) or cg
+                local screen = Instance.new("ScreenGui")
+                screen.Name, screen.ResetOnSpawn, screen.IgnoreGuiInset = tostring(math.random(1e8,9e8)), false, true
+                screen.DisplayOrder, screen.Parent = 2147483647, guiRef
+
+                local bg = Instance.new("Frame")
+                bg.Size, bg.Position = UDim2.new(1,0,1,0), UDim2.new(0,0,0,0)
+                bg.BackgroundColor3, bg.BackgroundTransparency, bg.BorderSizePixel = Color3.fromRGB(5,5,8), 1, 0
+                bg.ZIndex, bg.Parent = 9999, screen
+
+                local logo = Instance.new("ImageLabel")
+                logo.Size, logo.AnchorPoint, logo.Position = UDim2.new(0,180,0,180), Vector2.new(0.5,0.5), UDim2.new(0.5,0,0.5,-60)
+                logo.BackgroundTransparency, logo.ImageTransparency = 1, 1
+                logo.Image, logo.ZIndex, logo.Parent = "rbxassetid://137064182739714", 10000, bg
+
+                local titleText = Instance.new("TextLabel")
+                titleText.Size, titleText.AnchorPoint, titleText.Position = UDim2.new(0,300,0,32), Vector2.new(0.5,0), UDim2.new(0.5,0,0.5,56)
+                titleText.BackgroundTransparency, titleText.TextColor3 = 1, Color3.fromRGB(220,220,220)
+                titleText.TextTransparency, titleText.TextStrokeTransparency = 1, 1
+                titleText.TextStrokeColor3, titleText.Font = Color3.fromRGB(0,0,0), Enum.Font.GothamBold
+                titleText.TextSize, titleText.Text, titleText.ZIndex, titleText.Parent = 16, "Feito por @fp3", 10000, bg
+
+                local subText = Instance.new("TextLabel")
+                subText.Size, subText.AnchorPoint, subText.Position = UDim2.new(0,300,0,18), Vector2.new(0.5,0), UDim2.new(0.5,0,0.5,92)
+                subText.BackgroundTransparency, subText.TextColor3 = 1, Color3.fromRGB(100,35,35)
+                subText.TextTransparency, subText.TextStrokeTransparency = 1, 1
+                subText.Font, subText.TextSize = Enum.Font.Gotham, 11
+                subText.Text, subText.ZIndex, subText.Parent = "vai se fuder larih <3", 10000, bg
+
+                local track = Instance.new("Frame")
+                track.Size, track.AnchorPoint, track.Position = UDim2.new(0,260,0,4), Vector2.new(0.5,0), UDim2.new(0.5,0,0.5,120)
+                track.BackgroundColor3, track.BackgroundTransparency, track.BorderSizePixel = Color3.fromRGB(28,10,10), 1, 0
+                track.ZIndex, track.Parent = 10000, bg ; newCorner(track)
+
+                local fill = Instance.new("Frame")
+                fill.Size, fill.BackgroundColor3, fill.BackgroundTransparency, fill.BorderSizePixel = UDim2.new(0,0,1,0), Color3.fromRGB(200,40,40), 1, 0
+                fill.ZIndex, fill.Parent = 10001, track ; newCorner(fill)
+
+                local dot = Instance.new("Frame")
+                dot.Size, dot.AnchorPoint, dot.Position = UDim2.new(0,8,0,8), Vector2.new(0.5,0.5), UDim2.new(0,0,0.5,0)
+                dot.BackgroundColor3, dot.BackgroundTransparency, dot.BorderSizePixel = Color3.fromRGB(220,60,60), 1, 0
+                dot.ZIndex, dot.Parent = 10002, track ; newCorner(dot)
+
+                local guards, alive = {}, true
+
+                local function reattach()
+                    if not alive then return end
+                    task.defer(function()
+                        if not alive then return end
+                        if not screen.Parent then pcall(function() screen.Parent = guiRef end) end
+                        if not bg.Parent     then pcall(function() bg.Parent = screen end) end
+                    end)
+                end
+
+                guards[1] = bg.AncestryChanged:Connect(reattach)
+                guards[2] = screen.AncestryChanged:Connect(reattach)
+                guards[3] = screen.DescendantRemoving:Connect(function(d)
+                    if d == bg or d == fill or d == track then reattach() end
+                end)
+                local checkT = 0
+                guards[4] = rs.Heartbeat:Connect(function(dt)
+                    checkT += dt ; if checkT < 0.1 then return end ; checkT = 0
+                    if not alive then return end
+                    if not screen.Parent then pcall(function() screen.Parent = guiRef end) end
+                    if not bg.Parent     then pcall(function() bg.Parent = screen end) end
+                    if screen.DisplayOrder ~= 2147483647 then screen.DisplayOrder = 2147483647 end
+                end)
+
+                local fi = TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+                local mainTween = ts:Create(bg, fi, {BackgroundTransparency = 0})
+                ts:Create(logo,      fi, {ImageTransparency = 0}):Play()
+                ts:Create(titleText, fi, {TextTransparency = 0, TextStrokeTransparency = 0.5}):Play()
+                ts:Create(subText,   fi, {TextTransparency = 0}):Play()
+                ts:Create(track,     fi, {BackgroundTransparency = 0}):Play()
+                ts:Create(fill,      fi, {BackgroundTransparency = 0}):Play()
+                ts:Create(dot,       fi, {BackgroundTransparency = 0}):Play()
+
+                local readyEvent = Instance.new("BindableEvent")
+                mainTween.Completed:Once(function() readyEvent:Fire() end)
+                mainTween:Play()
+
+                local dotAlive = true
+                task.spawn(function()
+                    while dotAlive do
+                        if dot and dot.Parent then ts:Create(dot, TweenInfo.new(0.4,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut), {BackgroundTransparency=0.6}):Play() end
+                        task.wait(0.42)
+                        if dot and dot.Parent then ts:Create(dot, TweenInfo.new(0.4,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut), {BackgroundTransparency=0}):Play() end
+                        task.wait(0.42)
+                    end
+                end)
+
+                local step, completed = 0, false
+
+                local function waitUntilReady()
+                    readyEvent.Event:Wait() ; readyEvent:Destroy() ; task.wait(0.5)
+                end
+
+                local function markStep()
+                    step += 1
+                    local pct = math.clamp(step/(totalSteps or 1), 0, 1)
+                    local tw = TweenInfo.new(0.22, Enum.EasingStyle.Quad)
+                    ts:Create(fill, tw, {Size = UDim2.new(pct,0,1,0)}):Play()
+                    ts:Create(dot,  tw, {Position = UDim2.new(pct,0,0.5,0)}):Play()
+                    if pct >= 1 and not completed then
+                        completed = true
+                        task.spawn(function()
+                            local tg = TweenInfo.new(0.3, Enum.EasingStyle.Quad)
+                            ts:Create(fill, tg, {BackgroundColor3 = Color3.fromRGB(40,180,70)}):Play()
+                            ts:Create(dot,  tg, {BackgroundColor3 = Color3.fromRGB(80,220,100)}):Play()
+                            for _ = 1, 2 do
+                                ts:Create(track, TweenInfo.new(0.08), {Size = UDim2.new(0,268,0,6)}):Play() ; task.wait(0.09)
+                                ts:Create(track, TweenInfo.new(0.08), {Size = UDim2.new(0,260,0,4)}):Play() ; task.wait(0.09)
+                            end
+                        end)
+                    end
+                end
+
+                local function dismiss()
+                    alive, dotAlive = false, false
+                    for _, g in ipairs(guards) do g:Disconnect() end
+                    ts:Create(fill, TweenInfo.new(0.2), {Size = UDim2.new(1,0,1,0)}):Play()
+                    ts:Create(dot,  TweenInfo.new(0.2), {Position = UDim2.new(1,0,0.5,0)}):Play()
+                    task.wait(0.22)
+                    if not completed then
+                        completed = true
+                        ts:Create(fill, TweenInfo.new(0.25,Enum.EasingStyle.Quad), {BackgroundColor3=Color3.fromRGB(40,180,70)}):Play()
+                        ts:Create(dot,  TweenInfo.new(0.25,Enum.EasingStyle.Quad), {BackgroundColor3=Color3.fromRGB(80,220,100)}):Play()
+                        task.wait(0.28)
+                    end
+                    task.wait(0.3)
+                    local fo = TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+                    ts:Create(bg,        fo, {BackgroundTransparency=1}):Play()
+                    ts:Create(logo,      fo, {ImageTransparency=1}):Play()
+                    ts:Create(titleText, fo, {TextTransparency=1, TextStrokeTransparency=1}):Play()
+                    ts:Create(subText,   fo, {TextTransparency=1}):Play()
+                    ts:Create(track,     fo, {BackgroundTransparency=1}):Play()
+                    ts:Create(fill,      fo, {BackgroundTransparency=1}):Play()
+                    ts:Create(dot,       fo, {BackgroundTransparency=1}):Play()
+                    task.wait(0.5)
+                    screen:Destroy()
+                    getgenv()._RouteAtivo = false
+                end
+
+                return dismiss, markStep, waitUntilReady
+            end
+
+            getgenv().IniciarRota = function()
+                if getgenv()._RouteAtivo then
+                    if getgenv().notificar then getgenv().notificar("Rota já está ativa.", 3, "lucide:alert-circle") end
+                    return
+                end
+                getgenv()._RouteAtivo = true
+
+                local removeMarker   = buildClone(routeConfig.startAt)
+                local removeWaypoint = buildWaypoint()
+
+                local ragChar     = ws:FindFirstChild(lp.Name)
+                local ragdoll     = ragChar and ragChar:FindFirstChild("Ragdoll")
+                local stopRagdoll = ragdoll and ragdoll.ChildAdded:Connect(function(c) c:Destroy() end)
+
+                local activated = false
+                local triggerConn
+
+                triggerConn = rs.Heartbeat:Connect(function()
+                    if activated then return end
+                    local char, hrp = getPlayer()
+                    if not hrp then return end
+                    local delta  = hrp.Position - routeConfig.startAt.Position
+                    local hDist  = Vector3.new(delta.X,0,delta.Z).Magnitude
+                    local vDist  = math.abs(delta.Y)
+                    local facing = hrp.CFrame.LookVector:Dot(routeConfig.startAt.LookVector)
+                    if hDist > routeConfig.triggerDist  then return end
+                    if vDist > routeConfig.triggerVert  then return end
+                    if facing < math.cos(math.rad(routeConfig.triggerAngle)) then return end
+
+                    activated = true
+                    triggerConn:Disconnect()
+                    removeWaypoint()
+                    removeMarker()
+
+                    task.spawn(function()
+                        local dismiss, markStep, waitUntilReady = buildLoadScreen(#routeConfig.route)
+                        waitUntilReady()
+
+                        hrp.CFrame = routeConfig.enterAt
+                        toggleNoclip(true)
+                        task.wait(1)
+
+                        local _, _, hum = getPlayer()
+                        hum.WalkSpeed = routeConfig.walkSpeed
+
+                        local connMove, connCheck, connDeath
+                        local finished = false
+
+                        local function cancelRoute()
+                            if finished then return end ; finished = true
+                            connMove:Disconnect() ; connCheck:Disconnect() ; connDeath:Disconnect()
+                            hum:MoveTo(hrp.Position) ; hum.WalkSpeed = 16
+                            toggleNoclip(false)
+                            if stopRagdoll then stopRagdoll:Disconnect() end
+                            dismiss()
+                        end
+
+                        local function completeRoute()
+                            if finished then return end ; finished = true
+                            connMove:Disconnect() ; connCheck:Disconnect() ; connDeath:Disconnect()
+                            hum:MoveTo(hrp.Position) ; hum.WalkSpeed = 16
+                            toggleNoclip(false)
+                            if stopRagdoll then stopRagdoll:Disconnect() end
+                            task.spawn(function()
+                                for _, point in ipairs(routeConfig.route) do
+                                    task.wait(routeConfig.stepDelay)
+                                    hrp.CFrame = point
+                                    markStep()
+                                end
+                                dismiss()
+                            end)
+                        end
+
+                        connDeath = hum.Died:Connect(function()
+                            toggleNoclip(false)
+                            if stopRagdoll then stopRagdoll:Disconnect() end
+                            finished = true
+                            connMove:Disconnect() ; connCheck:Disconnect() ; connDeath:Disconnect()
+                            dismiss()
+                        end)
+
+                        lp.CharacterRemoving:Connect(function() toggleNoclip(false) end)
+
+                        connMove = rs.Heartbeat:Connect(function()
+                            hum:MoveTo(routeConfig.walkTo.Position)
+                        end)
+
+                        connCheck = rs.Heartbeat:Connect(function()
+                            if uis:IsKeyDown(Enum.KeyCode.W) or uis:IsKeyDown(Enum.KeyCode.A) or
+                               uis:IsKeyDown(Enum.KeyCode.S) or uis:IsKeyDown(Enum.KeyCode.D) or
+                               hum.MoveDirection.Magnitude > 0 then cancelRoute() ; return end
+                            if (hrp.Position - routeConfig.walkTo.Position).Magnitude <= 1.6 then
+                                completeRoute()
+                            end
+                        end)
+                    end)
+                end)
+            end
+        end
+
+       -- spam de sons
         getgenv().ApexLogic.ToggleSound = function(ativar)
             getgenv().SpamAtivo = ativar
 
@@ -952,21 +1335,16 @@ end)
                 return
             end
 
-            if getgenv()._SpamThread then
-                pcall(task.cancel, getgenv()._SpamThread)
-            end
+            if getgenv()._SpamThread then pcall(task.cancel, getgenv()._SpamThread) end
             limparConns(getgenv()._ApexSpamMasterConns)
             limparConns(getgenv()._ApexSpamCharConns)
 
             getgenv()._SpamThread = task.spawn(function()
-                local RS         = game:GetService("ReplicatedStorage")
-                local fireClient = RS:WaitForChild("ServerEvents", 5)
-                    and RS.ServerEvents:WaitForChild("FireClient", 5)
+                local fireClient = rep:WaitForChild("ServerEvents", 5)
+                    and rep.ServerEvents:WaitForChild("FireClient", 5)
 
                 if not fireClient then
-                    if getgenv().notificar then
-                        getgenv().notificar("Inválido", 3, "lucide:alert-triangle")
-                    end
+                    if getgenv().notificar then getgenv().notificar("Inválido", 3, "lucide:alert-triangle") end
                     return
                 end
 
@@ -1034,57 +1412,42 @@ end)
                     isReadyToSpam = false
                     local char = lp.Character
                     if not char then return false end
-
                     local humanoid = char:FindFirstChildOfClass("Humanoid")
                     if not humanoid then return false end
-
-                    humanoid:UnequipTools()
-                    task.wait(0.5)
-
+                    humanoid:UnequipTools() ; task.wait(0.5)
                     local targetWeapon = findWeaponInBag()
                     if not targetWeapon then return false end
-
                     humanoid:EquipTool(targetWeapon)
                     if not waitForWeapon(targetWeapon.Name) then return false end
                     task.wait(1)
-
                     sessionToken = findSessionToken()
                     if not sessionToken then return false end
-
-                    humanoid:UnequipTools()
-                    task.wait(0.5)
+                    humanoid:UnequipTools() ; task.wait(0.5)
                     humanoid:EquipTool(targetWeapon)
                     if not waitForWeapon(targetWeapon.Name) then return false end
-
-                    equippedTool  = targetWeapon
-                    task.wait(0.5)
+                    equippedTool = targetWeapon ; task.wait(0.5)
                     isReadyToSpam = true
                     return true
                 end
 
                 local function watchCharacter(char)
                     limparConns(getgenv()._ApexSpamCharConns)
-                    isReadyToSpam = false
-                    sessionToken  = nil
+                    isReadyToSpam, sessionToken = false, nil
                     if not char then return end
-
                     local function checkEquipped()
                         local tool = char:FindFirstChildOfClass("Tool")
                         equippedTool = isValidWeapon(tool) and tool or nil
                     end
-
                     table.insert(getgenv()._ApexSpamCharConns, char.ChildAdded:Connect(function(child)
                         if child:IsA("Tool") then checkEquipped() end
                     end))
                     table.insert(getgenv()._ApexSpamCharConns, char.ChildRemoved:Connect(function(child)
                         if child:IsA("Tool") then checkEquipped() end
                     end))
-
                     checkEquipped()
                 end
 
-                table.insert(getgenv()._ApexSpamMasterConns,
-                    lp.CharacterAdded:Connect(watchCharacter))
+                table.insert(getgenv()._ApexSpamMasterConns, lp.CharacterAdded:Connect(watchCharacter))
                 if lp.Character then watchCharacter(lp.Character) end
 
                 task.spawn(function()
@@ -1103,10 +1466,9 @@ end)
                         if not isReadyToSpam and getgenv().SpamAtivo then setupToken() end
                         continue
                     end
-
                     local totalSons = #soundList
                     if totalSons > 0 then
-                        for i = 1, 15 do
+                        for i = 1, 20 do
                             if not getgenv().SpamAtivo or not equippedTool or not isReadyToSpam then break end
                             local sound = soundList[rng:NextInteger(1, totalSons)]
                             if sound and sound.Parent then
@@ -1115,10 +1477,10 @@ end)
                                 pcall(fireClient.FireServer, fireClient, sessionToken, "PlaySound", sound, nil)
                                 sound.Volume = originalVolume
                             end
-                            task.wait()
+                            task.wait(0.05)
                         end
                     end
-                    task.wait()
+                    task.wait(0.1)
                 end
             end)
         end
