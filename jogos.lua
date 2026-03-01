@@ -925,67 +925,64 @@ end)
                 end
             end
         end)
-    elseif MapaAtual == "Apex" then
+elseif MapaAtual == "Apex" then
         -- [[ APEX BACKEND ]] --
-        local ApexLogic = { SpamAtivo = false }
+        local ApexLogic = {}
+        getgenv().SpamAtivo = false -- Inicia desligado
         
         if env then env.ApexLogic = ApexLogic end
         getgenv().ApexLogic = ApexLogic
 
-        local serverEvents = rep:WaitForChild("ServerEvents", 3)
-        local remote = serverEvents and serverEvents:WaitForChild("FireClient", 3)
-        
-        local token = nil
-        local listaSons = {}
-
-        local function atualizarSons()
-            local novosSons = {}
-            for _, v in pairs(game:GetDescendants()) do
-                if v:IsA("Sound") and v.SoundId ~= "" then
-                    table.insert(novosSons, v)
-                end
-            end
-            
-            local limitada = {}
-            for i = 1, math.min(100, #novosSons) do
-                limitada[i] = novosSons[i]
-            end
-            listaSons = limitada
-        end
-
-        local function buscarToken()
-            for _, v in pairs(getgc(true)) do
-                if type(v) == "function" and debug.getinfo(v).name == "PlaySound" then
-                    local t = debug.getupvalue(v, 2)
-                    if t then return t end
-                end
-            end
-            return nil
-        end
-
         function ApexLogic.ToggleSound(state)
-            ApexLogic.SpamAtivo = state
+            getgenv().SpamAtivo = state
             
             if state then
-                atualizarSons()
-                if not token then token = buscarToken() end
-                
-                if token then
-                    Notify("Spam ativado! Iniciando envio...")
-                else
-                    Notify("Atenção: Token não encontrado. Atire com a arma 1x!")
-                end
-                
+                -- Quando liga o botão, ele roda a SUA lógica exata
                 task.spawn(function()
-                    while ApexLogic.SpamAtivo do
-                        task.wait(30)
-                        if ApexLogic.SpamAtivo then atualizarSons() end
-                    end
-                end)
+                    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+                    local LP = game:GetService("Players").LocalPlayer
+                    local remote = ReplicatedStorage:WaitForChild("ServerEvents"):WaitForChild("FireClient")
+                    
+                    local token = nil
+                    local listaSons = {}
 
-                task.spawn(function()
-                    while ApexLogic.SpamAtivo do
-                        local char = lp.Character 
+                    local function atualizarSons()
+                        local novosSons = {}
+                        for _, v in pairs(game:GetDescendants()) do
+                            if v:IsA("Sound") and v.SoundId ~= "" then
+                                table.insert(novosSons, v)
+                            end
+                        end
+                        local limitada = {}
+                        for i = 1, math.min(100, #novosSons) do
+                            limitada[i] = novosSons[i]
+                        end
+                        listaSons = limitada
+                    end
+
+                    local function buscarToken()
+                        for _, v in pairs(getgc(true)) do
+                            if type(v) == "function" and debug.getinfo(v).name == "PlaySound" then
+                                local t = debug.getupvalue(v, 2)
+                                if t then return t end
+                            end
+                        end
+                    end
+
+                    atualizarSons()
+                    token = buscarToken()
+
+                    -- Loop secundário para atualizar os sons
+                    task.spawn(function()
+                        while getgenv().SpamAtivo do
+                            task.wait(30)
+                            if getgenv().SpamAtivo then atualizarSons() end
+                        end
+                    end)
+
+                    -- Loop principal de spam
+                    while getgenv().SpamAtivo do
+                        local char = LP.Character
                         local tool = char and char:FindFirstChildOfClass("Tool")
                         
                         if not tool or tool.Parent ~= char then
@@ -994,31 +991,28 @@ end)
                             continue
                         end
 
-                        if remote and token then
-                            for i = 1, #listaSons do
-                                if not ApexLogic.SpamAtivo or not tool or tool.Parent ~= char then
-                                    break
-                                end
+                        for i = 1, #listaSons do
+                            if not getgenv().SpamAtivo or not tool or tool.Parent ~= char then
+                                break
+                            end
 
-                                local som = listaSons[i]
-                                if som and som.Parent then
-                                    pcall(function()
-                                        remote:FireServer(token, "PlaySound", som, nil)
-                                    end)
-                                end
-                                
-                                if i % 100 == 0 then
-                                    rs.Heartbeat:Wait() 
-                                end
+                            local som = listaSons[i]
+                            if som and som.Parent then
+                                pcall(function()
+                                    remote:FireServer(token, "PlaySound", som, nil)
+                                end)
+                            end
+
+                            if i % 100 == 0 then
+                                task.wait()
                             end
                         end
+
                         task.wait(0.1)
                     end
                 end)
-            else
-                Notify("Spam de sons desativado.")
             end
         end
 
-    end
-end
+    end -- Fim do bloco Apex
+end -- Fim da checagem de mapas
