@@ -925,93 +925,223 @@ end)
                 end
             end
         end)
+
 elseif MapaAtual == "Apex" then
-        -- [[ APEX BACKEND ]] --
-        local ApexLogic = {}
-        getgenv().SpamAtivo = false
-        
-        if env then env.ApexLogic = ApexLogic end
-        getgenv().ApexLogic = ApexLogic
+    getgenv().ApexLogic = {}
+    
+    getgenv()._ApexSpamConnections = getgenv()._ApexSpamConnections or {}
 
-        function ApexLogic.ToggleSound(state)
-            getgenv().SpamAtivo = state
-            
-            if state then
-                task.spawn(function()
-                    local ReplicatedStorage = game:GetService("ReplicatedStorage")
-                    local LP = game:GetService("Players").LocalPlayer
-                    local remote = ReplicatedStorage:WaitForChild("ServerEvents"):WaitForChild("FireClient")
-                    
-                    local token = nil
-                    local listaSons = {}
-
-                    local function atualizarSons()
-                        local novosSons = {}
-                        for _, v in pairs(game:GetDescendants()) do
-                            if v:IsA("Sound") and v.SoundId ~= "" then
-                                table.insert(novosSons, v)
-                            end
-                        end
-                        local limitada = {}
-                        for i = 1, math.min(100, #novosSons) do
-                            limitada[i] = novosSons[i]
-                        end
-                        listaSons = limitada
-                    end
-
-                    local function buscarToken()
-                        for _, v in pairs(getgc(true)) do
-                            if type(v) == "function" and debug.getinfo(v).name == "PlaySound" then
-                                local t = debug.getupvalue(v, 2)
-                                if t then return t end
-                            end
-                        end
-                    end
-
-                    atualizarSons()
-                    token = buscarToken()
-
-                    -- Loop secundário para atualizar os sons
-                    task.spawn(function()
-                        while getgenv().SpamAtivo do
-                            task.wait(30)
-                            if getgenv().SpamAtivo then atualizarSons() end
-                        end
-                    end)
-
-                    -- Loop principal de spam
-                    while getgenv().SpamAtivo do
-                        local char = LP.Character
-                        local tool = char and char:FindFirstChildOfClass("Tool")
-                        
-                        if not tool or tool.Parent ~= char then
-                            task.wait(0.2)
-                            if not token then token = buscarToken() end
-                            continue
-                        end
-
-                        for i = 1, #listaSons do
-                            if not getgenv().SpamAtivo or not tool or tool.Parent ~= char then
-                                break
-                            end
-
-                            local som = listaSons[i]
-                            if som and som.Parent then
-                                pcall(function()
-                                    remote:FireServer(token, "PlaySound", som, nil)
-                                end)
-                            end
-
-                            if i % 100 == 0 then
-                                task.wait()
-                            end
-                        end
-
-                        task.wait(0.1)
-                    end
-                end)
+    local function limparConexoesSpam()
+        for _, conn in ipairs(getgenv()._ApexSpamConnections) do
+            if typeof(conn) == "RBXScriptConnection" and conn.Connected then
+                conn:Disconnect()
             end
         end
+        table.clear(getgenv()._ApexSpamConnections)
+    end
 
-    end -- Fim do bloco Apex
-end -- Fim da checagem de mapas
+    getgenv().ApexLogic.ToggleSound = function(ativar)
+        getgenv().SpamAtivo = ativar
+
+        if ativar then
+            if getgenv()._SpamThread then
+                task.cancel(getgenv()._SpamThread)
+                getgenv()._SpamThread = nil
+            end
+            
+            limparConexoesSpam()
+
+            getgenv()._SpamThread = task.spawn(function()
+                local ReplicatedStorage = game:GetService("ReplicatedStorage")
+                local fireClient = ReplicatedStorage:WaitForChild("ServerEvents"):WaitForChild("FireClient")
+
+                local sessionToken  = nil
+                local soundList     = {}
+                local equippedTool  = nil
+                local isReadyToSpam = false 
+
+                local function refreshSounds()
+                    local found = {}
+                    for _, obj in ipairs(game:GetDescendants()) do
+                        if obj:IsA("Sound") and obj.SoundId ~= "" then
+                            table.insert(found, obj)
+                            if #found >= 20 then break end
+                        end
+                    end
+                    soundList = found
+                end
+
+                local function findSessionToken()
+                    for _, obj in ipairs(getgc(true)) do
+                        if type(obj) == "function" and debug.getinfo(obj).name == "PlaySound" then
+                            local value = debug.getupvalue(obj, 2)
+                            if value then return value end
+                        end
+                    end
+                    return nil
+                end
+
+                local function countChildren(object)
+                    local total = 0
+                    for _ in ipairs(object:GetDescendants()) do
+                        total = total + 1
+                        if total > 5 then return total end
+                    end
+                    return total
+                end
+
+                local function isValidWeapon(tool)
+                    if not tool or tool.Parent ~= LocalPlayer.Character then return false end
+                    return countChildren(tool) > 5
+                end
+
+                local function findWeaponInBag()
+                    local bag = LocalPlayer:FindFirstChild("Backpack")
+                    if not bag then return nil end
+                    for _, item in ipairs(bag:GetChildren()) do
+                        if item:IsA("Tool") and countChildren(item) > 5 then
+                            return item
+                        end
+                    end
+                    return nil
+                end
+
+                local function waitForWeaponInChar(name, timeout)
+                    local startTime = tick()
+                    repeat
+                        task.wait(0.05)
+                        local char      = LocalPlayer.Character
+                        local candidate = char and char:FindFirstChild(name)
+                        if candidate and candidate:IsA("Tool") then return candidate end
+                    until (tick() - startTime) > timeout
+                    return nil
+                end
+
+                local function setupToken()
+                    isReadyToSpam = false 
+                    local char = LocalPlayer.Character
+                    if not char then return false end
+
+                    local humanoid = char:FindFirstChildOfClass("Humanoid")
+                    if not humanoid then return false end
+
+                    local currentWeapon = char:FindFirstChildOfClass("Tool")
+                    local targetWeapon = (isValidWeapon(currentWeapon) and currentWeapon) or findWeaponInBag()
+                    
+                    if not targetWeapon then return false end
+
+                    if targetWeapon.Parent ~= char then
+                        humanoid:EquipTool(targetWeapon)
+                        if not waitForWeaponInChar(targetWeapon.Name, 3) then return false end
+                    end
+                    task.wait(0.5)
+
+                    sessionToken = findSessionToken()
+                    if not sessionToken then return false end
+
+                    local bag = LocalPlayer:FindFirstChild("Backpack")
+                    local secondWeapon = nil
+                    if bag then
+                        for _, item in ipairs(bag:GetChildren()) do
+                            if item:IsA("Tool") and item ~= targetWeapon then
+                                secondWeapon = item
+                                break
+                            end
+                        end
+                    end
+
+                    if secondWeapon then
+                        humanoid:EquipTool(secondWeapon)
+                        if waitForWeaponInChar(secondWeapon.Name, 3) then task.wait(0.5) end
+                    else
+                        humanoid:UnequipTools()
+                        task.wait(0.5)
+                    end
+                    humanoid:EquipTool(targetWeapon)
+                    if not waitForWeaponInChar(targetWeapon.Name, 3) then return false end
+                    task.wait(0.5)
+
+                    isReadyToSpam = true
+                    return true
+                end
+
+                local function watchCharacter(char)
+                    limparConexoesSpam()
+                    equippedTool = nil
+                    isReadyToSpam = false
+                    sessionToken = nil
+                    if not char then return end
+
+                    local function checkEquipped()
+                        local tool = char:FindFirstChildOfClass("Tool")
+                        if isValidWeapon(tool) then
+                            if equippedTool ~= tool then
+                                equippedTool = tool
+                            end
+                        else
+                            equippedTool = nil
+                        end
+                    end
+
+                    table.insert(getgenv()._ApexSpamConnections, char.ChildAdded:Connect(function(child)
+                        if child:IsA("Tool") then checkEquipped() end
+                    end))
+
+                    table.insert(getgenv()._ApexSpamConnections, char.ChildRemoved:Connect(function(child)
+                        if child:IsA("Tool") then checkEquipped() end
+                    end))
+
+                    checkEquipped()
+                end
+
+                table.insert(getgenv()._ApexSpamConnections, LocalPlayer.CharacterAdded:Connect(function(char)
+                    watchCharacter(char)
+                end))
+
+                if LocalPlayer.Character then watchCharacter(LocalPlayer.Character) end
+
+                task.spawn(function()
+                    while getgenv().SpamAtivo do
+                        task.wait(30)
+                        if getgenv().SpamAtivo then refreshSounds() end
+                    end
+                end)
+
+                refreshSounds()
+                setupToken()
+
+                while getgenv().SpamAtivo do
+                    if not equippedTool or not sessionToken or not isReadyToSpam then
+                        task.wait(0.2)
+                        if not isReadyToSpam and getgenv().SpamAtivo then setupToken() end
+                        continue
+                    end
+
+                    for i = 1, #soundList do
+                        if not getgenv().SpamAtivo or not equippedTool or not isReadyToSpam then break end
+
+                        local sound = soundList[i]
+                        if sound and sound.Parent then
+                            local originalVolume = sound.Volume
+                            sound.Volume = 10
+                            pcall(fireClient.FireServer, fireClient, sessionToken, "PlaySound", sound, nil)
+                            sound.Volume = originalVolume
+                        end
+
+                        if i % 10 == 0 then task.wait() end
+                    end
+
+                    task.wait(0.1)
+                end
+            end)
+        else
+            -- Desligando pela UI
+            if getgenv()._SpamThread then
+                task.cancel(getgenv()._SpamThread)
+                getgenv()._SpamThread = nil
+            end
+            limparConexoesSpam()
+        end
+    end
+end
+end
