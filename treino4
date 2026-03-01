@@ -351,6 +351,25 @@ local t = {[2]="vinte",[3]="trinta",[4]="quarenta",[5]="cinquenta",[6]="sessenta
 local h = {[1]="cento",[2]="duzentos",[3]="trezentos",[4]="quatrocentos",[5]="quinhentos",[6]="seiscentos",[7]="setecentos",[8]="oitocentos",[9]="novecentos"}
 local ac = {["á"]="Á",["à"]="À",["ã"]="Ã",["â"]="Â",["é"]="É",["ê"]="Ê",["í"]="Í",["ó"]="Ó",["ô"]="Ô",["õ"]="Õ",["ú"]="Ú",["ç"]="Ç"}
 
+local InputBar = tcs:FindFirstChildOfClass("ChatInputBarConfiguration")
+
+local function sc(m)
+    local s = tostring(m)
+    if game.PlaceId == 13132367906 then
+        pcall(function()
+            if InputBar and InputBar.TargetTextChannel then
+                InputBar.TargetTextChannel:SendAsync(s)
+            end
+        end)
+    else
+        local ev = rep:FindFirstChild("DefaultChatSystemChatEvents")
+        local req = ev and ev:FindFirstChild("SayMessageRequest")
+        if req then
+            pcall(function() req:FireServer(s, "All") end)
+        end
+    end
+end
+
 local function up(s)
     local r = ""
     for _, c in utf8.codes(s) do
@@ -385,7 +404,7 @@ end
 
 local function nt(n)
     n = tonumber(n)
-    if not n or n == 0 then return n == 0 and "ZERO" or "N/A" or "N/A" end
+    if not n or n == 0 then return n == 0 and "ZERO" or "N/A" end
     local g, x = {}, {}
     local temp = n
     while temp > 0 do
@@ -404,23 +423,6 @@ local function nt(n)
         end
     end
     return up(table.concat(x, " e "))
-end
-
-local function sc(m)
-    local s = tostring(m)
-    if game.PlaceId == 13132367906 then
-        local remote = rep
-            :WaitForChild("Assets")
-            :WaitForChild("Remotes")
-            :WaitForChild("ServerCommands")
-        pcall(function() remote:FireServer(s) end)
-    else
-        local ev = rep:FindFirstChild("DefaultChatSystemChatEvents")
-        local req = ev and ev:FindFirstChild("SayMessageRequest")
-        if req then
-            pcall(function() req:FireServer(s, "All") end)
-        end
-    end
 end
 
 local function gc()
