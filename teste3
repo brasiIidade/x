@@ -354,18 +354,61 @@ local t = {[2]="vinte",[3]="trinta",[4]="quarenta",[5]="cinquenta",[6]="sessenta
 local h = {[1]="cento",[2]="duzentos",[3]="trezentos",[4]="quatrocentos",[5]="quinhentos",[6]="seiscentos",[7]="setecentos",[8]="oitocentos",[9]="novecentos"}
 local ac = {["á"]="Á",["à"]="À",["ã"]="Ã",["â"]="Â",["é"]="É",["ê"]="Ê",["í"]="Í",["ó"]="Ó",["ô"]="Ô",["õ"]="Õ",["ú"]="Ú",["ç"]="Ç"}
 
-local function sc(m)
-    pcall(function()
-        local inputBar = tcs:FindFirstChildOfClass("ChatInputBarConfiguration")
-        if inputBar and inputBar.TargetTextChannel then
-            inputBar.TargetTextChannel:SendAsync(tostring(m))
+-- RemoteChat
+local RemoteChat = {}
+local Connections = {}
+local CurrentChannel
+local InputBar = tcs:FindFirstChildOfClass("ChatInputBarConfiguration")
+
+local ChatMethods = {
+    [Enum.ChatVersion.LegacyChatService] = function(Message)
+        if CurrentChannel then
+            CurrentChannel:SendAsync(Message)
             return
         end
-        local general = tcs:WaitForChild("TextChannels"):WaitForChild("RBXGeneral")
-        general:SendAsync(tostring(m))
-    end)
+        local channels = tcs:FindFirstChild("TextChannels")
+        local general = channels and channels:FindFirstChild("RBXGeneral")
+        if general then
+            general:SendAsync(Message)
+            return
+        end
+        local ChatUI = lp:WaitForChild("PlayerGui", 95):FindFirstChild("Chat")
+        if ChatUI then
+            local ChatBar = ChatUI:FindFirstChild("ChatBar", true)
+            if ChatBar then
+                ChatBar:CaptureFocus()
+                ChatBar.Text = Message
+                ChatBar:ReleaseFocus(true)
+            end
+        end
+    end,
+    [Enum.ChatVersion.TextChatService] = function(Message)
+        if CurrentChannel then
+            CurrentChannel:SendAsync(Message)
+        end
+    end,
+}
+
+function RemoteChat:Send(Message)
+    pcall(ChatMethods[tcs.ChatVersion], Message)
 end
 
+if InputBar then
+    if typeof(InputBar.TargetTextChannel) == "Instance" and InputBar.TargetTextChannel:IsA("TextChannel") then
+        CurrentChannel = InputBar.TargetTextChannel
+    end
+    table.insert(Connections, InputBar.Changed:Connect(function(Prop)
+        if Prop == "TargetTextChannel" and typeof(InputBar.TargetTextChannel) == "Instance" and InputBar.TargetTextChannel:IsA("TextChannel") then
+            CurrentChannel = InputBar.TargetTextChannel
+        end
+    end))
+end
+
+local function sc(m)
+    RemoteChat:Send(tostring(m))
+end
+
+-- Extenso
 local function up(s)
     local r = ""
     for _, c in utf8.codes(s) do
