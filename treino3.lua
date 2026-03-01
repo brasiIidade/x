@@ -44,7 +44,7 @@ tas.IsReady     = true
 tas.LastJump    = false
 tas.ActRad      = 1
 tas.ActH        = 1.5
-tas.ActAng      = 45   -- tolerância de ângulo aumentada (era 10)
+tas.ActAng      = 10
 tas.ColorBot    = Color3.fromRGB(0, 255, 0)
 tas.ColorPath   = Color3.fromRGB(0, 255, 0)
 tas.VisualOpacity = 0
@@ -135,7 +135,23 @@ local function appFr(f, hrp, hum)
 
     -- Estado do Humanoid (pulo, queda, etc)
     if f.jump ~= tas.LastJump then
-        if f.jump then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+        if f.jump then
+            hum:ChangeState(Enum.HumanoidStateType.Jumping)
+            -- Para imediatamente a animação padrão de pulo do Roblox
+            -- antes que ela sobreponha as tracks gravadas
+            local animator = hum:FindFirstChildOfClass("Animator")
+            if animator then
+                task.defer(function()
+                    for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+                        local id = track.Animation.AnimationId:lower()
+                        -- animações padrão de pulo/queda do Roblox
+                        if id:find("125750702") or id:find("jump") or id:find("fall") or id:find("507765000") or id:find("507767835") then
+                            track:Stop(0)
+                        end
+                    end
+                end)
+            end
+        end
         tas.LastJump = f.jump
     end
     local recSt = stEnums[f.state]
@@ -153,7 +169,7 @@ local function appFr(f, hrp, hum)
         local shouldPlay = {}
         for _, a in ipairs(f.anims) do shouldPlay[a.id] = a end
 
-        -- Para tracks que não deveriam estar tocando
+        -- Para qualquer track que não estava gravada nesse frame
         for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
             local id = track.Animation.AnimationId
             if not shouldPlay[id] then
