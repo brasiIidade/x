@@ -1007,7 +1007,7 @@ end)
             local function buildWaypoint()
                 local guiRef = (gethui and gethui()) or cg
                 local screen = Instance.new("ScreenGui")
-                screen.Name, screen.ResetOnSpawn, screen.IgnoreGuiInset = "_ui", false, true
+                screen.Name, screen.ResetOnSpawn, screen.IgnoreGuiInset = ".", false, true
                 screen.ZIndexBehavior, screen.Parent = Enum.ZIndexBehavior.Sibling, guiRef
 
                 local wrap = Instance.new("Frame")
