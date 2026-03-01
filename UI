@@ -3469,26 +3469,16 @@ FarmSection:Toggle({
 
 elseif MapaAtual == "Apex" then
         getgenv().ApexLogic = getgenv().ApexLogic or {}
-        
         getgenv()._ApexSpamMasterConns = getgenv()._ApexSpamMasterConns or {}
         getgenv()._ApexSpamCharConns = getgenv()._ApexSpamCharConns or {}
 
-        local function limparMasterConns()
-            for _, conn in ipairs(getgenv()._ApexSpamMasterConns) do
+        local function limparConns(tabela)
+            for _, conn in ipairs(tabela) do
                 if typeof(conn) == "RBXScriptConnection" and conn.Connected then 
                     conn:Disconnect() 
                 end
             end
-            table.clear(getgenv()._ApexSpamMasterConns)
-        end
-
-        local function limparCharConns()
-            for _, conn in ipairs(getgenv()._ApexSpamCharConns) do
-                if typeof(conn) == "RBXScriptConnection" and conn.Connected then 
-                    conn:Disconnect() 
-                end
-            end
-            table.clear(getgenv()._ApexSpamCharConns)
+            table.clear(tabela)
         end
 
         getgenv().ApexLogic.ToggleSound = function(ativar)
@@ -3497,25 +3487,18 @@ elseif MapaAtual == "Apex" then
             if ativar then
                 if getgenv()._SpamThread then
                     pcall(task.cancel, getgenv()._SpamThread)
-                    getgenv()._SpamThread = nil
                 end
                 
-                limparMasterConns()
-                limparCharConns()
+                limparConns(getgenv()._ApexSpamMasterConns)
+                limparConns(getgenv()._ApexSpamCharConns)
 
                 getgenv()._SpamThread = task.spawn(function()
-                    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+                    local RS = game:GetService("ReplicatedStorage")
+                    local fireClient = RS:WaitForChild("ServerEvents", 5) and RS.ServerEvents:WaitForChild("FireClient", 5)
                     
-                    local serverEvents = ReplicatedStorage:WaitForChild("ServerEvents", 5)
-                    if not serverEvents then 
-                        if getgenv().notificar then getgenv().notificar("Erro: Pasta ServerEvents não encontrada no mapa!", 3, "lucide:alert-triangle") end
+                    if not fireClient then 
+                        if getgenv().notificar then getgenv().notificar("Inválido", 3, "lucide:alert-triangle") end
                         return 
-                    end
-                    
-                    local fireClient = serverEvents:WaitForChild("FireClient", 5)
-                    if not fireClient then
-                        if getgenv().notificar then getgenv().notificar("Erro: Remote FireClient não encontrado!", 3, "lucide:alert-triangle") end
-                        return
                     end
 
                     local sessionToken  = nil
@@ -3528,7 +3511,7 @@ elseif MapaAtual == "Apex" then
                         for _, obj in ipairs(game:GetDescendants()) do
                             if obj:IsA("Sound") and obj.SoundId ~= "" then
                                 table.insert(found, obj)
-                                if #found >= 20 then break end
+                                if #found >= 30 then break end
                             end
                         end
                         soundList = found
@@ -3537,46 +3520,40 @@ elseif MapaAtual == "Apex" then
                     local function findSessionToken()
                         for _, obj in ipairs(getgc(true)) do
                             if type(obj) == "function" and debug.getinfo(obj).name == "PlaySound" then
-                                local value = debug.getupvalue(obj, 2)
-                                if value then return value end
+                                local val = debug.getupvalue(obj, 2)
+                                if val then return val end
                             end
                         end
                         return nil
                     end
 
-                    local function countChildren(object)
-                        local total = 0
-                        for _ in ipairs(object:GetDescendants()) do
-                            total = total + 1
-                            if total > 5 then return total end
-                        end
-                        return total
-                    end
-
                     local function isValidWeapon(tool)
-                        if not tool or tool.Parent ~= LocalPlayer.Character then return false end
-                        return countChildren(tool) > 5
+                        if not tool then return false end
+                        local count = 0
+                        for _ in ipairs(tool:GetDescendants()) do
+                            count = count + 1
+                            if count > 5 then return true end
+                        end
+                        return false
                     end
 
                     local function findWeaponInBag()
                         local bag = LocalPlayer:FindFirstChild("Backpack")
                         if not bag then return nil end
                         for _, item in ipairs(bag:GetChildren()) do
-                            if item:IsA("Tool") and countChildren(item) > 5 then
-                                return item
-                            end
+                            if item:IsA("Tool") and isValidWeapon(item) then return item end
                         end
                         return nil
                     end
 
-                    local function waitForWeaponInChar(name, timeout)
+                    local function waitForWeapon(name)
                         local startTime = tick()
                         repeat
                             task.wait(0.05)
-                            local char      = LocalPlayer.Character
-                            local candidate = char and char:FindFirstChild(name)
-                            if candidate and candidate:IsA("Tool") then return candidate end
-                        until (tick() - startTime) > timeout
+                            local char = LocalPlayer.Character
+                            local tool = char and char:FindFirstChild(name)
+                            if tool and tool:IsA("Tool") then return tool end
+                        until (tick() - startTime) > 3
                         return nil
                     end
 
@@ -3595,7 +3572,7 @@ elseif MapaAtual == "Apex" then
 
                         if targetWeapon.Parent ~= char then
                             humanoid:EquipTool(targetWeapon)
-                            if not waitForWeaponInChar(targetWeapon.Name, 3) then return false end
+                            if not waitForWeapon(targetWeapon.Name) then return false end
                         end
                         
                         task.wait(1)
@@ -3616,36 +3593,30 @@ elseif MapaAtual == "Apex" then
 
                         if secondWeapon then
                             humanoid:EquipTool(secondWeapon)
-                            if waitForWeaponInChar(secondWeapon.Name, 3) then task.wait(0.5) end
+                            if waitForWeapon(secondWeapon.Name) then task.wait(0.5) end
                         else
                             humanoid:UnequipTools()
                             task.wait(0.5)
                         end
 
                         humanoid:EquipTool(targetWeapon)
-                        if not waitForWeaponInChar(targetWeapon.Name, 3) then return false end
+                        if not waitForWeapon(targetWeapon.Name) then return false end
+                        
+                        equippedTool = targetWeapon
                         task.wait(0.5)
-
                         isReadyToSpam = true
                         return true
                     end
 
                     local function watchCharacter(char)
-                        limparCharConns()
-                        equippedTool = nil
+                        limparConns(getgenv()._ApexSpamCharConns)
                         isReadyToSpam = false
                         sessionToken = nil
                         if not char then return end
 
                         local function checkEquipped()
                             local tool = char:FindFirstChildOfClass("Tool")
-                            if isValidWeapon(tool) then
-                                if equippedTool ~= tool then
-                                    equippedTool = tool
-                                end
-                            else
-                                equippedTool = nil
-                            end
+                            equippedTool = isValidWeapon(tool) and tool or nil
                         end
 
                         table.insert(getgenv()._ApexSpamCharConns, char.ChildAdded:Connect(function(child)
@@ -3659,10 +3630,7 @@ elseif MapaAtual == "Apex" then
                         checkEquipped()
                     end
 
-                    table.insert(getgenv()._ApexSpamMasterConns, LocalPlayer.CharacterAdded:Connect(function(char)
-                        watchCharacter(char)
-                    end))
-
+                    table.insert(getgenv()._ApexSpamMasterConns, LocalPlayer.CharacterAdded:Connect(watchCharacter))
                     if LocalPlayer.Character then watchCharacter(LocalPlayer.Character) end
 
                     task.spawn(function()
@@ -3689,15 +3657,12 @@ elseif MapaAtual == "Apex" then
                             if sound and sound.Parent then
                                 local originalVolume = sound.Volume
                                 sound.Volume = 10
-                                pcall(function()
-                                    fireClient:FireServer(sessionToken, "PlaySound", sound, nil)
-                                end)
+                                pcall(fireClient.FireServer, fireClient, sessionToken, "PlaySound", sound, nil)
                                 sound.Volume = originalVolume
                             end
 
                             if i % 10 == 0 then task.wait() end
                         end
-
                         task.wait(0.1)
                     end
                 end)
@@ -3706,13 +3671,13 @@ elseif MapaAtual == "Apex" then
                     pcall(task.cancel, getgenv()._SpamThread)
                     getgenv()._SpamThread = nil
                 end
-                limparMasterConns()
-                limparCharConns()
+                limparConns(getgenv()._ApexSpamMasterConns)
+                limparConns(getgenv()._ApexSpamCharConns)
             end
         end
 
         local ApexTab = criartab("Apex", "https://tr.rbxcdn.com/180DAY-9b65f927dea36f98c1a720694fd00fd3/768/432/Image/Webp/noFilter")
-        local TrollTab = criarsection(ApexTab, "Troll", "Funções de troll", "rbxassetid://77356028565501", true)
+        local TrollTab = criarsection(ApexTab, "Troll", "Funções de troll", "https://pngfre.com/wp-content/uploads/1000117874.png", true)
 
         TrollTab:Toggle({
             Title = "Spammar sons",
@@ -3724,9 +3689,10 @@ elseif MapaAtual == "Apex" then
                     getgenv().ApexLogic.ToggleSound(v) 
                 else
                     if getgenv().notificar then
-                        getgenv().notificar("Erro: Backend do Apex não carregado", 3, "lucide:alert-triangle")
+                        getgenv().notificar("Erro", 3, "lucide:alert-triangle")
                     end
                 end
             end
         })
     end
+end
