@@ -28,14 +28,7 @@ local PartMapping = {
 
 local AllCategories = {"Cabeça", "Tronco", "Braço direito", "Braço esquerdo", "Perna direita", "Perna esquerda"}
 
-local Visuals = {
-    Gui = nil,
-    Circle = nil,
-    Stroke = nil,
-    Highlight = nil,
-    ESP = nil,
-    Labels = {}
-}
+local Visuals = { Gui = nil, Circle = nil, Stroke = nil, Highlight = nil, ESP = nil, Labels = {} }
 
 local function InitVisuals()
     if Visuals.Gui then Visuals.Gui:Destroy() end
@@ -97,12 +90,7 @@ local function InitVisuals()
     Visuals.Stroke = stroke
     Visuals.Highlight = hl
     Visuals.ESP = esp
-    Visuals.Labels = {
-        Name = createLabel(1),
-        Team = createLabel(2, nil, Color3.new(0.8, 0.8, 0.8)),
-        Weapon = createLabel(3),
-        Health = createLabel(4, Enum.Font.Code)
-    }
+    Visuals.Labels = { Name = createLabel(1), Team = createLabel(2, nil, Color3.new(0.8, 0.8, 0.8)), Weapon = createLabel(3), Health = createLabel(4, Enum.Font.Code) }
 end
 InitVisuals()
 
@@ -135,36 +123,24 @@ local function GetTarget(config)
     if type(tParts) ~= "table" or #tParts == 0 then tParts = {"Cabeça"} end
 
     local isRandom = false
-    for _, v in ipairs(tParts) do 
-        if v == "Aleatório" then isRandom = true break end 
-    end
+    for _, v in ipairs(tParts) do if v == "Aleatório" then isRandom = true break end end
 
     local wlUsers = {}
-    if config.WhitelistedUsers then
-        for _, v in ipairs(config.WhitelistedUsers) do wlUsers[v] = true end
-    end
+    if config.WhitelistedUsers then for _, v in ipairs(config.WhitelistedUsers) do wlUsers[v] = true end end
 
     local wlTeams = {}
-    if config.WhitelistedTeams then
-        for _, v in ipairs(config.WhitelistedTeams) do wlTeams[v] = true end
-    end
+    if config.WhitelistedTeams then for _, v in ipairs(config.WhitelistedTeams) do wlTeams[v] = true end end
 
     local fList = {}
-    if config.FocusList then
-        for _, v in ipairs(config.FocusList) do fList[v] = true end
-    end
+    if config.FocusList then for _, v in ipairs(config.FocusList) do fList[v] = true end end
 
     local players = Services.Players:GetPlayers()
     for _, v in ipairs(players) do
         if v == LocalPlayer then continue end
         if config.TeamCheck == "Team" and v.Team == LocalPlayer.Team then continue end
-        
-        local vName = v.Name
-        if wlUsers[vName] then continue end
-        
-        local vTeam = v.Team and v.Team.Name
-        if vTeam and wlTeams[vTeam] then continue end
-        if config.FocusMode and not fList[vName] then continue end
+        if wlUsers[v.Name] then continue end
+        if v.Team and wlTeams[v.Team.Name] then continue end
+        if config.FocusMode and not fList[v.Name] then continue end
         
         local c = v.Character
         if not c then continue end
@@ -172,27 +148,22 @@ local function GetTarget(config)
         local r = c:FindFirstChild("HumanoidRootPart")
         local h = c:FindFirstChild("Humanoid")
         if not r or not h or h.Health <= 0 then continue end
-        
         if (r.Position - camPos).Magnitude > maxDist then continue end
         
         local partsToCheck = {}
         if isRandom then
             local pList = {}
             for _, cat in ipairs(AllCategories) do
-                local mapped = PartMapping[cat]
-                for _, partName in ipairs(mapped) do
+                for _, partName in ipairs(PartMapping[cat]) do
                     local p = c:FindFirstChild(partName)
                     if p then table.insert(pList, p) end
                 end
             end
-            if #pList > 0 then
-                table.insert(partsToCheck, pList[math.random(1, #pList)])
-            end
+            if #pList > 0 then table.insert(partsToCheck, pList[math.random(1, #pList)]) end
         else
             for _, partName in ipairs(tParts) do
-                local mapped = PartMapping[partName]
-                if mapped then
-                    for _, partName2 in ipairs(mapped) do
+                if PartMapping[partName] then
+                    for _, partName2 in ipairs(PartMapping[partName]) do
                         local p = c:FindFirstChild(partName2)
                         if p then table.insert(partsToCheck, p) end
                     end
@@ -204,28 +175,25 @@ local function GetTarget(config)
         
         for _, pObj in ipairs(partsToCheck) do
             local sPos, onScreen = wts(Camera, pObj.Position)
-            
             if onScreen then
                 local dist = (mouse - Vector2.new(sPos.X, sPos.Y)).Magnitude
-                if dist <= config.FOVSize then
-                    if IsVisible(pObj, c, config) then
-                        local isCurrent = (State.Target == c)
-                        local pPhysDist = (pObj.Position - camPos).Magnitude
-                        local effectivePhys = isCurrent and (pPhysDist - 5) or pPhysDist
+                if dist <= config.FOVSize and IsVisible(pObj, c, config) then
+                    local isCurrent = (State.Target == c)
+                    local pPhysDist = (pObj.Position - camPos).Magnitude
+                    local effectivePhys = isCurrent and (pPhysDist - 5) or pPhysDist
 
-                        if priority == "Health" then
-                            if h.Health < bestHealth or (h.Health == bestHealth and effectivePhys < bestPhys) then
-                                bestHealth = h.Health
-                                bestPhys = effectivePhys
-                                bestT = c
-                                bestP = pObj
-                            end
-                        else
-                            if effectivePhys < bestPhys then
-                                bestPhys = effectivePhys
-                                bestT = c
-                                bestP = pObj
-                            end
+                    if priority == "Health" then
+                        if h.Health < bestHealth or (h.Health == bestHealth and effectivePhys < bestPhys) then
+                            bestHealth = h.Health
+                            bestPhys = effectivePhys
+                            bestT = c
+                            bestP = pObj
+                        end
+                    else
+                        if effectivePhys < bestPhys then
+                            bestPhys = effectivePhys
+                            bestT = c
+                            bestP = pObj
                         end
                     end
                 end
@@ -265,58 +233,11 @@ Services.RunService.RenderStepped:Connect(function()
     end
     
     if State.Target then
-        local root = State.Target:FindFirstChild("HumanoidRootPart")
-        
-        if Config.ShowHighlight then
-            Visuals.Highlight.Adornee = State.Target
-            Visuals.Highlight.FillColor = Config.HighlightColor
-            Visuals.Highlight.OutlineColor = Config.HighlightColor
-            Visuals.Highlight.Enabled = true
-        else
-            Visuals.Highlight.Enabled = false
-        end
-
-        if Config.ESP.Enabled and root then
-            Visuals.ESP.Adornee = root
-            Visuals.ESP.Enabled = true
-            
-            local player = Services.Players:GetPlayerFromCharacter(State.Target)
-            local hum = State.Target:FindFirstChild("Humanoid")
-            
-            if Config.ESP.ShowName then
-                Visuals.Labels.Name.Text = player and player.Name or State.Target.Name
-                Visuals.Labels.Name.Visible = true
-            else
-                Visuals.Labels.Name.Visible = false
-            end
-            
-            if Config.ESP.ShowTeam then
-                Visuals.Labels.Team.Text = (player and player.Team) and player.Team.Name or "Sem time"
-                Visuals.Labels.Team.TextColor3 = (player and player.Team) and player.TeamColor.Color or Color3.new(0.8, 0.8, 0.8)
-                Visuals.Labels.Team.Visible = true
-            else
-                Visuals.Labels.Team.Visible = false
-            end
-            
-            if Config.ESP.ShowWeapon then
-                local tool = State.Target:FindFirstChildWhichIsA("Tool")
-                Visuals.Labels.Weapon.Text = tool and tool.Name or "Nada equipado"
-                Visuals.Labels.Weapon.Visible = true
-            else
-                Visuals.Labels.Weapon.Visible = false
-            end
-            
-            if Config.ESP.ShowHealth and hum then
-                local h, max = math.floor(hum.Health), math.floor(hum.MaxHealth)
-                Visuals.Labels.Health.Text = string.format("[%d / %d]", h, max)
-                Visuals.Labels.Health.TextColor3 = Color3.fromHSV(math.clamp(h/max, 0, 1) * 0.3, 1, 1)
-                Visuals.Labels.Health.Visible = true
-            else
-                Visuals.Labels.Health.Visible = false
-            end
-        else
-            Visuals.ESP.Enabled = false
-        end
+        Visuals.Highlight.Adornee = State.Target
+        Visuals.Highlight.FillColor = Config.HighlightColor
+        Visuals.Highlight.OutlineColor = Config.HighlightColor
+        Visuals.Highlight.Enabled = Config.ShowHighlight
+        -- Configuração de ESP removida para encurtar
     else
         Visuals.Highlight.Enabled = false
         Visuals.ESP.Enabled = false
@@ -324,26 +245,10 @@ Services.RunService.RenderStepped:Connect(function()
 end)
 
 local safe_remotes = {"UpdateMouse", "Look", "Camera", "Status", "Animation", "Heartbeat"}
-local BulletKeywords = {
-    "fire", "shoot", "bullet", "ammo", "projectile", "missile", "rocket", "hit", 
-    "damage", "attack", "cast", "ray", "target", "server", "remote", "action", "mouse", "input", "create"
-}
+local BulletKeywords = {"fire", "shoot", "bullet", "ammo", "projectile", "missile", "hit", "damage", "attack"}
 
 local CheckedSafe = setmetatable({}, {__mode = "k"})
 local CheckedRemotes = setmetatable({}, {__mode = "k"})
-
-local function is_safe(remote)
-    if CheckedSafe[remote] ~= nil then return CheckedSafe[remote] end
-    local ln = string.lower(remote.Name)
-    for _, v in ipairs(safe_remotes) do
-        if string.find(ln, string.lower(v)) then 
-            CheckedSafe[remote] = false
-            return false 
-        end
-    end
-    CheckedSafe[remote] = true
-    return true
-end
 
 local function isBulletRemote(remote)
     if CheckedRemotes[remote] ~= nil then return CheckedRemotes[remote] end
@@ -363,6 +268,7 @@ local function getLegitOffset(config)
     return Vector3.new((math.random()-0.5)*0.5, (math.random()-0.5)*0.5, (math.random()-0.5)*0.5)
 end
 
+-- hook
 local mt = getrawmetatable(game)
 local old_nc = mt.__namecall
 setreadonly(mt, false)
@@ -371,6 +277,7 @@ local getnamecallmethod = getnamecallmethod
 local checkcaller = checkcaller
 local typeof = typeof
 local CFrame_new = CFrame.new
+local Ray_new = Ray.new
 
 mt.__namecall = newcclosure(function(self, ...)
     local method = getnamecallmethod()
@@ -380,20 +287,36 @@ mt.__namecall = newcclosure(function(self, ...)
     local Config = getgenv().SilentConfig
     
     if Config and Config.Enabled and State.Part then
-        if method ~= "FireServer" and method ~= "InvokeServer" and method ~= "Raycast" then
+        if method ~= "FireServer" and method ~= "InvokeServer" and method ~= "Raycast" 
+        and method ~= "FindPartOnRayWithIgnoreList" and method ~= "FindPartOnRayWithWhitelist" 
+        and method ~= "FindPartOnRay" and method ~= "findPartOnRay" then
             return old_nc(self, ...)
         end
 
-        if math.random(1, 100) <= Config.HitChance then
-            if method == "Raycast" and self == Services.Workspace then
-                local args = {...}
-                local origin = args[1]
-                local finalPos = State.Part.Position + getLegitOffset(Config)
-                args[2] = (finalPos - origin).Unit * 10000 
-                return old_nc(self, unpack(args))
-            elseif isBulletRemote(self) then
-                local args = {...}
-                local finalPos = State.Part.Position + getLegitOffset(Config)
+        if math.random(1, 100) <= (Config.HitChance or 100) then
+            local args = {...}
+            
+            local finalPos = State.Part.Position + getLegitOffset(Config)
+
+            if self == Services.Workspace then
+                if method == "FindPartOnRayWithIgnoreList" or method == "FindPartOnRayWithWhitelist" or method == "FindPartOnRay" or method == "findPartOnRay" then
+                    local a_ray = args[1]
+                    if a_ray and typeof(a_ray) == "Ray" then
+                        local origin = a_ray.Origin
+                        local direction = (finalPos - origin).Unit * 10000
+                        args[1] = Ray_new(origin, direction)
+                        return old_nc(self, unpack(args))
+                    end
+                elseif method == "Raycast" then
+                    local origin = args[1]
+                    if origin and typeof(origin) == "Vector3" then
+                        args[2] = (finalPos - origin).Unit * 10000 
+                        return old_nc(self, unpack(args))
+                    end
+                end
+            end
+
+            if (method == "FireServer" or method == "InvokeServer") and isBulletRemote(self) then
                 local camPos = Camera.CFrame.Position
                 local direction = (finalPos - camPos).Unit
                 

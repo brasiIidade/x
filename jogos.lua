@@ -24,12 +24,12 @@ local Mapas = {
     [14511049] = "Delta",
     [16150352] = "Christian",
     [129890257340707] = "Soucre",
-    [134858056613772] = "NovaEra"
+    [134858056613772] = "NovaEra",
+    [2069320852] = "Apex"
 }
 
 local MapaAtual = Mapas[game.PlaceId]
 
--- Só executa o código se o mapa estiver na lista
 if MapaAtual then
 
     if MapaAtual == "Tevez" then
@@ -925,6 +925,89 @@ end)
                 end
             end
         end)
+    elseif MapaAtual == "Apex" then
+        -- [[ APEX ]] --
+        local ApexLogic = { SpamAtivo = false }
+        
+        env.ApexLogic = ApexLogic
+        getgenv().ApexLogic = ApexLogic
 
-    end
-end
+        local serverEvents = rep:WaitForChild("ServerEvents", 3)
+        local remote = serverEvents and serverEvents:WaitForChild("FireClient", 3)
+        
+        local token = nil
+        local listaSons = {}
+
+        local function atualizarSons()
+            local novosSons = {}
+            for _, v in pairs(game:GetDescendants()) do
+                if v:IsA("Sound") and v.SoundId ~= "" then
+                    table.insert(novosSons, v)
+                end
+            end
+            
+            local limitada = {}
+            for i = 1, math.min(100, #novosSons) do
+                limitada[i] = novosSons[i]
+            end
+            listaSons = limitada
+        end
+
+        local function buscarToken()
+            for _, v in pairs(getgc(true)) do
+                if type(v) == "function" and debug.getinfo(v).name == "PlaySound" then
+                    local t = debug.getupvalue(v, 2)
+                    if t then return t end
+                end
+            end
+            return nil
+        end
+
+        function ApexLogic.ToggleSound(state)
+            ApexLogic.SpamAtivo = state
+            
+            if state then
+                atualizarSons()
+                if not token then token = buscarToken() end
+                
+                task.spawn(function()
+                    while ApexLogic.SpamAtivo do
+                        task.wait(30)
+                        if ApexLogic.SpamAtivo then atualizarSons() end
+                    end
+                end)
+
+                task.spawn(function()
+                    while ApexLogic.SpamAtivo do
+                        local char = lp.Character 
+                        local tool = char and char:FindFirstChildOfClass("Tool")
+                        
+                        if not tool or tool.Parent ~= char then
+                            task.wait(0.2)
+                            if not token then token = buscarToken() end
+                            continue
+                        end
+
+                        if remote then
+                            for i = 1, #listaSons do
+                                if not ApexLogic.SpamAtivo or not tool or tool.Parent ~= char then
+                                    break
+                                end
+
+                                local som = listaSons[i]
+                                if som and som.Parent then
+                                    pcall(function()
+                                        remote:FireServer(token, "PlaySound", som, nil)
+                                    end)
+                                end
+                                if i % 100 == 0 then
+                                    rs.Heartbeat:Wait() 
+                                end
+                            end
+                        end
+                        task.wait(0.1)
+                    end
+                end)
+            end
+        end
+    end 

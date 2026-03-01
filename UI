@@ -3043,7 +3043,8 @@ local Mapas = {
     [14511049] = "Delta",
     [16150352] = "Christian",
     [129890257340707] = "Soucre",
-    [134858056613772] = "NovaEra"
+    [134858056613772] = "NovaEra",
+    [2069320852] = "Apex"
 }
 
 local MapaAtual = Mapas[game.PlaceId]
@@ -3489,6 +3490,25 @@ FarmSection:Toggle({
             getgenv().NovaEraLogic.Toggle(v) 
         end
     end
-})
-end
+})    
+    elseif MapaAtual == "Apex" then
+        local ApexTab = criartab("Apex", "https://tr.rbxcdn.com/180DAY-9b65f927dea36f98c1a720694fd00fd3/768/432/Image/Webp/noFilter")
+        local TrollTab = criarsection(ApexTab, "Troll", "Funções de troll", "rbxassetid://77356028565501", true)
+
+        TrollTab:Toggle({
+            Title = "Spammar sons",
+            Desc = cor({"Precisa", "#00FF00"}, {" de uma arma."}, {" Esses sons tocam para todos.", "#FF0000"}),
+            Icon = "lucide:audio-lines",
+            Value = false,
+            Callback = function(v)
+                if getgenv().ApexLogic and getgenv().ApexLogic.ToggleSound then 
+                    getgenv().ApexLogic.ToggleSound(v) 
+                else
+                    if env and env.notificar then
+                        env.notificar("Erro", 3, "lucide:alert-triangle")
+                    end
+                end
+            end
+        })
+    end
 end

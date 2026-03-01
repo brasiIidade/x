@@ -1,3 +1,15 @@
+if game.PlaceId == 2069320852 then
+    local oldFireServer
+    oldFireServer = hookfunction(Instance.new("RemoteEvent").FireServer, function(remote, ...)
+        local args = {...}
+        if remote.Name == "ClientKick" and args[1] == "HitBox" then
+            return
+        end
+        return oldFireServer(remote, ...)
+    end)
+end
+
+-- backend
 local cr = cloneref or function(o) return o end
 local plrs = cr(game:GetService("Players"))
 local run = cr(game:GetService("RunService"))
@@ -154,6 +166,7 @@ end)
 
 plrs.PlayerRemoving:Connect(limpa)
 
+-- ESP
 env.espConns = env.espConns or {}
 env.espStore = env.espStore or {}
 env.espHold = env.espHold or nil
