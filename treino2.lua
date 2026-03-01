@@ -317,6 +317,7 @@ end
 
 
 -- [[ JJs ]] --
+
 env.JJs = env.JJs or {}
 _G.JJs = env.JJs 
 
@@ -408,19 +409,40 @@ end
 
 local function sc(m)
     local s = tostring(m)
-    if tcs.ChatVersion == Enum.ChatVersion.TextChatService then
-        local c = tcs:FindFirstChild("TextChannels")
-        local tgt = c and c:FindFirstChild("RBXGeneral")
-        if tgt then
-            pcall(function() tgt:SendAsync(s) end)
-            return
-        end
+    local textBox = nil
+    local coreGui = game:GetService("CoreGui")
+    local playerGui = lp:FindFirstChild("PlayerGui")
+
+    if coreGui:FindFirstChild("ExperienceChat") then
+        textBox = coreGui.ExperienceChat:FindFirstChildWhichIsA("TextBox", true)
     end
-    
-    local ev = rep:FindFirstChild("DefaultChatSystemChatEvents")
-    local req = ev and ev:FindFirstChild("SayMessageRequest")
-    if req then
-        pcall(function() req:FireServer(s, "All") end)
+
+    if not textBox and playerGui and playerGui:FindFirstChild("Chat") then
+        textBox = playerGui.Chat:FindFirstChild("ChatBar", true)
+    end
+
+    if textBox then
+        pcall(function()
+            textBox:CaptureFocus()
+            task.wait(0.02)
+            textBox.Text = s
+            task.wait(0.02)
+            textBox:ReleaseFocus(true)
+        end)
+    else
+        if tcs.ChatVersion == Enum.ChatVersion.TextChatService then
+            local c = tcs:FindFirstChild("TextChannels")
+            local tgt = c and c:FindFirstChild("RBXGeneral")
+            if tgt then
+                pcall(function() tgt:SendAsync(s) end)
+            end
+        else
+            local ev = rep:FindFirstChild("DefaultChatSystemChatEvents")
+            local req = ev and ev:FindFirstChild("SayMessageRequest")
+            if req then
+                pcall(function() req:FireServer(s, "All") end)
+            end
+        end
     end
 end
 
