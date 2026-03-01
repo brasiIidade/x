@@ -351,6 +351,49 @@ local t = {[2]="vinte",[3]="trinta",[4]="quarenta",[5]="cinquenta",[6]="sessenta
 local h = {[1]="cento",[2]="duzentos",[3]="trezentos",[4]="quatrocentos",[5]="quinhentos",[6]="seiscentos",[7]="setecentos",[8]="oitocentos",[9]="novecentos"}
 local ac = {["á"]="Á",["à"]="À",["ã"]="Ã",["â"]="Â",["é"]="É",["ê"]="Ê",["í"]="Í",["ó"]="Ó",["ô"]="Ô",["õ"]="Õ",["ú"]="Ú",["ç"]="Ç"}
 
+-- RemoteChat (baseado no código que você passou)
+local RemoteChat = {}
+local CurrentChannel
+local InputBar = tcs:FindFirstChildOfClass("ChatInputBarConfiguration")
+
+local ChatMethods = {
+    [Enum.ChatVersion.LegacyChatService] = function(Message)
+        local ChatUI = lp.PlayerGui:FindFirstChild("Chat")
+        if CurrentChannel then
+            CurrentChannel:SendAsync(Message)
+        elseif ChatUI then
+            local ChatBar = ChatUI:FindFirstChild("Frame", true) and
+                ChatUI.Frame:FindFirstChild("ChatBarParentFrame", true) and
+                ChatUI.Frame.ChatBarParentFrame:FindFirstChild("ChatBar", true)
+            if ChatBar then
+                ChatBar:CaptureFocus()
+                ChatBar.Text = Message
+                ChatBar:ReleaseFocus(true)
+            end
+        end
+    end,
+    [Enum.ChatVersion.TextChatService] = function(Message)
+        if CurrentChannel then
+            CurrentChannel:SendAsync(Message)
+        end
+    end,
+}
+
+function RemoteChat:Send(Message)
+    pcall(ChatMethods[tcs.ChatVersion], Message)
+end
+
+if InputBar then
+    if typeof(InputBar.TargetTextChannel) == "Instance" and InputBar.TargetTextChannel:IsA("TextChannel") then
+        CurrentChannel = InputBar.TargetTextChannel
+    end
+    InputBar.Changed:Connect(function(Prop)
+        if Prop == "TargetTextChannel" and typeof(InputBar.TargetTextChannel) == "Instance" and InputBar.TargetTextChannel:IsA("TextChannel") then
+            CurrentChannel = InputBar.TargetTextChannel
+        end
+    end)
+end
+
 local function up(s)
     local r = ""
     for _, c in utf8.codes(s) do
@@ -407,33 +450,7 @@ local function nt(n)
 end
 
 local function sc(m)
-    local s = tostring(m)
-    if tcs.ChatVersion == Enum.ChatVersion.TextChatService then
-        local c = tcs:FindFirstChild("TextChannels")
-        local tgt = c and c:FindFirstChild("RBXGeneral")
-        if tgt then
-            pcall(function() tgt:SendAsync(s) end)
-            return
-        end
-    end
-    
-    local ev = rep:FindFirstChild("DefaultChatSystemChatEvents")
-    local req = ev and ev:FindFirstChild("SayMessageRequest")
-    if req then
-        pcall(function() req:FireServer(s, "All") end)
-    end
-end
-
-local function scSpecial(m)
-    local s = tostring(m)
-    if tcs.ChatVersion == Enum.ChatVersion.TextChatService then
-        local c = tcs:FindFirstChild("TextChannels")
-        local tgt = c and c:FindFirstChild("RBXGeneral")
-        if tgt then
-            pcall(function() tgt:SendAsync(s) end)
-            return
-        end
-    end
+    RemoteChat:Send(tostring(m))
 end
 
 local function gc()
@@ -529,7 +546,8 @@ jjs.Start = function()
             local fn = c.SpacingEnabled and (txt .. " " .. sf) or (txt .. sf)
             
             if isSpecialMap then
-                scSpecial(fn)
+                -- Usa RemoteChat que dispara o SendingMessage do jogo naturalmente
+                sc(fn)
                 if c.JumpEnabled then aj() end
             elseif currentMode == "JJ (Delta)" then
                 local rm = rep:FindFirstChild("Remotes") and rep.Remotes:FindFirstChild("Polichinelos")
