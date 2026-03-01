@@ -939,70 +939,45 @@ end)
         end
 
         -- bala infinita
-    local function getAmmo()
-    local bp   = lp:FindFirstChild("Backpack")
-    local char = lp.Character
-
-    if bp then
-        for _, tool in ipairs(bp:GetChildren()) do
-            if tool:IsA("Tool") then
-                local a = tool:FindFirstChild("Ammo")
-                if a and a:IsA("DoubleConstrainedValue") then return a end
-            end
-        end
-    end
-
-    if char then
-        local tool = char:FindFirstChildOfClass("Tool")
-        if tool then
-            local a = tool:FindFirstChild("Ammo")
-            if a and a:IsA("DoubleConstrainedValue") then return a end
-        end
-    end
-
-    return nil
-end
-
-getgenv().ApexLogic.ToggleInfiniteAmmo = function(ativar)
+    getgenv().ApexLogic.ToggleInfiniteAmmo = function(ativar)
     getgenv().InfiniteAmmoEnabled = ativar
 
-    if getgenv()._AmmoNewIndex then
-        getgenv()._AmmoNewIndex = nil
+    if not ativar then
+        if getgenv().InfiniteAmmoConnection then
+            getgenv().InfiniteAmmoConnection:Disconnect()
+            getgenv().InfiniteAmmoConnection = nil
+        end
+        return
     end
-    if getgenv()._AmmoHookConn then
-        getgenv()._AmmoHookConn:Disconnect()
-        getgenv()._AmmoHookConn = nil
+
+    if getgenv().InfiniteAmmoConnection then
+        getgenv().InfiniteAmmoConnection:Disconnect()
     end
 
-    if not ativar then return end
+    getgenv().InfiniteAmmoConnection = RunService.RenderStepped:Connect(function()
+        if not getgenv().InfiniteAmmoEnabled then
+            getgenv().InfiniteAmmoConnection:Disconnect()
+            getgenv().InfiniteAmmoConnection = nil
+            return
+        end
 
-    if not getgenv()._AmmoNIInstalled then
-        getgenv()._AmmoNIInstalled = true
+        local bp   = lp:FindFirstChild("Backpack")
+        local char = lp.Character
 
-        local oldNI = hookmetamethod(game, "__newindex", newcclosure(function(self, k, v)
-            if getgenv().InfiniteAmmoEnabled then
-                if typeof(self) == "Instance"
-                    and self:IsA("DoubleConstrainedValue")
-                    and self.Name == "Ammo"
-                    and k == "Value"
-                then
-                    return oldNI(self, k, self.MaxValue)
+        local function forcar(parent)
+            if not parent then return end
+            for _, tool in ipairs(parent:GetChildren()) do
+                if tool:IsA("Tool") then
+                    local ammo = tool:FindFirstChild("Ammo")
+                    if ammo and ammo:IsA("DoubleConstrainedValue") then
+                        ammo.Value = ammo.MaxValue
+                    end
                 end
             end
-            return oldNI(self, k, v)
-        end))
-
-        getgenv()._AmmoOldNI = oldNI
-    end
-
-    task.defer(function()
-        local ammo = getAmmo()
-        if ammo then
-            pcall(function()
-                ammo.MinValue = ammo.MaxValue
-                ammo.Value    = ammo.MaxValue
-            end)
         end
+
+        forcar(bp)
+        if char then forcar(char) end
     end)
 end
 
