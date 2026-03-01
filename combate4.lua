@@ -1,19 +1,18 @@
+-- Apex
 if game.PlaceId == 2069320852 then
     local oldFireServer
     oldFireServer = hookfunction(Instance.new("RemoteEvent").FireServer, function(remote, ...)
         if remote.Name ~= "ClientKick" then
             return oldFireServer(remote, ...)
         end
-
         if select(1, ...) == "HitBox" then
             return
         end
-
         return oldFireServer(remote, ...)
     end)
 end
 
--- servicos
+=-- servicos
 local cr        = cloneref or function(o) return o end
 local Players   = cr(game:GetService("Players"))
 local RunService = cr(game:GetService("RunService"))
@@ -22,7 +21,9 @@ local HttpService = cr(game:GetService("HttpService"))
 
 local LocalPlayer = Players.LocalPlayer
 
-
+-- ─────────────────────────────────────────────
+-- Utilitários internos
+-- ─────────────────────────────────────────────
 local function safeGui()
     local ok, hui = pcall(gethui)
     return (ok and hui) and hui or CoreGui
@@ -41,10 +42,11 @@ local function isShielded(character)
     return false
 end
 
-
+-- ─────────────────────────────────────────────
 -- HITBOX
-local hitboxSaved = {}
-local hitboxLights = {}
+-- ─────────────────────────────────────────────
+local hitboxSaved = {}   -- estado original por jogador
+local hitboxLights = {}  -- highlights por jogador
 
 local function hitboxConfig()
     return getgenv().HitboxConfig
@@ -80,12 +82,8 @@ end
 local function hitboxSaveState(player, root)
     if hitboxSaved[player] then return end
     hitboxSaved[player] = {
-        size        = root.Size,
-        transparency = root.Transparency,
-        shape       = root.Shape,
-        canCollide  = root.CanCollide,
-        material    = root.Material,
-        color       = root.Color,
+        size       = root.Size,
+        canCollide = root.CanCollide,
     }
 end
 
@@ -95,12 +93,8 @@ local function hitboxRestoreState(player)
     local char = player.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
     if root then
-        root.Size        = saved.size
-        root.Transparency = saved.transparency
-        root.Shape       = saved.shape
-        root.CanCollide  = saved.canCollide
-        root.Material    = saved.material
-        root.Color       = saved.color
+        root.Size       = saved.size
+        root.CanCollide = saved.canCollide
     end
     hitboxSaved[player] = nil
 end
@@ -118,15 +112,14 @@ local function hitboxCleanPlayer(player)
 end
 
 local function hitboxApply(player, root, cfg)
-    local teamColor = (player.TeamColor and player.TeamColor.Color) or Color3.new(1, 0, 0)
+    -- Apenas Size e CanCollide são alterados no root
+    -- Shape, Material e Transparency são detectáveis pelo anti-cheat server-side
+    root.Size       = cfg.Size
+    root.CanCollide = false
 
-    root.Size        = cfg.Size
-    root.Transparency = cfg.Transparency
-    root.Shape       = cfg.Shape
-    root.CanCollide  = false
-    root.Material    = Enum.Material.ForceField
-
+    -- Visual apenas via Highlight (client-side, não replicado ao servidor)
     if cfg.Transparency < 1 then
+        local teamColor = (player.TeamColor and player.TeamColor.Color) or Color3.new(1, 0, 0)
         if not hitboxLights[player] then
             local hl = Instance.new("Highlight")
             hl.Name                = HttpService:GenerateGUID(false)
@@ -169,15 +162,18 @@ end)
 
 Players.PlayerRemoving:Connect(hitboxCleanPlayer)
 
-
+-- ─────────────────────────────────────────────
 -- ESP
+-- ─────────────────────────────────────────────
 local env = getgenv()
 
+-- Estado persistente (mantido igual para não quebrar reloads)
 env.espConns = env.espConns or {}
 env.espStore = env.espStore or {}
 env.espHold  = env.espHold  or nil
 
-
+-- Config pública (inicializa só se ainda não existir,
+-- pois a UI pode ter definido antes de carregar o backend)
 env.ESPConfig = env.ESPConfig or {
     Enabled  = false,
     TeamCheck = false,
@@ -223,7 +219,7 @@ local function espAddPlayer(player)
         labels    = {},
     }
 
-    -- hl
+    -- Highlight
     local hl = entry.highlight
     hl.Name                = HttpService:GenerateGUID(false)
     hl.FillColor           = Color3.new(1, 0, 0)
@@ -234,7 +230,7 @@ local function espAddPlayer(player)
     hl.Enabled             = false
     hl.Parent              = container
 
-    -- gui
+    -- BillboardGui
     local bb = entry.billboard
     bb.Name         = HttpService:GenerateGUID(false)
     bb.Size         = UDim2.new(0, 200, 0, 60)
@@ -289,7 +285,7 @@ local function espUpdate()
             continue
         end
 
-        -- chams
+        -- Highlight (chams)
         if cfg.Chams then
             entry.highlight.Adornee  = char
             entry.highlight.FillColor = (player.TeamColor and player.TeamColor.Color) or Color3.new(1, 0, 0)
@@ -298,13 +294,13 @@ local function espUpdate()
             entry.highlight.Enabled = false
         end
 
-        -- labels
+        -- Billboard labels
         local showBillboard = cfg.Name or cfg.Health or cfg.WeaponN or cfg.Studs
         if showBillboard then
             entry.billboard.Adornee = head
             entry.billboard.Enabled = true
 
-            -- nome
+            -- Nome
             local lblName = entry.labels.name
             if cfg.Name then
                 lblName.Text    = player.Name
@@ -313,7 +309,7 @@ local function espUpdate()
                 lblName.Visible = false
             end
 
-            -- vida
+            -- Vida
             local lblHealth = entry.labels.health
             if cfg.Health then
                 local hp = math.floor(hum.Health)
@@ -324,7 +320,7 @@ local function espUpdate()
                 lblHealth.Visible = false
             end
 
-            -- item
+            -- Item na mão
             local lblWeapon = entry.labels.weapon
             if cfg.WeaponN then
                 local tool = char:FindFirstChildOfClass("Tool")
@@ -334,7 +330,7 @@ local function espUpdate()
                 lblWeapon.Visible = false
             end
 
-            -- dist
+            -- Distância
             local lblStuds = entry.labels.studs
             if cfg.Studs then
                 local dist = lroot and (lroot.Position - root.Position).Magnitude or 0
@@ -349,7 +345,7 @@ local function espUpdate()
     end
 end
 
--- UI
+-- Interface pública usada pela UI
 env.StopESP = function()
     for _, conn in pairs(env.espConns) do conn:Disconnect() end
     table.clear(env.espConns)
