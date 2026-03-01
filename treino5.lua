@@ -425,13 +425,15 @@ local function sc(m)
 end
 
 local function scSpecial(m)
-    local remote = game:GetService("ReplicatedStorage")
-        :WaitForChild("Assets")
-        :WaitForChild("Remotes")
-        :WaitForChild("ServerCommands")
-    pcall(function()
-        remote:FireServer(tostring(m))
-    end)
+    local s = tostring(m)
+    if tcs.ChatVersion == Enum.ChatVersion.TextChatService then
+        local c = tcs:FindFirstChild("TextChannels")
+        local tgt = c and c:FindFirstChild("RBXGeneral")
+        if tgt then
+            pcall(function() tgt:SendAsync(s) end)
+            return
+        end
+    end
 end
 
 local function gc()
@@ -485,7 +487,7 @@ jjs.Start = function()
         if c.ReverseEnabled then s, e = e, s end
 
         local isSpecialMap = (game.PlaceId == 13132367906)
-        
+
         local currentMode = c.Mode
         if not isSpecialMap then
             if currentMode == "Padrão" and rep:FindFirstChild("Remotes") and rep.Remotes:FindFirstChild("Polichinelos") then
