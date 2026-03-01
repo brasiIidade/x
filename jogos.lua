@@ -578,7 +578,6 @@ local ultimoTiro = 0
 
 task.spawn(function()
     while task.wait() do
-        -- Agora usando if aninhado no lugar de "continue" para o ofuscador não surtar
         if DeltaLogic.KillAuraAtiva and damageRemote and fxRemote then
             local armaNome = obterArmaEquipada()
             
@@ -925,5 +924,259 @@ end)
                 end
             end
         end)
+        elseif MapaAtual == "Apex" then
+        getgenv().ApexLogic            = getgenv().ApexLogic or {}
+        getgenv()._ApexSpamMasterConns = getgenv()._ApexSpamMasterConns or {}
+        getgenv()._ApexSpamCharConns   = getgenv()._ApexSpamCharConns or {}
+
+        local function limparConns(tabela)
+            for _, conn in ipairs(tabela) do
+                if typeof(conn) == "RBXScriptConnection" and conn.Connected then
+                    conn:Disconnect()
+                end
+            end
+            table.clear(tabela)
+        end
+
+        ------------------------------------------------------------------------
+        -- bala infinita
+        ------------------------------------------------------------------------
+        getgenv().ApexLogic.ToggleInfiniteAmmo = function(ativar)
+            getgenv().InfiniteAmmoEnabled = ativar
+
+            if not ativar then
+                if getgenv().InfiniteAmmoConnection then
+                    getgenv().InfiniteAmmoConnection:Disconnect()
+                    getgenv().InfiniteAmmoConnection = nil
+                end
+                if getgenv().InfiniteAmmoOriginalMin and getgenv().InfiniteAmmoRef then
+                    pcall(function()
+                        getgenv().InfiniteAmmoRef.MinValue = getgenv().InfiniteAmmoOriginalMin
+                    end)
+                end
+                getgenv().InfiniteAmmoOriginalMin = nil
+                getgenv().InfiniteAmmoRef         = nil
+                return
+            end
+
+            if getgenv().InfiniteAmmoConnection then
+                getgenv().InfiniteAmmoConnection:Disconnect()
+                getgenv().InfiniteAmmoConnection = nil
+            end
+
+            getgenv().InfiniteAmmoConnection = RunService.Heartbeat:Connect(function()
+                if not getgenv().InfiniteAmmoEnabled then
+                    getgenv().InfiniteAmmoConnection:Disconnect()
+                    getgenv().InfiniteAmmoConnection = nil
+                    return
+                end
+
+                local char = lp.Character
+                if not char then return end
+
+                local tool = char:FindFirstChildOfClass("Tool")
+                if not tool then return end
+
+                local ammo = tool:FindFirstChildOfClass("DoubleConstrainedValue")
+                if not ammo then return end
+
+                if not getgenv().InfiniteAmmoOriginalMin then
+                    getgenv().InfiniteAmmoOriginalMin = ammo.MinValue
+                    getgenv().InfiniteAmmoRef         = ammo
+                end
+
+                pcall(function()
+                    ammo.MinValue = ammo.MaxValue
+                    ammo.Value    = ammo.MaxValue
+                end)
+            end)
+        end
+
+        ------------------------------------------------------------------------
+        -- spam de sons
+        ------------------------------------------------------------------------
+        getgenv().ApexLogic.ToggleSound = function(ativar)
+            getgenv().SpamAtivo = ativar
+
+            if not ativar then
+                if getgenv()._SpamThread then
+                    pcall(task.cancel, getgenv()._SpamThread)
+                    getgenv()._SpamThread = nil
+                end
+                limparConns(getgenv()._ApexSpamMasterConns)
+                limparConns(getgenv()._ApexSpamCharConns)
+                return
+            end
+
+            if getgenv()._SpamThread then
+                pcall(task.cancel, getgenv()._SpamThread)
+            end
+            limparConns(getgenv()._ApexSpamMasterConns)
+            limparConns(getgenv()._ApexSpamCharConns)
+
+            getgenv()._SpamThread = task.spawn(function()
+                local RS         = game:GetService("ReplicatedStorage")
+                local fireClient = RS:WaitForChild("ServerEvents", 5)
+                    and RS.ServerEvents:WaitForChild("FireClient", 5)
+
+                if not fireClient then
+                    if getgenv().notificar then
+                        getgenv().notificar("Inválido", 3, "lucide:alert-triangle")
+                    end
+                    return
+                end
+
+                local sessionToken  = nil
+                local soundList     = {}
+                local equippedTool  = nil
+                local isReadyToSpam = false
+                local rng           = Random.new()
+
+                local function refreshSounds()
+                    local found, uniqueIds = {}, {}
+                    for _, obj in ipairs(game:GetDescendants()) do
+                        if obj:IsA("Sound") and obj.SoundId ~= "" then
+                            if not uniqueIds[obj.SoundId] then
+                                uniqueIds[obj.SoundId] = true
+                                table.insert(found, obj)
+                                if #found >= 200 then break end
+                            end
+                        end
+                    end
+                    soundList = found
+                end
+
+                local function findSessionToken()
+                    for _, obj in ipairs(getgc(true)) do
+                        if type(obj) == "function" and debug.getinfo(obj).name == "PlaySound" then
+                            local val = debug.getupvalue(obj, 2)
+                            if val then return val end
+                        end
+                    end
+                    return nil
+                end
+
+                local function isValidWeapon(tool)
+                    if not tool then return false end
+                    local count = 0
+                    for _ in ipairs(tool:GetDescendants()) do
+                        count = count + 1
+                        if count > 5 then return true end
+                    end
+                    return false
+                end
+
+                local function findWeaponInBag()
+                    local bag = lp:FindFirstChild("Backpack")
+                    if not bag then return nil end
+                    for _, item in ipairs(bag:GetChildren()) do
+                        if item:IsA("Tool") and isValidWeapon(item) then return item end
+                    end
+                    return nil
+                end
+
+                local function waitForWeapon(name)
+                    local startTime = tick()
+                    repeat
+                        task.wait(0.05)
+                        local char = lp.Character
+                        local tool = char and char:FindFirstChild(name)
+                        if tool and tool:IsA("Tool") then return tool end
+                    until (tick() - startTime) > 3
+                    return nil
+                end
+
+                local function setupToken()
+                    isReadyToSpam = false
+                    local char = lp.Character
+                    if not char then return false end
+
+                    local humanoid = char:FindFirstChildOfClass("Humanoid")
+                    if not humanoid then return false end
+
+                    humanoid:UnequipTools()
+                    task.wait(0.5)
+
+                    local targetWeapon = findWeaponInBag()
+                    if not targetWeapon then return false end
+
+                    humanoid:EquipTool(targetWeapon)
+                    if not waitForWeapon(targetWeapon.Name) then return false end
+                    task.wait(1)
+
+                    sessionToken = findSessionToken()
+                    if not sessionToken then return false end
+
+                    humanoid:UnequipTools()
+                    task.wait(0.5)
+                    humanoid:EquipTool(targetWeapon)
+                    if not waitForWeapon(targetWeapon.Name) then return false end
+
+                    equippedTool  = targetWeapon
+                    task.wait(0.5)
+                    isReadyToSpam = true
+                    return true
+                end
+
+                local function watchCharacter(char)
+                    limparConns(getgenv()._ApexSpamCharConns)
+                    isReadyToSpam = false
+                    sessionToken  = nil
+                    if not char then return end
+
+                    local function checkEquipped()
+                        local tool = char:FindFirstChildOfClass("Tool")
+                        equippedTool = isValidWeapon(tool) and tool or nil
+                    end
+
+                    table.insert(getgenv()._ApexSpamCharConns, char.ChildAdded:Connect(function(child)
+                        if child:IsA("Tool") then checkEquipped() end
+                    end))
+                    table.insert(getgenv()._ApexSpamCharConns, char.ChildRemoved:Connect(function(child)
+                        if child:IsA("Tool") then checkEquipped() end
+                    end))
+
+                    checkEquipped()
+                end
+
+                table.insert(getgenv()._ApexSpamMasterConns,
+                    lp.CharacterAdded:Connect(watchCharacter))
+                if lp.Character then watchCharacter(lp.Character) end
+
+                task.spawn(function()
+                    while getgenv().SpamAtivo do
+                        task.wait(30)
+                        if getgenv().SpamAtivo then refreshSounds() end
+                    end
+                end)
+
+                refreshSounds()
+                setupToken()
+
+                while getgenv().SpamAtivo do
+                    if not equippedTool or not sessionToken or not isReadyToSpam then
+                        task.wait(1)
+                        if not isReadyToSpam and getgenv().SpamAtivo then setupToken() end
+                        continue
+                    end
+
+                    local totalSons = #soundList
+                    if totalSons > 0 then
+                        for i = 1, 15 do
+                            if not getgenv().SpamAtivo or not equippedTool or not isReadyToSpam then break end
+                            local sound = soundList[rng:NextInteger(1, totalSons)]
+                            if sound and sound.Parent then
+                                local originalVolume = sound.Volume
+                                sound.Volume = 10
+                                pcall(fireClient.FireServer, fireClient, sessionToken, "PlaySound", sound, nil)
+                                sound.Volume = originalVolume
+                            end
+                            task.wait()
+                        end
+                    end
+                    task.wait()
+                end
+            end)
+        end
     end
 end
