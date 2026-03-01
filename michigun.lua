@@ -211,84 +211,6 @@ main:CreateTopbarButton("Discord", "geist:logo-discord", function()
     notificar("Link copiado!", 5, "geist:logo-discord")
 end, 990)
 
---// links
-
-local BaseURL = "https://michigun.xyz/api/raw/"
-local FilePaths = {}
-
-local function DownloadSafe(url, tentativas)
-    tentativas = tentativas or 3
-    local lastResponse
-    
-    for i = 1, tentativas do
-        local success, response = pcall(function()
-            return game:HttpGet(url)
-        end)
-
-        if success and type(response) == "string" and response:sub(1,4) ~= "404:" then
-            return response
-        end
-
-        lastResponse = response
-        task.wait(1)
-    end
-    
-    return nil, lastResponse
-end
-
-local function LoadPathMap()
-    local url = BaseURL .. "path.lua?t=" .. tostring(os.time())
-    local content = DownloadSafe(url, 5)
-
-    if content then
-        local func = loadstring(content)
-        if func then
-            FilePaths = func()
-        end
-    else
-        if notificar then
-            notificar("Erro: não foi possivel carregar.", 5, "lucide:wifi-off")
-        end
-    end
-end
-
-LoadPathMap()
-
-local function ler(key)
-    if not next(FilePaths) then
-        task.wait(1)
-        if not next(FilePaths) then return end
-    end
-
-    local rawName = FilePaths[key]
-    if not rawName then 
-        if notificar then
-            notificar("Erro: '" .. tostring(key) .. "' não encontrado", 3, "lucide:alert-circle")
-        end
-        return 
-    end
-
-    local fileName = rawName:match("^%s*(.-)%s*$")
-    local url = BaseURL .. fileName .. "?t=" .. tostring(os.time())
-    
-    task.spawn(function()
-        local scriptContent = DownloadSafe(url, 3)
-
-        if scriptContent then
-            local func = loadstring(scriptContent)
-            if func then
-                func()
-            end
-        else
-            if notificar then
-                notificar("Falha ao baixar: " .. fileName, 3, "lucide:wifi-off")
-            else
-                warn("Erro: " .. fileName)
-            end
-        end
-    end)
-end
-
 --[[ 
 uso: Title = cor({"Teste", "#FF0000"}, {" arroz"}),
 ]]--
@@ -402,16 +324,71 @@ local Player = criartab("Player", "solar:user-bold", false)
 --// tab "config"
 local Configs = criartab("Configurações", "lucide:settings", false)
 
-if type(ler) == "function" then
-    local scripts = {"combate", "treino", "silent", "player", "jogos"}
-    for _, nome in ipairs(scripts) do
-        task.spawn(function()
-            pcall(ler, nome)
-        end)
+-- load
+local BASE_URL = "https://michigun.xyz/api/raw/"
+local FilePaths = {}
+
+local function download(url, tentativas)
+    for i = 1, tentativas or 3 do
+        local ok, res = pcall(game.HttpGet, game, url)
+        if ok and type(res) == "string" and res:sub(1, 4) ~= "404:" then
+            return res
+        end
+        task.wait(1)
     end
+    return nil
 end
 
---// tab silent
+local function exec(content, nome)
+    local fn, err = loadstring(content)
+    if not fn then
+        warn("Erro ao compilar '" .. nome .. "': " .. tostring(err))
+        return false
+    end
+    local ok, err2 = pcall(fn)
+    if not ok then
+        warn("Erro ao executar '" .. nome .. "': " .. tostring(err2))
+        return false
+    end
+    return true
+end
+
+local function carregarPaths()
+    local content = download(BASE_URL .. "path.lua?t=" .. os.time(), 5)
+    if not content then
+        if notificar then notificar("Falha ao carregar path.lua", 5, "lucide:wifi-off") end
+        return false
+    end
+    local fn = loadstring(content)
+    if fn then FilePaths = fn() end
+    return next(FilePaths) ~= nil
+end
+
+local function ler(key)
+    local nome = FilePaths[key]
+    if not nome then
+        warn("Chave não encontrada: " .. key)
+        return
+    end
+
+    nome = nome:match("^%s*(.-)%s*$")
+    local content = download(BASE_URL .. nome)
+    if not content then
+        if notificar then notificar("Falha ao baixar: " .. nome, 3, "lucide:wifi-off") end
+        return
+    end
+    exec(content, nome)
+end
+
+if not carregarPaths() then return end
+
+local paralelos = { "combate", "treino", "silent", "player", "jogos" }
+for _, nome in ipairs(paralelos) do
+    task.spawn(ler, nome)
+end
+
+
+-- silent
 getgenv().SilentConfig = {
     Enabled = false,
     TeamCheck = "Team",
@@ -1664,7 +1641,6 @@ RecordSection:Button({
 
 
 --// tab JJs
-
 local ETAParagraph = JJs:Paragraph({
     Title = "Status",
     Desc  = "Aguardando...",
@@ -1997,7 +1973,6 @@ ChatGPT:Button({
 })
 
 --// tab F3X
-
 local InfoParagraph
 local InputX, InputY, InputZ
 local ConfigDropdown
@@ -2219,8 +2194,8 @@ task.spawn(function()
     end
 end)
 
---// tab char
 
+--// tab char
 local function GetAvatar()
     return getgenv().Avatar
 end
@@ -3043,7 +3018,8 @@ local Mapas = {
     [14511049] = "Delta",
     [16150352] = "Christian",
     [129890257340707] = "Soucre",
-    [134858056613772] = "NovaEra"
+    [134858056613772] = "NovaEra",
+    [2069320852] = "Apex"
 }
 
 local MapaAtual = Mapas[game.PlaceId]
@@ -3489,6 +3465,225 @@ FarmSection:Toggle({
             getgenv().NovaEraLogic.Toggle(v) 
         end
     end
-})
-end
+})    
+
+elseif MapaAtual == "Apex" then
+        getgenv().ApexLogic = getgenv().ApexLogic or {}
+        getgenv()._ApexSpamMasterConns = getgenv()._ApexSpamMasterConns or {}
+        getgenv()._ApexSpamCharConns = getgenv()._ApexSpamCharConns or {}
+
+        local function limparConns(tabela)
+            for _, conn in ipairs(tabela) do
+                if typeof(conn) == "RBXScriptConnection" and conn.Connected then 
+                    conn:Disconnect() 
+                end
+            end
+            table.clear(tabela)
+        end
+
+        getgenv().ApexLogic.ToggleSound = function(ativar)
+            getgenv().SpamAtivo = ativar
+
+            if ativar then
+                if getgenv()._SpamThread then
+                    pcall(task.cancel, getgenv()._SpamThread)
+                end
+                
+                limparConns(getgenv()._ApexSpamMasterConns)
+                limparConns(getgenv()._ApexSpamCharConns)
+
+                getgenv()._SpamThread = task.spawn(function()
+                    local RS = game:GetService("ReplicatedStorage")
+                    local fireClient = RS:WaitForChild("ServerEvents", 5) and RS.ServerEvents:WaitForChild("FireClient", 5)
+                    
+                    if not fireClient then 
+                        if getgenv().notificar then getgenv().notificar("Inválido", 3, "lucide:alert-triangle") end
+                        return 
+                    end
+
+                    local sessionToken  = nil
+                    local soundList     = {}
+                    local equippedTool  = nil
+                    local isReadyToSpam = false 
+                    local rng = Random.new()
+
+                    local function refreshSounds()
+                        local found = {}
+                        local uniqueIds = {}
+                        for _, obj in ipairs(game:GetDescendants()) do
+                            if obj:IsA("Sound") and obj.SoundId ~= "" then
+                                if not uniqueIds[obj.SoundId] then
+                                    uniqueIds[obj.SoundId] = true
+                                    table.insert(found, obj)
+                                    if #found >= 200 then break end
+                                end
+                            end
+                        end
+                        soundList = found
+                    end
+
+                    local function findSessionToken()
+                        for _, obj in ipairs(getgc(true)) do
+                            if type(obj) == "function" and debug.getinfo(obj).name == "PlaySound" then
+                                local val = debug.getupvalue(obj, 2)
+                                if val then return val end
+                            end
+                        end
+                        return nil
+                    end
+
+                    local function isValidWeapon(tool)
+                        if not tool then return false end
+                        local count = 0
+                        for _ in ipairs(tool:GetDescendants()) do
+                            count = count + 1
+                            if count > 5 then return true end
+                        end
+                        return false
+                    end
+
+                    local function findWeaponInBag()
+                        local bag = LocalPlayer:FindFirstChild("Backpack")
+                        if not bag then return nil end
+                        for _, item in ipairs(bag:GetChildren()) do
+                            if item:IsA("Tool") and isValidWeapon(item) then return item end
+                        end
+                        return nil
+                    end
+
+                    local function waitForWeapon(name)
+                        local startTime = tick()
+                        repeat
+                            task.wait(0.05)
+                            local char = LocalPlayer.Character
+                            local tool = char and char:FindFirstChild(name)
+                            if tool and tool:IsA("Tool") then return tool end
+                        until (tick() - startTime) > 3
+                        return nil
+                    end
+
+                    local function setupToken()
+                        isReadyToSpam = false 
+                        local char = LocalPlayer.Character
+                        if not char then return false end
+
+                        local humanoid = char:FindFirstChildOfClass("Humanoid")
+                        if not humanoid then return false end
+
+                        humanoid:UnequipTools()
+                        task.wait(0.5)
+
+                        local targetWeapon = findWeaponInBag()
+                        
+                        if not targetWeapon then return false end
+
+                        humanoid:EquipTool(targetWeapon)
+                        if not waitForWeapon(targetWeapon.Name) then return false end
+                        
+                        task.wait(1)
+
+                        sessionToken = findSessionToken()
+                        if not sessionToken then return false end
+
+                        humanoid:UnequipTools()
+                        task.wait(0.5)
+
+                        humanoid:EquipTool(targetWeapon)
+                        if not waitForWeapon(targetWeapon.Name) then return false end
+                        
+                        equippedTool = targetWeapon
+                        task.wait(0.5)
+                        isReadyToSpam = true
+                        return true
+                    end
+
+                    local function watchCharacter(char)
+                        limparConns(getgenv()._ApexSpamCharConns)
+                        isReadyToSpam = false
+                        sessionToken = nil
+                        if not char then return end
+
+                        local function checkEquipped()
+                            local tool = char:FindFirstChildOfClass("Tool")
+                            equippedTool = isValidWeapon(tool) and tool or nil
+                        end
+
+                        table.insert(getgenv()._ApexSpamCharConns, char.ChildAdded:Connect(function(child)
+                            if child:IsA("Tool") then checkEquipped() end
+                        end))
+
+                        table.insert(getgenv()._ApexSpamCharConns, char.ChildRemoved:Connect(function(child)
+                            if child:IsA("Tool") then checkEquipped() end
+                        end))
+
+                        checkEquipped()
+                    end
+
+                    table.insert(getgenv()._ApexSpamMasterConns, LocalPlayer.CharacterAdded:Connect(watchCharacter))
+                    if LocalPlayer.Character then watchCharacter(LocalPlayer.Character) end
+
+                    task.spawn(function()
+                        while getgenv().SpamAtivo do
+                            task.wait(30)
+                            if getgenv().SpamAtivo then refreshSounds() end
+                        end
+                    end)
+
+                    refreshSounds()
+                    setupToken()
+
+                    while getgenv().SpamAtivo do
+                        if not equippedTool or not sessionToken or not isReadyToSpam then
+                            task.wait(1)
+                            if not isReadyToSpam and getgenv().SpamAtivo then setupToken() end
+                            continue
+                        end
+
+                        local totalSons = #soundList
+                        if totalSons > 0 then
+                            for i = 1, 15 do
+                                if not getgenv().SpamAtivo or not equippedTool or not isReadyToSpam then break end
+
+                                local sound = soundList[rng:NextInteger(1, totalSons)]
+                                if sound and sound.Parent then
+                                    local originalVolume = sound.Volume
+                                    sound.Volume = 10
+                                    pcall(fireClient.FireServer, fireClient, sessionToken, "PlaySound", sound, nil)
+                                    sound.Volume = originalVolume
+                                end
+                                task.wait()
+                            end
+                        end
+                        task.wait()
+                    end
+                end)
+            else
+                if getgenv()._SpamThread then
+                    pcall(task.cancel, getgenv()._SpamThread)
+                    getgenv()._SpamThread = nil
+                end
+                limparConns(getgenv()._ApexSpamMasterConns)
+                limparConns(getgenv()._ApexSpamCharConns)
+            end
+        end
+
+        local ApexTab = criartab("Apex", "https://tr.rbxcdn.com/180DAY-9b65f927dea36f98c1a720694fd00fd3/768/432/Image/Webp/noFilter")
+        local TrollTab = criarsection(ApexTab, "Troll", "Funções de troll", "https://pngfre.com/wp-content/uploads/1000117874.png", true)
+
+        TrollTab:Toggle({
+            Title = "Spammar sons",
+            Desc = cor({"Precisa", "#FF0000"}, {" de uma arma."}, {" Esses sons tocam para todos.", "#03F916"}),
+            Icon = "lucide:audio-lines",
+            Value = false,
+            Callback = function(v)
+                if getgenv().ApexLogic and getgenv().ApexLogic.ToggleSound then 
+                    getgenv().ApexLogic.ToggleSound(v) 
+                else
+                    if getgenv().notificar then
+                        getgenv().notificar("Erro", 3, "lucide:alert-triangle")
+                    end
+                end
+            end
+        })
+    end
 end
