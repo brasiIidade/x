@@ -1,9 +1,11 @@
 if game.PlaceId == 2069320852 then
     local oldFireServer
     oldFireServer = hookfunction(Instance.new("RemoteEvent").FireServer, function(remote, ...)
-        local args = {...}
-        if remote.Name == "ClientKick" and args[1] == "HitBox" then
-            return
+        if remote.Name == "ClientKick" then
+            local arg1 = ...
+            if arg1 == "HitBox" then
+                return
+            end
         end
         return oldFireServer(remote, ...)
     end)
