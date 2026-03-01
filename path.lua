@@ -3,5 +3,5 @@ return {
     treino = "treino.lua",
     combate = "combate.lua",
     player = "player.lua",
-    jogos = "jogos2.lua"
+    jogos = "jogos.lua"
 }

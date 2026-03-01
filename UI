@@ -3609,17 +3609,54 @@ elseif MapaAtual == "Apex" then
         local Mods    = criarsection(ApexTab, "Modificações", "Modificações de arma", "lucide:chevrons-left-right-ellipsis", false)
         local TrollTab = criarsection(ApexTab, "Troll", "Funções de troll", "https://pngfre.com/wp-content/uploads/1000117874.png", true)
 
-        Mods:Toggle({
-            Title    = "Bala infinita",
-            Desc     = cor({"Congela", "#00FF00"}, {" a munição da arma"}),
-            Icon     = "lucide:infinity",
-            Value    = false,
-            Callback = function(v)
-                if getgenv().ApexLogic and getgenv().ApexLogic.ToggleInfiniteAmmo then
-                    getgenv().ApexLogic.ToggleInfiniteAmmo(v)
+       Mods:Toggle({
+    Title    = "Bala infinita",
+    Desc     = cor({"Congela", "#00FF00"}, {" a munição da arma"}),
+    Icon     = "lucide:infinity",
+    Value    = false,
+    Callback = function(v)
+        if v then
+            if getgenv()._InfiniteAmmoConn then
+                getgenv()._InfiniteAmmoConn:Disconnect()
+            end
+            if getgenv()._InfiniteAmmoAddedConn then
+                getgenv()._InfiniteAmmoAddedConn:Disconnect()
+            end
+
+            local function forcar(parent)
+                if not parent then return end
+                for _, tool in ipairs(parent:GetChildren()) do
+                    if tool:IsA("Tool") and #tool:GetDescendants() > 5 then
+                        local ammo = tool:FindFirstChild("Ammo")
+                        if ammo then ammo.Value = ammo.MaxValue end
+                    end
                 end
             end
-        })
+
+            getgenv()._InfiniteAmmoConn = RunService.Heartbeat:Connect(function()
+                forcar(LocalPlayer:FindFirstChild("Backpack"))
+                forcar(LocalPlayer.Character)
+            end)
+
+            getgenv()._InfiniteAmmoAddedConn = LocalPlayer.Backpack.ChildAdded:Connect(function(tool)
+                task.wait(0.1)
+                if tool:IsA("Tool") and #tool:GetDescendants() > 5 then
+                    local ammo = tool:FindFirstChild("Ammo")
+                    if ammo then ammo.Value = ammo.MaxValue end
+                end
+            end)
+        else
+            if getgenv()._InfiniteAmmoConn then
+                getgenv()._InfiniteAmmoConn:Disconnect()
+                getgenv()._InfiniteAmmoConn = nil
+            end
+            if getgenv()._InfiniteAmmoAddedConn then
+                getgenv()._InfiniteAmmoAddedConn:Disconnect()
+                getgenv()._InfiniteAmmoAddedConn = nil
+            end
+        end
+    end
+})
 
         TrollTab:Toggle({
             Title    = "Spammar sons",
