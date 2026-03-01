@@ -133,16 +133,19 @@ local function appFr(f, hrp, hum)
     end
     if f.vel then hrp.AssemblyLinearVelocity = Vector3.new(f.vel[1], f.vel[2], f.vel[3]) end
 
-    -- Estado do Humanoid (pulo, queda, etc)
+    -- Pulo: simula tecla Space como input real do jogador
     if f.jump ~= tas.LastJump then
-        if f.jump then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+        if f.jump then
+            keypress(0x20)    -- Space down
+        else
+            keyrelease(0x20)  -- Space up
+        end
         tas.LastJump = f.jump
     end
+    -- Demais estados (queda, etc), sem interferir no pulo
     local recSt = stEnums[f.state]
-    if recSt then
-        if recSt ~= Enum.HumanoidStateType.Jumping and hum:GetState() ~= recSt then
-            hum:ChangeState(recSt)
-        end
+    if recSt and recSt ~= Enum.HumanoidStateType.Jumping then
+        if hum:GetState() ~= recSt then hum:ChangeState(recSt) end
         hum.AutoRotate = false
     end
 
@@ -498,7 +501,6 @@ if tcs.ChatVersion == Enum.ChatVersion.TextChatService then
 else
     lp.Chatted:Connect(chCmd)
 end
-
 
 
 -- jjs
