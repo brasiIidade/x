@@ -19,7 +19,6 @@ local env = getgenv()
 if not isfolder("michigun.xyz") then makefolder("michigun.xyz") end
 
 -- [[ TAS ]] --
--- [[ TAS ]] --
 local stEnums = {}
 for _, e in ipairs(Enum.HumanoidStateType:GetEnumItems()) do stEnums[e.Value] = e end
 
@@ -68,6 +67,7 @@ local function stpMov()
     local c = lp.Character
     local h = c and c:FindFirstChildOfClass("Humanoid")
     if h then h.AutoRotate = true; h:Move(Vector3.zero) end
+    releaseAll()
     local pg = lp:FindFirstChild("PlayerGui")
     local tg = pg and pg:FindFirstChild("TouchGui")
     if tg then
@@ -83,17 +83,26 @@ local function chkPlay()
 end
 
 -- Cache de AnimationTracks carregadas: [animId] = AnimationTrack
-local loadedTracks = {}
+local keysDown = {}
 
-local function getTrack(animator, animId)
-    if loadedTracks[animId] then return loadedTracks[animId] end
-    local anim = Instance.new("Animation")
-    anim.AnimationId = animId
-    local ok, track = pcall(function() return animator:LoadAnimation(anim) end)
-    anim:Destroy()
-    if ok and track then
-        loadedTracks[animId] = track
-        return track
+local function pressKey(code)
+    if not keysDown[code] then
+        keysDown[code] = true
+        keypress(code)
+    end
+end
+
+local function releaseKey(code)
+    if keysDown[code] then
+        keysDown[code] = false
+        keyrelease(code)
+    end
+end
+
+local function releaseAll()
+    for code in pairs(keysDown) do
+        keysDown[code] = false
+        keyrelease(code)
     end
 end
 
@@ -128,57 +137,47 @@ end
 local function appFr(f, hrp, hum)
     if not f or not hrp or not hum then return end
 
-    -- Posição e velocidade
     if f.cf then
         hrp.CFrame = CFrame.new(f.cf[1],f.cf[2],f.cf[3],f.cf[4],f.cf[5],f.cf[6],f.cf[7],f.cf[8],f.cf[9],f.cf[10],f.cf[11],f.cf[12])
     end
     if f.vel then hrp.AssemblyLinearVelocity = Vector3.new(f.vel[1], f.vel[2], f.vel[3]) end
 
-    -- Pulo: força via ChangeState igual ao método original
     if f.jump ~= tas.LastJump then
         if f.jump then
             hum:ChangeState(Enum.HumanoidStateType.Jumping)
+            pressKey(0x20)
+        else
+            releaseKey(0x20)
         end
         tas.LastJump = f.jump
     end
-    -- Demais estados (queda, etc)
+
     local recSt = stEnums[f.state]
     if recSt and recSt ~= Enum.HumanoidStateType.Jumping then
         if hum:GetState() ~= recSt then hum:ChangeState(recSt) end
         hum.AutoRotate = false
     end
 
-    -- Animações: sincroniza tracks ativas com o frame gravado
-    local animator = hum:FindFirstChildOfClass("Animator")
-    if animator and f.anims then
-        local shouldPlay = {}
-        for _, a in ipairs(f.anims) do shouldPlay[a.id] = a end
+    local vel = f.vel and Vector3.new(f.vel[1], f.vel[2], f.vel[3]) or Vector3.zero
+    local hvel = Vector3.new(vel.X, 0, vel.Z)
+    local moving = hvel.Magnitude > 0.1
 
-        -- Para tracks que não estavam gravadas nesse frame
-        for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
-            if not shouldPlay[track.Animation.AnimationId] then
-                track:Stop(0)
-            end
-        end
+    if moving then
+        local localVel = hrp.CFrame:VectorToObjectSpace(hvel).Unit
+        local fwd  = localVel.Z < -0.3
+        local back = localVel.Z >  0.3
+        local left = localVel.X < -0.3
+        local rght = localVel.X >  0.3
 
-        -- Aplica/sincroniza tracks gravadas, forçando prioridade Action
-        -- para sobrepor qualquer animação automática do Roblox (pulo, queda, etc)
-        for _, a in ipairs(f.anims) do
-            local track = getTrack(animator, a.id)
-            if track then
-                -- Força prioridade Action para ganhar de animações automáticas
-                track.Priority = Enum.AnimationPriority.Action
-                if not track.IsPlaying then
-                    track:Play(0, a.weight, a.speed)
-                end
-                if math.abs(track.TimePosition - a.pos) > 0.05 then
-                    track.TimePosition = a.pos
-                end
-                if track.Speed ~= a.speed then
-                    track:AdjustSpeed(a.speed)
-                end
-            end
-        end
+        if fwd  then pressKey(0x57)  else releaseKey(0x57)  end
+        if back then pressKey(0x53)  else releaseKey(0x53)  end
+        if left then pressKey(0x41)  else releaseKey(0x41)  end
+        if rght then pressKey(0x44)  else releaseKey(0x44)  end
+    else
+        releaseKey(0x57)
+        releaseKey(0x53)
+        releaseKey(0x41)
+        releaseKey(0x44)
     end
 end
 
@@ -340,7 +339,6 @@ local function actTas(n)
                     lastC       = currC
                     cachedHrp   = currC and currC:FindFirstChild("HumanoidRootPart")
                     cachedHum   = currC and currC:FindFirstChildOfClass("Humanoid")
-                    loadedTracks = {}   -- limpa cache de tracks ao respawnar
                 end
                 local cIdx = math.floor((tick() - stT) * 60) + 1
                 if cIdx > #d.Frames then
@@ -499,7 +497,6 @@ if tcs.ChatVersion == Enum.ChatVersion.TextChatService then
 else
     lp.Chatted:Connect(chCmd)
 end
-
 
 
 -- jjs
