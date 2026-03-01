@@ -3511,7 +3511,7 @@ elseif MapaAtual == "Apex" then
                         for _, obj in ipairs(game:GetDescendants()) do
                             if obj:IsA("Sound") and obj.SoundId ~= "" then
                                 table.insert(found, obj)
-                                if #found >= 30 then break end
+                                if #found >= 50 then break end
                             end
                         end
                         soundList = found
