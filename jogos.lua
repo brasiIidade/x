@@ -928,7 +928,7 @@ end)
 elseif MapaAtual == "Apex" then
         -- [[ APEX BACKEND ]] --
         local ApexLogic = {}
-        getgenv().SpamAtivo = false -- Inicia desligado
+        getgenv().SpamAtivo = false
         
         if env then env.ApexLogic = ApexLogic end
         getgenv().ApexLogic = ApexLogic
@@ -937,7 +937,6 @@ elseif MapaAtual == "Apex" then
             getgenv().SpamAtivo = state
             
             if state then
-                -- Quando liga o botão, ele roda a SUA lógica exata
                 task.spawn(function()
                     local ReplicatedStorage = game:GetService("ReplicatedStorage")
                     local LP = game:GetService("Players").LocalPlayer
