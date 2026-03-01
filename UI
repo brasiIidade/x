@@ -3491,9 +3491,9 @@ FarmSection:Toggle({
         end
     end
 })    
-    elseif MapaAtual == "Apex" then
+elseif MapaAtual == "Apex" then
         local ApexTab = criartab("Apex", "https://tr.rbxcdn.com/180DAY-9b65f927dea36f98c1a720694fd00fd3/768/432/Image/Webp/noFilter")
-        local TrollTab = criarsection(ApexTab, "Troll", "Funções de troll", "", true)
+        local TrollTab = criarsection(ApexTab, "Troll", "Funções de troll", "rbxassetid://77356028565501", true)
 
         TrollTab:Toggle({
             Title = "Spammar sons",
@@ -3505,7 +3505,7 @@ FarmSection:Toggle({
                     getgenv().ApexLogic.ToggleSound(v) 
                 else
                     if getgenv().notificar then
-                        getgenv().notificar("Erro", 3, "lucide:alert-triangle")
+                        getgenv().notificar("Erro: Backend do Apex não carregado", 3, "lucide:alert-triangle")
                     end
                 end
             end

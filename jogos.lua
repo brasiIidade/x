@@ -1019,3 +1019,6 @@ end)
                 Notify("Spam de sons desativado.")
             end
         end
+
+    end
+end
