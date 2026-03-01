@@ -12,11 +12,10 @@ if game.PlaceId == 2069320852 then
     end)
 end
 
--- servicos
-local cr        = cloneref or function(o) return o end
-local Players   = cr(game:GetService("Players"))
+local cr = cloneref or function(o) return o end
+local Players = cr(game:GetService("Players"))
 local RunService = cr(game:GetService("RunService"))
-local CoreGui   = cr(game:GetService("CoreGui"))
+local CoreGui = cr(game:GetService("CoreGui"))
 local HttpService = cr(game:GetService("HttpService"))
 
 local LocalPlayer = Players.LocalPlayer
@@ -39,8 +38,7 @@ local function isShielded(character)
     return false
 end
 
--- Hitbox
-local hitboxSaved = {} 
+local hitboxSaved = {}
 local hitboxLights = {}
 
 local function hitboxConfig()
@@ -51,22 +49,36 @@ local function hitboxShouldTarget(player)
     local cfg = hitboxConfig()
     if not cfg or not cfg.Enabled then return false end
     if player == LocalPlayer then return false end
-    if table.find(cfg.WhitelistedUsers, player.Name) then return false end
-    if player.Team and table.find(cfg.WhitelistedTeams, player.Team.Name) then return false end
-    if cfg.FocusMode and not table.find(cfg.FocusList, player.Name) then return false end
-    if cfg.TeamCheck and player.Team and LocalPlayer.Team and player.Team == LocalPlayer.Team then return false end
-    if cfg.TeamFilterEnabled and #cfg.SelectedTeams > 0 then
+
+    -- whitelist de jogadores
+    if cfg.WhitelistedUsers and table.find(cfg.WhitelistedUsers, player.Name) then return false end
+
+    -- whitelist de times
+    if cfg.WhitelistedTeams and player.Team and table.find(cfg.WhitelistedTeams, player.Team.Name) then return false end
+
+    -- modo foco
+    if cfg.FocusMode then
+        if not cfg.FocusList or not table.find(cfg.FocusList, player.Name) then return false end
+    end
+
+    -- team check: só ignora se AMBOS têm time E são o mesmo time
+    if cfg.TeamCheck then
+        if player.Team and LocalPlayer.Team and player.Team == LocalPlayer.Team then return false end
+    end
+
+    -- filtro por times específicos
+    if cfg.TeamFilterEnabled and cfg.SelectedTeams and #cfg.SelectedTeams > 0 then
         local playerTeam = player.Team and player.Team.Name or ""
         local allowed = false
         for _, team in ipairs(cfg.SelectedTeams) do
-            if team == playerTeam then allowed = true; break end
+            if team == playerTeam then allowed = true break end
         end
         if not allowed then return false end
     end
 
     local char = player.Character
     if not char then return false end
-    local hum  = char:FindFirstChild("Humanoid")
+    local hum = char:FindFirstChild("Humanoid")
     local root = char:FindFirstChild("HumanoidRootPart")
     if not hum or not root or hum.Health <= 0 then return false end
     if cfg.HideOnShield and isShielded(char) then return false end
@@ -77,7 +89,7 @@ end
 local function hitboxSaveState(player, root)
     if hitboxSaved[player] then return end
     hitboxSaved[player] = {
-        size       = root.Size,
+        size = root.Size,
         canCollide = root.CanCollide,
     }
 end
@@ -88,8 +100,10 @@ local function hitboxRestoreState(player)
     local char = player.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
     if root then
-        root.Size       = saved.size
-        root.CanCollide = saved.canCollide
+        pcall(function()
+            root.Size = saved.size
+            root.CanCollide = saved.canCollide
+        end)
     end
     hitboxSaved[player] = nil
 end
@@ -107,25 +121,32 @@ local function hitboxCleanPlayer(player)
 end
 
 local function hitboxApply(player, root, cfg)
-    root.Size       = cfg.Size
-    root.CanCollide = false
+    pcall(function()
+        root.Size = cfg.Size
+        root.CanCollide = false
+    end)
 
     if cfg.Transparency < 1 then
-        local teamColor = (player.TeamColor and player.TeamColor.Color) or Color3.new(1, 0, 0)
+        -- pega cor do time ou vermelho como fallback
+        local teamColor = Color3.new(1, 0, 0)
+        if player.Team then
+            teamColor = player.Team.TeamColor.Color
+        end
+
         if not hitboxLights[player] then
             local hl = Instance.new("Highlight")
-            hl.Name                = HttpService:GenerateGUID(false)
-            hl.Adornee             = root
-            hl.FillColor           = teamColor
-            hl.FillTransparency    = cfg.Transparency
+            hl.Name = HttpService:GenerateGUID(false)
+            hl.Adornee = root
+            hl.FillColor = teamColor
+            hl.FillTransparency = cfg.Transparency
             hl.OutlineTransparency = cfg.Transparency
-            hl.Parent              = safeGui()
-            hitboxLights[player]   = hl
+            hl.Parent = safeGui()
+            hitboxLights[player] = hl
         else
             local hl = hitboxLights[player]
-            hl.Adornee             = root
-            hl.FillColor           = teamColor
-            hl.FillTransparency    = cfg.Transparency
+            hl.Adornee = root
+            hl.FillColor = teamColor
+            hl.FillTransparency = cfg.Transparency
             hl.OutlineTransparency = cfg.Transparency
         end
     else
@@ -137,15 +158,24 @@ RunService.Heartbeat:Connect(function()
     local cfg = hitboxConfig()
 
     if not cfg or not cfg.Enabled then
-        for player in pairs(hitboxSaved) do hitboxCleanPlayer(player) end
+        for player in pairs(hitboxSaved) do
+            hitboxCleanPlayer(player)
+        end
+        -- limpa highlights também quando desligado
+        for player in pairs(hitboxLights) do
+            hitboxRemoveHighlight(player)
+        end
         return
     end
 
     for _, player in ipairs(Players:GetPlayers()) do
         if hitboxShouldTarget(player) then
-            local root = player.Character.HumanoidRootPart
-            hitboxSaveState(player, root)
-            hitboxApply(player, root, cfg)
+            local char = player.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            if root then
+                hitboxSaveState(player, root)
+                hitboxApply(player, root, cfg)
+            end
         else
             hitboxCleanPlayer(player)
         end
@@ -153,7 +183,6 @@ RunService.Heartbeat:Connect(function()
 end)
 
 Players.PlayerRemoving:Connect(hitboxCleanPlayer)
-
 
 -- ESP
 local env = getgenv()
