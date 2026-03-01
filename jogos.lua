@@ -926,10 +926,10 @@ end)
             end
         end)
     elseif MapaAtual == "Apex" then
-        -- [[ APEX ]] --
+        -- [[ APEX BACKEND ]] --
         local ApexLogic = { SpamAtivo = false }
         
-        env.ApexLogic = ApexLogic
+        if env then env.ApexLogic = ApexLogic end
         getgenv().ApexLogic = ApexLogic
 
         local serverEvents = rep:WaitForChild("ServerEvents", 3)
@@ -970,6 +970,12 @@ end)
                 atualizarSons()
                 if not token then token = buscarToken() end
                 
+                if token then
+                    Notify("Spam ativado! Iniciando envio...")
+                else
+                    Notify("Atenção: Token não encontrado. Atire com a arma 1x!")
+                end
+                
                 task.spawn(function()
                     while ApexLogic.SpamAtivo do
                         task.wait(30)
@@ -988,7 +994,7 @@ end)
                             continue
                         end
 
-                        if remote then
+                        if remote and token then
                             for i = 1, #listaSons do
                                 if not ApexLogic.SpamAtivo or not tool or tool.Parent ~= char then
                                     break
@@ -1000,6 +1006,7 @@ end)
                                         remote:FireServer(token, "PlaySound", som, nil)
                                     end)
                                 end
+                                
                                 if i % 100 == 0 then
                                     rs.Heartbeat:Wait() 
                                 end
@@ -1008,6 +1015,7 @@ end)
                         task.wait(0.1)
                     end
                 end)
+            else
+                Notify("Spam de sons desativado.")
             end
         end
-    end 

@@ -3493,7 +3493,7 @@ FarmSection:Toggle({
 })    
     elseif MapaAtual == "Apex" then
         local ApexTab = criartab("Apex", "https://tr.rbxcdn.com/180DAY-9b65f927dea36f98c1a720694fd00fd3/768/432/Image/Webp/noFilter")
-        local TrollTab = criarsection(ApexTab, "Troll", "Funções de troll", "rbxassetid://77356028565501", true)
+        local TrollTab = criarsection(ApexTab, "Troll", "Funções de troll", "", true)
 
         TrollTab:Toggle({
             Title = "Spammar sons",
@@ -3504,8 +3504,8 @@ FarmSection:Toggle({
                 if getgenv().ApexLogic and getgenv().ApexLogic.ToggleSound then 
                     getgenv().ApexLogic.ToggleSound(v) 
                 else
-                    if env and env.notificar then
-                        env.notificar("Erro", 3, "lucide:alert-triangle")
+                    if getgenv().notificar then
+                        getgenv().notificar("Erro", 3, "lucide:alert-triangle")
                     end
                 end
             end
