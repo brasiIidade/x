@@ -938,60 +938,74 @@ end)
             table.clear(tabela)
         end
 
-        ------------------------------------------------------------------------
-        -- bala infinita
-        ------------------------------------------------------------------------
-        getgenv().ApexLogic.ToggleInfiniteAmmo = function(ativar)
-            getgenv().InfiniteAmmoEnabled = ativar
+       local function findAmmo()
+    local char = lp.Character
+    local bp   = lp:FindFirstChild("Backpack")
 
-            if not ativar then
-                if getgenv().InfiniteAmmoConnection then
-                    getgenv().InfiniteAmmoConnection:Disconnect()
-                    getgenv().InfiniteAmmoConnection = nil
-                end
-                if getgenv().InfiniteAmmoOriginalMin and getgenv().InfiniteAmmoRef then
-                    pcall(function()
-                        getgenv().InfiniteAmmoRef.MinValue = getgenv().InfiniteAmmoOriginalMin
-                    end)
-                end
-                getgenv().InfiniteAmmoOriginalMin = nil
-                getgenv().InfiniteAmmoRef         = nil
-                return
-            end
-
-            if getgenv().InfiniteAmmoConnection then
-                getgenv().InfiniteAmmoConnection:Disconnect()
-                getgenv().InfiniteAmmoConnection = nil
-            end
-
-            getgenv().InfiniteAmmoConnection = RunService.Heartbeat:Connect(function()
-                if not getgenv().InfiniteAmmoEnabled then
-                    getgenv().InfiniteAmmoConnection:Disconnect()
-                    getgenv().InfiniteAmmoConnection = nil
-                    return
-                end
-
-                local char = lp.Character
-                if not char then return end
-
-                local tool = char:FindFirstChildOfClass("Tool")
-                if not tool then return end
-
-                -- busca pelo nome exato "Ammo" dentro da tool e de todos os descendentes
-                local ammo = tool:FindFirstChild("Ammo", true)
-                if not ammo or not ammo:IsA("DoubleConstrainedValue") then return end
-
-                if not getgenv().InfiniteAmmoOriginalMin then
-                    getgenv().InfiniteAmmoOriginalMin = ammo.MinValue
-                    getgenv().InfiniteAmmoRef         = ammo
-                end
-
-                pcall(function()
-                    ammo.MinValue = ammo.MaxValue
-                    ammo.Value    = ammo.MaxValue
-                end)
-            end)
+    local containers = {}
+    if char then
+        for _, v in ipairs(char:GetChildren()) do
+            if v:IsA("Tool") then table.insert(containers, v) end
         end
+    end
+    if bp then
+        for _, v in ipairs(bp:GetChildren()) do
+            if v:IsA("Tool") then table.insert(containers, v) end
+        end
+    end
+
+    for _, tool in ipairs(containers) do
+        local a = tool:FindFirstChild("Ammo", true)
+        if a and a:IsA("DoubleConstrainedValue") then return a end
+        a = tool:FindFirstChildOfClass("DoubleConstrainedValue", true)
+        if a then return a end
+    end
+    return nil
+end
+
+getgenv().ApexLogic.ToggleInfiniteAmmo = function(ativar)
+    getgenv().InfiniteAmmoEnabled = ativar
+
+    if not ativar then
+        if getgenv().InfiniteAmmoConnection then
+            getgenv().InfiniteAmmoConnection:Disconnect()
+            getgenv().InfiniteAmmoConnection = nil
+        end
+        if getgenv().InfiniteAmmoSaved then
+            for ammo, originalMin in pairs(getgenv().InfiniteAmmoSaved) do
+                pcall(function() ammo.MinValue = originalMin end)
+            end
+        end
+        getgenv().InfiniteAmmoSaved = nil
+        return
+    end
+
+    if getgenv().InfiniteAmmoConnection then
+        getgenv().InfiniteAmmoConnection:Disconnect()
+    end
+
+    getgenv().InfiniteAmmoSaved = getgenv().InfiniteAmmoSaved or {}
+
+    getgenv().InfiniteAmmoConnection = RunService.Heartbeat:Connect(function()
+        if not getgenv().InfiniteAmmoEnabled then
+            getgenv().InfiniteAmmoConnection:Disconnect()
+            getgenv().InfiniteAmmoConnection = nil
+            return
+        end
+
+        local ammo = findAmmo()
+        if not ammo then return end
+
+        if not getgenv().InfiniteAmmoSaved[ammo] then
+            getgenv().InfiniteAmmoSaved[ammo] = ammo.MinValue
+        end
+
+        pcall(function()
+            ammo.MinValue = ammo.MaxValue
+            ammo.Value    = ammo.MaxValue
+        end)
+    end)
+end
 
         ------------------------------------------------------------------------
         -- spam de sons
@@ -1163,7 +1177,7 @@ end)
 
                     local totalSons = #soundList
                     if totalSons > 0 then
-                        for i = 1, 20 do
+                        for i = 1, 15 do
                             if not getgenv().SpamAtivo or not equippedTool or not isReadyToSpam then break end
                             local sound = soundList[rng:NextInteger(1, totalSons)]
                             if sound and sound.Parent then
@@ -1172,10 +1186,10 @@ end)
                                 pcall(fireClient.FireServer, fireClient, sessionToken, "PlaySound", sound, nil)
                                 sound.Volume = originalVolume
                             end
-                            task.wait(0.05)
+                            task.wait()
                         end
                     end
-                    task.wait(0.1)
+                    task.wait()
                 end
             end)
         end
