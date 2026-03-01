@@ -19,6 +19,7 @@ local env = getgenv()
 if not isfolder("michigun.xyz") then makefolder("michigun.xyz") end
 
 -- [[ TAS ]] --
+-- [[ TAS ]] --
 local stEnums = {}
 for _, e in ipairs(Enum.HumanoidStateType:GetEnumItems()) do stEnums[e.Value] = e end
 
@@ -42,7 +43,7 @@ tas.CurrentName = ""
 tas.RecConn     = nil
 tas.IsReady     = true
 tas.LastJump    = false
-tas.ActRad      = 1
+tas.ActRad      = 0.8
 tas.ActH        = 1.5
 tas.ActAng      = 10
 tas.ColorBot    = Color3.fromRGB(0, 255, 0)
@@ -214,9 +215,11 @@ local function clrTas(n, playingOnly)
     d.Playing = false
 
     if not playingOnly then
-        if d.MarkerConn   then d.MarkerConn:Disconnect();  d.MarkerConn   = nil end
-        if d.VisualFolder then d.VisualFolder:Destroy();   d.VisualFolder = nil end
-        if d.MarkerPart   then d.MarkerPart:Destroy();     d.MarkerPart   = nil end
+        if d.MarkerConn then d.MarkerConn:Disconnect(); d.MarkerConn = nil end
+        if d.Adornments then
+            for _, a in ipairs(d.Adornments) do if a and a.Parent then a:Destroy() end end
+        end
+        if d.MarkerPart then d.MarkerPart:Destroy(); d.MarkerPart = nil end
         if d.Viewports then
             for _, v in ipairs(d.Viewports) do
                 if v.Connection then v.Connection:Disconnect() end
@@ -226,13 +229,13 @@ local function clrTas(n, playingOnly)
         if d.PathParts then
             for _, p in ipairs(d.PathParts) do if p then p:Destroy() end end
         end
-        d.Viewports, d.PathParts, d.Waiting = {}, {}, false
+        d.Viewports, d.PathParts, d.Adornments, d.Waiting = {}, {}, {}, false
     end
 
     chkPlay()
 end
 
-local function bldPth(fs, pf)
+local function bldPth(fs)
     local pts = {}
     if not fs or #fs < 2 then return pts end
     for i = 1, #fs - 1 do
@@ -249,7 +252,7 @@ local function bldPth(fs, pf)
                 pt.Transparency = tas.VisualOpacity
                 pt.Adornee      = ws.Terrain
                 pt.ZIndex       = 0
-                pt.Parent       = pf
+                pt.Parent       = ws.Terrain
                 table.insert(pts, pt)
             end
         end
@@ -267,12 +270,7 @@ local function actTas(n)
     local c  = d.Frames[1].cf
     local cf = CFrame.new(c[1],c[2],c[3],c[4],c[5],c[6],c[7],c[8],c[9],c[10],c[11],c[12])
 
-    -- Pasta no workspace para HandleAdornments aparecerem no mundo 3D
-    local fldr = Instance.new("Folder")
-    fldr.Name   = "_tas_" .. n
-    fldr.Parent = workspace
-    d.VisualFolder = fldr
-
+    d.Adornments = {}
     local bc, tr = tas.ColorBot, tas.VisualOpacity
     local function mkM(nm, sz, c_frame, isC)
         local p = isC and Instance.new("CylinderHandleAdornment") or Instance.new("BoxHandleAdornment")
@@ -283,7 +281,8 @@ local function actTas(n)
         p.Transparency = tr
         p.Adornee      = ws.Terrain
         p.ZIndex       = 1
-        p.Parent       = fldr
+        p.Parent       = ws.Terrain
+        table.insert(d.Adornments, p)
         return p
     end
     mkM("Tor", Vector3.new(2, 2, 1), cf,                                                                 false)
@@ -292,8 +291,6 @@ local function actTas(n)
     mkM("LAm", Vector3.new(1, 2, 1), cf * CFrame.new(-1.5,  0,  0),                                     false)
     mkM("RAm", Vector3.new(1, 2, 1), cf * CFrame.new( 1.5, 0.5, -1) * CFrame.Angles(math.rad(90),0,0), false)
 
-    -- Part âncora pro ViewportFrame: fica no workspace só para WorldToScreenPoint,
-    -- mas invisível no mundo (Transparency = 1)
     local dm = Instance.new("Part")
     dm.Size         = Vector3.new(2, 2, 1)
     dm.CFrame       = cf
@@ -305,7 +302,7 @@ local function actTas(n)
 
     d.Viewports = {}
     table.insert(d.Viewports, mkVp(dm))
-    d.PathParts = bldPth(d.Frames, fldr)
+    d.PathParts = bldPth(d.Frames)
 
     d.MarkerConn = rs.Heartbeat:Connect(function()
         local char = lp.Character
@@ -317,9 +314,12 @@ local function actTas(n)
         local dot      = hrp.CFrame.LookVector:Dot(cf.LookVector)
 
         if horizDst <= tas.ActRad and vertDst <= tas.ActH and dot >= math.cos(math.rad(tas.ActAng)) then
-            if d.MarkerConn   then d.MarkerConn:Disconnect();  d.MarkerConn   = nil end
-            if d.VisualFolder then d.VisualFolder:Destroy();   d.VisualFolder = nil end
-            if d.MarkerPart   then d.MarkerPart:Destroy();     d.MarkerPart   = nil end
+            if d.MarkerConn then d.MarkerConn:Disconnect(); d.MarkerConn = nil end
+            if d.Adornments then
+                for _, a in ipairs(d.Adornments) do if a and a.Parent then a:Destroy() end end
+                d.Adornments = {}
+            end
+            if d.MarkerPart then d.MarkerPart:Destroy(); d.MarkerPart = nil end
             for _, v in ipairs(d.Viewports) do
                 if v.Connection then v.Connection:Disconnect() end
                 if v.Frame      then v.Frame:Destroy() end
@@ -361,9 +361,9 @@ tas.UpdateVisuals = function(bC, pC, op)
     if pC ~= nil then tas.ColorPath     = pC end
     if op ~= nil then tas.VisualOpacity = op end
     for _, d in pairs(tas.Loaded) do
-        if d.VisualFolder then
-            for _, p in ipairs(d.VisualFolder:GetChildren()) do
-                if p:IsA("BoxHandleAdornment") or p:IsA("CylinderHandleAdornment") then
+        if d.Adornments then
+            for _, p in ipairs(d.Adornments) do
+                if p and p.Parent then
                     p.Color3       = tas.ColorBot
                     p.Transparency = tas.VisualOpacity
                 end
@@ -480,7 +480,7 @@ end
 tas.ManualStopPlayback = function()
     for n, d in pairs(tas.Loaded) do
         if d.Playing then
-            clrTas(n, true)
+            clrTas(n, true)   -- para só a reprodução, mantém o marker
         end
     end
     chkPlay()
@@ -499,6 +499,7 @@ if tcs.ChatVersion == Enum.ChatVersion.TextChatService then
 else
     lp.Chatted:Connect(chCmd)
 end
+
 
 
 -- jjs
