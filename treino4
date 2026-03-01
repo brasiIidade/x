@@ -49,10 +49,12 @@ tas.ColorBot    = Color3.fromRGB(0, 255, 0)
 tas.ColorPath   = Color3.fromRGB(0, 255, 0)
 tas.VisualOpacity = 0
 
+-- Extrai só o nome do arquivo, suportando / e \ (Windows)
 local function extractName(path)
     return path:match("([^/\\]+)%.json$")
 end
 
+-- Monta o path completo de forma segura a partir de um nome limpo
 local function filePath(name)
     return tas_fDir .. "/" .. name .. ".json"
 end
@@ -79,6 +81,7 @@ local function chkPlay()
     if tas.UpdateButtonState then tas.UpdateButtonState(ip) end
 end
 
+-- Cache de AnimationTracks carregadas: [animId] = AnimationTrack
 local loadedTracks = {}
 
 local function getTrack(animator, animId)
@@ -98,6 +101,7 @@ local function capFr()
     local hrp, hum = c and c:FindFirstChild("HumanoidRootPart"), c and c:FindFirstChildOfClass("Humanoid")
     if not hrp or not hum then return end
 
+    -- Captura todas as AnimationTracks ativas com posição e velocidade
     local animator = hum:FindFirstChildOfClass("Animator")
     local anims = {}
     if animator then
@@ -123,37 +127,45 @@ end
 local function appFr(f, hrp, hum)
     if not f or not hrp or not hum then return end
 
+    -- Posição e velocidade
     if f.cf then
         hrp.CFrame = CFrame.new(f.cf[1],f.cf[2],f.cf[3],f.cf[4],f.cf[5],f.cf[6],f.cf[7],f.cf[8],f.cf[9],f.cf[10],f.cf[11],f.cf[12])
     end
     if f.vel then hrp.AssemblyLinearVelocity = Vector3.new(f.vel[1], f.vel[2], f.vel[3]) end
 
+    -- Pulo: força via ChangeState igual ao método original
     if f.jump ~= tas.LastJump then
         if f.jump then
             hum:ChangeState(Enum.HumanoidStateType.Jumping)
         end
         tas.LastJump = f.jump
     end
+    -- Demais estados (queda, etc)
     local recSt = stEnums[f.state]
     if recSt and recSt ~= Enum.HumanoidStateType.Jumping then
         if hum:GetState() ~= recSt then hum:ChangeState(recSt) end
         hum.AutoRotate = false
     end
 
+    -- Animações: sincroniza tracks ativas com o frame gravado
     local animator = hum:FindFirstChildOfClass("Animator")
     if animator and f.anims then
         local shouldPlay = {}
         for _, a in ipairs(f.anims) do shouldPlay[a.id] = a end
 
+        -- Para tracks que não estavam gravadas nesse frame
         for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
             if not shouldPlay[track.Animation.AnimationId] then
                 track:Stop(0)
             end
         end
 
+        -- Aplica/sincroniza tracks gravadas, forçando prioridade Action
+        -- para sobrepor qualquer animação automática do Roblox (pulo, queda, etc)
         for _, a in ipairs(f.anims) do
             local track = getTrack(animator, a.id)
             if track then
+                -- Força prioridade Action para ganhar de animações automáticas
                 track.Priority = Enum.AnimationPriority.Action
                 if not track.IsPlaying then
                     track:Play(0, a.weight, a.speed)
@@ -190,6 +202,9 @@ local function mkVp(worldPart)
     return { Frame = vpf, Connection = cnn, Part = worldPart }
 end
 
+-- Limpa visuals e conexões de um TAS.
+-- playingOnly = true  → para só a reprodução, mantém o marker de espera intacto
+-- playingOnly = false → limpa tudo (marker + reprodução)
 local function clrTas(n, playingOnly)
     local d = tas.Loaded[n]
     if not d then return end
@@ -246,14 +261,15 @@ local function actTas(n)
     local d = tas.Loaded[n]
     if not d or not d.Frames or #d.Frames == 0 or d.Waiting or d.Playing then return end
 
-    clrTas(n, true)
+    clrTas(n, true)   -- para reprodução se houver, mas não destrói marker existente
     d.Waiting = true
 
     local c  = d.Frames[1].cf
     local cf = CFrame.new(c[1],c[2],c[3],c[4],c[5],c[6],c[7],c[8],c[9],c[10],c[11],c[12])
 
+    -- Pasta no workspace para HandleAdornments aparecerem no mundo 3D
     local fldr = Instance.new("Folder")
-    fldr.Name   = "tas" .. n
+    fldr.Name   = "_tas_" .. n
     fldr.Parent = workspace
     d.VisualFolder = fldr
 
@@ -276,6 +292,8 @@ local function actTas(n)
     mkM("LAm", Vector3.new(1, 2, 1), cf * CFrame.new(-1.5,  0,  0),                                     false)
     mkM("RAm", Vector3.new(1, 2, 1), cf * CFrame.new( 1.5, 0.5, -1) * CFrame.Angles(math.rad(90),0,0), false)
 
+    -- Part âncora pro ViewportFrame: fica no workspace só para WorldToScreenPoint,
+    -- mas invisível no mundo (Transparency = 1)
     local dm = Instance.new("Part")
     dm.Size         = Vector3.new(2, 2, 1)
     dm.CFrame       = cf
@@ -399,7 +417,7 @@ tas.GetSaved = function()
     local out = {}
     if listfiles then
         for _, f in ipairs(listfiles(tas_fDir)) do
-            local name = extractName(f)
+            local name = extractName(f)   -- suporta / e \ (Windows)
             if name then out[#out + 1] = name end
         end
     end
@@ -439,7 +457,7 @@ end
 tas.DeleteSelected = function()
     if #tas.Selection == 0 then return end
     for _, n in ipairs(tas.Selection) do
-        local p = filePath(n)
+        local p = filePath(n)   -- path correto, sem duplicar ou usar nome errado
         if isfile and isfile(p) and delfile then delfile(p) end
         clrTas(n)
         tas.Loaded[n] = nil
@@ -481,6 +499,7 @@ if tcs.ChatVersion == Enum.ChatVersion.TextChatService then
 else
     lp.Chatted:Connect(chCmd)
 end
+
 
 -- jjs
 env.JJs = nil
