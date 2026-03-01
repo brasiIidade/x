@@ -44,7 +44,7 @@ tas.IsReady = true
 tas.LastJump = false
 tas.ActRad = 1
 tas.ActH = 1.5
-tas.ActAng = 10
+tas.ActAng = 45         -- FIX 2: era 10, afrouxado pra 45 graus
 tas.ColorBot = Color3.fromRGB(0, 255, 0)
 tas.ColorPath = Color3.fromRGB(0, 255, 0)
 tas.VisualOpacity = 0
@@ -148,8 +148,11 @@ local function actTas(n)
     d.Waiting = true
     local c = d.Frames[1].cf
     local cf = CFrame.new(c[1], c[2], c[3], c[4], c[5], c[6], c[7], c[8], c[9], c[10], c[11], c[12])
+
+    -- FIX 1: pasta no workspace em vez de gh(), para HandleAdornments renderizarem no mundo 3D
     local fldr = Instance.new("Folder")
-    fldr.Name, fldr.Parent = "_" .. n, gh()
+    fldr.Name, fldr.Parent = "_" .. n, workspace
+
     d.VisualFolder = fldr
     local function mkM(nm, sz, c_frame, cl, tr, isC)
         local p = isC and Instance.new("CylinderHandleAdornment") or Instance.new("BoxHandleAdornment")
@@ -163,8 +166,10 @@ local function actTas(n)
     mkM("RLg", Vector3.new(1, 2, 1), cf * CFrame.new(0.5, -2, 0), bc, tr, false)
     mkM("LAm", Vector3.new(1, 2, 1), cf * CFrame.new(-1.5, 0, 0), bc, tr, false)
     mkM("RAm", Vector3.new(1, 2, 1), cf * CFrame.new(1.5, 0.5, -1) * CFrame.Angles(math.rad(90), 0, 0), bc, tr, false)
+
+    -- FIX 3: Part com Transparency = 0 para aparecer no ViewportFrame
     local dm = Instance.new("Part")
-    dm.Size, dm.CFrame, dm.Transparency, dm.Anchored, dm.CanCollide = Vector3.new(2, 2, 1), cf, 1, true, false
+    dm.Size, dm.CFrame, dm.Transparency, dm.Anchored, dm.CanCollide = Vector3.new(2, 2, 1), cf, 0, true, false
     table.insert(d.Viewports, mkVp(dm))
     d.PathParts = bldPth(d.Frames, fldr)
     
