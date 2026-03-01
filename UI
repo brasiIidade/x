@@ -2196,8 +2196,8 @@ task.spawn(function()
     end
 end)
 
---// tab char
 
+--// tab char
 local function GetAvatar()
     return getgenv().Avatar
 end

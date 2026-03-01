@@ -1,602 +1,689 @@
-local cr = cloneref or function(o) return o end
+-- servicos
+local cloneref    = cloneref or function(o) return o end
+local Players     = cloneref(game:GetService("Players"))
+local RunService  = cloneref(game:GetService("RunService"))
+local Workspace   = cloneref(game:GetService("Workspace"))
+local CoreGui     = cloneref(game:GetService("CoreGui"))
+local TextChat    = cloneref(game:GetService("TextChatService"))
+local HttpService = cloneref(game:GetService("HttpService"))
 
-local plrs = cr(game:GetService("Players"))
-local rs = cr(game:GetService("RunService"))
-local ws = cr(game:GetService("Workspace"))
-local cg = cr(game:GetService("CoreGui"))
-local tcs = cr(game:GetService("TextChatService"))
-local hs = cr(game:GetService("HttpService"))
+local LocalPlayer = Players.LocalPlayer
+local Camera      = Workspace.CurrentCamera
+local env         = getgenv()
 
-local lp = plrs.LocalPlayer
-local cam = ws.CurrentCamera
-local env = getgenv()
 
-local v3 = Vector3.new
-local cf = CFrame.new
-local inst = Instance.new
-
-if not isfolder("michigun.xyz") then makefolder("michigun.xyz") end
-
---[[PLAYER]]
-local state = {
-    last_pos = nil,
-    death_cf = nil,
-    seat = nil,
-    weld = nil,
-    fling_conn = nil,
-    fling_start_pos = nil,
-    fake_id = math.random(1000000, 2000000000),
-    connections = {} 
-}
-
-local function get_cfg()
+local function playerConfig()
     return getgenv().PlayerConfig
 end
 
-local function get_root(p)
-    local c = p.Character
-    return c and c:FindFirstChild("HumanoidRootPart")
+local function getRootPart(player)
+    local char = player.Character
+    return char and char:FindFirstChild("HumanoidRootPart")
 end
 
-local function get_hum(p)
-    local c = p.Character
-    return c and c:FindFirstChild("Humanoid")
+local function getHumanoid(player)
+    local char = player.Character
+    return char and char:FindFirstChild("Humanoid")
 end
 
-local function find_player(str)
-    if not str or str == "" then return nil end
-    str = str:lower()
-    for _, p in ipairs(plrs:GetPlayers()) do
-        if p ~= lp then
-            local pn = p.Name:lower()
-            local pd = p.DisplayName:lower()
-            if pn:sub(1, #str) == str or pd:sub(1, #str) == str then
-                return p
+local function findPlayer(query)
+    if not query or query == "" then return nil end
+    query = query:lower()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            if player.Name:lower():sub(1, #query) == query
+            or player.DisplayName:lower():sub(1, #query) == query then
+                return player
             end
         end
     end
     return nil
 end
 
-local function spoof_string(str)
-    local cfg = get_cfg()
+-- anonimo
+local anonConnections = {}  -- [obj] = connection para TextLabels
+local anonMiscConns   = {}  -- array de conexões gerais
+
+local function spoofText(str)
+    local cfg = playerConfig()
     if not cfg or not cfg.AnonEnabled or type(str) ~= "string" then return str end
-    
-    local fake = cfg.FakeName or "Anônimo"
-    local r_name = lp.Name
-    local r_display = lp.DisplayName
-    
-    if str:find(r_name) or str:find(r_display) then
-        local safe_name = r_name:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
-        local safe_display = r_display:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
-        
-        str = str:gsub(safe_name, fake)
-        str = str:gsub(safe_display, fake)
+
+    local fakeName  = cfg.FakeName or "Anônimo"
+    local realName  = LocalPlayer.Name
+    local realDisplay = LocalPlayer.DisplayName
+
+    if str:find(realName, 1, true) or str:find(realDisplay, 1, true) then
+        local function escape(s) return s:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1") end
+        str = str:gsub(escape(realName), fakeName)
+        str = str:gsub(escape(realDisplay), fakeName)
     end
-    
+
     return str
 end
 
-local function monitor_object(obj)
+local function monitorLabel(obj)
     if not obj then return end
-    if state.connections[obj] then return end 
+    if anonConnections[obj] then return end
 
     if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
-        local function update()
-            local cfg = get_cfg()
+        local function refresh()
+            local cfg = playerConfig()
             if not cfg or not cfg.AnonEnabled then return end
-            
-            local current = obj.Text
-            local spoofed = spoof_string(current)
-            
-            if current ~= spoofed then
-                obj.Text = spoofed
-            end
+            local spoofed = spoofText(obj.Text)
+            if obj.Text ~= spoofed then obj.Text = spoofed end
         end
-        
-        update()
-        if not state.connections[obj] then
-            state.connections[obj] = obj:GetPropertyChangedSignal("Text"):Connect(update)
-        end
+
+        refresh()
+        anonConnections[obj] = obj:GetPropertyChangedSignal("Text"):Connect(refresh)
     end
 end
 
-local function scan_ui_layer(layer)
+local function scanGuiLayer(layer)
     if not layer then return end
-    
-    for _, v in ipairs(layer:GetDescendants()) do
-        pcall(monitor_object, v)
+
+    for _, obj in ipairs(layer:GetDescendants()) do
+        pcall(monitorLabel, obj)
     end
-    
-    local conn = layer.DescendantAdded:Connect(function(v)
-        task.wait() 
-        pcall(monitor_object, v)
+
+    local conn = layer.DescendantAdded:Connect(function(obj)
+        task.wait()
+        pcall(monitorLabel, obj)
     end)
-    if not state.connections[conn] then
-        table.insert(state.connections, conn)
-    end
+    table.insert(anonMiscConns, conn)
 end
 
-local function clear_spoof()
-    for _, conn in pairs(state.connections) do
+local function clearAnonConnections()
+    for _, conn in pairs(anonConnections) do
         if typeof(conn) == "RBXScriptConnection" then conn:Disconnect() end
     end
-    table.clear(state.connections)
+    table.clear(anonConnections)
+
+    for _, conn in ipairs(anonMiscConns) do
+        if typeof(conn) == "RBXScriptConnection" then conn:Disconnect() end
+    end
+    table.clear(anonMiscConns)
 end
 
-local function update_anon_visuals()
-    local cfg = get_cfg()
+local function applyAnonVisuals()
+    local cfg = playerConfig()
     if not cfg then return end
-    
+
     if cfg.AnonEnabled then
-        local char = lp.Character
+        local char = LocalPlayer.Character
         if char then
             local hum = char:FindFirstChild("Humanoid")
             if hum then
-                if hum.DisplayName ~= cfg.FakeName then
-                    hum.DisplayName = cfg.FakeName
-                end
-                
+                hum.DisplayName = cfg.FakeName
+
                 local conn = hum:GetPropertyChangedSignal("DisplayName"):Connect(function()
-                    if cfg.AnonEnabled and hum.DisplayName ~= cfg.FakeName then
-                        hum.DisplayName = cfg.FakeName
+                    if playerConfig().AnonEnabled and hum.DisplayName ~= playerConfig().FakeName then
+                        hum.DisplayName = playerConfig().FakeName
                     end
                 end)
-                table.insert(state.connections, conn)
+                table.insert(anonMiscConns, conn)
             end
+            scanGuiLayer(char)
         end
-        
-        scan_ui_layer(lp:WaitForChild("PlayerGui"))
-        pcall(function() scan_ui_layer(cg) end)
-        if char then scan_ui_layer(char) end
+
+        scanGuiLayer(LocalPlayer:WaitForChild("PlayerGui"))
+        pcall(scanGuiLayer, CoreGui)
     else
-        clear_spoof()
-        local char = lp.Character
+        clearAnonConnections()
+        local char = LocalPlayer.Character
         if char then
             local hum = char:FindFirstChild("Humanoid")
-            if hum then hum.DisplayName = lp.DisplayName end
+            if hum then hum.DisplayName = LocalPlayer.DisplayName end
         end
     end
 end
 
-local function set_transparency(trans)
-    for _, v in ipairs(lp.Character:GetDescendants()) do
-        if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
-            v.Transparency = trans
-        elseif v:IsA("Decal") then
-            v.Transparency = trans
+-- invisibilidade
+local invisState = { seat = nil, weld = nil }
+
+local function setCharacterTransparency(value)
+    local char = LocalPlayer.Character
+    if not char then return end
+    for _, obj in ipairs(char:GetDescendants()) do
+        if obj:IsA("BasePart") and obj.Name ~= "HumanoidRootPart" then
+            obj.Transparency = value
+        elseif obj:IsA("Decal") then
+            obj.Transparency = value
         end
     end
 end
 
-local function toggle_invis(bool)
-    local root = get_root(lp)
+local function toggleInvisibility(enable)
+    local root = getRootPart(LocalPlayer)
     if not root then return end
-    
-    if bool then
-        local saved_cf = root.CFrame
-        local old_cam = cam.CameraType
-        
-        cam.CameraType = Enum.CameraType.Scriptable
-        root.CFrame = cf(-25.95, 84, 3537.55)
+
+    if enable then
+        local savedCFrame  = root.CFrame
+        local savedCamType = Camera.CameraType
+
+        Camera.CameraType = Enum.CameraType.Scriptable
+        root.CFrame = CFrame.new(-25.95, 84, 3537.55)
         task.wait(0.15)
-        
-        local s = inst("Seat")
-        s.Name = hs:GenerateGUID(false)
-        s.Transparency = 1
-        s.CanCollide = false
-        s.Anchored = false
-        s.Position = v3(-25.95, 84, 3537.55)
-        s.Parent = ws
-        
-        local w = inst("Weld")
-        w.Part0 = s
-        w.Part1 = lp.Character:FindFirstChild("Torso") or lp.Character:FindFirstChild("UpperTorso")
-        w.Parent = s
-        
-        state.seat = s
-        state.weld = w
-        
+
+        local seat = Instance.new("Seat")
+        seat.Name        = HttpService:GenerateGUID(false)
+        seat.Transparency = 1
+        seat.CanCollide  = false
+        seat.Anchored    = false
+        seat.Position    = Vector3.new(-25.95, 84, 3537.55)
+        seat.Parent      = Workspace
+
+        local weld   = Instance.new("Weld")
+        weld.Part0   = seat
+        weld.Part1   = LocalPlayer.Character:FindFirstChild("Torso")
+                    or LocalPlayer.Character:FindFirstChild("UpperTorso")
+        weld.Parent  = seat
+
+        invisState.seat = seat
+        invisState.weld = weld
+
         task.wait()
-        s.CFrame = saved_cf
-        cam.CameraType = old_cam
-        
-        set_transparency(0.5)
+        seat.CFrame       = savedCFrame
+        Camera.CameraType = savedCamType
+
+        setCharacterTransparency(0.5)
     else
-        if state.seat then state.seat:Destroy() end
-        state.seat = nil
-        set_transparency(0)
+        if invisState.seat then invisState.seat:Destroy() end
+        invisState.seat = nil
+        invisState.weld = nil
+        setCharacterTransparency(0)
     end
 end
 
-local function stop_fling(restore_pos)
-    if state.fling_conn then 
-        state.fling_conn:Disconnect() 
-        state.fling_conn = nil
+-- fling
+local flingState = { connection = nil, startCFrame = nil }
+
+local function stopFling(restorePosition)
+    if flingState.connection then
+        flingState.connection:Disconnect()
+        flingState.connection = nil
     end
-    
-    local root = get_root(lp)
+
+    local root = getRootPart(LocalPlayer)
     if root then
-        root.Velocity = v3(0,0,0)
-        root.RotVelocity = v3(0,0,0)
-        if restore_pos and state.fling_start_pos then
-            root.CFrame = state.fling_start_pos
+        root.Velocity    = Vector3.zero
+        root.RotVelocity = Vector3.zero
+        if restorePosition and flingState.startCFrame then
+            root.CFrame = flingState.startCFrame
         end
     end
-    
-    if restore_pos then 
-        state.fling_start_pos = nil 
-        local cfg = get_cfg()
+
+    if restorePosition then
+        flingState.startCFrame = nil
+        local cfg = playerConfig()
         if cfg then cfg.FlingActive = false end
     end
 end
 
-local function start_fling(target_name)
-    stop_fling(false)
-    
-    local target = find_player(target_name)
+local function startFling(targetName)
+    stopFling(false)
+
+    local target = findPlayer(targetName)
     if not target then return end
-    
-    local my_root = get_root(lp)
-    if my_root then
-        state.fling_start_pos = my_root.CFrame
-    end
 
-    local start_time = tick()
+    local myRoot = getRootPart(LocalPlayer)
+    if myRoot then flingState.startCFrame = myRoot.CFrame end
 
-    state.fling_conn = rs.Heartbeat:Connect(function()
-        local cfg = get_cfg()
-        
-        if tick() - start_time >= 2 then
-            stop_fling(true)
+    local startTime = tick()
+
+    flingState.connection = RunService.Heartbeat:Connect(function()
+        local cfg = playerConfig()
+
+        if tick() - startTime >= 2 then
+            stopFling(true)
             return
         end
-        
-        if not cfg.FlingActive or not target or not target.Character or not lp.Character then
-            stop_fling(true)
+
+        if not cfg.FlingActive or not target.Character or not LocalPlayer.Character then
+            stopFling(true)
             return
         end
-        
-        local t_root = target.Character:FindFirstChild("HumanoidRootPart")
-        local my_curr_root = lp.Character:FindFirstChild("HumanoidRootPart")
-        
-        if t_root and my_curr_root then
-            my_curr_root.CFrame = cf(t_root.Position + v3(0, -1, 0)) * CFrame.Angles(-1.5707963267948966, 0, 0)
-            local god_force = v3(0, 10000, 0)
-            my_curr_root.Velocity = god_force
-            my_curr_root.RotVelocity = god_force
-            pcall(function()
-                sethiddenproperty(my_curr_root, 'PhysicsRepRootPart', t_root)
-            end)
+
+        local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
+        local myCurrentRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+        if targetRoot and myCurrentRoot then
+            myCurrentRoot.CFrame = CFrame.new(targetRoot.Position + Vector3.new(0, -1, 0))
+                * CFrame.Angles(-math.pi / 2, 0, 0)
+
+            local force = Vector3.new(0, 10000, 0)
+            myCurrentRoot.Velocity    = force
+            myCurrentRoot.RotVelocity = force
+
+            pcall(sethiddenproperty, myCurrentRoot, "PhysicsRepRootPart", targetRoot)
         else
-            stop_fling(true)
+            stopFling(true)
         end
     end)
 end
 
-local function hook_character(char)
-    local hum = char:WaitForChild("Humanoid", 10)
-    local root = char:WaitForChild("HumanoidRootPart", 10)
-    
-    if hum and root then
-        hum.Died:Connect(function()
-            local cfg = get_cfg()
-            if cfg.RespawnEnabled and root then
-                state.death_cf = root.CFrame
-            end
-        end)
-    end
-    
-    if get_cfg().AnonEnabled then
-        scan_ui_layer(char)
+-- noclip
+local noclipParts = {}
+
+local function cacheNoclipParts(char)
+    table.clear(noclipParts)
+    if not char then return end
+    for _, part in ipairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then
+            table.insert(noclipParts, part)
+        end
     end
 end
 
-lp.CharacterAdded:Connect(function(char)
-    local cfg = get_cfg()
-    
-    if cfg.RespawnEnabled and state.death_cf then
-        task.spawn(function()
-            local root = char:WaitForChild("HumanoidRootPart", 10)
-            if root then
-                task.wait(0.2) 
-                root.CFrame = state.death_cf
-                root.Velocity = v3(0,0,0)
-            end
-        end)
-    end
-    
-    hook_character(char)
-    
-    if cfg.InvisEnabled then
-        task.wait(0.5)
-        toggle_invis(true)
-    end
-    
-    if cfg.AnonEnabled then
-        task.wait(1)
-        update_anon_visuals()
+-- noclip loop
+RunService.Stepped:Connect(function()
+    local cfg = playerConfig()
+    if not cfg or not cfg.Noclip then return end
+
+    for _, part in ipairs(noclipParts) do
+        if part and part.Parent and part.CanCollide then
+            part.CanCollide = false
+        end
     end
 end)
 
-if lp.Character then hook_character(lp.Character) end
+-- speed e jump
+local physicsConn = nil
 
-rs.RenderStepped:Connect(function()
-    local cfg = get_cfg()
-    if not cfg then return end
-    
-    local hum = get_hum(lp)
-    if hum then
+local function startPhysicsLoop()
+    if physicsConn then return end
+    physicsConn = RunService.RenderStepped:Connect(function()
+        local cfg = playerConfig()
+        if not cfg then return end
+
+        local hum = getHumanoid(LocalPlayer)
+        if not hum then return end
+
         if cfg.SpeedEnabled then hum.WalkSpeed = cfg.SpeedVal end
-        if cfg.JumpEnabled then hum.JumpPower = cfg.JumpVal hum.UseJumpPower = true end
+        if cfg.JumpEnabled  then
+            hum.JumpPower    = cfg.JumpVal
+            hum.UseJumpPower = true
+        end
+    end)
+end
+
+local function stopPhysicsLoop()
+    if physicsConn then
+        physicsConn:Disconnect()
+        physicsConn = nil
     end
-    
+end
+
+-- espectar
+RunService.RenderStepped:Connect(function()
+    local cfg = playerConfig()
+    if not cfg then return end
+
     if cfg.SpectateActive then
-        local target = find_player(cfg.TargetPlayer)
+        local target = findPlayer(cfg.TargetPlayer)
         if target then
-            local t_hum = get_hum(target)
-            if t_hum then cam.CameraSubject = t_hum end
+            local hum = getHumanoid(target)
+            if hum then Camera.CameraSubject = hum end
         end
     else
-        if hum then cam.CameraSubject = hum end
-    end
-end)
-
-rs.Stepped:Connect(function()
-    local cfg = get_cfg()
-    if not cfg or not cfg.Noclip then return end
-    
-    local c = lp.Character
-    if c then
-        for _, v in ipairs(c:GetDescendants()) do
-            if v:IsA("BasePart") and v.CanCollide then 
-                v.CanCollide = false 
-            end
+        local hum = getHumanoid(LocalPlayer)
+        if hum and Camera.CameraSubject ~= hum then
+            Camera.CameraSubject = hum
         end
     end
 end)
 
-local OldIdx
-OldIdx = hookmetamethod(game, "__index", newcclosure(function(self, k)
+-- anonimo hooks
+local fakeId = math.random(1000000, 2000000000)
+
+local OldIndex
+OldIndex = hookmetamethod(game, "__index", newcclosure(function(self, key)
     if not checkcaller() then
-        local cfg = get_cfg()
-        if cfg and cfg.AnonEnabled and self == lp then
-            if k == "UserId" then return state.fake_id end
-            if k == "Name" then return cfg.FakeName end
-            if k == "DisplayName" then return cfg.FakeName end
+        local cfg = playerConfig()
+        if cfg and cfg.AnonEnabled and self == LocalPlayer then
+            if key == "UserId"      then return fakeId end
+            if key == "Name"        then return cfg.FakeName end
+            if key == "DisplayName" then return cfg.FakeName end
         end
     end
-    return OldIdx(self, k)
+    return OldIndex(self, key)
 end))
 
-local OldNewIdx
-OldNewIdx = hookmetamethod(game, "__newindex", newcclosure(function(self, k, v)
+local OldNewIndex
+OldNewIndex = hookmetamethod(game, "__newindex", newcclosure(function(self, key, value)
     if not checkcaller() then
-        local cfg = get_cfg()
-        if cfg and cfg.AnonEnabled and k == "Text" and type(v) == "string" then
-            return OldNewIdx(self, k, spoof_string(v))
+        local cfg = playerConfig()
+        if cfg and cfg.AnonEnabled and key == "Text" and type(value) == "string" then
+            return OldNewIndex(self, key, spoofText(value))
         end
     end
-    return OldNewIdx(self, k, v)
+    return OldNewIndex(self, key, value)
 end))
 
-local OldNc
-OldNc = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+local OldNamecall
+OldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
     local method = getnamecallmethod()
-    local args = {...}
-    local cfg = get_cfg()
-    
+    local args   = {...}
+    local cfg    = playerConfig()
+
     if not checkcaller() and cfg and cfg.AnonEnabled then
         if method == "SetCore" and args[1] == "SendNotification" then
             local data = args[2]
             if type(data) == "table" then
-                if data.Title then data.Title = spoof_string(data.Title) end
-                if data.Text then data.Text = spoof_string(data.Text) end
-                return OldNc(self, unpack(args))
+                if data.Title then data.Title = spoofText(data.Title) end
+                if data.Text  then data.Text  = spoofText(data.Text)  end
+                return OldNamecall(self, table.unpack(args))
             end
         end
     end
-    
-    return OldNc(self, ...)
+
+    return OldNamecall(self, ...)
 end))
 
-if tcs.ChatVersion == Enum.ChatVersion.TextChatService then
-    tcs.OnIncomingMessage = function(msg)
-        local cfg = get_cfg()
-        local props = inst("TextChatMessageProperties")
-        
+if TextChat.ChatVersion == Enum.ChatVersion.TextChatService then
+    TextChat.OnIncomingMessage = function(msg)
+        local cfg   = playerConfig()
+        local props = Instance.new("TextChatMessageProperties")
+
         if cfg and cfg.AnonEnabled then
-            if msg.TextSource and msg.TextSource.UserId == lp.UserId then
+            if msg.TextSource and msg.TextSource.UserId == LocalPlayer.UserId then
                 local display = cfg.FakeName or "Anônimo"
                 props.PrefixText = string.format("<font color='#F5CD30'>[%s]</font>", display)
             else
-                props.PrefixText = spoof_string(msg.PrefixText)
+                props.PrefixText = spoofText(msg.PrefixText)
             end
         end
+
         return props
     end
 end
 
-task.spawn(function()
-    local last_anon_state = false
-    local last_invis_state = false
+-- eventos
+local lastPosition = nil
 
+local function hookCharacter(char)
+    cacheNoclipParts(char)
+
+    char.DescendantAdded:Connect(function(obj)
+        if obj:IsA("BasePart") then
+            table.insert(noclipParts, obj)
+        end
+    end)
+
+    local hum  = char:WaitForChild("Humanoid", 10)
+    local root = char:WaitForChild("HumanoidRootPart", 10)
+
+    if hum and root then
+        hum.Died:Connect(function()
+            local cfg = playerConfig()
+            if cfg and cfg.RespawnEnabled then
+                lastPosition = root.CFrame
+            end
+        end)
+    end
+
+    local cfg = playerConfig()
+    if cfg and cfg.AnonEnabled then
+        scanGuiLayer(char)
+    end
+end
+
+LocalPlayer.CharacterAdded:Connect(function(char)
+    local cfg = playerConfig()
+
+    if cfg.RespawnEnabled and lastPosition then
+        task.spawn(function()
+            local root = char:WaitForChild("HumanoidRootPart", 10)
+            if root then
+                task.wait(0.2)
+                root.CFrame   = lastPosition
+                root.Velocity = Vector3.zero
+            end
+        end)
+    end
+
+    hookCharacter(char)
+
+    if cfg.InvisEnabled then
+        task.wait(0.5)
+        toggleInvisibility(true)
+    end
+
+    if cfg.AnonEnabled then
+        task.wait(1)
+        applyAnonVisuals()
+    end
+
+    if cfg.SpeedEnabled or cfg.JumpEnabled then
+        startPhysicsLoop()
+    end
+end)
+
+if LocalPlayer.Character then
+    hookCharacter(LocalPlayer.Character)
+end
+
+-- estados
+local lastAnonState  = false
+local lastInvisState = false
+local lastSpeedState = false
+local lastJumpState  = false
+
+task.spawn(function()
     while task.wait(0.1) do
-        local cfg = get_cfg()
+        local cfg = playerConfig()
         if not cfg then continue end
-        
+
         if cfg.TriggerFling then
             cfg.TriggerFling = false
-            cfg.FlingActive = true
-            start_fling(cfg.TargetPlayer)
+            cfg.FlingActive  = true
+            startFling(cfg.TargetPlayer)
         end
-        
+
         if cfg.TriggerTeleport then
             cfg.TriggerTeleport = false
-            local t = find_player(cfg.TargetPlayer)
-            if t and t.Character then
-                local r = get_root(lp)
-                local tr = t.Character:FindFirstChild("HumanoidRootPart")
-                if r and tr then
-                    state.last_pos = r.CFrame
-                    r.CFrame = tr.CFrame * cf(0, 0, 3)
+            local target = findPlayer(cfg.TargetPlayer)
+            if target and target.Character then
+                local myRoot     = getRootPart(LocalPlayer)
+                local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
+                if myRoot and targetRoot then
+                    lastPosition  = myRoot.CFrame
+                    myRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 3)
                 end
             end
         end
-        
+
         if cfg.TriggerReturn then
             cfg.TriggerReturn = false
-            if state.last_pos then
-                local r = get_root(lp)
-                if r then r.CFrame = state.last_pos end
+            if lastPosition then
+                local root = getRootPart(LocalPlayer)
+                if root then root.CFrame = lastPosition end
             end
         end
-        
-        if cfg.InvisEnabled ~= last_invis_state then
-            last_invis_state = cfg.InvisEnabled
-            toggle_invis(cfg.InvisEnabled)
+
+        if cfg.InvisEnabled ~= lastInvisState then
+            lastInvisState = cfg.InvisEnabled
+            toggleInvisibility(cfg.InvisEnabled)
         end
-        
-        if cfg.AnonEnabled ~= last_anon_state then
-            last_anon_state = cfg.AnonEnabled
-            update_anon_visuals()
+
+        if cfg.AnonEnabled ~= lastAnonState then
+            lastAnonState = cfg.AnonEnabled
+            applyAnonVisuals()
         end
+
+        local needsPhysics = cfg.SpeedEnabled or cfg.JumpEnabled
+        if needsPhysics and not lastSpeedState then
+            startPhysicsLoop()
+        elseif not needsPhysics and lastSpeedState then
+            stopPhysicsLoop()
+        end
+        lastSpeedState = needsPhysics
     end
 end)
 
 
---[[CHAR]]
+-- char
+if not isfolder("michigun.xyz") then makefolder("michigun.xyz") end
+
 env.Avatar = env.Avatar or {}
-local av = env.Avatar
+local Avatar = env.Avatar
 
-av.TargetInput = ""
-av.CurrentAppliedId = (lp and lp.UserId) or 0
-av.SkinFolder = "michigun.xyz/skins"
+Avatar.TargetInput      = ""
+Avatar.CurrentAppliedId = (LocalPlayer and LocalPlayer.UserId) or 0
+Avatar.SkinFolder       = "michigun.xyz/skins"
 
-if not isfolder(av.SkinFolder) then makefolder(av.SkinFolder) end
+if not isfolder(Avatar.SkinFolder) then makefolder(Avatar.SkinFolder) end
 
-local function s_ton(v) return v and tonumber(v) or nil end
+local function applyDescription(character, fakeName, fakeId, description)
+    if not character then return end
 
-local function morph(c, fn, fid, d)
-    if not c then return end
-    if lp and c == lp.Character then av.CurrentAppliedId = fid or av.CurrentAppliedId end
-    
+    if LocalPlayer and character == LocalPlayer.Character then
+        Avatar.CurrentAppliedId = fakeId or Avatar.CurrentAppliedId
+    end
+
     task.spawn(function()
         pcall(function()
             task.wait(0.3)
-            local h = c:WaitForChild("Humanoid", 10)
-            if not h then return end
-            
-            for _, v in ipairs(c:GetDescendants()) do
-                if v:IsA("Accessory") or v:IsA("Hat") then v:Destroy() end
+
+            local hum = character:WaitForChild("Humanoid", 10)
+            if not hum then return end
+
+            for _, obj in ipairs(character:GetDescendants()) do
+                if obj:IsA("Accessory") or obj:IsA("Hat") then obj:Destroy() end
             end
-            
-            for _, v in ipairs(c:GetChildren()) do
-                if v:IsA("Shirt") or v:IsA("Pants") or v:IsA("ShirtGraphic") or v:IsA("CharacterMesh") then v:Destroy() end
-            end
-            
-            local bc = h:FindFirstChildOfClass("BodyColors")
-            if bc then bc:Destroy() end
-            
-            for _, l in ipairs({"Torso","Left Arm","Right Arm","Left Leg","Right Leg"}) do
-                local p = c:FindFirstChild(l)
-                if p then
-                    for _, v in ipairs(p:GetChildren()) do if v:IsA("SpecialMesh") then v:Destroy() end end
+            for _, obj in ipairs(character:GetChildren()) do
+                if obj:IsA("Shirt") or obj:IsA("Pants")
+                or obj:IsA("ShirtGraphic") or obj:IsA("CharacterMesh") then
+                    obj:Destroy()
                 end
             end
-            
-            local hd = c:FindFirstChild("Head")
-            if hd then
-                local m = hd:FindFirstChildOfClass("SpecialMesh")
-                if m then m.MeshId = "" m.TextureId = "" end
+
+            local bodyColors = hum:FindFirstChildOfClass("BodyColors")
+            if bodyColors then bodyColors:Destroy() end
+
+            for _, limbName in ipairs({"Torso","Left Arm","Right Arm","Left Leg","Right Leg"}) do
+                local limb = character:FindFirstChild(limbName)
+                if limb then
+                    for _, mesh in ipairs(limb:GetChildren()) do
+                        if mesh:IsA("SpecialMesh") then mesh:Destroy() end
+                    end
+                end
             end
-            
+
+            local head = character:FindFirstChild("Head")
+            if head then
+                local mesh = head:FindFirstChildOfClass("SpecialMesh")
+                if mesh then mesh.MeshId = "" mesh.TextureId = "" end
+            end
+
             task.wait(0.1)
-            if d then h:ApplyDescriptionClientServer(d) end
+            if description then hum:ApplyDescriptionClientServer(description) end
         end)
     end)
 end
 
-av.ApplySkin = function(tgt)
-    if not lp or not lp.Character then return end
-    local fn = tgt or ""
-    if fn == "" then return end
-    local fid = s_ton(fn)
-    local s = pcall(function()
-        if fid then fn = plrs:GetNameFromUserIdAsync(fid)
-        else fid = plrs:GetUserIdFromNameAsync(fn) fn = plrs:GetNameFromUserIdAsync(fid) end
-    end)
-    if s and fid then
-        local k, d = pcall(function() return plrs:GetHumanoidDescriptionFromUserId(fid) end)
-        if k and d then morph(lp.Character, fn, fid, d) end
-    end
-end
+local function resolveUserId(input)
+    local id = tonumber(input)
+    local name
 
-av.ApplySkinToOther = function(tn, si, sf)
-    local tp = find_player(tn)
-    if not tp or not tp.Character then return end
-    local fid, fn = nil, si
-    if sf then
-        local s, sd = pcall(function() return readfile(av.SkinFolder .. "/" .. si .. ".txt") end)
-        if s and sd then fid = s_ton(sd) fn = "SavedSkin" else return end
-    else
-        fid = s_ton(fn)
-        local k = pcall(function()
-            if fid then fn = plrs:GetNameFromUserIdAsync(fid)
-            else fid = plrs:GetUserIdFromNameAsync(fn) fn = plrs:GetNameFromUserIdAsync(fid) end
-        end)
-        if not k then return end
-    end
-    if fid then
-        local k, d = pcall(function() return plrs:GetHumanoidDescriptionFromUserId(fid) end)
-        if k and d then morph(tp.Character, fn, fid, d) end
-    end
-end
-
-av.RestoreOther = function(tn)
-    local tp = find_player(tn)
-    if not tp or not tp.Character then return end
-    local k, d = pcall(function() return plrs:GetHumanoidDescriptionFromUserId(tp.UserId) end)
-    if k and d then morph(tp.Character, tp.Name, tp.UserId, d) end
-end
-
-av.RestoreSkin = function()
-    if not lp or not lp.Character then return end
-    local k, d = pcall(function() return plrs:GetHumanoidDescriptionFromUserId(lp.UserId) end)
-    if k and d then morph(lp.Character, lp.Name, lp.UserId, d) end
-end
-
-av.GetSavedSkins = function()
-    local s, f = pcall(listfiles, av.SkinFolder)
-    if not s or not f then return {{Title="Erro ao ler pasta", Icon="lucide:alert-triangle"}} end
-    local o = {}
-    for _, v in ipairs(f) do
-        local n = v:match("([^\\/]+)%.txt$")
-        if n then table.insert(o, {Title=n, Icon="lucide:user"}) end
-    end
-    if #o == 0 then table.insert(o, {Title="Nenhuma salva", Icon="lucide:frown"}) end
-    return o
-end
-
-av.SaveSkin = function(cn)
-    local i = av.CurrentAppliedId or 0
-    local n = (cn ~= "" and cn:gsub("[^%w%s]", "")) or "Skin_" .. i
-    writefile(av.SkinFolder .. "/" .. n .. ".txt", tostring(i))
-end
-
-av.LoadSkin = function(n)
-    if not lp or not lp.Character then return end
-    local s, sd = pcall(function() return readfile(av.SkinFolder .. "/" .. n .. ".txt") end)
-    if s and sd then
-        local ni = s_ton(sd)
-        if ni then
-            local k, d = pcall(function() return plrs:GetHumanoidDescriptionFromUserId(ni) end)
-            if k and d then morph(lp.Character, n, ni, d) end
+    local ok = pcall(function()
+        if id then
+            name = Players:GetNameFromUserIdAsync(id)
+        else
+            id   = Players:GetUserIdFromNameAsync(input)
+            name = Players:GetNameFromUserIdAsync(id)
         end
-    end
+    end)
+
+    if ok and id then return id, name end
+    return nil, nil
 end
 
-av.DeleteSkin = function(n)
-    local p = av.SkinFolder .. "/" .. n .. ".txt"
-    if isfile(p) then delfile(p) end
+Avatar.ApplySkin = function(input)
+    if not LocalPlayer or not LocalPlayer.Character then return end
+    if not input or input == "" then return end
+
+    local id, name = resolveUserId(input)
+    if not id then return end
+
+    local ok, desc = pcall(Players.GetHumanoidDescriptionFromUserId, Players, id)
+    if ok and desc then applyDescription(LocalPlayer.Character, name, id, desc) end
+end
+
+Avatar.ApplySkinToOther = function(targetName, skinInput, fromSaved)
+    local target = findPlayer(targetName)
+    if not target or not target.Character then return end
+
+    local id, name
+
+    if fromSaved then
+        local ok, data = pcall(readfile, Avatar.SkinFolder .. "/" .. skinInput .. ".txt")
+        if not ok or not data then return end
+        id   = tonumber(data)
+        name = "SavedSkin"
+    else
+        id, name = resolveUserId(skinInput)
+    end
+
+    if not id then return end
+
+    local ok, desc = pcall(Players.GetHumanoidDescriptionFromUserId, Players, id)
+    if ok and desc then applyDescription(target.Character, name, id, desc) end
+end
+
+Avatar.RestoreOther = function(targetName)
+    local target = findPlayer(targetName)
+    if not target or not target.Character then return end
+
+    local ok, desc = pcall(Players.GetHumanoidDescriptionFromUserId, Players, target.UserId)
+    if ok and desc then applyDescription(target.Character, target.Name, target.UserId, desc) end
+end
+
+Avatar.RestoreSkin = function()
+    if not LocalPlayer or not LocalPlayer.Character then return end
+
+    local ok, desc = pcall(Players.GetHumanoidDescriptionFromUserId, Players, LocalPlayer.UserId)
+    if ok and desc then applyDescription(LocalPlayer.Character, LocalPlayer.Name, LocalPlayer.UserId, desc) end
+end
+
+Avatar.GetSavedSkins = function()
+    local ok, files = pcall(listfiles, Avatar.SkinFolder)
+    if not ok or not files then
+        return {{ Title = "Erro ao ler pasta", Icon = "lucide:alert-triangle" }}
+    end
+
+    local skins = {}
+    for _, path in ipairs(files) do
+        local name = path:match("([^\\/]+)%.txt$")
+        if name then table.insert(skins, { Title = name, Icon = "lucide:user" }) end
+    end
+
+    if #skins == 0 then
+        table.insert(skins, { Title = "Nenhuma salva", Icon = "lucide:frown" })
+    end
+
+    return skins
+end
+
+Avatar.SaveSkin = function(customName)
+    local id   = Avatar.CurrentAppliedId or 0
+    local name = (customName ~= "" and customName:gsub("[^%w%s]", "")) or ("Skin_" .. id)
+    writefile(Avatar.SkinFolder .. "/" .. name .. ".txt", tostring(id))
+end
+
+Avatar.LoadSkin = function(name)
+    if not LocalPlayer or not LocalPlayer.Character then return end
+
+    local ok, data = pcall(readfile, Avatar.SkinFolder .. "/" .. name .. ".txt")
+    if not ok or not data then return end
+
+    local id = tonumber(data)
+    if not id then return end
+
+    local descOk, desc = pcall(Players.GetHumanoidDescriptionFromUserId, Players, id)
+    if descOk and desc then applyDescription(LocalPlayer.Character, name, id, desc) end
+end
+
+Avatar.DeleteSkin = function(name)
+    local path = Avatar.SkinFolder .. "/" .. name .. ".txt"
+    if isfile(path) then delfile(path) end
 end
