@@ -938,51 +938,7 @@ end)
             table.clear(tabela)
         end
 
-        -- bala infinita
-        getgenv().ApexLogic.ToggleInfiniteAmmo = function(ativar)
-    if not ativar then
-        if getgenv().InfiniteAmmoConnection then
-            getgenv().InfiniteAmmoConnection:Disconnect()
-            getgenv().InfiniteAmmoConnection = nil
-        end
-        if getgenv().InfiniteAmmoAddedConn then
-            getgenv().InfiniteAmmoAddedConn:Disconnect()
-            getgenv().InfiniteAmmoAddedConn = nil
-        end
-        return
-    end
-
-    if getgenv().InfiniteAmmoConnection then
-        getgenv().InfiniteAmmoConnection:Disconnect()
-    end
-    if getgenv().InfiniteAmmoAddedConn then
-        getgenv().InfiniteAmmoAddedConn:Disconnect()
-    end
-
-    local function forcarAmmo(tool)
-        if not tool:IsA("Tool") then return end
-        if #tool:GetDescendants() <= 5 then return end
-        local ammo = tool:FindFirstChild("Ammo")
-        if ammo then ammo.Value = ammo.MaxValue end
-    end
-
-    getgenv().InfiniteAmmoConnection = RunService.Heartbeat:Connect(function()
-        local bp = lp:FindFirstChild("Backpack")
-        if not bp then return end
-        for _, tool in ipairs(bp:GetChildren()) do
-            forcarAmmo(tool)
-        end
-    end)
-
-    getgenv().InfiniteAmmoAddedConn = lp.Backpack.ChildAdded:Connect(function(tool)
-        task.wait(0.1)
-        forcarAmmo(tool)
-    end)
-end
-
-        ------------------------------------------------------------------------
-        -- spam de sons
-        ------------------------------------------------------------------------
+        -- sons
         getgenv().ApexLogic.ToggleSound = function(ativar)
             getgenv().SpamAtivo = ativar
 
