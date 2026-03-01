@@ -354,20 +354,14 @@ local ac = {["á"]="Á",["à"]="À",["ã"]="Ã",["â"]="Â",["é"]="É",["ê"]="
 local InputBar = tcs:FindFirstChildOfClass("ChatInputBarConfiguration")
 
 local function sc(m)
-    local s = tostring(m)
-    if game.PlaceId == 13132367906 then
-        pcall(function()
-            if InputBar and InputBar.TargetTextChannel then
-                InputBar.TargetTextChannel:SendAsync(s)
-            end
-        end)
-    else
-        local ev = rep:FindFirstChild("DefaultChatSystemChatEvents")
-        local req = ev and ev:FindFirstChild("SayMessageRequest")
-        if req then
-            pcall(function() req:FireServer(s, "All") end)
+    pcall(function()
+        if InputBar and InputBar.TargetTextChannel then
+            InputBar.TargetTextChannel:SendAsync(tostring(m))
+        else
+            local general = tcs:WaitForChild("TextChannels"):WaitForChild("RBXGeneral")
+            general:SendAsync(tostring(m))
         end
-    end
+    end)
 end
 
 local function up(s)
