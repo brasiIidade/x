@@ -1501,7 +1501,7 @@ end)
                                 pcall(fireClient.FireServer, fireClient, sessionToken, "PlaySound", sound, nil)
                                 sound.Volume = originalVolume
                             end
-                            task.wait(0.05)
+                            task.wait(0.01)
                         end
                     end
                     task.wait(0.05)
