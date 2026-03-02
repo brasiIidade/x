@@ -1,89 +1,54 @@
---// bypass
+-- bypass
 local function burlar()
-	local cnf = {
-		Constants = {" - On Xbox", " - On mobile", "_"},
-		IgnoreExecutor = true
-	}
-
-	local det = filtergc("function", cnf)
-	det = det and det[1]
-
-	if not det then
-		return cl:Kick("Erro")
-	end
-
-	local inf = hk.Create(amb.debug.info)
-	local fke = hk.Create(det)
-
-	local r1, r2, r3, r4, r5, r6 = amb.debug.info(det, "slanf")
-
-	local pulo = function(...)
-		local v = {...}
-		if v[1] == det and v[2] == "slanf" then
-			return r1, r2, r3, r4, r5, r6 
-		end
-
-		return inf:Original(...)
-	end
-
-	inf:SetDetour(pulo)
-	fke:SetDetour(function() return task.wait(9e10) end)
-	
-	inf:Enable()
-	fke:Enable()
-end
-
---// serviços
-local cloneref = cloneref or function(o) return o end
-local Players = cloneref(game:GetService("Players"))
-local TeamsService = cloneref(game:GetService("Teams"))
-local UserInputService = cloneref(game:GetService("UserInputService"))
-local RunService = cloneref(game:GetService("RunService"))
-local CoreGui = cloneref(game:GetService("CoreGui"))
-local TextChatService = cloneref(game:GetService("TextChatService"))
-local HttpService = cloneref(game:GetService("HttpService"))
-local Workspace = cloneref(game:GetService("Workspace"))
-
-local LocalPlayer = cloneref(Players.LocalPlayer)
-
---// execs
-local secret = "michigun817282861nzjzhan_uqyaisn7klol"
-local url = "https://michigun.xyz/script"
-
-local userId = tostring(LocalPlayer.UserId)
-local placeId = tostring(game.PlaceId)
-local timestamp = tostring(os.time())
-
-local data = userId .. placeId .. timestamp .. secret
-local signature = ""
-
-if crypt and crypt.hash then
-    signature = crypt.hash(data, "sha256")
-elseif syn and syn.crypt then
-    signature = syn.crypt.hash(data)
-elseif http and http.hash then
-    signature = http.hash(data, "sha256")
-else
-    signature = "nocrypto"
-end
-
-local response = request({
-    Url = url,
-    Method = "GET",
-    Headers = {
-        ["x-user-id"] = userId,
-        ["x-place-id"] = placeId,
-        ["x-timestamp"] = timestamp,
-        ["x-signature"] = signature,
-        ["x-mode"] = "check" 
+    local cnf = {
+        Constants    = {" - On Xbox", " - On mobile", "_"},
+        IgnoreExecutor = true
     }
-})
 
-if response.StatusCode ~= 200 then
-    warn("Erro: " .. response.StatusCode)
+    local det = filtergc("function", cnf)
+    det = det and det[1]
+
+    if not det then
+        return cl:Kick("Erro")
+    end
+
+    local inf = hk.Create(amb.debug.info)
+    local fke = hk.Create(det)
+
+    local r1, r2, r3, r4, r5, r6 = amb.debug.info(det, "slanf")
+
+    local pulo = function(...)
+        local v = {...}
+        if v[1] == det and v[2] == "slanf" then
+            return r1, r2, r3, r4, r5, r6
+        end
+        return inf:Original(...)
+    end
+
+    inf:SetDetour(pulo)
+    fke:SetDetour(function() return task.wait(9e10) end)
+
+    inf:Enable()
+    fke:Enable()
 end
 
---// executor
+
+-- serviços
+local cloneref        = cloneref or function(o) return o end
+
+local Players         = cloneref(game:GetService("Players"))
+local TeamsService    = cloneref(game:GetService("Teams"))
+local UserInputService= cloneref(game:GetService("UserInputService"))
+local RunService      = cloneref(game:GetService("RunService"))
+local CoreGui         = cloneref(game:GetService("CoreGui"))
+local TextChatService = cloneref(game:GetService("TextChatService"))
+local HttpService     = cloneref(game:GetService("HttpService"))
+local Workspace       = cloneref(game:GetService("Workspace"))
+
+local LocalPlayer     = cloneref(Players.LocalPlayer)
+
+
+-- executor
 local Executor = identifyexecutor and string.lower(identifyexecutor()) or "unknown"
 
 if string.find(Executor, "xeno") or string.find(Executor, "solara") then
@@ -92,11 +57,48 @@ if string.find(Executor, "xeno") or string.find(Executor, "solara") then
     while true do end
 end
 
---// hooks
+
+-- auth
+local secret    = "michigun817282861nzjzhan_uqyaisn7klol"
+local url       = "https://michigun.xyz/script"
+
+local userId    = tostring(LocalPlayer.UserId)
+local placeId   = tostring(game.PlaceId)
+local timestamp = tostring(os.time())
+
+local data      = userId .. placeId .. timestamp .. secret
+local signature = "nocrypto"
+
+if crypt and crypt.hash then
+    signature = crypt.hash(data, "sha256")
+elseif syn and syn.crypt then
+    signature = syn.crypt.hash(data)
+elseif http and http.hash then
+    signature = http.hash(data, "sha256")
+end
+
+local response = request({
+    Url     = url,
+    Method  = "GET",
+    Headers = {
+        ["x-user-id"]   = userId,
+        ["x-place-id"]  = placeId,
+        ["x-timestamp"] = timestamp,
+        ["x-signature"] = signature,
+        ["x-mode"]      = "check"
+    }
+})
+
+if response.StatusCode ~= 200 then
+    warn("Erro: " .. response.StatusCode)
+end
+
+
+-- hooks e ghost table
 local NewCClosure = newcclosure or function(f) return f end
 local CheckCaller = checkcaller or function() return false end
 
-local GhostTable = setmetatable({}, {__mode = "k"})
+local GhostTable  = setmetatable({}, {__mode = "k"})
 
 local function GetGhost(obj, key)
     return GhostTable[obj] and GhostTable[obj][key]
@@ -111,10 +113,15 @@ end
 local OldIndex
 OldIndex = hookmetamethod(game, "__index", NewCClosure(function(self, k)
     if not CheckCaller() then
-        if k == "Size" and typeof(self) == "Instance" and self:IsA("BasePart") and self.Name == "HumanoidRootPart" then
+        if k == "Size"
+            and typeof(self) == "Instance"
+            and self:IsA("BasePart")
+            and self.Name == "HumanoidRootPart"
+        then
             local ghost = GetGhost(self, k)
             return ghost ~= nil and ghost or Vector3.new(2, 2, 1)
         end
+
         local ghost = GetGhost(self, k)
         if ghost ~= nil then return ghost end
     end
@@ -124,7 +131,7 @@ end))
 local OldNewIndex
 OldNewIndex = hookmetamethod(game, "__newindex", NewCClosure(function(self, k, v)
     if not CheckCaller() and typeof(self) == "Instance" then
-        local isHum = self:IsA("Humanoid")
+        local isHum  = self:IsA("Humanoid")
         local isRoot = self:IsA("BasePart") and self.Name == "HumanoidRootPart"
 
         if isHum and k == "WalkSpeed" then
@@ -141,8 +148,10 @@ OldNewIndex = hookmetamethod(game, "__newindex", NewCClosure(function(self, k, v
     return OldNewIndex(self, k, v)
 end))
 
+
+-- spoof do personagem
 local function InitSpoof(char)
-    local hum = char:WaitForChild("Humanoid", 10)
+    local hum  = char:WaitForChild("Humanoid",        10)
     local root = char:WaitForChild("HumanoidRootPart", 10)
 
     if hum then
@@ -161,33 +170,121 @@ local function HandlePlayer(p)
 end
 
 local plrs = game:GetService("Players")
-for _, p in ipairs(plrs:GetPlayers()) do
-    HandlePlayer(p)
-end
+for _, p in ipairs(plrs:GetPlayers()) do HandlePlayer(p) end
 plrs.PlayerAdded:Connect(HandlePlayer)
+
 
 --// ui
 local UI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 UI:SetFont("rbxassetid://16658237174")
 loadstring(game:HttpGet("https://raw.githubusercontent.com/michigun-log/logs/refs/heads/main/740dd88a77e9cc25.lua.txt"))()
 
+--// tema
+UI:AddTheme({
+    Name = "Michigun",
+
+    Accent                               = Color3.fromHex("#040303"),
+    Background                           = Color3.fromHex("#040303"),
+    BackgroundTransparency               = 0,
+    Outline                              = Color3.fromHex("#333333"),
+    Text                                 = Color3.fromHex("#f0f0f0"),
+    Placeholder                          = Color3.fromHex("#555555"),
+    Button                               = Color3.fromHex("#1c1c1c"),
+    Icon                                 = Color3.fromHex("#888888"),
+
+    Primary                              = Color3.fromHex("#ffffff"),
+    Hover                                = Color3.fromHex("#ffffff"),
+
+    WindowBackground                     = Color3.fromHex("#040303"),
+    WindowShadow                         = Color3.fromHex("#000000"),
+
+    WindowTopbarButtonIcon               = Color3.fromHex("#888888"),
+    WindowTopbarTitle                    = Color3.fromHex("#f0f0f0"),
+    WindowTopbarAuthor                   = Color3.fromHex("#666666"),
+    WindowTopbarIcon                     = Color3.fromHex("#aaaaaa"),
+
+    TabBackground                        = Color3.fromHex("#111111"),
+    TabTitle                             = Color3.fromHex("#f0f0f0"),
+    TabIcon                              = Color3.fromHex("#888888"),
+    TabBorder                            = Color3.fromHex("#2e2e2e"),
+
+    ElementBackground                    = Color3.fromHex("#141414"),
+    ElementTitle                         = Color3.fromHex("#f0f0f0"),
+    ElementDesc                          = Color3.fromHex("#777777"),
+    ElementIcon                          = Color3.fromHex("#999999"),
+
+    PopupBackground                      = Color3.fromHex("#0f0f0f"),
+    PopupBackgroundTransparency          = 0,
+    PopupTitle                           = Color3.fromHex("#f0f0f0"),
+    PopupContent                         = Color3.fromHex("#bbbbbb"),
+    PopupIcon                            = Color3.fromHex("#888888"),
+
+    DialogBackground                     = Color3.fromHex("#0f0f0f"),
+    DialogBackgroundTransparency         = 0,
+    DialogTitle                          = Color3.fromHex("#f0f0f0"),
+    DialogContent                        = Color3.fromHex("#bbbbbb"),
+    DialogIcon                           = Color3.fromHex("#888888"),
+
+    Toggle                               = Color3.fromHex("#2a2a2a"),
+    ToggleBar                            = Color3.fromHex("#f0f0f0"),
+
+    Checkbox                             = Color3.fromHex("#1c1c1c"),
+    CheckboxIcon                         = Color3.fromHex("#f0f0f0"),
+    CheckboxBorder                       = Color3.fromHex("#aaaaaa"),
+    CheckboxBorderTransparency           = 0,
+
+    Slider                               = Color3.fromHex("#2a2a2a"),
+    SliderThumb                          = Color3.fromHex("#f0f0f0"),
+    SliderIconFrom                       = Color3.fromHex("#555555"),
+    SliderIconTo                         = Color3.fromHex("#f0f0f0"),
+
+    Tooltip                              = Color3.fromHex("#1c1c1c"),
+    TooltipText                          = Color3.fromHex("#f0f0f0"),
+    TooltipSecondary                     = Color3.fromHex("#444444"),
+    TooltipSecondaryText                 = Color3.fromHex("#f0f0f0"),
+
+    SectionExpandIcon                    = Color3.fromHex("#f0f0f0"),
+    SectionExpandIconTransparency        = 0.2,
+    SectionBox                           = Color3.fromHex("#888888"),
+    SectionBoxTransparency               = 0.85,
+    SectionBoxBorder                     = Color3.fromHex("#666666"),
+    SectionBoxBorderTransparency         = 0.3,
+    SectionBoxBackground                 = Color3.fromHex("#888888"),
+    SectionBoxBackgroundTransparency     = 0.92,
+
+    SearchBarBorder                      = Color3.fromHex("#444444"),
+    SearchBarBorderTransparency          = 0,
+
+    Notification                         = Color3.fromHex("#181818"),
+    NotificationTitle                    = Color3.fromHex("#f0f0f0"),
+    NotificationTitleTransparency        = 0,
+    NotificationContent                  = Color3.fromHex("#aaaaaa"),
+    NotificationContentTransparency      = 0,
+    NotificationDuration                 = Color3.fromHex("#666666"),
+    NotificationDurationTransparency     = 0,
+    NotificationBorder                   = Color3.fromHex("#444444"),
+    NotificationBorderTransparency       = 0,
+
+    DropdownTabBorder                    = Color3.fromHex("#333333"),
+})
+
 local main = UI:CreateWindow({
-    Title = "michigun.xyz",
-    Icon = "rbxthumb://type=Asset&id=88026679106109&w=420&h=420",
-    Author = "por @fp3",
+    Title = "mich.xyz",
+    Icon = "rbxthumb://type=Asset&id=137064182739714&w=420&h=420",
+    Author = "Feito por fp3",
     Folder = "michigun.xyz",
     Size = UDim2.fromOffset(560, 350),
     MinSize = Vector2.new(560, 350),
     MaxSize = Vector2.new(850, 560),
     Radius = 20,
     Transparent = true,
-    Theme = "Dark",
+    Theme = "Michigun",
     Resizable = true,
     SideBarWidth = 150,
     ShadowTransparency = 0.7,
     HideSearchBar = true,
-    -- Background = "rbxassetid://",
-    -- BackgroundImageTransparency = 0.5,
+    Background = "rbxthumb://type=Asset&id=137064182739714&w=420&h=420",
+    BackgroundImageTransparency = 0.9,
     User = {
         Enabled = true,
         Callback = function()
@@ -198,7 +295,7 @@ local main = UI:CreateWindow({
 --// notificação
 local function notificar(mensagem, tempo, icone)
     UI:Notify({
-        Title = "michigun.xyz",
+        Title = "mich.xyz",
         Content = mensagem,
         Duration = tempo,
         Icon = icone,
@@ -222,62 +319,102 @@ function cor(...)
     return table.concat(output)
 end
 
---// tags
-local fps = main:Tag({
-  Title = "0 FPS",
-	Radius = 20,
-	Icon = "lucide:gauge",
-  Color = Color3.fromRGB(100, 150, 255),
+
+-- tags
+local function lerpColor(a, b, t)
+    return Color3.new(
+        a.R + (b.R - a.R) * t,
+        a.G + (b.G - a.G) * t,
+        a.B + (b.B - a.B) * t
+    )
+end
+
+local function fpsColor(f)
+    if f >= 60 then
+        return Color3.fromRGB(80, 220, 130)
+    elseif f >= 45 then
+        return lerpColor(
+            Color3.fromRGB(80, 220, 130),
+            Color3.fromRGB(255, 190, 50),
+            (60 - f) / 15
+        )
+    elseif f >= 25 then
+        return lerpColor(
+            Color3.fromRGB(255, 190, 50),
+            Color3.fromRGB(230, 70, 70),
+            (45 - f) / 20
+        )
+    else
+        return Color3.fromRGB(230, 70, 70)
+    end
+end
+
+local function pingColor(p)
+    if p <= 60 then
+        return Color3.fromRGB(80, 220, 130)
+    elseif p <= 120 then
+        return lerpColor(
+            Color3.fromRGB(80, 220, 130),
+            Color3.fromRGB(255, 190, 50),
+            (p - 60) / 60
+        )
+    elseif p <= 250 then
+        return lerpColor(
+            Color3.fromRGB(255, 190, 50),
+            Color3.fromRGB(230, 70, 70),
+            (p - 120) / 130
+        )
+    else
+        return Color3.fromRGB(230, 70, 70)
+    end
+end
+
+-- fps
+local fpsTag = main:Tag({
+    Title  = "-- FPS",
+    Radius = 20,
+    Icon   = "lucide:gauge",
+    Color  = Color3.fromRGB(80, 220, 130),
 })
 
 local lastUpdate = tick()
 local frameCount = 0
- 
+
 RunService.RenderStepped:Connect(function()
-    frameCount = frameCount + 1
+    frameCount += 1
     local now = tick()
-    if now - lastUpdate >= 1 then
-        local currentFps = math.floor(frameCount / (now - lastUpdate))
-        fps:SetTitle(tostring(currentFps) .. " FPS")
-        if currentFps >= 50 then
-            fps:SetColor(Color3.fromRGB(0, 255, 0)) -- Verde
-        elseif currentFps >= 30 then
-            fps:SetColor(Color3.fromRGB(255, 200, 0)) -- Amarelo
-        else
-            fps:SetColor(Color3.fromRGB(255, 0, 0)) -- Vermelho
-        end
+    local delta = now - lastUpdate
+    if delta >= 1 then
+        local current = math.floor(frameCount / delta)
+        fpsTag:SetTitle(current .. " FPS")
+        fpsTag:SetColor(fpsColor(current))
         frameCount = 0
-        lastUpdate = now
+        lastUpdate  = now
     end
 end)
 
-local ping2 = main:Tag({
-  Title = "0 ms",
-	Radius = 20,
-	Icon = "lucide:signal",
-  Color = Color3.fromRGB(100, 200, 255),
+-- ping
+local pingTag = main:Tag({
+    Title  = "-- ms",
+    Radius = 20,
+    Icon   = "lucide:signal",
+    Color  = Color3.fromRGB(80, 220, 130),
 })
- 
+
+local Stats      = game:GetService("Stats")
+local pingItem   = Stats.Network.ServerStatsItem["Data Ping"]
+
 task.spawn(function()
     while true do
-        local success, ping = pcall(function()
-            local Stats = game:GetService("Stats")
-            local pingValue = Stats.Network.ServerStatsItem["Data Ping"]:GetValue()
-            return math.floor(pingValue)
+        local ok, value = pcall(function()
+            return math.floor(pingItem:GetValue())
         end)
-        
-        if success and ping then
-            ping2:SetTitle(tostring(ping) .. " ms")
-            if ping <= 50 then
-                ping2:SetColor(Color3.fromRGB(0, 255, 0))
-            elseif ping <= 100 then
-                ping2:SetColor(Color3.fromRGB(255, 200, 0))
-            elseif ping <= 200 then
-                ping2:SetColor(Color3.fromRGB(255, 150, 0))
-            else
-                ping2:SetColor(Color3.fromRGB(255, 0, 0))
-            end
+
+        if ok and value then
+            pingTag:SetTitle(value .. " ms")
+            pingTag:SetColor(pingColor(value))
         end
+
         task.wait(2)
     end
 end)
@@ -342,12 +479,12 @@ end
 local function exec(content, nome)
     local fn, err = loadstring(content)
     if not fn then
-        warn("Erro ao compilar '" .. nome .. "': " .. tostring(err))
+        warn("[Loader] Erro ao compilar '" .. nome .. "': " .. tostring(err))
         return false
     end
     local ok, err2 = pcall(fn)
     if not ok then
-        warn("Erro ao executar '" .. nome .. "': " .. tostring(err2))
+        warn("[Loader] Erro ao executar '" .. nome .. "': " .. tostring(err2))
         return false
     end
     return true
@@ -367,7 +504,7 @@ end
 local function ler(key)
     local nome = FilePaths[key]
     if not nome then
-        warn("Chave não encontrada: " .. key)
+        warn("[Loader] Chave não encontrada: " .. key)
         return
     end
 
@@ -2904,7 +3041,7 @@ InterfaceSection:Toggle({
     Callback = function(state)
     main:EditOpenButton({
     Title = "",
-    Icon = "rbxthumb://type=Asset&id=88026679106109&w=420&h=420",
+    Icon = "rbxthumb://type=Asset&id=137064182739714&w=420&h=420",
     CornerRadius = UDim.new(10, 10),
     StrokeThickness = 1,
     Color = ColorSequence.new(
@@ -3468,220 +3605,83 @@ FarmSection:Toggle({
 })    
 
 elseif MapaAtual == "Apex" then
-        getgenv().ApexLogic = getgenv().ApexLogic or {}
-        getgenv()._ApexSpamMasterConns = getgenv()._ApexSpamMasterConns or {}
-        getgenv()._ApexSpamCharConns = getgenv()._ApexSpamCharConns or {}
-
-        local function limparConns(tabela)
-            for _, conn in ipairs(tabela) do
-                if typeof(conn) == "RBXScriptConnection" and conn.Connected then 
-                    conn:Disconnect() 
-                end
-            end
-            table.clear(tabela)
-        end
-
-        getgenv().ApexLogic.ToggleSound = function(ativar)
-            getgenv().SpamAtivo = ativar
-
-            if ativar then
-                if getgenv()._SpamThread then
-                    pcall(task.cancel, getgenv()._SpamThread)
-                end
-                
-                limparConns(getgenv()._ApexSpamMasterConns)
-                limparConns(getgenv()._ApexSpamCharConns)
-
-                getgenv()._SpamThread = task.spawn(function()
-                    local RS = game:GetService("ReplicatedStorage")
-                    local fireClient = RS:WaitForChild("ServerEvents", 5) and RS.ServerEvents:WaitForChild("FireClient", 5)
-                    
-                    if not fireClient then 
-                        if getgenv().notificar then getgenv().notificar("Inválido", 3, "lucide:alert-triangle") end
-                        return 
-                    end
-
-                    local sessionToken  = nil
-                    local soundList     = {}
-                    local equippedTool  = nil
-                    local isReadyToSpam = false 
-                    local rng = Random.new()
-
-                    local function refreshSounds()
-                        local found = {}
-                        local uniqueIds = {}
-                        for _, obj in ipairs(game:GetDescendants()) do
-                            if obj:IsA("Sound") and obj.SoundId ~= "" then
-                                if not uniqueIds[obj.SoundId] then
-                                    uniqueIds[obj.SoundId] = true
-                                    table.insert(found, obj)
-                                    if #found >= 200 then break end
-                                end
-                            end
-                        end
-                        soundList = found
-                    end
-
-                    local function findSessionToken()
-                        for _, obj in ipairs(getgc(true)) do
-                            if type(obj) == "function" and debug.getinfo(obj).name == "PlaySound" then
-                                local val = debug.getupvalue(obj, 2)
-                                if val then return val end
-                            end
-                        end
-                        return nil
-                    end
-
-                    local function isValidWeapon(tool)
-                        if not tool then return false end
-                        local count = 0
-                        for _ in ipairs(tool:GetDescendants()) do
-                            count = count + 1
-                            if count > 5 then return true end
-                        end
-                        return false
-                    end
-
-                    local function findWeaponInBag()
-                        local bag = LocalPlayer:FindFirstChild("Backpack")
-                        if not bag then return nil end
-                        for _, item in ipairs(bag:GetChildren()) do
-                            if item:IsA("Tool") and isValidWeapon(item) then return item end
-                        end
-                        return nil
-                    end
-
-                    local function waitForWeapon(name)
-                        local startTime = tick()
-                        repeat
-                            task.wait(0.05)
-                            local char = LocalPlayer.Character
-                            local tool = char and char:FindFirstChild(name)
-                            if tool and tool:IsA("Tool") then return tool end
-                        until (tick() - startTime) > 3
-                        return nil
-                    end
-
-                    local function setupToken()
-                        isReadyToSpam = false 
-                        local char = LocalPlayer.Character
-                        if not char then return false end
-
-                        local humanoid = char:FindFirstChildOfClass("Humanoid")
-                        if not humanoid then return false end
-
-                        humanoid:UnequipTools()
-                        task.wait(0.5)
-
-                        local targetWeapon = findWeaponInBag()
-                        
-                        if not targetWeapon then return false end
-
-                        humanoid:EquipTool(targetWeapon)
-                        if not waitForWeapon(targetWeapon.Name) then return false end
-                        
-                        task.wait(1)
-
-                        sessionToken = findSessionToken()
-                        if not sessionToken then return false end
-
-                        humanoid:UnequipTools()
-                        task.wait(0.5)
-
-                        humanoid:EquipTool(targetWeapon)
-                        if not waitForWeapon(targetWeapon.Name) then return false end
-                        
-                        equippedTool = targetWeapon
-                        task.wait(0.5)
-                        isReadyToSpam = true
-                        return true
-                    end
-
-                    local function watchCharacter(char)
-                        limparConns(getgenv()._ApexSpamCharConns)
-                        isReadyToSpam = false
-                        sessionToken = nil
-                        if not char then return end
-
-                        local function checkEquipped()
-                            local tool = char:FindFirstChildOfClass("Tool")
-                            equippedTool = isValidWeapon(tool) and tool or nil
-                        end
-
-                        table.insert(getgenv()._ApexSpamCharConns, char.ChildAdded:Connect(function(child)
-                            if child:IsA("Tool") then checkEquipped() end
-                        end))
-
-                        table.insert(getgenv()._ApexSpamCharConns, char.ChildRemoved:Connect(function(child)
-                            if child:IsA("Tool") then checkEquipped() end
-                        end))
-
-                        checkEquipped()
-                    end
-
-                    table.insert(getgenv()._ApexSpamMasterConns, LocalPlayer.CharacterAdded:Connect(watchCharacter))
-                    if LocalPlayer.Character then watchCharacter(LocalPlayer.Character) end
-
-                    task.spawn(function()
-                        while getgenv().SpamAtivo do
-                            task.wait(30)
-                            if getgenv().SpamAtivo then refreshSounds() end
-                        end
-                    end)
-
-                    refreshSounds()
-                    setupToken()
-
-                    while getgenv().SpamAtivo do
-                        if not equippedTool or not sessionToken or not isReadyToSpam then
-                            task.wait(1)
-                            if not isReadyToSpam and getgenv().SpamAtivo then setupToken() end
-                            continue
-                        end
-
-                        local totalSons = #soundList
-                        if totalSons > 0 then
-                            for i = 1, 15 do
-                                if not getgenv().SpamAtivo or not equippedTool or not isReadyToSpam then break end
-
-                                local sound = soundList[rng:NextInteger(1, totalSons)]
-                                if sound and sound.Parent then
-                                    local originalVolume = sound.Volume
-                                    sound.Volume = 10
-                                    pcall(fireClient.FireServer, fireClient, sessionToken, "PlaySound", sound, nil)
-                                    sound.Volume = originalVolume
-                                end
-                                task.wait()
-                            end
-                        end
-                        task.wait()
-                    end
-                end)
-            else
-                if getgenv()._SpamThread then
-                    pcall(task.cancel, getgenv()._SpamThread)
-                    getgenv()._SpamThread = nil
-                end
-                limparConns(getgenv()._ApexSpamMasterConns)
-                limparConns(getgenv()._ApexSpamCharConns)
-            end
-        end
-
         local ApexTab = criartab("Apex", "https://tr.rbxcdn.com/180DAY-9b65f927dea36f98c1a720694fd00fd3/768/432/Image/Webp/noFilter")
-        local TrollTab = criarsection(ApexTab, "Troll", "Funções de troll", "https://pngfre.com/wp-content/uploads/1000117874.png", true)
+
+        ApexTab:Button({
+        Title     = "Invadir base",
+        Desc      = "Autoexplicativo",
+        Icon      = "lucide:log-in",
+        IconAlign = "Left",
+        Locked    = not JD_IS_PREMIUM,
+        LockedTitle = "Premium",
+        Callback  = function()
+        if getgenv().IniciarRota then
+            getgenv().IniciarRota()
+        end
+    end
+})
+
+    local Mods    = criarsection(ApexTab, "Modificações", "Modificações de arma", "lucide:chevrons-left-right-ellipsis", false)
+    local TrollTab = criarsection(ApexTab, "Troll", "Funções de troll", "https://pngfre.com/wp-content/uploads/1000117874.png", true)
+
+    Mods:Toggle({
+    Title    = "Bala infinita",
+    Desc     = cor({"Congela", "#00FF00"}, {" a munição da arma"}),
+    Icon     = "lucide:infinity",
+    Flag     = "ApexBalaInfinita",
+    Value    = false,
+    Callback = function(v)
+        if v then
+            if getgenv()._InfiniteAmmoConn then
+                getgenv()._InfiniteAmmoConn:Disconnect()
+            end
+            if getgenv()._InfiniteAmmoAddedConn then
+                getgenv()._InfiniteAmmoAddedConn:Disconnect()
+            end
+
+            local function forcar(parent)
+                if not parent then return end
+                for _, tool in ipairs(parent:GetChildren()) do
+                    if tool:IsA("Tool") and #tool:GetDescendants() > 5 then
+                        local ammo = tool:FindFirstChild("Ammo")
+                        if ammo then ammo.Value = ammo.MaxValue end
+                    end
+                end
+            end
+
+            getgenv()._InfiniteAmmoConn = RunService.Heartbeat:Connect(function()
+                forcar(LocalPlayer:FindFirstChild("Backpack"))
+                forcar(LocalPlayer.Character)
+            end)
+
+            getgenv()._InfiniteAmmoAddedConn = LocalPlayer.Backpack.ChildAdded:Connect(function(tool)
+                task.wait(0.1)
+                if tool:IsA("Tool") and #tool:GetDescendants() > 5 then
+                    local ammo = tool:FindFirstChild("Ammo")
+                    if ammo then ammo.Value = ammo.MaxValue end
+                end
+            end)
+        else
+            if getgenv()._InfiniteAmmoConn then
+                getgenv()._InfiniteAmmoConn:Disconnect()
+                getgenv()._InfiniteAmmoConn = nil
+            end
+            if getgenv()._InfiniteAmmoAddedConn then
+                getgenv()._InfiniteAmmoAddedConn:Disconnect()
+                getgenv()._InfiniteAmmoAddedConn = nil
+            end
+        end
+    end
+})
 
         TrollTab:Toggle({
-            Title = "Spammar sons",
-            Desc = cor({"Precisa", "#FF0000"}, {" de uma arma."}, {" Esses sons tocam para todos.", "#03F916"}),
-            Icon = "lucide:audio-lines",
-            Value = false,
+            Title    = "Spammar sons",
+            Desc     = cor({"Precisa", "#FF0000"}, {" de uma arma."}, {" Esses sons tocam para todos.", "#03F916"}),
+            Icon     = "lucide:audio-lines",
+            Value    = false,
             Callback = function(v)
-                if getgenv().ApexLogic and getgenv().ApexLogic.ToggleSound then 
-                    getgenv().ApexLogic.ToggleSound(v) 
-                else
-                    if getgenv().notificar then
-                        getgenv().notificar("Erro", 3, "lucide:alert-triangle")
-                    end
+                if getgenv().ApexLogic and getgenv().ApexLogic.ToggleSound then
+                    getgenv().ApexLogic.ToggleSound(v)
                 end
             end
         })

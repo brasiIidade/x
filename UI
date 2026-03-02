@@ -3608,12 +3608,14 @@ elseif MapaAtual == "Apex" then
         local ApexTab = criartab("Apex", "https://tr.rbxcdn.com/180DAY-9b65f927dea36f98c1a720694fd00fd3/768/432/Image/Webp/noFilter")
 
         ApexTab:Button({
-        Title  = "Invadir base",
-        Desc   = "Autoexplicativo",
-        Icon   = "lucide:log-in",
+        Title     = "Invadir base",
+        Desc      = "Autoexplicativo",
+        Icon      = "lucide:log-in",
         IconAlign = "Left",
-        Callback = function()
-         if getgenv().IniciarRota then
+        Locked    = not JD_IS_PREMIUM,
+        LockedTitle = "Premium",
+        Callback  = function()
+        if getgenv().IniciarRota then
             getgenv().IniciarRota()
         end
     end
