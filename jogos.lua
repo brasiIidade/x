@@ -1492,7 +1492,7 @@ end)
                     end
                     local totalSons = #soundList
                     if totalSons > 0 then
-                        for i = 1, 20 do
+                        for i = 1, 50 do
                             if not getgenv().SpamAtivo or not equippedTool or not isReadyToSpam then break end
                             local sound = soundList[rng:NextInteger(1, totalSons)]
                             if sound and sound.Parent then
