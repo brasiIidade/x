@@ -50,7 +50,6 @@ tas.ColorPath   = Color3.fromRGB(0, 255, 0)
 tas.VisualOpacity = 0
 
 local function extractName(path)
-    -- FIX 2: normaliza separadores antes do match para garantir compatibilidade
     local normalized = path:gsub("\\", "/")
     return normalized:match("([^/]+)%.json$")
 end
@@ -63,54 +62,27 @@ local function sNotif(t, m)
     if tas.NotifyFunc then tas.NotifyFunc(t .. ": " .. m, 3, "lucide:info") end
 end
 
-local keysDown = {}
-
--- FIX 1: declarar releaseAll ANTES de stpMov (que a chama)
-local function pressKey(code)
-    if not keysDown[code] then
-        keysDown[code] = true
-        keypress(code)
-    end
-end
-
-local function releaseKey(code)
-    if keysDown[code] then
-        keysDown[code] = false
-        keyrelease(code)
-    end
-end
-
-local function releaseAll()
-    for code in pairs(keysDown) do
-        keysDown[code] = false
-        keyrelease(code)
-    end
-end
-
+-- Para o personagem e restaura controle total ao jogador (PC + mobile)
 local function stpMov()
-    -- 1. Solta todas as teclas imediatamente
-    releaseAll()
-
     local c = lp.Character
     local h = c and c:FindFirstChildOfClass("Humanoid")
     if h then
-        -- 2. Restaura AutoRotate e para o movimento
         h.AutoRotate = true
-        h:Move(Vector3.zero)
-        -- 3. Força estado para Running/idle para sair de qualquer estado travado
+        -- Para qualquer movimento forçado pelo TAS
+        h:Move(Vector3.zero, false)
+        -- Força saída de estados travados no próximo frame
         task.defer(function()
             if h and h.Parent then
-                h:ChangeState(Enum.HumanoidStateType.Running)
+                pcall(function() h:ChangeState(Enum.HumanoidStateType.Running) end)
             end
         end)
     end
-
-    -- 4. Reativa TouchGui imediatamente (sem loop desnecessário)
+    -- Reativa TouchGui imediatamente (botões de mobile)
     local pg = lp:FindFirstChild("PlayerGui")
     local tg = pg and pg:FindFirstChild("TouchGui")
     if tg then
         tg.Enabled = false
-        task.defer(function() if tg then tg.Enabled = true end end)
+        task.defer(function() if tg and tg.Parent then tg.Enabled = true end end)
     end
 end
 
@@ -130,10 +102,10 @@ local function capFr()
     if animator then
         for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
             table.insert(anims, {
-                id       = track.Animation.AnimationId,
-                pos      = track.TimePosition,
-                speed    = track.Speed,
-                weight   = track.WeightCurrent,
+                id     = track.Animation.AnimationId,
+                pos    = track.TimePosition,
+                speed  = track.Speed,
+                weight = track.WeightCurrent,
             })
         end
     end
@@ -147,51 +119,50 @@ local function capFr()
     }
 end
 
+-- Aplica frame gravado sem nenhum keypress — usa só Humanoid:Move e ChangeState
 local function appFr(f, hrp, hum)
     if not f or not hrp or not hum then return end
 
+    -- Teleporta para a posição gravada
     if f.cf then
-        hrp.CFrame = CFrame.new(f.cf[1],f.cf[2],f.cf[3],f.cf[4],f.cf[5],f.cf[6],f.cf[7],f.cf[8],f.cf[9],f.cf[10],f.cf[11],f.cf[12])
+        hrp.CFrame = CFrame.new(
+            f.cf[1],f.cf[2],f.cf[3],
+            f.cf[4],f.cf[5],f.cf[6],
+            f.cf[7],f.cf[8],f.cf[9],
+            f.cf[10],f.cf[11],f.cf[12]
+        )
     end
-    if f.vel then hrp.AssemblyLinearVelocity = Vector3.new(f.vel[1], f.vel[2], f.vel[3]) end
 
+    -- Aplica velocidade gravada
+    if f.vel then
+        hrp.AssemblyLinearVelocity = Vector3.new(f.vel[1], f.vel[2], f.vel[3])
+    end
+
+    -- Dispara pulo via ChangeState (sem keypress, funciona em mobile)
     if f.jump ~= tas.LastJump then
-        if f.jump then
-            hum:ChangeState(Enum.HumanoidStateType.Jumping)
-            pressKey(0x20)
-        else
-            releaseKey(0x20)
-        end
         tas.LastJump = f.jump
+        if f.jump then
+            pcall(function() hum:ChangeState(Enum.HumanoidStateType.Jumping) end)
+        end
     end
 
+    -- Força o estado do humanoid conforme gravado (Freefall, Swimming, etc.)
     local recSt = stEnums[f.state]
-    -- Só força AutoRotate = false e ChangeState se realmente necessário
-    if recSt and recSt ~= Enum.HumanoidStateType.Jumping and recSt ~= Enum.HumanoidStateType.Running then
-        if hum:GetState() ~= recSt then hum:ChangeState(recSt) end
-        hum.AutoRotate = false
+    if recSt and recSt ~= Enum.HumanoidStateType.Jumping then
+        if hum:GetState() ~= recSt then
+            pcall(function() hum:ChangeState(recSt) end)
+        end
     end
 
+    -- Usa Humanoid:Move para acionar as animações corretas (corre, idle, etc.)
+    -- Funciona em PC e mobile sem precisar de keypress
     local vel = f.vel and Vector3.new(f.vel[1], f.vel[2], f.vel[3]) or Vector3.zero
     local hvel = Vector3.new(vel.X, 0, vel.Z)
-    local moving = hvel.Magnitude > 0.1
-
-    if moving then
-        local localVel = hrp.CFrame:VectorToObjectSpace(hvel).Unit
-        local fwd  = localVel.Z < -0.3
-        local back = localVel.Z >  0.3
-        local left = localVel.X < -0.3
-        local rght = localVel.X >  0.3
-
-        if fwd  then pressKey(0x57)  else releaseKey(0x57)  end
-        if back then pressKey(0x53)  else releaseKey(0x53)  end
-        if left then pressKey(0x41)  else releaseKey(0x41)  end
-        if rght then pressKey(0x44)  else releaseKey(0x44)  end
+    hum.AutoRotate = false
+    if hvel.Magnitude > 0.1 then
+        hum:Move(hvel.Unit, false)
     else
-        releaseKey(0x57)
-        releaseKey(0x53)
-        releaseKey(0x41)
-        releaseKey(0x44)
+        hum:Move(Vector3.zero, false)
     end
 end
 
@@ -223,7 +194,10 @@ local function clrTas(n, playingOnly)
     if not d then return end
 
     if d.PlayConn then d.PlayConn:Disconnect(); d.PlayConn = nil end
-    if d.Playing  then stpMov() end
+    if d.Playing then
+        tas.LastJump = false
+        stpMov()
+    end
     d.Playing = false
 
     if not playingOnly then
@@ -330,6 +304,7 @@ local function actTas(n)
             for _, p in ipairs(d.PathParts) do if p then p:Destroy() end end
             d.Viewports, d.PathParts = {}, {}
             d.Waiting, d.Playing = false, true
+            tas.LastJump = false
             chkPlay()
 
             local stT       = tick()
@@ -338,6 +313,9 @@ local function actTas(n)
             local cachedHum = lastC and lastC:FindFirstChildOfClass("Humanoid")
 
             d.PlayConn = rs.Heartbeat:Connect(function()
+                -- Se foi parado externamente (ManualStop ou ToggleAll)
+                if not d.Playing then return end
+
                 local currC = lp.Character
                 if currC ~= lastC then
                     lastC       = currC
@@ -346,7 +324,7 @@ local function actTas(n)
                 end
                 local cIdx = math.floor((tick() - stT) * 60) + 1
                 if cIdx > #d.Frames then
-                    tas.LastJump = false  -- reseta estado de pulo
+                    tas.LastJump = false
                     stpMov()
                     if d.PlayConn then d.PlayConn:Disconnect(); d.PlayConn = nil end
                     d.Playing = false
@@ -430,20 +408,17 @@ end
 tas.UpdateSelection = function(sL)
     tas.Selection = type(sL) ~= "table" and { sL } or sL
 
-    -- FIX 3: limpar e remover entradas que não estão mais na seleção
     for n in pairs(tas.Loaded) do
         local ok = false
         for _, v in ipairs(tas.Selection) do if v == n then ok = true; break end end
         if not ok then
             clrTas(n)
-            tas.Loaded[n] = nil  -- garante remoção completa para recarregar depois
+            tas.Loaded[n] = nil
         end
     end
 
     task.spawn(function()
         for i, n in ipairs(tas.Selection) do
-            -- FIX 3: agora tas.Loaded[n] estará nil para itens recém-adicionados,
-            -- permitindo recarregar corretamente mesmo após disable/enable
             if n ~= "" and not tas.Loaded[n] then
                 local p = filePath(n)
                 if isfile(p) then
@@ -480,7 +455,12 @@ tas.ToggleAll = function(e)
     if e then
         for n in pairs(tas.Loaded) do actTas(n) end
     else
-        for n in pairs(tas.Loaded) do clrTas(n) end
+        -- Para tudo imediatamente, incluindo o Waiting
+        for n, d in pairs(tas.Loaded) do
+            d.Waiting = false
+            clrTas(n)
+        end
+        tas.LastJump = false
         stpMov()
         chkPlay()
     end
@@ -488,10 +468,13 @@ end
 
 tas.ManualStopPlayback = function()
     for n, d in pairs(tas.Loaded) do
-        if d.Playing then
+        if d.Playing or d.Waiting then
+            d.Waiting = false
             clrTas(n, true)
         end
     end
+    tas.LastJump = false
+    stpMov()
     chkPlay()
 end
 
@@ -508,7 +491,6 @@ if tcs.ChatVersion == Enum.ChatVersion.TextChatService then
 else
     lp.Chatted:Connect(chCmd)
 end
-
 
 
 -- jjs
