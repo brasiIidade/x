@@ -13,14 +13,17 @@ if game.PlaceId == 2069320852 then
 end
 
 -- servicos
-local cr        = cloneref or function(o) return o end
-local Players   = cr(game:GetService("Players"))
+local cr         = cloneref or function(o) return o end
+local Players    = cr(game:GetService("Players"))
 local RunService = cr(game:GetService("RunService"))
-local CoreGui   = cr(game:GetService("CoreGui"))
+local CoreGui    = cr(game:GetService("CoreGui"))
 local HttpService = cr(game:GetService("HttpService"))
 
 local LocalPlayer = Players.LocalPlayer
 
+-- FIX: em vez de getgenv(), usa uma tabela local como namespace
+-- Ofuscadores quebram getgenv() ao envolver o script em closures
+local env = getgenv()
 
 local function safeGui()
     local ok, hui = pcall(gethui)
@@ -42,7 +45,7 @@ end
 
 
 -- hb
-local hitboxSaved = {}
+local hitboxSaved  = {}
 local hitboxLights = {}
 
 local function hitboxConfig()
@@ -79,12 +82,12 @@ end
 local function hitboxSaveState(player, root)
     if hitboxSaved[player] then return end
     hitboxSaved[player] = {
-        size        = root.Size,
+        size         = root.Size,
         transparency = root.Transparency,
-        shape       = root.Shape,
-        canCollide  = root.CanCollide,
-        material    = root.Material,
-        color       = root.Color,
+        shape        = root.Shape,
+        canCollide   = root.CanCollide,
+        material     = root.Material,
+        color        = root.Color,
     }
 end
 
@@ -94,12 +97,12 @@ local function hitboxRestoreState(player)
     local char = player.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
     if root then
-        root.Size        = saved.size
+        root.Size         = saved.size
         root.Transparency = saved.transparency
-        root.Shape       = saved.shape
-        root.CanCollide  = saved.canCollide
-        root.Material    = saved.material
-        root.Color       = saved.color
+        root.Shape        = saved.shape
+        root.CanCollide   = saved.canCollide
+        root.Material     = saved.material
+        root.Color        = saved.color
     end
     hitboxSaved[player] = nil
 end
@@ -119,11 +122,11 @@ end
 local function hitboxApply(player, root, cfg)
     local teamColor = (player.TeamColor and player.TeamColor.Color) or Color3.new(1, 0, 0)
 
-    root.Size        = cfg.Size
+    root.Size         = cfg.Size
     root.Transparency = cfg.Transparency
-    root.Shape       = cfg.Shape
-    root.CanCollide  = false
-    root.Material    = Enum.Material.ForceField
+    root.Shape        = cfg.Shape
+    root.CanCollide   = false
+    root.Material     = Enum.Material.ForceField
 
     if cfg.Transparency < 1 then
         if not hitboxLights[player] then
@@ -170,12 +173,9 @@ Players.PlayerRemoving:Connect(hitboxCleanPlayer)
 
 
 -- esp
-local env = getgenv()
-
 env.espConns = env.espConns or {}
 env.espStore = env.espStore or {}
 env.espHold  = env.espHold  or nil
-
 
 env.ESPConfig = env.ESPConfig or {
     Enabled  = false,
@@ -190,25 +190,25 @@ env.ESPConfig = env.ESPConfig or {
 local function espGetContainer()
     if not env.espHold or not env.espHold.Parent then
         local folder = Instance.new("Folder")
-        folder.Name  = HttpService:GenerateGUID(false)
+        folder.Name   = HttpService:GenerateGUID(false)
         folder.Parent = safeGui()
-        env.espHold  = folder
+        env.espHold   = folder
     end
     return env.espHold
 end
 
 local function espMakeLabel(parent, order, color, size)
     local label = Instance.new("TextLabel")
-    label.Parent                = parent
+    label.Parent                 = parent
     label.BackgroundTransparency = 1
-    label.Size                  = UDim2.new(1, 0, 0, size or 12)
-    label.TextColor3            = color or Color3.new(1, 1, 1)
+    label.Size                   = UDim2.new(1, 0, 0, size or 12)
+    label.TextColor3             = color or Color3.new(1, 1, 1)
     label.TextStrokeTransparency = 0.2
-    label.TextStrokeColor3      = Color3.new(0, 0, 0)
-    label.Font                  = Enum.Font.GothamBold
-    label.TextSize              = size or 12
-    label.LayoutOrder           = order
-    label.Visible               = false
+    label.TextStrokeColor3       = Color3.new(0, 0, 0)
+    label.Font                   = Enum.Font.GothamBold
+    label.TextSize               = size or 12
+    label.LayoutOrder            = order
+    label.Visible                = false
     return label
 end
 
@@ -235,18 +235,18 @@ local function espAddPlayer(player)
 
     -- gui
     local bb = entry.billboard
-    bb.Name         = HttpService:GenerateGUID(false)
-    bb.Size         = UDim2.new(0, 200, 0, 60)
-    bb.StudsOffset  = Vector3.new(0, 2, 0)
-    bb.AlwaysOnTop  = true
-    bb.Enabled      = false
-    bb.Parent       = container
+    bb.Name        = HttpService:GenerateGUID(false)
+    bb.Size        = UDim2.new(0, 200, 0, 60)
+    bb.StudsOffset = Vector3.new(0, 2, 0)
+    bb.AlwaysOnTop = true
+    bb.Enabled     = false
+    bb.Parent      = container
 
     local layout = Instance.new("UIListLayout")
-    layout.Parent            = bb
-    layout.SortOrder         = Enum.SortOrder.LayoutOrder
+    layout.Parent              = bb
+    layout.SortOrder           = Enum.SortOrder.LayoutOrder
     layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    layout.Padding           = UDim.new(0, 0)
+    layout.Padding             = UDim.new(0, 0)
 
     entry.labels.name   = espMakeLabel(bb, 1, Color3.new(1, 1, 1), 13)
     entry.labels.health = espMakeLabel(bb, 2, Color3.fromRGB(0, 255, 100), 11)
@@ -272,78 +272,76 @@ local function espUpdate()
     for player, entry in pairs(env.espStore) do
         if not player or not player.Parent then
             espRemovePlayer(player)
-            continue
-        end
-
-        local char  = player.Character
-        local root  = char and char:FindFirstChild("HumanoidRootPart")
-        local hum   = char and char:FindFirstChild("Humanoid")
-        local head  = char and char:FindFirstChild("Head")
-        local alive = char and root and hum and hum.Health > 0 and head
-        local sameTeam = cfg.TeamCheck and LocalPlayer.Team and player.Team == LocalPlayer.Team
-
-        if not alive or sameTeam then
-            entry.highlight.Enabled = false
-            entry.billboard.Enabled = false
-            continue
-        end
-
-        -- chams
-        if cfg.Chams then
-            entry.highlight.Adornee  = char
-            entry.highlight.FillColor = (player.TeamColor and player.TeamColor.Color) or Color3.new(1, 0, 0)
-            entry.highlight.Enabled  = true
         else
-            entry.highlight.Enabled = false
-        end
+            local char  = player.Character
+            local root  = char and char:FindFirstChild("HumanoidRootPart")
+            local hum   = char and char:FindFirstChild("Humanoid")
+            local head  = char and char:FindFirstChild("Head")
+            local alive = char and root and hum and hum.Health > 0 and head
+            local sameTeam = cfg.TeamCheck and LocalPlayer.Team and player.Team == LocalPlayer.Team
 
-        -- labels
-        local showBillboard = cfg.Name or cfg.Health or cfg.WeaponN or cfg.Studs
-        if showBillboard then
-            entry.billboard.Adornee = head
-            entry.billboard.Enabled = true
-
-            -- nome
-            local lblName = entry.labels.name
-            if cfg.Name then
-                lblName.Text    = player.Name
-                lblName.Visible = true
+            if not alive or sameTeam then
+                entry.highlight.Enabled = false
+                entry.billboard.Enabled = false
             else
-                lblName.Visible = false
-            end
+                -- chams
+                if cfg.Chams then
+                    entry.highlight.Adornee   = char
+                    entry.highlight.FillColor = (player.TeamColor and player.TeamColor.Color) or Color3.new(1, 0, 0)
+                    entry.highlight.Enabled   = true
+                else
+                    entry.highlight.Enabled = false
+                end
 
-            -- vida
-            local lblHealth = entry.labels.health
-            if cfg.Health then
-                local hp = math.floor(hum.Health)
-                lblHealth.Text      = tostring(hp)
-                lblHealth.TextColor3 = Color3.fromRGB(255, 50, 50):Lerp(Color3.fromRGB(50, 255, 50), hp / hum.MaxHealth)
-                lblHealth.Visible   = true
-            else
-                lblHealth.Visible = false
-            end
+                -- labels
+                local showBillboard = cfg.Name or cfg.Health or cfg.WeaponN or cfg.Studs
+                if showBillboard then
+                    entry.billboard.Adornee = head
+                    entry.billboard.Enabled = true
 
-            -- item
-            local lblWeapon = entry.labels.weapon
-            if cfg.WeaponN then
-                local tool = char:FindFirstChildOfClass("Tool")
-                lblWeapon.Text    = tool and tool.Name or ""
-                lblWeapon.Visible = tool ~= nil
-            else
-                lblWeapon.Visible = false
-            end
+                    -- nome
+                    local lblName = entry.labels.name
+                    if cfg.Name then
+                        lblName.Text    = player.Name
+                        lblName.Visible = true
+                    else
+                        lblName.Visible = false
+                    end
 
-            -- dist
-            local lblStuds = entry.labels.studs
-            if cfg.Studs then
-                local dist = lroot and (lroot.Position - root.Position).Magnitude or 0
-                lblStuds.Text    = string.format("[%d]", math.floor(dist))
-                lblStuds.Visible = true
-            else
-                lblStuds.Visible = false
+                    -- vida
+                    local lblHealth = entry.labels.health
+                    if cfg.Health then
+                        local hp = math.floor(hum.Health)
+                        lblHealth.Text       = tostring(hp)
+                        lblHealth.TextColor3 = Color3.fromRGB(255, 50, 50):Lerp(Color3.fromRGB(50, 255, 50), hp / hum.MaxHealth)
+                        lblHealth.Visible    = true
+                    else
+                        lblHealth.Visible = false
+                    end
+
+                    -- item
+                    local lblWeapon = entry.labels.weapon
+                    if cfg.WeaponN then
+                        local tool = char:FindFirstChildOfClass("Tool")
+                        lblWeapon.Text    = tool and tool.Name or ""
+                        lblWeapon.Visible = tool ~= nil
+                    else
+                        lblWeapon.Visible = false
+                    end
+
+                    -- dist
+                    local lblStuds = entry.labels.studs
+                    if cfg.Studs then
+                        local dist = lroot and (lroot.Position - root.Position).Magnitude or 0
+                        lblStuds.Text    = string.format("[%d]", math.floor(dist))
+                        lblStuds.Visible = true
+                    else
+                        lblStuds.Visible = false
+                    end
+                else
+                    entry.billboard.Enabled = false
+                end
             end
-        else
-            entry.billboard.Enabled = false
         end
     end
 end
