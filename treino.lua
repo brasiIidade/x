@@ -50,7 +50,9 @@ tas.ColorPath   = Color3.fromRGB(0, 255, 0)
 tas.VisualOpacity = 0
 
 local function extractName(path)
-    return path:match("([^/\\]+)%.json$")
+    -- FIX 2: normaliza separadores antes do match para garantir compatibilidade
+    local normalized = path:gsub("\\", "/")
+    return normalized:match("([^/]+)%.json$")
 end
 
 local function filePath(name)
@@ -61,27 +63,9 @@ local function sNotif(t, m)
     if tas.NotifyFunc then tas.NotifyFunc(t .. ": " .. m, 3, "lucide:info") end
 end
 
-local function stpMov()
-    local c = lp.Character
-    local h = c and c:FindFirstChildOfClass("Humanoid")
-    if h then h.AutoRotate = true; h:Move(Vector3.zero) end
-    releaseAll()
-    local pg = lp:FindFirstChild("PlayerGui")
-    local tg = pg and pg:FindFirstChild("TouchGui")
-    if tg then
-        tg.Enabled = false
-        task.spawn(function() for i = 1, 10 do if tg then tg.Enabled = true end task.wait(0.1) end end)
-    end
-end
-
-local function chkPlay()
-    local ip = false
-    for _, d in pairs(tas.Loaded) do if d.Playing then ip = true; break end end
-    if tas.UpdateButtonState then tas.UpdateButtonState(ip) end
-end
-
 local keysDown = {}
 
+-- FIX 1: declarar releaseAll ANTES de stpMov (que a chama)
 local function pressKey(code)
     if not keysDown[code] then
         keysDown[code] = true
@@ -101,6 +85,25 @@ local function releaseAll()
         keysDown[code] = false
         keyrelease(code)
     end
+end
+
+local function stpMov()
+    local c = lp.Character
+    local h = c and c:FindFirstChildOfClass("Humanoid")
+    if h then h.AutoRotate = true; h:Move(Vector3.zero) end
+    releaseAll()  -- agora releaseAll já existe quando stpMov é chamada
+    local pg = lp:FindFirstChild("PlayerGui")
+    local tg = pg and pg:FindFirstChild("TouchGui")
+    if tg then
+        tg.Enabled = false
+        task.spawn(function() for i = 1, 10 do if tg then tg.Enabled = true end task.wait(0.1) end end)
+    end
+end
+
+local function chkPlay()
+    local ip = false
+    for _, d in pairs(tas.Loaded) do if d.Playing then ip = true; break end end
+    if tas.UpdateButtonState then tas.UpdateButtonState(ip) end
 end
 
 local function capFr()
@@ -411,14 +414,20 @@ end
 tas.UpdateSelection = function(sL)
     tas.Selection = type(sL) ~= "table" and { sL } or sL
 
+    -- FIX 3: limpar e remover entradas que não estão mais na seleção
     for n in pairs(tas.Loaded) do
         local ok = false
         for _, v in ipairs(tas.Selection) do if v == n then ok = true; break end end
-        if not ok then clrTas(n); tas.Loaded[n] = nil end
+        if not ok then
+            clrTas(n)
+            tas.Loaded[n] = nil  -- garante remoção completa para recarregar depois
+        end
     end
 
     task.spawn(function()
         for i, n in ipairs(tas.Selection) do
+            -- FIX 3: agora tas.Loaded[n] estará nil para itens recém-adicionados,
+            -- permitindo recarregar corretamente mesmo após disable/enable
             if n ~= "" and not tas.Loaded[n] then
                 local p = filePath(n)
                 if isfile(p) then
@@ -426,7 +435,7 @@ tas.UpdateSelection = function(sL)
                     local d
                     pcall(function() d = hs:JSONDecode(raw) end)
                     if d and d.Frames then
-                        tas.Loaded[n] = { Frames = d.Frames, Viewports = {}, PathParts = {}, Waiting = false, Playing = false }
+                        tas.Loaded[n] = { Frames = d.Frames, Viewports = {}, PathParts = {}, Adornments = {}, Waiting = false, Playing = false }
                     end
                 end
             end
