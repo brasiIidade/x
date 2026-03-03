@@ -88,15 +88,29 @@ local function releaseAll()
 end
 
 local function stpMov()
+    -- 1. Solta todas as teclas imediatamente
+    releaseAll()
+
     local c = lp.Character
     local h = c and c:FindFirstChildOfClass("Humanoid")
-    if h then h.AutoRotate = true; h:Move(Vector3.zero) end
-    releaseAll()  -- agora releaseAll já existe quando stpMov é chamada
+    if h then
+        -- 2. Restaura AutoRotate e para o movimento
+        h.AutoRotate = true
+        h:Move(Vector3.zero)
+        -- 3. Força estado para Running/idle para sair de qualquer estado travado
+        task.defer(function()
+            if h and h.Parent then
+                h:ChangeState(Enum.HumanoidStateType.Running)
+            end
+        end)
+    end
+
+    -- 4. Reativa TouchGui imediatamente (sem loop desnecessário)
     local pg = lp:FindFirstChild("PlayerGui")
     local tg = pg and pg:FindFirstChild("TouchGui")
     if tg then
         tg.Enabled = false
-        task.spawn(function() for i = 1, 10 do if tg then tg.Enabled = true end task.wait(0.1) end end)
+        task.defer(function() if tg then tg.Enabled = true end end)
     end
 end
 
@@ -152,7 +166,8 @@ local function appFr(f, hrp, hum)
     end
 
     local recSt = stEnums[f.state]
-    if recSt and recSt ~= Enum.HumanoidStateType.Jumping then
+    -- Só força AutoRotate = false e ChangeState se realmente necessário
+    if recSt and recSt ~= Enum.HumanoidStateType.Jumping and recSt ~= Enum.HumanoidStateType.Running then
         if hum:GetState() ~= recSt then hum:ChangeState(recSt) end
         hum.AutoRotate = false
     end
@@ -331,6 +346,7 @@ local function actTas(n)
                 end
                 local cIdx = math.floor((tick() - stT) * 60) + 1
                 if cIdx > #d.Frames then
+                    tas.LastJump = false  -- reseta estado de pulo
                     stpMov()
                     if d.PlayConn then d.PlayConn:Disconnect(); d.PlayConn = nil end
                     d.Playing = false
@@ -492,6 +508,7 @@ if tcs.ChatVersion == Enum.ChatVersion.TextChatService then
 else
     lp.Chatted:Connect(chCmd)
 end
+
 
 
 -- jjs
