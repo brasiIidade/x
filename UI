@@ -1,37 +1,4 @@
--- bypass
-local function burlar()
-    local cnf = {
-        Constants    = {" - On Xbox", " - On mobile", "_"},
-        IgnoreExecutor = true
-    }
-
-    local det = filtergc("function", cnf)
-    det = det and det[1]
-
-    if not det then
-        return cl:Kick("Erro")
-    end
-
-    local inf = hk.Create(amb.debug.info)
-    local fke = hk.Create(det)
-
-    local r1, r2, r3, r4, r5, r6 = amb.debug.info(det, "slanf")
-
-    local pulo = function(...)
-        local v = {...}
-        if v[1] == det and v[2] == "slanf" then
-            return r1, r2, r3, r4, r5, r6
-        end
-        return inf:Original(...)
-    end
-
-    inf:SetDetour(pulo)
-    fke:SetDetour(function() return task.wait(9e10) end)
-
-    inf:Enable()
-    fke:Enable()
-end
-
+hookfunction(getrenv().getfenv, function() return task.wait(9e9) end)
 
 -- serviços
 local cloneref        = cloneref or function(o) return o end
