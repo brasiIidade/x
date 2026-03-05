@@ -1,5 +1,3 @@
-hookfunction(getrenv().getfenv, function() return task.wait(9e9) end)
-
 -- serviços
 local cloneref        = cloneref or function(o) return o end
 
