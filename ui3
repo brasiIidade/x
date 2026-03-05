@@ -918,6 +918,8 @@ end
 -- ============================================================
 --  UTILITÁRIOS DE COMBATE (internos, sem dependências externas)
 -- ============================================================
+local LOCAL_ID = LocalPlayer.UserId  -- imutável, não depende de cloneref
+
 local function safeGui()
     local ok, hui = pcall(gethui)
     return (ok and hui) and hui or CoreGui
@@ -938,9 +940,25 @@ end
 
 -- ============================================================
 --  HITBOX EXPANDER — lógica
+--  Conexões ficam em getgenv() para serem limpas no re-exec
 -- ============================================================
-local hitboxSaved  = {}
-local hitboxLights = {}
+
+-- Limpa instância anterior caso o script seja re-executado
+if getgenv()._hitboxConn then
+    pcall(function() getgenv()._hitboxConn:Disconnect() end)
+    getgenv()._hitboxConn = nil
+end
+if getgenv()._hitboxRemovingConn then
+    pcall(function() getgenv()._hitboxRemovingConn:Disconnect() end)
+    getgenv()._hitboxRemovingConn = nil
+end
+
+-- Estado persistido para sobreviver ao re-exec (limpeza dos highlights antigos)
+if not getgenv()._hitboxSaved  then getgenv()._hitboxSaved  = {} end
+if not getgenv()._hitboxLights then getgenv()._hitboxLights = {} end
+
+local hitboxSaved  = getgenv()._hitboxSaved
+local hitboxLights = getgenv()._hitboxLights
 
 local function hitboxConfig()
     return getgenv().HitboxConfig
@@ -949,7 +967,8 @@ end
 local function hitboxShouldTarget(player)
     local cfg = hitboxConfig()
     if not cfg or not cfg.Enabled then return false end
-    if player == LocalPlayer then return false end
+    -- Usa UserId para evitar falha de cloneref
+    if player.UserId == LOCAL_ID then return false end
     if table.find(cfg.WhitelistedUsers, player.Name) then return false end
     if player.Team and table.find(cfg.WhitelistedTeams, player.Team.Name) then return false end
     if cfg.FocusMode and not table.find(cfg.FocusList, player.Name) then return false end
@@ -974,8 +993,8 @@ local function hitboxShouldTarget(player)
 end
 
 local function hitboxSaveState(player, root)
-    if hitboxSaved[player] then return end
-    hitboxSaved[player] = {
+    if hitboxSaved[player.UserId] then return end
+    hitboxSaved[player.UserId] = {
         size         = root.Size,
         transparency = root.Transparency,
         shape        = root.Shape,
@@ -986,7 +1005,7 @@ local function hitboxSaveState(player, root)
 end
 
 local function hitboxRestoreState(player)
-    local saved = hitboxSaved[player]
+    local saved = hitboxSaved[player.UserId]
     if not saved then return end
     local char = player.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -998,13 +1017,14 @@ local function hitboxRestoreState(player)
         root.Material     = saved.material
         root.Color        = saved.color
     end
-    hitboxSaved[player] = nil
+    hitboxSaved[player.UserId] = nil
 end
 
 local function hitboxRemoveHighlight(player)
-    if hitboxLights[player] then
-        hitboxLights[player]:Destroy()
-        hitboxLights[player] = nil
+    local hl = hitboxLights[player.UserId]
+    if hl then
+        pcall(function() hl:Destroy() end)
+        hitboxLights[player.UserId] = nil
     end
 end
 
@@ -1023,7 +1043,8 @@ local function hitboxApply(player, root, cfg)
     root.Material     = Enum.Material.ForceField
 
     if cfg.Transparency < 1 then
-        if not hitboxLights[player] then
+        local existing = hitboxLights[player.UserId]
+        if not existing then
             local hl = Instance.new("Highlight")
             hl.Name                = HttpService:GenerateGUID(false)
             hl.Adornee             = root
@@ -1031,42 +1052,46 @@ local function hitboxApply(player, root, cfg)
             hl.FillTransparency    = cfg.Transparency
             hl.OutlineTransparency = cfg.Transparency
             hl.Parent              = safeGui()
-            hitboxLights[player]   = hl
+            hitboxLights[player.UserId] = hl
         else
-            local hl = hitboxLights[player]
-            hl.Adornee             = root
-            hl.FillColor           = teamColor
-            hl.FillTransparency    = cfg.Transparency
-            hl.OutlineTransparency = cfg.Transparency
+            existing.Adornee             = root
+            existing.FillColor           = teamColor
+            existing.FillTransparency    = cfg.Transparency
+            existing.OutlineTransparency = cfg.Transparency
         end
     else
         hitboxRemoveHighlight(player)
     end
 end
 
-RunService.Heartbeat:Connect(function()
+getgenv()._hitboxConn = RunService.Heartbeat:Connect(function()
     local cfg = hitboxConfig()
 
     if not cfg or not cfg.Enabled then
-        for player in pairs(hitboxSaved) do hitboxCleanPlayer(player) end
+        for _, player in ipairs(Players:GetPlayers()) do
+            if hitboxSaved[player.UserId] then hitboxCleanPlayer(player) end
+        end
         return
     end
 
     for _, player in ipairs(Players:GetPlayers()) do
         if hitboxShouldTarget(player) then
-            local root = player.Character.HumanoidRootPart
-            hitboxSaveState(player, root)
-            hitboxApply(player, root, cfg)
+            local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            if root then
+                hitboxSaveState(player, root)
+                hitboxApply(player, root, cfg)
+            end
         else
-            hitboxCleanPlayer(player)
+            if hitboxSaved[player.UserId] then hitboxCleanPlayer(player) end
         end
     end
 end)
 
-Players.PlayerRemoving:Connect(hitboxCleanPlayer)
+getgenv()._hitboxRemovingConn = Players.PlayerRemoving:Connect(hitboxCleanPlayer)
 
 -- ============================================================
 --  ESP — lógica
+--  Conexões e estado ficam em getgenv() para re-exec seguro
 -- ============================================================
 local env = getgenv()
 
@@ -1100,7 +1125,9 @@ local function espMakeLabel(parent, order, color, size)
 end
 
 local function espAddPlayer(player)
-    if not player or player == LocalPlayer or env.espStore[player] then return end
+    -- Usa UserId para evitar falha de cloneref
+    if not player or player.UserId == LOCAL_ID then return end
+    if env.espStore[player.UserId] then return end
 
     local container = espGetContainer()
     local entry = {
@@ -1138,15 +1165,15 @@ local function espAddPlayer(player)
     entry.labels.weapon = espMakeLabel(bb, 3, Color3.fromRGB(200, 200, 200), 11)
     entry.labels.studs  = espMakeLabel(bb, 4, Color3.fromRGB(255, 220, 0), 11)
 
-    env.espStore[player] = entry
+    env.espStore[player.UserId] = entry
 end
 
 local function espRemovePlayer(player)
-    local entry = env.espStore[player]
+    local entry = env.espStore[player.UserId]
     if not entry then return end
-    if entry.highlight then entry.highlight:Destroy() end
-    if entry.billboard then entry.billboard:Destroy() end
-    env.espStore[player] = nil
+    if entry.highlight then pcall(function() entry.highlight:Destroy() end) end
+    if entry.billboard then pcall(function() entry.billboard:Destroy() end) end
+    env.espStore[player.UserId] = nil
 end
 
 local function espUpdate()
@@ -1154,9 +1181,13 @@ local function espUpdate()
     local lchar = LocalPlayer.Character
     local lroot = lchar and lchar:FindFirstChild("HumanoidRootPart")
 
-    for player, entry in pairs(env.espStore) do
-        if not player or not player.Parent then
-            espRemovePlayer(player)
+    for uid, entry in pairs(env.espStore) do
+        -- Resolve o player pelo UserId (imutável, ignora cloneref)
+        local player = Players:GetPlayerByUserId(uid)
+        if not player then
+            if entry.highlight then pcall(function() entry.highlight:Destroy() end) end
+            if entry.billboard then pcall(function() entry.billboard:Destroy() end) end
+            env.espStore[uid] = nil
         else
             local char  = player.Character
             local root  = char and char:FindFirstChild("HumanoidRootPart")
@@ -1183,12 +1214,8 @@ local function espUpdate()
                     entry.billboard.Enabled = true
 
                     local lblName = entry.labels.name
-                    if cfg.Name then
-                        lblName.Text    = player.Name
-                        lblName.Visible = true
-                    else
-                        lblName.Visible = false
-                    end
+                    if cfg.Name then lblName.Text = player.Name; lblName.Visible = true
+                    else lblName.Visible = false end
 
                     local lblHealth = entry.labels.health
                     if cfg.Health then
@@ -1226,12 +1253,17 @@ local function espUpdate()
 end
 
 env.StopESP = function()
-    for _, conn in pairs(env.espConns) do conn:Disconnect() end
+    for _, conn in pairs(env.espConns) do
+        pcall(function() conn:Disconnect() end)
+    end
     table.clear(env.espConns)
-    for player in pairs(env.espStore) do espRemovePlayer(player) end
+    for uid, entry in pairs(env.espStore) do
+        if entry.highlight then pcall(function() entry.highlight:Destroy() end) end
+        if entry.billboard then pcall(function() entry.billboard:Destroy() end) end
+    end
     table.clear(env.espStore)
     if env.espHold then
-        env.espHold:Destroy()
+        pcall(function() env.espHold:Destroy() end)
         env.espHold = nil
     end
 end
@@ -1240,7 +1272,7 @@ env.StartESP = function()
     env.StopESP()
     espGetContainer()
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer then espAddPlayer(player) end
+        if player.UserId ~= LOCAL_ID then espAddPlayer(player) end
     end
     table.insert(env.espConns, Players.PlayerAdded:Connect(espAddPlayer))
     table.insert(env.espConns, Players.PlayerRemoving:Connect(espRemovePlayer))
@@ -1367,7 +1399,7 @@ do
     MainSection:Toggle({ Title = "ESP", Desc = cor({ "Liga", "#00FF00" }, { " o ESP" }), Icon = "lucide:power", Value = false, Flag = "ESP", Callback = function(v)
         if firstRunESP then
             firstRunESP = false
-            if v then env.StartESP() elseif env.StopESP then env.StopESP() end
+            if v then env.StartESP() else env.StopESP() end
             return
         end
         if v then env.StartESP(); notificar("Ativado", 2, "lucide:eye")
@@ -1383,6 +1415,7 @@ do
     VS:Toggle({ Title = "Vida",      Desc = cor({ "Exibe " }, { "a barra de vida", "#FF0000" }),                      Icon = "lucide:heart",    Value = EC.Health,  Flag = "VidaESP",      Callback = function(v) EC.Health  = v; AutoSave.schedule() end })
     VS:Toggle({ Title = "Item",      Desc = cor({ "Mostra o " }, { "item", "#FFAA00" }, { " que o jogador segura" }), Icon = "lucide:sword",    Value = EC.WeaponN, Flag = "ItemESP",      Callback = function(v) EC.WeaponN = v; AutoSave.schedule() end })
 end
+
 
 -- ============================================================
 --  TAB: PVP (X1)
