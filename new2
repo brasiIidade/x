@@ -2165,7 +2165,586 @@ do
 end
 
 -- ============================================================
---  TAB: CHAR
+--  PLAYER / AVATAR — lógica integrada
+--
+--  VARIÁVEIS REUTILIZADAS DA UI (não redeclaradas):
+--    Players, RunService, Workspace, CoreGui,
+--    TextChatService, HttpService, LocalPlayer
+--
+--  HOOKS ENCADEADOS (não sobrescritos):
+--    __index    → lógica anônimo adicionada no OldIndex existente
+--    __newindex → lógica anônimo adicionada no OldNewIndex existente
+--    __namecall → encadeado depois do silent (SA_mt.__namecall já instalado)
+--
+--  RE-EXEC SEGURO: loops e conexões guardados em getgenv()
+-- ============================================================
+
+-- Limpa conexões de loops anteriores
+if getgenv()._playerSteppedConn then
+    pcall(function() getgenv()._playerSteppedConn:Disconnect() end)
+    getgenv()._playerSteppedConn = nil
+end
+if getgenv()._playerSpecConn then
+    pcall(function() getgenv()._playerSpecConn:Disconnect() end)
+    getgenv()._playerSpecConn = nil
+end
+if getgenv()._playerCharConn then
+    pcall(function() getgenv()._playerCharConn:Disconnect() end)
+    getgenv()._playerCharConn = nil
+end
+if getgenv()._playerStateTask then
+    pcall(function() task.cancel(getgenv()._playerStateTask) end)
+    getgenv()._playerStateTask = nil
+end
+-- Restaura namecall do player se existir de re-exec anterior
+if getgenv()._playerOldNC then
+    local mt = getrawmetatable(game)
+    pcall(function()
+        setreadonly(mt, false)
+        mt.__namecall = getgenv()._playerOldNC
+        setreadonly(mt, true)
+    end)
+    getgenv()._playerOldNC = nil
+end
+
+local PL_Camera = Workspace.CurrentCamera  -- Camera não é top-level na UI
+
+local function playerConfig()
+    return getgenv().PlayerConfig
+end
+
+local function PL_getRootPart(player)
+    local char = player.Character
+    return char and char:FindFirstChild("HumanoidRootPart")
+end
+
+local function PL_getHumanoid(player)
+    local char = player.Character
+    return char and char:FindFirstChild("Humanoid")
+end
+
+local function PL_findPlayer(query)
+    if not query or query == "" then return nil end
+    query = query:lower()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.UserId ~= LocalPlayer.UserId then
+            if player.Name:lower():sub(1, #query) == query
+            or player.DisplayName:lower():sub(1, #query) == query then
+                return player
+            end
+        end
+    end
+    return nil
+end
+
+-- ── Anônimo — utilitários ──────────────────────────────────
+local PL_anonConns     = {}
+local PL_anonMiscConns = {}
+
+local function PL_spoofText(str)
+    local cfg = playerConfig()
+    if not cfg or not cfg.AnonEnabled or type(str) ~= "string" then return str end
+    local fakeName    = cfg.FakeName or "Anônimo"
+    local realName    = LocalPlayer.Name
+    local realDisplay = LocalPlayer.DisplayName
+    if str:find(realName, 1, true) or str:find(realDisplay, 1, true) then
+        local function escape(s) return s:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1") end
+        str = str:gsub(escape(realName),    fakeName)
+        str = str:gsub(escape(realDisplay), fakeName)
+    end
+    return str
+end
+
+local function PL_monitorLabel(obj)
+    if not obj or PL_anonConns[obj] then return end
+    if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
+        local function refresh()
+            local cfg = playerConfig()
+            if not cfg or not cfg.AnonEnabled then return end
+            local s = PL_spoofText(obj.Text)
+            if obj.Text ~= s then obj.Text = s end
+        end
+        refresh()
+        PL_anonConns[obj] = obj:GetPropertyChangedSignal("Text"):Connect(refresh)
+    end
+end
+
+local function PL_scanGuiLayer(layer)
+    if not layer then return end
+    for _, obj in ipairs(layer:GetDescendants()) do pcall(PL_monitorLabel, obj) end
+    local conn = layer.DescendantAdded:Connect(function(obj) task.wait(); pcall(PL_monitorLabel, obj) end)
+    table.insert(PL_anonMiscConns, conn)
+end
+
+local function PL_clearAnonConns()
+    for _, c in pairs(PL_anonConns)     do if typeof(c) == "RBXScriptConnection" then c:Disconnect() end end
+    for _, c in ipairs(PL_anonMiscConns) do if typeof(c) == "RBXScriptConnection" then c:Disconnect() end end
+    table.clear(PL_anonConns)
+    table.clear(PL_anonMiscConns)
+end
+
+local function PL_applyAnonVisuals()
+    local cfg = playerConfig()
+    if not cfg then return end
+    if cfg.AnonEnabled then
+        local char = LocalPlayer.Character
+        if char then
+            local hum = char:FindFirstChild("Humanoid")
+            if hum then
+                hum.DisplayName = cfg.FakeName
+                local conn = hum:GetPropertyChangedSignal("DisplayName"):Connect(function()
+                    local c = playerConfig()
+                    if c and c.AnonEnabled and hum.DisplayName ~= c.FakeName then
+                        hum.DisplayName = c.FakeName
+                    end
+                end)
+                table.insert(PL_anonMiscConns, conn)
+            end
+            PL_scanGuiLayer(char)
+        end
+        PL_scanGuiLayer(LocalPlayer:WaitForChild("PlayerGui"))
+        pcall(PL_scanGuiLayer, CoreGui)
+    else
+        PL_clearAnonConns()
+        local char = LocalPlayer.Character
+        if char then
+            local hum = char:FindFirstChild("Humanoid")
+            if hum then hum.DisplayName = LocalPlayer.DisplayName end
+        end
+    end
+end
+
+-- ── Invisibilidade ─────────────────────────────────────────
+local PL_invisState = { seat = nil, weld = nil }
+
+local function PL_setTransparency(value)
+    local char = LocalPlayer.Character
+    if not char then return end
+    for _, obj in ipairs(char:GetDescendants()) do
+        if obj:IsA("BasePart") and obj.Name ~= "HumanoidRootPart" then
+            obj.Transparency = value
+        elseif obj:IsA("Decal") then
+            obj.Transparency = value
+        end
+    end
+end
+
+local function PL_toggleInvis(enable)
+    local root = PL_getRootPart(LocalPlayer)
+    if not root then return end
+    if enable then
+        local savedCFrame  = root.CFrame
+        local savedCamType = PL_Camera.CameraType
+        PL_Camera.CameraType = Enum.CameraType.Scriptable
+        root.CFrame = CFrame.new(-25.95, 84, 3537.55)
+        task.wait(0.15)
+        local seat       = Instance.new("Seat")
+        seat.Name        = HttpService:GenerateGUID(false)
+        seat.Transparency = 1
+        seat.CanCollide  = false
+        seat.Anchored    = false
+        seat.Position    = Vector3.new(-25.95, 84, 3537.55)
+        seat.Parent      = Workspace
+        local weld   = Instance.new("Weld")
+        weld.Part0   = seat
+        weld.Part1   = LocalPlayer.Character:FindFirstChild("Torso")
+                    or LocalPlayer.Character:FindFirstChild("UpperTorso")
+        weld.Parent  = seat
+        PL_invisState.seat = seat
+        PL_invisState.weld = weld
+        task.wait()
+        seat.CFrame          = savedCFrame
+        PL_Camera.CameraType = savedCamType
+        PL_setTransparency(0.5)
+    else
+        if PL_invisState.seat then PL_invisState.seat:Destroy() end
+        PL_invisState.seat = nil
+        PL_invisState.weld = nil
+        PL_setTransparency(0)
+    end
+end
+
+-- ── Fling ──────────────────────────────────────────────────
+local PL_flingState = { connection = nil, startCFrame = nil }
+
+local function PL_stopFling(restore)
+    if PL_flingState.connection then
+        PL_flingState.connection:Disconnect()
+        PL_flingState.connection = nil
+    end
+    local root = PL_getRootPart(LocalPlayer)
+    if root then
+        root.Velocity    = Vector3.zero
+        root.RotVelocity = Vector3.zero
+        if restore and PL_flingState.startCFrame then root.CFrame = PL_flingState.startCFrame end
+    end
+    if restore then
+        PL_flingState.startCFrame = nil
+        local cfg = playerConfig(); if cfg then cfg.FlingActive = false end
+    end
+end
+
+local function PL_startFling(targetName)
+    PL_stopFling(false)
+    local target = PL_findPlayer(targetName)
+    if not target then return end
+    local myRoot = PL_getRootPart(LocalPlayer)
+    if myRoot then PL_flingState.startCFrame = myRoot.CFrame end
+    local startTime = tick()
+    PL_flingState.connection = RunService.Heartbeat:Connect(function()
+        local cfg = playerConfig()
+        if tick() - startTime >= 2 then PL_stopFling(true); return end
+        if not cfg or not cfg.FlingActive or not target.Character or not LocalPlayer.Character then PL_stopFling(true); return end
+        local tRoot = target.Character:FindFirstChild("HumanoidRootPart")
+        local mRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if tRoot and mRoot then
+            mRoot.CFrame       = CFrame.new(tRoot.Position + Vector3.new(0, -1, 0)) * CFrame.Angles(-math.pi / 2, 0, 0)
+            local force        = Vector3.new(0, 10000, 0)
+            mRoot.Velocity     = force
+            mRoot.RotVelocity  = force
+            pcall(sethiddenproperty, mRoot, "PhysicsRepRootPart", tRoot)
+        else
+            PL_stopFling(true)
+        end
+    end)
+end
+
+-- ── Noclip ─────────────────────────────────────────────────
+local PL_noclipParts = {}
+
+local function PL_cacheNoclipParts(char)
+    table.clear(PL_noclipParts)
+    if not char then return end
+    for _, part in ipairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then table.insert(PL_noclipParts, part) end
+    end
+end
+
+getgenv()._playerSteppedConn = RunService.Stepped:Connect(function()
+    local cfg = playerConfig()
+    if not cfg or not cfg.Noclip then return end
+    for _, part in ipairs(PL_noclipParts) do
+        if part and part.Parent and part.CanCollide then part.CanCollide = false end
+    end
+end)
+
+-- ── Speed / Jump ───────────────────────────────────────────
+local PL_physConn = nil
+
+local function PL_startPhysicsLoop()
+    if PL_physConn then return end
+    PL_physConn = RunService.RenderStepped:Connect(function()
+        local cfg = playerConfig(); if not cfg then return end
+        local hum = PL_getHumanoid(LocalPlayer); if not hum then return end
+        if cfg.SpeedEnabled then hum.WalkSpeed = cfg.SpeedVal end
+        if cfg.JumpEnabled  then hum.JumpPower = cfg.JumpVal; hum.UseJumpPower = true end
+    end)
+end
+
+local function PL_stopPhysicsLoop()
+    if PL_physConn then PL_physConn:Disconnect(); PL_physConn = nil end
+end
+
+-- ── Espectar ───────────────────────────────────────────────
+getgenv()._playerSpecConn = RunService.RenderStepped:Connect(function()
+    local cfg = playerConfig(); if not cfg then return end
+    if cfg.SpectateActive then
+        local target = PL_findPlayer(cfg.TargetPlayer)
+        if target then
+            local hum = PL_getHumanoid(target)
+            if hum then PL_Camera.CameraSubject = hum end
+        end
+    else
+        local hum = PL_getHumanoid(LocalPlayer)
+        if hum and PL_Camera.CameraSubject ~= hum then PL_Camera.CameraSubject = hum end
+    end
+end)
+
+-- ── Metamethods anônimo — ENCADEAMENTO ────────────────────
+--  A UI já tem __index e __newindex via hookmetamethod (GhostTable).
+--  Encadeamos com hookmetamethod novamente para adicionar a lógica
+--  do anônimo por cima sem quebrar a cadeia existente.
+
+local PL_fakeId = math.random(1000000, 2000000000)
+
+local PL_PrevIndex
+PL_PrevIndex = hookmetamethod(game, "__index", NewCClosure(function(self, key)
+    if not CheckCaller() then
+        local cfg = playerConfig()
+        if cfg and cfg.AnonEnabled and self == LocalPlayer then
+            if key == "UserId"      then return PL_fakeId end
+            if key == "Name"        then return cfg.FakeName end
+            if key == "DisplayName" then return cfg.FakeName end
+        end
+    end
+    return PL_PrevIndex(self, key)
+end))
+
+local PL_PrevNewIndex
+PL_PrevNewIndex = hookmetamethod(game, "__newindex", NewCClosure(function(self, key, value)
+    if not CheckCaller() then
+        local cfg = playerConfig()
+        if cfg and cfg.AnonEnabled and key == "Text" and type(value) == "string" then
+            return PL_PrevNewIndex(self, key, PL_spoofText(value))
+        end
+    end
+    return PL_PrevNewIndex(self, key, value)
+end))
+
+-- __namecall: encadeia depois do silent (que já está instalado em SA_mt.__namecall)
+local PL_mt     = getrawmetatable(game)
+local PL_old_nc = PL_mt.__namecall          -- captura o hook do silent como base
+getgenv()._playerOldNC = PL_old_nc          -- salva para restaurar no re-exec
+
+setreadonly(PL_mt, false)
+PL_mt.__namecall = newcclosure(function(self, ...)
+    local method = getnamecallmethod()
+    local args   = { ... }
+    local cfg    = playerConfig()
+
+    if not checkcaller() and cfg and cfg.AnonEnabled then
+        if method == "SetCore" and args[1] == "SendNotification" then
+            local data = args[2]
+            if type(data) == "table" then
+                if data.Title then data.Title = PL_spoofText(data.Title) end
+                if data.Text  then data.Text  = PL_spoofText(data.Text)  end
+                return PL_old_nc(self, table.unpack(args))
+            end
+        end
+    end
+
+    return PL_old_nc(self, ...)
+end)
+setreadonly(PL_mt, true)
+
+-- Chat anônimo
+if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+    TextChatService.OnIncomingMessage = function(msg)
+        local cfg   = playerConfig()
+        local props = Instance.new("TextChatMessageProperties")
+        if cfg and cfg.AnonEnabled then
+            if msg.TextSource and msg.TextSource.UserId == LocalPlayer.UserId then
+                props.PrefixText = string.format("<font color='#F5CD30'>[%s]</font>", cfg.FakeName or "Anônimo")
+            else
+                props.PrefixText = PL_spoofText(msg.PrefixText)
+            end
+        end
+        return props
+    end
+end
+
+-- ── Eventos de personagem ──────────────────────────────────
+local PL_lastPosition = nil
+
+local function PL_hookCharacter(char)
+    PL_cacheNoclipParts(char)
+    char.DescendantAdded:Connect(function(obj)
+        if obj:IsA("BasePart") then table.insert(PL_noclipParts, obj) end
+    end)
+    local hum  = char:WaitForChild("Humanoid",         10)
+    local root = char:WaitForChild("HumanoidRootPart", 10)
+    if hum and root then
+        hum.Died:Connect(function()
+            local cfg = playerConfig()
+            if cfg and cfg.RespawnEnabled then PL_lastPosition = root.CFrame end
+        end)
+    end
+    local cfg = playerConfig()
+    if cfg and cfg.AnonEnabled then PL_scanGuiLayer(char) end
+end
+
+getgenv()._playerCharConn = LocalPlayer.CharacterAdded:Connect(function(char)
+    local cfg = playerConfig()
+    if cfg and cfg.RespawnEnabled and PL_lastPosition then
+        task.spawn(function()
+            local root = char:WaitForChild("HumanoidRootPart", 10)
+            if root then task.wait(0.2); root.CFrame = PL_lastPosition; root.Velocity = Vector3.zero end
+        end)
+    end
+    PL_hookCharacter(char)
+    if cfg and cfg.InvisEnabled then task.wait(0.5); PL_toggleInvis(true) end
+    if cfg and cfg.AnonEnabled  then task.wait(1);   PL_applyAnonVisuals() end
+    if cfg and (cfg.SpeedEnabled or cfg.JumpEnabled) then PL_startPhysicsLoop() end
+end)
+
+if LocalPlayer.Character then PL_hookCharacter(LocalPlayer.Character) end
+
+-- ── Loop de estados ────────────────────────────────────────
+local PL_lastAnon  = false
+local PL_lastInvis = false
+local PL_lastSpeed = false
+
+getgenv()._playerStateTask = task.spawn(function()
+    while task.wait(0.1) do
+        local cfg = playerConfig(); if not cfg then continue end
+
+        if cfg.TriggerFling then
+            cfg.TriggerFling = false; cfg.FlingActive = true
+            PL_startFling(cfg.TargetPlayer)
+        end
+
+        if cfg.TriggerTeleport then
+            cfg.TriggerTeleport = false
+            local target = PL_findPlayer(cfg.TargetPlayer)
+            if target and target.Character then
+                local myRoot = PL_getRootPart(LocalPlayer)
+                local tRoot  = target.Character:FindFirstChild("HumanoidRootPart")
+                if myRoot and tRoot then
+                    PL_lastPosition = myRoot.CFrame
+                    myRoot.CFrame   = tRoot.CFrame * CFrame.new(0, 0, 3)
+                end
+            end
+        end
+
+        if cfg.TriggerReturn then
+            cfg.TriggerReturn = false
+            if PL_lastPosition then
+                local root = PL_getRootPart(LocalPlayer)
+                if root then root.CFrame = PL_lastPosition end
+            end
+        end
+
+        if cfg.InvisEnabled ~= PL_lastInvis then
+            PL_lastInvis = cfg.InvisEnabled
+            PL_toggleInvis(cfg.InvisEnabled)
+        end
+
+        if cfg.AnonEnabled ~= PL_lastAnon then
+            PL_lastAnon = cfg.AnonEnabled
+            PL_applyAnonVisuals()
+        end
+
+        local needsPhysics = cfg.SpeedEnabled or cfg.JumpEnabled
+        if needsPhysics and not PL_lastSpeed then
+            PL_startPhysicsLoop()
+        elseif not needsPhysics and PL_lastSpeed then
+            PL_stopPhysicsLoop()
+        end
+        PL_lastSpeed = needsPhysics
+    end
+end)
+
+-- ── Avatar ─────────────────────────────────────────────────
+if not isfolder("michigun.xyz") then makefolder("michigun.xyz") end
+
+getgenv().Avatar = getgenv().Avatar or {}
+local Avatar = getgenv().Avatar
+
+Avatar.TargetInput      = ""
+Avatar.CurrentAppliedId = LocalPlayer.UserId
+Avatar.SkinFolder       = "michigun.xyz/skins"
+
+if not isfolder(Avatar.SkinFolder) then makefolder(Avatar.SkinFolder) end
+
+local function PL_applyDescription(character, fakeName, fakeId, description)
+    if not character then return end
+    if character == LocalPlayer.Character then
+        Avatar.CurrentAppliedId = fakeId or Avatar.CurrentAppliedId
+    end
+    task.spawn(function()
+        pcall(function()
+            task.wait(0.3)
+            local hum = character:WaitForChild("Humanoid", 10); if not hum then return end
+            for _, obj in ipairs(character:GetDescendants()) do
+                if obj:IsA("Accessory") or obj:IsA("Hat") then obj:Destroy() end
+            end
+            for _, obj in ipairs(character:GetChildren()) do
+                if obj:IsA("Shirt") or obj:IsA("Pants") or obj:IsA("ShirtGraphic") or obj:IsA("CharacterMesh") then obj:Destroy() end
+            end
+            local bc = hum:FindFirstChildOfClass("BodyColors"); if bc then bc:Destroy() end
+            for _, limb in ipairs({"Torso","Left Arm","Right Arm","Left Leg","Right Leg"}) do
+                local l = character:FindFirstChild(limb)
+                if l then for _, m in ipairs(l:GetChildren()) do if m:IsA("SpecialMesh") then m:Destroy() end end end
+            end
+            local head = character:FindFirstChild("Head")
+            if head then
+                local mesh = head:FindFirstChildOfClass("SpecialMesh")
+                if mesh then mesh.MeshId = ""; mesh.TextureId = "" end
+            end
+            task.wait(0.1)
+            if description then hum:ApplyDescriptionClientServer(description) end
+        end)
+    end)
+end
+
+local function PL_resolveUserId(input)
+    local id = tonumber(input); local name
+    local ok = pcall(function()
+        if id then name = Players:GetNameFromUserIdAsync(id)
+        else id = Players:GetUserIdFromNameAsync(input); name = Players:GetNameFromUserIdAsync(id) end
+    end)
+    if ok and id then return id, name end
+    return nil, nil
+end
+
+Avatar.ApplySkin = function(input)
+    if not LocalPlayer.Character or not input or input == "" then return end
+    local id, name = PL_resolveUserId(input); if not id then return end
+    local ok, desc = pcall(Players.GetHumanoidDescriptionFromUserId, Players, id)
+    if ok and desc then PL_applyDescription(LocalPlayer.Character, name, id, desc) end
+end
+
+Avatar.ApplySkinToOther = function(targetName, skinInput, fromSaved)
+    local target = PL_findPlayer(targetName); if not target or not target.Character then return end
+    local id, name
+    if fromSaved then
+        local ok, data = pcall(readfile, Avatar.SkinFolder .. "/" .. skinInput .. ".txt")
+        if not ok or not data then return end
+        id = tonumber(data); name = "SavedSkin"
+    else
+        id, name = PL_resolveUserId(skinInput)
+    end
+    if not id then return end
+    local ok, desc = pcall(Players.GetHumanoidDescriptionFromUserId, Players, id)
+    if ok and desc then PL_applyDescription(target.Character, name, id, desc) end
+end
+
+Avatar.RestoreOther = function(targetName)
+    local target = PL_findPlayer(targetName); if not target or not target.Character then return end
+    local ok, desc = pcall(Players.GetHumanoidDescriptionFromUserId, Players, target.UserId)
+    if ok and desc then PL_applyDescription(target.Character, target.Name, target.UserId, desc) end
+end
+
+Avatar.RestoreSkin = function()
+    if not LocalPlayer.Character then return end
+    local ok, desc = pcall(Players.GetHumanoidDescriptionFromUserId, Players, LocalPlayer.UserId)
+    if ok and desc then PL_applyDescription(LocalPlayer.Character, LocalPlayer.Name, LocalPlayer.UserId, desc) end
+end
+
+Avatar.GetSavedSkins = function()
+    local ok, files = pcall(listfiles, Avatar.SkinFolder)
+    if not ok or not files then return {{ Title = "Erro ao ler pasta", Icon = "lucide:alert-triangle" }} end
+    local skins = {}
+    for _, path in ipairs(files) do
+        local name = path:match("([^\\/]+)%.txt$")
+        if name then table.insert(skins, { Title = name, Icon = "lucide:user" }) end
+    end
+    if #skins == 0 then table.insert(skins, { Title = "Nenhuma salva", Icon = "lucide:frown" }) end
+    return skins
+end
+
+Avatar.SaveSkin = function(customName)
+    local id   = Avatar.CurrentAppliedId or 0
+    local name = (customName ~= "" and customName:gsub("[^%w%s]", "")) or ("Skin_" .. id)
+    writefile(Avatar.SkinFolder .. "/" .. name .. ".txt", tostring(id))
+end
+
+Avatar.LoadSkin = function(name)
+    if not LocalPlayer.Character then return end
+    local ok, data = pcall(readfile, Avatar.SkinFolder .. "/" .. name .. ".txt")
+    if not ok or not data then return end
+    local id = tonumber(data); if not id then return end
+    local ok2, desc = pcall(Players.GetHumanoidDescriptionFromUserId, Players, id)
+    if ok2 and desc then PL_applyDescription(LocalPlayer.Character, name, id, desc) end
+end
+
+Avatar.DeleteSkin = function(name)
+    local path = Avatar.SkinFolder .. "/" .. name .. ".txt"
+    if isfile(path) then delfile(path) end
+end
+
+-- ============================================================
+--  TAB: CHAR  (UI inalterada)
 -- ============================================================
 do
     local function GetAvatar() return getgenv().Avatar end
@@ -2180,16 +2759,16 @@ do
     MS:Input({ Title = "Nome", Desc = cor({ "Digite o " }, { "nome", "#FFFFFF" }, { " ou " }, { "ID", "#FFFFFF" }, { " do usuário" }), Value = "", InputIcon = "lucide:search", Placeholder = "Digite aqui", Callback = function(v) targetInput = v end })
 
     local g1 = MS:Group()
-    g1:Button({ Title = "Aplicar",   Desc = cor({ "Aplica",   "#00FF00" }, { " o char" }),            Icon = "lucide:check",     Callback = function() local a = GetAvatar(); if a and a.ApplySkin   then a.ApplySkin(targetInput) end end })
+    g1:Button({ Title = "Aplicar",   Desc = cor({ "Aplica",   "#00FF00" }, { " o char" }),            Icon = "lucide:check",     Callback = function() local a = GetAvatar(); if a and a.ApplySkin   then a.ApplySkin(targetInput)   end end })
     g1:Space()
-    g1:Button({ Title = "Restaurar", Desc = cor({ "Restaura", "#FF0000" }, { " sua skin original" }), Icon = "lucide:rotate-ccw",Callback = function() local a = GetAvatar(); if a and a.RestoreSkin then a.RestoreSkin()           end end })
+    g1:Button({ Title = "Restaurar", Desc = cor({ "Restaura", "#FF0000" }, { " sua skin original" }), Icon = "lucide:rotate-ccw",Callback = function() local a = GetAvatar(); if a and a.RestoreSkin then a.RestoreSkin()             end end })
 
     local OS = criarSection(Char, "Outros", "Modifica a skin de terceiros", "lucide:users", false)
-    OS:Input({ Title = "Nome", Desc = cor({ "Nome do " },                                           { "jogador", "#00AAFF" }),             Value = "", InputIcon = "lucide:user-search", Placeholder = "sanctuaryangels", Callback = function(v) otherTargetName = v end })
+    OS:Input({ Title = "Nome", Desc = cor({ "Nome do " }, { "jogador", "#00AAFF" }), Value = "", InputIcon = "lucide:user-search", Placeholder = "sanctuaryangels", Callback = function(v) otherTargetName = v end })
     OS:Input({ Title = "Nome", Desc = cor({ "Nome ou ID do char que será " }, { "aplicado", "#00FF00" }, { " no jogador" }), Value = "", InputIcon = "lucide:shirt", Placeholder = "ID ou Nome", Callback = function(v) otherSkinInput = v end })
     local g2 = OS:Group()
     g2:Button({ Title = "Aplicar",   Desc = cor({ "Muda",   "#00FF00" }, { " a skin do jogador alvo" }), Icon = "lucide:wand-2",     Callback = function() local a = GetAvatar(); if a and a.ApplySkinToOther then a.ApplySkinToOther(otherTargetName, otherSkinInput) end end })
-    g2:Button({ Title = "Restaurar", Desc = cor({ "Reseta", "#FF0000" }, { " a skin do jogador alvo" }), Icon = "lucide:refresh-ccw",Callback = function() local a = GetAvatar(); if a and a.RestoreOther      then a.RestoreOther(otherTargetName) end end })
+    g2:Button({ Title = "Restaurar", Desc = cor({ "Reseta", "#FF0000" }, { " a skin do jogador alvo" }), Icon = "lucide:refresh-ccw",Callback = function() local a = GetAvatar(); if a and a.RestoreOther      then a.RestoreOther(otherTargetName)                  end end })
     OS:Button({ Title = "Aplicar favorito", Desc = cor({ "Aplica a skin " }, { "favoritada", "#FFAA00" }, { " selecionada no alvo" }), Icon = "lucide:star", Callback = function()
         if not selectedFavorite then notificar("Nenhum favorito selecionado", 3, "lucide:x"); return end
         local a = GetAvatar(); if a and a.ApplySkinToOther then a.ApplySkinToOther(otherTargetName, selectedFavorite, true) end
@@ -2219,10 +2798,10 @@ do
     CreateFavActions = function()
         if ActionDropdown then ActionDropdown:Destroy(); ActionDropdown = nil end
         ActionDropdown = FS:Dropdown({ Title = "Gerenciar", Desc = cor({ "Gerenciar " }, { "favoritos", "#FFFFFF" }), Icon = "lucide:settings-2", Values = {
-            { Title = "Aplicar em mim",      Desc = cor({ "Usa", "#00FF00" }, { " o char selecionado em você" }),     Icon = "lucide:user-check", Callback = function()
+            { Title = "Aplicar em mim",       Desc = cor({ "Usa", "#00FF00" }, { " o char selecionado em você" }),     Icon = "lucide:user-check", Callback = function()
                 if not selectedFavorite then notificar("Selecione um char primeiro", 3, "lucide:mouse-pointer-click"); return end
                 local a = GetAvatar(); if a and a.LoadSkin then a.LoadSkin(selectedFavorite); notificar("Aplicado: " .. selectedFavorite, 3, "lucide:check") end end },
-            { Title = "Favoritar char atual",Desc = cor({ "Salva", "#FFAA00" }, { " o char que você está usando" }), Icon = "lucide:save",       Callback = function()
+            { Title = "Favoritar char atual", Desc = cor({ "Salva", "#FFAA00" }, { " o char que você está usando" }), Icon = "lucide:save",       Callback = function()
                 local a = GetAvatar(); if a and a.SaveSkin then a.SaveSkin(targetInput); notificar("Char salvo", 3, "lucide:check"); RefreshFavList() end; CreateFavActions() end },
             { Title = isConfirmingFavDelete and "Confirmar deleção?" or "Deletar selecionado",
               Desc  = isConfirmingFavDelete and cor({ "Clique novamente para " }, { "apagar", "#FF0000" }) or cor({ "Remove", "#FF0000" }, { " a skin selecionada" }),
@@ -2245,6 +2824,7 @@ do
     end
     CreateFavActions()
 
+    -- Avatar já disponível diretamente; task.spawn mantido por compatibilidade
     task.spawn(function()
         repeat task.wait(0.5) until getgenv().Avatar and getgenv().Avatar.GetSavedSkins
         RefreshFavList()
@@ -2252,7 +2832,7 @@ do
 end
 
 -- ============================================================
---  TAB: PLAYER
+--  TAB: PLAYER  (UI inalterada)
 -- ============================================================
 getgenv().PlayerConfig = {
     SpeedEnabled = false, SpeedVal = 16, JumpEnabled = false, JumpVal = 50,
@@ -2308,19 +2888,20 @@ do
     local function RefreshActionDrop()
         if ActionDrop then ActionDrop:Destroy(); ActionDrop = nil end
         ActionDrop = IS:Dropdown({ Title = "Ações", Icon = "lucide:mouse-pointer-click", Values = {
-            { Title = "Fling",    Desc = "Arremessa o alvo (arriscado)", Icon = "lucide:earth",  Callback = function()
+            { Title = "Fling", Desc = "Arremessa o alvo (arriscado)", Icon = "lucide:earth", Callback = function()
                 if PC.TargetPlayer == "" then notificar("Selecione um jogador primeiro", 2, "lucide:alert-circle"); return end
                 PC.TriggerFling = true; notificar("Flingando " .. PC.TargetPlayer, 3, "lucide:helicopter") end },
             { Title = PC.SpectateActive and "Parar Espectar" or "Espectar", Desc = "Visualiza a câmera do alvo", Icon = "lucide:eye", Callback = function()
                 if PC.TargetPlayer == "" then notificar("Selecione um jogador", 2, "lucide:alert-circle"); return end
                 PC.SpectateActive = not PC.SpectateActive; RefreshActionDrop()
                 notificar(PC.SpectateActive and "Espectando..." or "Restaurado", 2, PC.SpectateActive and "lucide:eye" or "lucide:eye-off") end },
-            { Title = "Teleportar", Desc = "Vai até o jogador", Icon = "lucide:plane",  Callback = function() if PC.TargetPlayer == "" then return end; PC.TriggerTeleport = true; notificar("Teleportando...", 2, "lucide:plane") end },
+            { Title = "Teleportar", Desc = "Vai até o jogador",       Icon = "lucide:plane",  Callback = function() if PC.TargetPlayer == "" then return end; PC.TriggerTeleport = true; notificar("Teleportando...", 2, "lucide:plane")   end },
             { Title = "Voltar",     Desc = "Retorna à posição anterior", Icon = "lucide:undo-2", Callback = function() PC.TriggerReturn = true; notificar("Retornando...", 2, "lucide:undo-2") end },
         }, Value = "Selecione" })
     end
     RefreshActionDrop()
 end
+
 
 -- ============================================================
 --  TAB: CONFIGURAÇÕES
