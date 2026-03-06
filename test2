@@ -55,7 +55,7 @@ end
 
 local function setup()
     local data = get(cfg.url .. "path.lua?t=" .. os.time(), 5)
-    if not data then notificar("Falha ao carregar path.lua", 5, "lucide:wifi-off") return false end
+    if not data then return false end
     local fn = loadstring(data)
     if fn then
         local res = fn()
@@ -64,17 +64,17 @@ local function setup()
     return next(paths) ~= nil
 end
 
-local function load(key)
+local function fetch(key)
     local name = paths[key]
     if not name then return false end
     name = name:match("^%s*(.-)%s*$")
     local data = get(cfg.url .. name)
-    if not data then notificar("Falha ao baixar: " .. name, 3, "lucide:wifi-off") return false end
+    if not data then return false end
     return run(data)
 end
 
 if not setup() then return end
-for _, key in ipairs({ "jogos" }) do task.spawn(load, key) end
+for _, key in ipairs({ "jogos" }) do task.spawn(fetch, key) end
 
 -- ============================================================
 --  LOG — wrapper estruturado de debug
