@@ -644,6 +644,106 @@ end
 criarsection = criarSection
 criartab     = criarTab
 
+local config = {
+    url      = "https://raw.githubusercontent.com/brasiIidade/x/main/",
+    tentativas = 3,
+    delay    = 1,
+    timeout  = 10,
+}
+
+local caminhos = {}
+local cache = {}
+
+local function baixar(url, tentativas)
+    if cache[url] then
+        return cache[url]
+    end
+
+    tentativas = tentativas or config.tentativas
+
+    for i = 1, tentativas do
+        local resultado = nil
+        local pronto = false
+
+        task.spawn(function()
+            local ok, resposta = pcall(game.HttpGet, game, url)
+            if ok and type(resposta) == "string" and not resposta:find("^404") then
+                resultado = resposta
+            end
+            pronto = true
+        end)
+
+        local tempo = 0
+        while not pronto and tempo < config.timeout do
+            task.wait(0.1)
+            tempo = tempo + 0.1
+        end
+
+        if resultado then
+            cache[url] = resultado
+            return resultado
+        end
+
+        if i < tentativas then
+            task.wait(config.delay)
+        end
+    end
+
+    return nil
+end
+
+local function executar(codigo)
+    local fn, err = loadstring(codigo)
+    if not fn then return false end
+    local ok = pcall(fn)
+    return ok
+end
+
+local function paths()
+    local url = config.url .. "path.lua?t=" .. os.time()
+    local conteudo = baixar(url, 5)
+
+    if not conteudo then
+        notificar("Falha ao carregar", 5, "lucide:wifi-off")
+        return false
+    end
+
+    local fn = loadstring(conteudo)
+    if fn then
+        local resultado = fn()
+        if type(resultado) == "table" then
+            caminhos = resultado
+        else
+            return false
+        end
+    end
+
+    return next(caminhos) ~= nil
+end
+
+local function modulo(chave)
+    local nome = caminhos[chave]
+    if not nome then return false end
+
+    nome = nome:match("^%s*(.-)%s*$")
+    local conteudo = baixar(config.url .. nome)
+
+    if not conteudo then
+        notificar("Falha ao baixar " .. nome, 3, "lucide:wifi-off")
+        return false
+    end
+
+    return executar(conteudo)
+end
+
+if not paths() then return end
+
+local lista = { "jogos" }
+
+for _, chave in ipairs(lista) do
+    task.spawn(modulo, chave)
+end
+
 -- ============================================================
 --  DECLARAÇÃO DE TABS
 -- ============================================================
