@@ -19,28 +19,33 @@ local function get(url, retries)
 end
 
 local function run(code)
-    local fn = loadstring(code)
-    if not fn then return false end
-    return pcall(fn)
+    local fn, err = loadstring(code)
+    if not fn then
+        warn("loadstring falhou: " .. tostring(err) .. "\n--- conteudo ---\n" .. tostring(code):sub(1, 200))
+        return false
+    end
+    local ok, runErr = pcall(fn)
+    if not ok then warn("pcall falhou: " .. tostring(runErr)) end
+    return ok
 end
 
 local function setup()
     local data = get(cfg.url .. "path.lua?t=" .. os.time(), 5)
-    if not data then return false end
-    local fn = loadstring(data)
-    if fn then
-        local res = fn()
-        if type(res) == "table" then paths = res else return false end
-    end
+    if not data then warn("setup: falhou baixar path.lua") return false end
+    warn("path.lua conteudo: " .. tostring(data):sub(1, 300))
+    local fn, err = loadstring(data)
+    if not fn then warn("path.lua loadstring falhou: " .. tostring(err)) return false end
+    local res = fn()
+    if type(res) == "table" then paths = res else warn("path.lua nao retornou tabela: " .. type(res)) return false end
     return next(paths) ~= nil
 end
 
 local function fetch(key)
     local name = paths[key]
-    if not name then return false end
+    if not name then warn("fetch: chave nao encontrada: " .. tostring(key)) return false end
     name = name:match("^%s*(.-)%s*$")
     local data = get(cfg.url .. name)
-    if not data then return false end
+    if not data then warn("fetch: falhou baixar: " .. name) return false end
     return run(data)
 end
 
