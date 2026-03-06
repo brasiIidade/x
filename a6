@@ -3866,15 +3866,17 @@ if MapaAtual then
         local ast = rep:WaitForChild("Assets", 3)
         if ast then deviceRemote = ast:WaitForChild("Remotes"):WaitForChild("Device") end
 
-        local tevezOldNc
-        tevezOldNc = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
-            local method = getnamecallmethod()
-            if self == deviceRemote and method == "FireServer" and TevezLogic.SpoofEnabled then
-                local args = {...}; args[1] = TevezLogic.SelectedDevice
-                return tevezOldNc(self, unpack(args))
-            end
-            return tevezOldNc(self, ...)
-        end))
+        if deviceRemote then
+            local tevezOldNc
+            tevezOldNc = hookmetamethod(game, "__namecall", NewCClosure(function(self, ...)
+                local method = getnamecallmethod()
+                if self == deviceRemote and method == "FireServer" and TevezLogic.SpoofEnabled then
+                    local args = {...}; args[1] = TevezLogic.SelectedDevice
+                    return tevezOldNc(self, unpack(args))
+                end
+                return tevezOldNc(self, ...)
+            end))
+        end
 
         function TevezLogic.ToggleSpam(state)
             TevezLogic.Spamming = state
@@ -4234,7 +4236,7 @@ if MapaAtual then
         if not getgenv().ChristianSpooferHooked then
             getgenv().ChristianSpooferHooked = true
             local OldNameCall
-            OldNameCall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+            OldNameCall = hookmetamethod(game, "__namecall", NewCClosure(function(self, ...)
                 if not checkcaller() and getnamecallmethod() == "FireServer" and tostring(self) == "Dispositivo" and getgenv().ChristianSpooferConfig.Enabled then
                     local args = { ... }; args[1] = getgenv().ChristianSpooferConfig.Device; return OldNameCall(self, table.unpack(args))
                 end
@@ -4942,6 +4944,4 @@ if MapaAtual then
             if getgenv().ApexLogic and getgenv().ApexLogic.ToggleSound then getgenv().ApexLogic.ToggleSound(v) end
         end })
     end
-end
-end
 end
