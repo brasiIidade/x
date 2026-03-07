@@ -510,6 +510,9 @@ do
 
     local localUserId = localPlayer.UserId
 
+    local isMobile = svcInput.TouchEnabled and not svcInput.KeyboardEnabled
+    local defaultFOVBehavior = isMobile and "Center" or "Mouse"
+
     local partMap = {
         ["Cabeça"]         = { "Head" },
         ["Tronco"]         = { "Torso", "UpperTorso", "LowerTorso", "HumanoidRootPart" },
@@ -1252,7 +1255,7 @@ do
         ShowFOV          = true,
         FOVSize          = 110,
         FOVColor         = Color3.fromRGB(0, 0, 0),
-        FOVBehavior      = "Center",
+        FOVBehavior      = defaultFOVBehavior,
         ShowHighlight    = true,
         HighlightColor   = Color3.fromRGB(59, 255, 0),
         ESP = { Enabled = true, ShowName = true, ShowTeam = true, ShowHealth = true, ShowWeapon = true, ShowDist = true, ShowWall = true },
@@ -1393,7 +1396,7 @@ do
         local VisSection = criarSection(SilentAim, "Visual", "FOV", "lucide:palette", false)
 
         VisSection:Toggle({      Title = "FOV",        Desc = "Ativa o FOV",                                                     Icon = "lucide:check",    Type = "Checkbox", Value = SC.ShowFOV,      Flag = "FOV",                   Callback = function(v) SC.ShowFOV = v end })
-        VisSection:Dropdown({    Title = "Posição",    Desc = "Modifica a posição do FOV",     Values = { "Mouse", "Center" }, Value = "Center",           Flag = "PosicaoFOV",            Callback = function(v) SC.FOVBehavior = v end })
+        VisSection:Dropdown({ Title = "Posição", Desc = "Modifica a posição do FOV", Values = { "Mouse", "Center" }, Value = defaultFOVBehavior, Flag = "PosicaoFOV", Callback = function(v) SC.FOVBehavior = v end })
         VisSection:Slider({      Title = "Tamanho",    Desc = "Modifica o tamanho do FOV",     Step = 5, Value = { Min = 40, Max = 1000, Default = SC.FOVSize }, Flag = "TamanhoFOV",        Callback = function(v) SC.FOVSize = v end })
         VisSection:Colorpicker({ Title = "Cor do FOV",                                         Default = SC.FOVColor,       Transparency = 0, Locked = false, Flag = "CorFOV1",             Callback = function(c) SC.FOVColor = c end })
         VisSection:Toggle({      Title = "Highlight",  Desc = cor({ "Brilha" }, { " a pessoa focada", "#00AAFF" }),               Icon = "lucide:sparkles", Type = "Checkbox", Value = SC.ShowHighlight, Flag = "HighlightSilentAim",  Callback = function(v) SC.ShowHighlight = v end })
