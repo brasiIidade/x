@@ -1,53 +1,46 @@
-local cfg = { url = "https://raw.githubusercontent.com/brasiIidade/x/main/", retries = 3, delay = 1, timeout = 10 }
-local paths, cache = {}, {}
+local BASE_URL = "https://raw.githubusercontent.com/brasiIidade/x/main/"
+local FilePaths = {}
 
-local function get(url, retries)
-    if cache[url] then return cache[url] end
-    retries = retries or cfg.retries
-    for i = 1, retries do
-        local res, done = nil, false
-        task.spawn(function()
-            local ok, r = pcall(game.HttpGet, game, url)
-            if ok and type(r) == "string" and not r:find("^404") then res = r end
-            done = true
-        end)
-        local t = 0
-        while not done and t < cfg.timeout do task.wait(0.1) t += 0.1 end
-        if res then cache[url] = res return res end
-        if i < retries then task.wait(cfg.delay) end
+local function download(url, tentativas)
+    for i = 1, tentativas or 3 do
+        local ok, res = pcall(game.HttpGet, game, url)
+        if ok and type(res) == "string" and res:sub(1, 4) ~= "404:" then
+            return res
+        end
+        task.wait(1)
     end
+    return nil
 end
 
-local function run(code)
-    local fn = loadstring(code)
+local function exec(content)
+    local fn = loadstring(content)
     if not fn then return false end
-    setfenv(fn, getfenv())
     return pcall(fn)
 end
 
-local function setup()
-    local data = get(cfg.url .. "path.lua?t=" .. os.time(), 5)
-    if not data then return false end
-    local fn = loadstring(data)
-    if not fn then return false end
-    setfenv(fn, getfenv())
-    local res = fn()
-    if type(res) == "table" then paths = res else return false end
-    return next(paths) ~= nil
+local function carregarPaths()
+    local content = download(BASE_URL .. "path.lua?t=" .. os.time(), 5)
+    if not content then return false end
+    local fn = loadstring(content)
+    if fn then FilePaths = fn() end
+    return next(FilePaths) ~= nil
 end
 
-local function fetch(key)
-    local name = paths[key]
-    if not name then return false end
-    name = name:match("^%s*(.-)%s*$")
-    local data = get(cfg.url .. name)
-    if not data then return false end
-    return run(data)
+local function ler(key)
+    local nome = FilePaths[key]
+    if not nome then return end
+    nome = nome:match("^%s*(.-)%s*$")
+    local content = download(BASE_URL .. nome)
+    if not content then return end
+    exec(content)
 end
 
-if not setup() then return end
-for _, key in ipairs({ "jogos" }) do task.spawn(fetch, key) end
+if not carregarPaths() then return end
 
+for _, nome in ipairs({ "jogos" }) do
+    task.spawn(ler, nome)
+end
+    
 
 local cloneref         = cloneref or function(o) return o end
 
