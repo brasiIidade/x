@@ -1,3 +1,3 @@
 return {
-    jogos = "jogos2.lua"
+    jogos = "jogos.lua"
 }
