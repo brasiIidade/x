@@ -1,0 +1,1286 @@
+local cr = cloneref or function(o) return o end
+
+local plrs = cr(game:GetService("Players"))
+local rs   = cr(game:GetService("RunService"))
+local ws   = cr(game:GetService("Workspace"))
+local cg   = cr(game:GetService("CoreGui"))
+local rep  = cr(game:GetService("ReplicatedStorage"))
+local uis  = cr(game:GetService("UserInputService"))
+local ts   = cr(game:GetService("TweenService"))
+
+local lp  = plrs.LocalPlayer
+local env = getgenv()
+
+local Mapas = {
+    [13132367906]     = "Tevez",
+    [14511049]        = "Delta",
+    [16150352]        = "Christian",
+    [129890257340707] = "Soucre",
+    [134858056613772] = "NovaEra",
+    [2069320852]      = "Apex",
+}
+env.MAPA_IDS  = Mapas
+env.MapaAtual = Mapas[game.PlaceId]
+
+local MapaAtual = env.MapaAtual
+if not MapaAtual then return end
+
+local function Notify(msg)
+    local fn = env.notificar or _G.notificar
+    if fn then fn(msg, 3, "lucide:info") end
+end
+
+local S_HRP  = "HumanoidRootPart"
+local S_HUM  = "Humanoid"
+local S_BP   = "Backpack"
+
+local function getChar()  return lp.Character end
+local function getHRP()   local c = getChar(); return c and c:FindFirstChild(S_HRP) end
+local function getHum()   local c = getChar(); return c and c:FindFirstChildOfClass(S_HUM) end
+
+if MapaAtual == "Tevez" then
+
+    local gs  = rep:WaitForChild("GunSystem", 3)
+    local ast = rep:WaitForChild("Assets", 3)
+    local gc, fireEvent, reloadFunc, deviceRemote
+
+    if gs then
+        gc         = gs:WaitForChild("GunsConfigurations")
+        local rem  = gs:WaitForChild("Remotes")
+        fireEvent  = rem:WaitForChild("Events"):WaitForChild("Fire")
+        reloadFunc = rem:WaitForChild("Functions"):WaitForChild("Reload")
+    end
+    if ast then
+        deviceRemote = ast:WaitForChild("Remotes"):WaitForChild("Device")
+    end
+
+    local TL = {
+        ChatMessage      = "",
+        Spamming         = false,
+        SelectedDevice   = "Computer",
+        SpoofEnabled     = false,
+        SelectedShopItem = "GLOCK 18",
+        Aura             = false,
+        Active           = true,
+        GunConfig        = { Bullets = nil, Spread = nil, Range = nil },
+    }
+
+    local tevezOldNc
+    tevezOldNc = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+        if self == deviceRemote and getnamecallmethod() == "FireServer" and TL.SpoofEnabled then
+            local a = {...}; a[1] = TL.SelectedDevice; return tevezOldNc(self, unpack(a))
+        end
+        return tevezOldNc(self, ...)
+    end))
+
+    function TL.ToggleSpam(state)
+        TL.Spamming = state
+        if state then
+            task.spawn(function()
+                local fc = ast and ast.Remotes.ForceChat
+                while TL.Spamming do
+                    if TL.ChatMessage ~= "" and fc then fc:FireServer(TL.ChatMessage) end
+                    task.wait(0.5)
+                end
+            end)
+        end
+    end
+
+    function TL.SendMessage()
+        local fc = ast and ast.Remotes.ForceChat
+        if fc then fc:FireServer(TL.ChatMessage) end
+    end
+
+    function TL.SetAFK(state)
+        local r = ast and ast.Remotes.AFK
+        if r then r:FireServer(state) end
+    end
+
+    function TL.ToggleSpoof(state)
+        TL.SpoofEnabled = state
+        if state then
+            local h = getHum()
+            if h then h.Health = 0 end
+        end
+    end
+
+    function TL.BuyItem()
+        if not TL.SelectedShopItem or not ast then return end
+        ast.Remotes.ToolsShop:FireServer("Buy", TL.SelectedShopItem)
+        Notify("Comprado: " .. TL.SelectedShopItem)
+    end
+
+    local function HasGun()
+        if not gc then return false end
+        local bp   = lp:FindFirstChild(S_BP)
+        local char = getChar()
+        for _, cfg in ipairs(gc:GetChildren()) do
+            local n = cfg.Name
+            if (bp and bp:FindFirstChild(n)) or (char and char:FindFirstChild(n)) then return true end
+        end
+        return false
+    end
+
+    local function ModifyGunProp(prop, val)
+        local count = 0
+        for _, v in pairs(getgc(true)) do
+            if type(v) == "table" and (rawget(v, "Spread") or rawget(v, "Bullets") or rawget(v, "FireRate")) then
+                if setreadonly then setreadonly(v, false) end
+                if rawget(v, prop) ~= nil then rawset(v, prop, val); count += 1 end
+            end
+        end
+        return count
+    end
+
+    function TL.ApplyGunMods()
+        if not HasGun() then Notify("Equipe uma arma primeiro"); return end
+        local changes = 0
+        local cfg = TL.GunConfig
+        if cfg.Bullets then changes += ModifyGunProp("Bullets", cfg.Bullets) end
+        if cfg.Spread  then changes += ModifyGunProp("Spread",  cfg.Spread)  end
+        if cfg.Range   then changes += ModifyGunProp("Range",   cfg.Range)   end
+        Notify("Alterações aplicadas em: " .. tostring(changes) .. " tabelas")
+    end
+
+    function TL.ToggleAura(state, toggleUI)
+        if state then
+            if not HasGun() then
+                if toggleUI then toggleUI:Set(false) end
+                Notify("Precisa de uma arma"); return
+            end
+            TL.Aura = true; Notify("Kill-aura Ativado")
+        else
+            TL.Aura = false; Notify("Kill-aura Desativado")
+        end
+    end
+
+    local rp = RaycastParams.new()
+    rp.FilterType = Enum.RaycastFilterType.Exclude
+    local _hitInfo = {}
+
+    task.spawn(function()
+        while task.wait(0.25) do
+            if not TL.Active then break end
+
+            if reloadFunc and TL.Aura and HasGun() then
+                local c = getChar()
+                local tool = c and c:FindFirstChildWhichIsA("Tool")
+                if tool then pcall(reloadFunc.InvokeServer, reloadFunc, tool) end
+            end
+
+            if TL.Aura and HasGun() and fireEvent then
+                local c = getChar()
+                local tool = c and c:FindFirstChildWhichIsA("Tool")
+                if tool and gc then
+                    local cfgI = gc:FindFirstChild(tool.Name)
+                    if cfgI then
+                        local firePart = tool:FindFirstChild("FirePart") or tool:FindFirstChild("Handle") or tool.PrimaryPart
+                        if firePart then
+                            rp.FilterDescendantsInstances = {c}
+                            for _, plr in ipairs(plrs:GetPlayers()) do
+                                if plr ~= lp and (plr.Team == nil or plr.Team ~= lp.Team) and plr.Character then
+                                    local h = plr.Character:FindFirstChildOfClass(S_HUM)
+                                    if h and h.Health > 0 then
+                                        local head = plr.Character:FindFirstChild("Head") or plr.Character:FindFirstChild(S_HRP)
+                                        if head then
+                                            local dir  = head.Position - firePart.Position
+                                            local dist = dir.Magnitude
+                                            if dist > 0 then
+                                                local result = ws:Raycast(firePart.Position, dir.Unit * dist, rp)
+                                                local hitPos = result and result.Position or head.Position
+                                                _hitInfo[head] = {
+                                                    Normal   = result and result.Normal   or Vector3.new(0,1,0),
+                                                    Position = hitPos,
+                                                    Instance = head,
+                                                    Distance = dist,
+                                                    Material = result and result.Material or Enum.Material.ForceField,
+                                                }
+                                                for i = 1, 15 do
+                                                    pcall(fireEvent.FireServer, fireEvent, tool, _hitInfo, hitPos)
+                                                end
+                                                table.clear(_hitInfo)
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end)
+
+    local FL = {
+        Enabled        = false,
+        SafeMode       = false,
+        SafeRadius     = 60,
+        MoneyFarmed    = 0,
+        InitialMoney   = 0,
+        UpdateCallback = nil,
+    }
+
+    local mapObj    = ws:FindFirstChild("Map")
+    local robbery   = mapObj and mapObj:FindFirstChild("Robbery")
+    local bank      = robbery and robbery:FindFirstChild("Bank")
+    local statusGui = bank
+        and bank:FindFirstChild("RobberyStatus")
+        and bank.RobberyStatus:FindFirstChild("SurfaceGui")
+        and bank.RobberyStatus.SurfaceGui:FindFirstChild("BankStatus")
+    local collectPos = (bank and bank:FindFirstChild("CollectPad") and bank.CollectPad.Position) or Vector3.zero
+    local buyShop    = ast and ast.Remotes:FindFirstChild("BuyShop")
+    local robberyRem = ast and ast.Remotes:FindFirstChild("Robbery")
+    local kaio       = mapObj and mapObj:FindFirstChild("NPCS") and mapObj.NPCS:FindFirstChild("Kaio")
+    local venderPos  = (kaio and kaio:FindFirstChild(S_HRP) and (kaio.HumanoidRootPart.Position - Vector3.new(9,10,0))) or Vector3.zero
+    local afkL       = collectPos - Vector3.new(10,0,0)
+    local afkR       = collectPos + Vector3.new(10,0,0)
+    local afkLUp     = afkL + Vector3.new(0,4,0)
+    local afkRUp     = afkR + Vector3.new(0,4,0)
+
+    local farmRunning = false
+    local lastSell    = 0
+    local MIN_MONEY   = 1300
+
+    local function IsOpen()   return statusGui and statusGui.Text == "ABERTO"  end
+    local function IsClosed() return statusGui and statusGui.Text == "FECHADO" end
+
+    local function FarmUpdate(msg)
+        if FL.UpdateCallback then FL.UpdateCallback(msg, FL.MoneyFarmed) end
+    end
+
+    local function Tp(pos)
+        local hrp = getHRP()
+        if hrp then hrp.CFrame = CFrame.new(pos) end
+    end
+
+    local function GetItem(name)
+        local bp   = lp:FindFirstChild(S_BP)
+        local char = getChar()
+        return (bp and bp:FindFirstChild(name)) or (char and char:FindFirstChild(name))
+    end
+
+    local function CheckSafe()
+        if not FL.SafeMode then return false end
+        local hrp = getHRP()
+        if not hrp then return false end
+        local pos = hrp.Position
+        for _, p in ipairs(plrs:GetPlayers()) do
+            if p ~= lp and p.Character then
+                local r = p.Character:FindFirstChild(S_HRP)
+                if r and (r.Position - pos).Magnitude <= FL.SafeRadius then
+                    FarmUpdate("Modo Seguro: Jogador perto!")
+                    Tp(afkLUp); return true
+                end
+            end
+        end
+        return false
+    end
+
+    local function DynamicWait(seconds)
+        local start = tick()
+        while FL.Enabled and IsOpen() and (tick() - start < seconds) do
+            if CheckSafe() then task.wait(0.5); continue end
+            Tp(afkLUp);  task.wait(0.04)
+            Tp(afkRUp);  task.wait(0.04)
+        end
+        return not IsOpen() or not FL.Enabled
+    end
+
+    local function BuyC4()
+        if GetItem("C4") then return true end
+        if not buyShop   then return false end
+        FarmUpdate("Comprando C4...")
+        Tp(Vector3.new(-766, 19, -365)); task.wait(1)
+        buyShop:FireServer("C4")
+        for _ = 1, 15 do
+            if GetItem("C4") then return true end
+            task.wait(0.1)
+        end
+        return false
+    end
+
+    local function GetMoneyBag()
+        local char = getChar()
+        if not char then return 0 end
+
+        for _, v in ipairs(char:GetDescendants()) do
+            if v.Name == "Money Bag" then
+                local h = v:IsA("BasePart") and v or v:FindFirstChildWhichIsA("BasePart")
+                if h then
+                    local att = h:FindFirstChild("DataAttachment")
+                    local gui = att and att:FindFirstChild("BillboardGui")
+                    if gui and gui.Frame and gui.Frame:FindFirstChild("Money") then
+                        return tonumber(gui.Frame.Money.Text:match("%d+")) or 0
+                    end
+                end
+            end
+        end
+
+        local hrp = char:FindFirstChild(S_HRP)
+        if not hrp then return 0 end
+        local pos = hrp.Position
+        for _, v in ipairs(ws:GetDescendants()) do
+            if v.Name == "Money Bag" then
+                local h = v:IsA("BasePart") and v or v:FindFirstChildWhichIsA("BasePart")
+                if h and (h.Position - pos).Magnitude <= 10 then
+                    local att = h:FindFirstChild("DataAttachment")
+                    local gui = att and att:FindFirstChild("BillboardGui")
+                    if gui and gui.Frame and gui.Frame:FindFirstChild("Money") then
+                        return tonumber(gui.Frame.Money.Text:match("%d+")) or 0
+                    end
+                end
+            end
+        end
+        return 0
+    end
+
+    local function SellMoney(force)
+        if not robberyRem then return end
+        FarmUpdate("Entregando dinheiro...")
+        if not force and (CheckSafe() or IsClosed()) then return end
+        Tp(venderPos); task.wait(0.5)
+        local attempts = 0
+        while GetMoneyBag() > 0 and FL.Enabled do
+            if CheckSafe() or (not force and IsClosed()) then break end
+            robberyRem:FireServer("Payment"); task.wait(0.5)
+            attempts += 1; if attempts > 15 then break end
+        end
+        if not FL.Enabled then return end
+        task.wait(0.5)
+        if IsOpen() then Tp(collectPos) end
+        local din = lp.leaderstats and lp.leaderstats:FindFirstChild("Dinheiro")
+        if din then FL.MoneyFarmed = din.Value - FL.InitialMoney end
+        FarmUpdate("Dinheiro entregue!")
+    end
+
+    local function FarmMainLoop()
+        if farmRunning or not FL.Enabled then return end
+        local din = lp.leaderstats and lp.leaderstats:FindFirstChild("Dinheiro")
+        if not din then return end
+        if din.Value < MIN_MONEY then
+            FarmUpdate("Erro: Precisa de R$" .. MIN_MONEY)
+            FL.Enabled = false; return
+        end
+        farmRunning = true
+        FL.InitialMoney = din.Value
+        task.spawn(function()
+            if not IsOpen() then
+                FarmUpdate("Aguardando banco abrir...")
+                repeat task.wait(0.5) until IsOpen() or not FL.Enabled
+                if not FL.Enabled then farmRunning = false; return end
+            end
+            FarmUpdate("Iniciando rotina...")
+            if not BuyC4() or not FL.Enabled or IsClosed() then
+                FarmUpdate("Falha ao comprar C4"); farmRunning = false; return
+            end
+            local c4 = GetItem("C4")
+            if c4 then
+                local hum = getHum()
+                if hum then hum:EquipTool(c4) end
+            end
+            local vault = bank and bank:FindFirstChild("BankVault")
+            local prompt = vault and vault:FindFirstChild("C4") and vault.C4:FindFirstChild("Handle") and vault.C4.Handle:FindFirstChildOfClass("ProximityPrompt")
+            if vault and vault:FindFirstChild("Vault") then Tp(vault.Vault.Front.Position) end
+            task.wait(0.5)
+            FarmUpdate("Plantando C4...")
+            while FL.Enabled and IsOpen() do
+                if CheckSafe() then task.wait(0.1); continue end
+                if not GetItem("C4") then break end
+                if prompt then fireproximityprompt(prompt) end
+                task.wait(0.15)
+            end
+            if not FL.Enabled or IsClosed() then farmRunning = false; return end
+            DynamicWait(11)
+            while FL.Enabled and IsOpen() do
+                if CheckSafe() then task.wait(0.1); continue end
+                if GetMoneyBag() >= 4000 then
+                    task.wait(8); SellMoney(false)
+                    if not IsOpen() then break end
+                else
+                    FarmUpdate("Coletando..."); Tp(collectPos); task.wait(0.05)
+                    local hum = getHum()
+                    if hum and hum.Health < 50 then
+                        FarmUpdate("Curando..."); Tp(afkLUp)
+                        repeat task.wait(0.5) until not getHum() or getHum().Health > 90
+                    end
+                    local char = getChar()
+                    if char then char:PivotTo(char.HumanoidRootPart.CFrame * CFrame.Angles(0, math.rad(30), 0)) end
+                    DynamicWait(0.5)
+                end
+            end
+            farmRunning = false
+        end)
+    end
+
+    function FL.Toggle(state)
+        FL.Enabled = state
+        if state then FarmMainLoop() else farmRunning = false; FarmUpdate("Desativado") end
+    end
+
+    if statusGui then
+        statusGui:GetPropertyChangedSignal("Text"):Connect(function()
+            if not FL.Enabled then return end
+            if IsOpen() then
+                FarmMainLoop()
+            elseif IsClosed() then
+                if tick() - lastSell > 5 then
+                    lastSell = tick()
+                    task.spawn(function() if GetMoneyBag() > 0 then SellMoney(true) end end)
+                end
+                farmRunning = false
+            end
+        end)
+    end
+
+    lp.CharacterAdded:Connect(function(char)
+        task.wait(1)
+        if FL.Enabled and IsOpen() then FarmMainLoop() end
+        char:WaitForChild(S_HUM).Died:Connect(function()
+            farmRunning = false
+            if FL.Enabled then task.wait(3); Tp(collectPos) end
+        end)
+    end)
+
+    env.TevezMods     = TL
+    env.TevezAutoFarm = FL
+
+elseif MapaAtual == "Delta" then
+
+    local DL = { JJValue = 0, GetRichValue = 1000000, KillAuraAtiva = false }
+    env.DeltaLogic = DL
+
+    local dRem  = rep:WaitForChild("Remotes", 3)
+    local dPoli, dDecM
+    if dRem then
+        dPoli = dRem:WaitForChild("Polichinelos", 3)
+        local dEvs = dRem:WaitForChild("Events", 3)
+        if dEvs then
+            local dEco = dEvs:WaitForChild("Economy", 3)
+            if dEco then dDecM = dEco:WaitForChild("DecrementMoney", 3) end
+        end
+    end
+
+    function DL.SetJJ()
+        if not dPoli then return end
+        local n = tonumber(DL.JJValue)
+        if not n or n == 0 then return end
+        dPoli:FireServer("Add", n)
+        Notify(tostring(n) .. " polichinelos adicionados")
+    end
+
+    function DL.GetRich()
+        if not dDecM then return end
+        local n = tonumber(DL.GetRichValue)
+        if not n or n == 0 then return end
+        dDecM:FireServer(-n, "BuyMilitaryPass")
+        Notify(tostring(n) .. " adicionado")
+    end
+
+    local bft = rep:WaitForChild("BFTEngine", 3)
+    local damageRemote, fxRemote
+    if bft then
+        local b = bft:WaitForChild("Packages", 3)
+        b = b and b:WaitForChild("Knit", 3)
+        b = b and b:WaitForChild("Services", 3)
+        b = b and b:WaitForChild("BulletService", 3)
+        b = b and b:WaitForChild("RE", 3)
+        if b then
+            damageRemote = b:WaitForChild("Damage", 3)
+            fxRemote     = b:WaitForChild("FX", 3)
+        end
+    end
+
+    local function alvoValido(plr)
+        if plr == lp then return false end
+        if plr.Team ~= nil and lp.Team ~= nil and plr.Team == lp.Team then return false end
+        local char = plr.Character
+        if not char then return false end
+        local hum  = char:FindFirstChildOfClass(S_HUM)
+        local head = char:FindFirstChild("Head")
+        return (hum and hum.Health > 0 and head), head
+    end
+
+    local lastShot = 0
+    task.spawn(function()
+        while task.wait() do
+            if DL.KillAuraAtiva and damageRemote and fxRemote then
+                local tool = getChar() and getChar():FindFirstChildOfClass("Tool")
+                if tool then
+                    local now = tick()
+                    if now - lastShot >= 0.1 then
+                        lastShot = now
+                        local nome = tool.Name
+                        for _, plr in ipairs(plrs:GetPlayers()) do
+                            local ok, head = alvoValido(plr)
+                            if ok then
+                                local pos = head.Position
+                                pcall(fxRemote.FireServer,     fxRemote,     nome, pos)
+                                pcall(damageRemote.FireServer, damageRemote, nome, pos, head)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end)
+
+elseif MapaAtual == "NovaEra" then
+
+    local NL = {
+        Enabled        = false,
+        Mode           = "Lixeiro",
+        Farmed         = 0,
+        InitialMoney   = 0,
+        UpdateCallback = nil,
+    }
+    env.NovaEraLogic = NL
+
+    local neOff  = CFrame.new(0, -20, 0)
+    local neZero = Vector3.zero
+    local neStartCF = nil
+
+    local function getNeMoney()
+        local ls  = lp:FindFirstChild("leaderstats")
+        local din = ls and ls:FindFirstChild("Dinheiro")
+        if not din then return 0 end
+        return tonumber(tostring(din.Value or din.Text or "0"):gsub("%D", "")) or 0
+    end
+
+    local function neStopFloat()
+        local hrp = getHRP()
+        if hrp then local ag = hrp:FindFirstChild("Antigravity"); if ag then ag:Destroy() end end
+    end
+
+    local function neFloatAt(targetCF)
+        local hrp = getHRP()
+        if not hrp then return end
+        local ag = hrp:FindFirstChild("Antigravity")
+        if not ag then
+            ag = Instance.new("BodyVelocity")
+            ag.Name     = "Antigravity"
+            ag.Velocity = neZero
+            ag.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+            ag.P        = 9000
+            ag.Parent   = hrp
+        end
+        hrp.CFrame                   = targetCF
+        hrp.AssemblyLinearVelocity   = neZero
+        hrp.AssemblyAngularVelocity  = neZero
+    end
+
+    local function neGetPrompt(parent)
+        if not parent then return nil end
+        for _, v in ipairs(parent:GetDescendants()) do
+            if v:IsA("ProximityPrompt") and v.Enabled and v:IsDescendantOf(ws) then return v end
+        end
+        return nil
+    end
+
+    function NL.SetMode(m)  NL.Mode = m end
+
+    function NL.Toggle(state)
+        NL.Enabled = state
+        local m = getNeMoney()
+        if state then
+            NL.InitialMoney = m
+            local hrp = getHRP()
+            if hrp then neStartCF = hrp.CFrame end
+        else
+            neStopFloat()
+            NL.Farmed += m - NL.InitialMoney
+            local hrp = getHRP()
+            if neStartCF and hrp then
+                hrp.CFrame                 = neStartCF
+                hrp.AssemblyLinearVelocity = neZero
+            end
+        end
+    end
+
+    task.spawn(function()
+        while task.wait(0.5) do
+            if NL.UpdateCallback then
+                NL.UpdateCallback(NL.Enabled and (NL.Farmed + (getNeMoney() - NL.InitialMoney)) or NL.Farmed)
+            end
+        end
+    end)
+
+    task.spawn(function()
+        while true do
+            if not NL.Enabled then neStopFloat(); task.wait(0.5); continue end
+            local char = getChar()
+            local hum  = char and char:FindFirstChild(S_HUM)
+            local hrp  = char and char:FindFirstChild(S_HRP)
+            if not (char and hum and hrp and hum.Health > 0) then neStopFloat(); task.wait(0.5); continue end
+
+            if NL.Mode == "Lixeiro" then
+                local trab = ws:FindFirstChild("Trabalhos / SWATntj")
+                local col  = trab and trab:FindFirstChild("Coleta")
+                if col then
+                    local hasBag      = char:FindFirstChild("Lixo_model") ~= nil
+                    local targetFolder = hasBag and col:FindFirstChild("Lixeira") or col:FindFirstChild("Lixo")
+                    local prompt       = neGetPrompt(targetFolder)
+                    if prompt and prompt.Parent then
+                        prompt.HoldDuration = 0
+                        repeat
+                            if not NL.Enabled or hum.Health <= 0 then break end
+                            if (char:FindFirstChild("Lixo_model") ~= nil) ~= hasBag then break end
+                            neFloatAt(prompt.Parent.CFrame * neOff)
+                            fireproximityprompt(prompt)
+                            task.wait(0.3)
+                        until not prompt.Parent or not prompt.Enabled
+                    else
+                        neFloatAt(neStartCF and neStartCF * neOff or hrp.CFrame)
+                        task.wait(0.1)
+                    end
+                else
+                    neStopFloat(); task.wait(0.5)
+                end
+
+            elseif NL.Mode == "Barbeiro" then
+                local shop  = ws:FindFirstChild("BarberShop")
+                local found = false
+                if shop then
+                    for _, npc in ipairs(shop:GetChildren()) do
+                        if not NL.Enabled or hum.Health <= 0 then break end
+                        local prompt = neGetPrompt(npc:FindFirstChild("Head"))
+                        if prompt and prompt.Parent then
+                            found = true
+                            prompt.HoldDuration = 0
+                            local nextFire = 0
+                            repeat
+                                if not NL.Enabled or hum.Health <= 0 then break end
+                                hum.Sit = false
+                                neFloatAt(prompt.Parent.CFrame * neOff)
+                                local now = tick()
+                                if now >= nextFire then fireproximityprompt(prompt); nextFire = now + 0.3 end
+                                rs.Heartbeat:Wait()
+                            until not prompt.Parent or not prompt.Enabled or not npc.Parent
+                        end
+                    end
+                end
+                if not found then
+                    neFloatAt(neStartCF and neStartCF * neOff or hrp.CFrame)
+                    task.wait(0.1)
+                end
+            end
+
+            if NL.Enabled then rs.Heartbeat:Wait() end
+        end
+    end)
+
+elseif MapaAtual == "Soucre" then
+
+    local SL = { Enabled = false, TotalProfit = 0, SessionStart = 0, UpdateCallback = nil }
+    env.SoucreLogic = SL
+
+    local srcOff = CFrame.new(0, -9, 0)
+    local srcV0  = Vector3.zero
+    local srcSCf = nil
+
+    local srcTrab = ws:FindFirstChild("Trabalhos") and ws.Trabalhos:FindFirstChild("Entregador")
+    local srcPb   = srcTrab and srcTrab:FindFirstChild("Prompts")
+    local srcCp   = srcPb and srcPb:FindFirstChild("Caixa")
+    local srcFlds = srcPb and {
+        srcPb:FindFirstChild("Entregar_B"),
+        srcPb:FindFirstChild("Entregar_F"),
+        srcPb:FindFirstChild("Frutas"),
+        srcPb:FindFirstChild("Bebidas"),
+    }
+
+    local function srcCGrav(c)
+        if c then
+            local hrp = c:FindFirstChild(S_HRP)
+            if hrp then local bv = hrp:FindFirstChild("AG"); if bv then bv:Destroy() end end
+        end
+    end
+
+    local function srcTp(t)
+        local hrp = getHRP()
+        if not hrp then return end
+        if not hrp:FindFirstChild("AG") then
+            local bv = Instance.new("BodyVelocity")
+            bv.Name, bv.Velocity, bv.MaxForce, bv.P, bv.Parent = "AG", srcV0, Vector3.new(9e9,9e9,9e9), 9000, hrp
+        end
+        hrp.CFrame                   = t.CFrame * srcOff
+        hrp.AssemblyLinearVelocity   = srcV0
+        hrp.AssemblyAngularVelocity  = srcV0
+    end
+
+    local function srcFDst()
+        if not srcFlds then return nil end
+        for i = 1, 4 do
+            if srcFlds[i] then
+                local att = srcFlds[i]:FindFirstChild("AttachmentDestino")
+                if att then return att end
+            end
+        end
+        return nil
+    end
+
+    local function srcGMon()
+        local d = lp:FindFirstChild("Dados")
+        local m = d and d:FindFirstChild("Dinheiro")
+        return m and m.Value or 0
+    end
+
+    function SL.Toggle(s)
+        SL.Enabled = s
+        local cur = srcGMon()
+        if s then
+            SL.SessionStart = cur
+            local hrp = getHRP()
+            if hrp then srcSCf = hrp.CFrame end
+        else
+            srcCGrav(getChar())
+            SL.TotalProfit += cur - SL.SessionStart
+            local hrp = getHRP()
+            if srcSCf and hrp then hrp.CFrame = srcSCf; hrp.AssemblyLinearVelocity = srcV0 end
+        end
+    end
+
+    rs.Heartbeat:Connect(function()
+        if SL.UpdateCallback then
+            SL.UpdateCallback(SL.Enabled and (SL.TotalProfit + (srcGMon() - SL.SessionStart)) or SL.TotalProfit)
+        end
+
+        if not SL.Enabled then srcCGrav(getChar()); return end
+        local c = getChar()
+        if not c then return end
+        local hrp = c:FindFirstChild(S_HRP)
+        local hum = c:FindFirstChildOfClass(S_HUM)
+        if not hrp or not hum or hum.Health <= 0 then srcCGrav(c); return end
+
+        local att = srcFDst()
+        if not att then
+            if srcCp then
+                local p = srcCp:FindFirstChildWhichIsA("ProximityPrompt", true)
+                if p then p.HoldDuration = 0; srcTp(srcCp); fireproximityprompt(p) end
+            end
+        else
+            local d = att.Parent
+            if d then
+                local p = d:FindFirstChildWhichIsA("ProximityPrompt", true)
+                if p then p.HoldDuration = 0; srcTp(d); fireproximityprompt(p) end
+            end
+        end
+    end)
+
+elseif MapaAtual == "Apex" then
+
+    env.ApexLogic            = env.ApexLogic or {}
+    env._ApexSpamMasterConns = env._ApexSpamMasterConns or {}
+    env._ApexSpamCharConns   = env._ApexSpamCharConns or {}
+
+    local function limparConns(t)
+        for _, c in ipairs(t) do if typeof(c) == "RBXScriptConnection" and c.Connected then c:Disconnect() end end
+        table.clear(t)
+    end
+
+    do
+        local routeConfig = {
+            markerColor  = Color3.fromRGB(220,50,50),
+            accentColor  = Color3.fromRGB(220,50,50),
+            walkSpeed    = 0.3,
+            stepDelay    = 0.28,
+            triggerDist  = 1,
+            triggerVert  = 1.5,
+            triggerAngle = 10,
+            startAt = CFrame.new(1635,1,-105),
+            enterAt = CFrame.new(1633,1,-127) * CFrame.Angles(0,math.rad(90),0),
+            walkTo  = CFrame.new(1633,1,-129.5),
+            route = {
+                CFrame.new(1633,1,-132),  CFrame.new(1633,1,-135),
+                CFrame.new(1636,1,-139),  CFrame.new(1640,1,-145),
+                CFrame.new(1644,1,-150),  CFrame.new(1648,1,-155),
+                CFrame.new(1650,1,-160),  CFrame.new(1650,1,-165),
+                CFrame.new(1650,1,-175),  CFrame.new(1650,1,-185),
+                CFrame.new(1650,1,-195),  CFrame.new(1650,1,-205),
+                CFrame.new(1650,1,-215),  CFrame.new(1650,1,-225),
+                CFrame.new(1650,1,-235),  CFrame.new(1650,1,-245),
+                CFrame.new(1650,1,-255),  CFrame.new(1650,1,-265),
+                CFrame.new(1650,1,-275),  CFrame.new(1635,1,-286),
+            },
+        }
+
+        local function toggleNoclip(s) env.PlayerConfig.Noclip = s end
+
+        local function getPlayer()
+            local c = lp.Character
+            return c, c and c:FindFirstChild(S_HRP), c and c:FindFirstChildOfClass(S_HUM)
+        end
+
+        local function newCorner(p, s)  local c = Instance.new("UICorner", p); c.CornerRadius = UDim.new(s or 1, 0) end
+        local function newStroke(p, col, th, tr) local s = Instance.new("UIStroke", p); s.Color, s.Thickness, s.Transparency = col, th or 1.5, tr or 0 end
+
+        local function buildClone(cf)
+            local parts = {}
+            local function addBox(name, size, frame)
+                local p = Instance.new("BoxHandleAdornment")
+                p.Size, p.Name, p.CFrame    = size, name, frame
+                p.Color3, p.Transparency    = routeConfig.markerColor, 0
+                p.Adornee, p.ZIndex, p.Parent = ws.Terrain, 1, ws.Terrain
+                parts[#parts+1] = p
+            end
+            addBox("body", Vector3.new(2,2,1), cf)
+            addBox("legL", Vector3.new(1,2,1), cf * CFrame.new(-0.5,-2, 0))
+            addBox("legR", Vector3.new(1,2,1), cf * CFrame.new( 0.5,-2, 0))
+            addBox("armL", Vector3.new(1,2,1), cf * CFrame.new(-1.5, 0, 0))
+            addBox("armR", Vector3.new(1,2,1), cf * CFrame.new( 1.5, 0.5,-1) * CFrame.Angles(math.rad(90),0,0))
+            return function()
+                for _, p in ipairs(parts) do if p and p.Parent then p:Destroy() end end
+                table.clear(parts)
+            end
+        end
+
+        local function buildWaypoint()
+            local guiRef = (gethui and gethui()) or cg
+            local screen = Instance.new("ScreenGui")
+            screen.Name, screen.ResetOnSpawn, screen.IgnoreGuiInset = ".", false, true
+            screen.ZIndexBehavior, screen.Parent = Enum.ZIndexBehavior.Sibling, guiRef
+
+            local wrap = Instance.new("Frame")
+            wrap.Size, wrap.AnchorPoint, wrap.BackgroundTransparency = UDim2.new(0,44,0,62), Vector2.new(0.5,0.5), 1
+            wrap.ZIndex, wrap.Parent = 10, screen
+
+            local circle = Instance.new("Frame")
+            circle.Size, circle.AnchorPoint     = UDim2.new(0,32,0,32), Vector2.new(0.5,0)
+            circle.Position, circle.BackgroundColor3 = UDim2.new(0.5,0,0,0), Color3.fromRGB(12,5,5)
+            circle.BackgroundTransparency, circle.BorderSizePixel = 0.25, 0
+            circle.ZIndex, circle.Parent = 10, wrap
+            newCorner(circle); newStroke(circle, routeConfig.accentColor, 1.8)
+
+            local arrow = Instance.new("TextLabel")
+            arrow.Size, arrow.AnchorPoint, arrow.Position = UDim2.new(0,18,0,18), Vector2.new(0.5,0.5), UDim2.new(0.5,0,0.5,0)
+            arrow.BackgroundTransparency, arrow.TextColor3 = 1, routeConfig.accentColor
+            arrow.TextStrokeTransparency, arrow.TextStrokeColor3 = 0.2, Color3.fromRGB(0,0,0)
+            arrow.TextScaled, arrow.Font, arrow.Text = true, Enum.Font.GothamBold, "▼"
+            arrow.ZIndex, arrow.Parent = 11, circle
+
+            local distBg = Instance.new("Frame")
+            distBg.Size, distBg.AnchorPoint, distBg.Position = UDim2.new(0,44,0,18), Vector2.new(0.5,0), UDim2.new(0.5,0,1,5)
+            distBg.BackgroundColor3, distBg.BackgroundTransparency, distBg.BorderSizePixel = Color3.fromRGB(10,4,4), 0.2, 0
+            distBg.ZIndex, distBg.Parent = 10, wrap
+            newCorner(distBg); newStroke(distBg, Color3.fromRGB(140,30,30), 1, 0.4)
+
+            local distText = Instance.new("TextLabel")
+            distText.Size, distText.BackgroundTransparency = UDim2.new(1,0,1,0), 1
+            distText.TextColor3, distText.TextStrokeTransparency = Color3.fromRGB(220,180,180), 0.3
+            distText.TextStrokeColor3, distText.Font = Color3.fromRGB(0,0,0), Enum.Font.GothamBold
+            distText.TextSize, distText.ZIndex, distText.Parent = 11, 11, distBg
+
+            local cam   = ws.CurrentCamera
+            local EDGE  = 50
+            local tick0 = tick()
+            local ac    = routeConfig.accentColor
+
+            local loop = rs.Heartbeat:Connect(function()
+                local _, hrp = getPlayer()
+                if not hrp then return end
+                local vp        = cam.ViewportSize
+                local cx, cy    = vp.X/2, vp.Y/2
+                local target    = routeConfig.startAt.Position + Vector3.new(0,3,0)
+                local meters    = math.floor((hrp.Position - routeConfig.startAt.Position).Magnitude)
+                distText.Text   = meters .. "m"
+
+                local camCF  = cam.CFrame
+                local dir    = target - camCF.Position
+                local onScr  = camCF.LookVector:Dot(dir.Unit) > 0
+                local sp     = cam:WorldToScreenPoint(target)
+                local sx, sy = sp.X, sp.Y
+                local dx, dy = sx - cx, sy - cy
+
+                if onScr and sx > EDGE and sx < vp.X-EDGE and sy > EDGE and sy < vp.Y-EDGE then
+                    wrap.Rotation, wrap.Position = 0, UDim2.fromOffset(sx, sy-10)
+                else
+                    if not onScr then dx, dy = -dx, -dy; if math.abs(dx)<1 and math.abs(dy)<1 then dx=1 end end
+                    local sc = math.min((cx-EDGE)/(math.abs(dx)+1e-4), (cy-EDGE)/(math.abs(dy)+1e-4))
+                    wrap.Rotation, wrap.Position = math.deg(math.atan2(dx,-dy)), UDim2.fromOffset(cx+dx*sc, cy+dy*sc)
+                end
+
+                local sz = math.floor(32*(1+math.sin((tick()-tick0)*3.5)*0.06))
+                circle.Size       = UDim2.new(0,sz,0,sz)
+                distText.TextColor3 = (meters<12 and tick()%0.5<0.25) and Color3.fromRGB(255,80,80) or Color3.fromRGB(220,180,180)
+            end)
+
+            return function()
+                loop:Disconnect()
+                if screen and screen.Parent then screen:Destroy() end
+            end
+        end
+
+        local function buildLoadScreen(totalSteps)
+            local guiRef = (gethui and gethui()) or cg
+            local screen = Instance.new("ScreenGui")
+            screen.Name, screen.ResetOnSpawn, screen.IgnoreGuiInset = tostring(math.random(1e8,9e8)), false, true
+            screen.DisplayOrder, screen.Parent = 2147483647, guiRef
+
+            local bg = Instance.new("Frame")
+            bg.Size, bg.Position = UDim2.new(1,0,1,0), UDim2.new(0,0,0,0)
+            bg.BackgroundColor3, bg.BackgroundTransparency, bg.BorderSizePixel = Color3.fromRGB(5,5,8), 1, 0
+            bg.ZIndex, bg.Parent = 9999, screen
+
+            local logo = Instance.new("ImageLabel")
+            logo.Size, logo.AnchorPoint, logo.Position = UDim2.new(0,180,0,180), Vector2.new(0.5,0.5), UDim2.new(0.5,0,0.5,-60)
+            logo.BackgroundTransparency, logo.ImageTransparency = 1, 1
+            logo.Image, logo.ZIndex, logo.Parent = "rbxassetid://137064182739714", 10000, bg
+
+            local fi = TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+            local titleText = Instance.new("TextLabel")
+            titleText.Size, titleText.AnchorPoint, titleText.Position = UDim2.new(0,300,0,32), Vector2.new(0.5,0), UDim2.new(0.5,0,0.5,56)
+            titleText.BackgroundTransparency, titleText.TextColor3    = 1, Color3.fromRGB(220,220,220)
+            titleText.TextTransparency, titleText.TextStrokeTransparency = 1, 1
+            titleText.TextStrokeColor3, titleText.Font = Color3.fromRGB(0,0,0), Enum.Font.GothamBold
+            titleText.TextSize, titleText.Text, titleText.ZIndex, titleText.Parent = 16, "Feito por @fp3", 10000, bg
+
+            local subText = Instance.new("TextLabel")
+            subText.Size, subText.AnchorPoint, subText.Position = UDim2.new(0,300,0,18), Vector2.new(0.5,0), UDim2.new(0.5,0,0.5,92)
+            subText.BackgroundTransparency, subText.TextColor3 = 1, Color3.fromRGB(100,35,35)
+            subText.TextTransparency, subText.TextStrokeTransparency = 1, 1
+            subText.Font, subText.TextSize = Enum.Font.Gotham, 11
+            subText.Text, subText.ZIndex, subText.Parent = "vai se fuder larih <3", 10000, bg
+
+            local track = Instance.new("Frame")
+            track.Size, track.AnchorPoint, track.Position = UDim2.new(0,260,0,4), Vector2.new(0.5,0), UDim2.new(0.5,0,0.5,120)
+            track.BackgroundColor3, track.BackgroundTransparency, track.BorderSizePixel = Color3.fromRGB(28,10,10), 1, 0
+            track.ZIndex, track.Parent = 10000, bg; newCorner(track)
+
+            local fill = Instance.new("Frame")
+            fill.Size, fill.BackgroundColor3, fill.BackgroundTransparency, fill.BorderSizePixel = UDim2.new(0,0,1,0), Color3.fromRGB(200,40,40), 1, 0
+            fill.ZIndex, fill.Parent = 10001, track; newCorner(fill)
+
+            local dot = Instance.new("Frame")
+            dot.Size, dot.AnchorPoint, dot.Position = UDim2.new(0,8,0,8), Vector2.new(0.5,0.5), UDim2.new(0,0,0.5,0)
+            dot.BackgroundColor3, dot.BackgroundTransparency, dot.BorderSizePixel = Color3.fromRGB(220,60,60), 1, 0
+            dot.ZIndex, dot.Parent = 10002, track; newCorner(dot)
+
+            local guards, alive = {}, true
+
+            local function reattach()
+                if not alive then return end
+                task.defer(function()
+                    if not alive then return end
+                    if not screen.Parent then pcall(function() screen.Parent = guiRef end) end
+                    if not bg.Parent     then pcall(function() bg.Parent = screen end) end
+                end)
+            end
+
+            guards[1] = bg.AncestryChanged:Connect(reattach)
+            guards[2] = screen.AncestryChanged:Connect(reattach)
+            guards[3] = screen.DescendantRemoving:Connect(function(d) if d == bg or d == fill or d == track then reattach() end end)
+            local checkT = 0
+            guards[4] = rs.Heartbeat:Connect(function(dt)
+                checkT += dt; if checkT < 0.1 then return end; checkT = 0
+                if not alive then return end
+                if not screen.Parent then pcall(function() screen.Parent = guiRef end) end
+                if not bg.Parent     then pcall(function() bg.Parent = screen end) end
+                if screen.DisplayOrder ~= 2147483647 then screen.DisplayOrder = 2147483647 end
+            end)
+
+            local mainTween = ts:Create(bg, fi, {BackgroundTransparency=0})
+            ts:Create(logo,      fi, {ImageTransparency=0}):Play()
+            ts:Create(titleText, fi, {TextTransparency=0, TextStrokeTransparency=0.5}):Play()
+            ts:Create(subText,   fi, {TextTransparency=0}):Play()
+            ts:Create(track,     fi, {BackgroundTransparency=0}):Play()
+            ts:Create(fill,      fi, {BackgroundTransparency=0}):Play()
+            ts:Create(dot,       fi, {BackgroundTransparency=0}):Play()
+
+            local readyEvent = Instance.new("BindableEvent")
+            mainTween.Completed:Once(function() readyEvent:Fire() end)
+            mainTween:Play()
+
+            local dotAlive = true
+            task.spawn(function()
+                local t1 = TweenInfo.new(0.4,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut)
+                while dotAlive do
+                    if dot and dot.Parent then ts:Create(dot, t1, {BackgroundTransparency=0.6}):Play() end; task.wait(0.42)
+                    if dot and dot.Parent then ts:Create(dot, t1, {BackgroundTransparency=0}):Play()   end; task.wait(0.42)
+                end
+            end)
+
+            local step, completed = 0, false
+
+            local function waitUntilReady()
+                readyEvent.Event:Wait(); readyEvent:Destroy(); task.wait(0.5)
+            end
+
+            local tw2 = TweenInfo.new(0.22, Enum.EasingStyle.Quad)
+            local function markStep()
+                step += 1
+                local pct = math.clamp(step/(totalSteps or 1), 0, 1)
+                ts:Create(fill, tw2, {Size=UDim2.new(pct,0,1,0)}):Play()
+                ts:Create(dot,  tw2, {Position=UDim2.new(pct,0,0.5,0)}):Play()
+                if pct >= 1 and not completed then
+                    completed = true
+                    task.spawn(function()
+                        local tg = TweenInfo.new(0.3,Enum.EasingStyle.Quad)
+                        ts:Create(fill,  tg, {BackgroundColor3=Color3.fromRGB(40,180,70)}):Play()
+                        ts:Create(dot,   tg, {BackgroundColor3=Color3.fromRGB(80,220,100)}):Play()
+                        for _ = 1, 2 do
+                            ts:Create(track, TweenInfo.new(0.08), {Size=UDim2.new(0,268,0,6)}):Play(); task.wait(0.09)
+                            ts:Create(track, TweenInfo.new(0.08), {Size=UDim2.new(0,260,0,4)}):Play(); task.wait(0.09)
+                        end
+                    end)
+                end
+            end
+
+            local function dismiss()
+                alive, dotAlive = false, false
+                for _, g in ipairs(guards) do g:Disconnect() end
+                local fo = TweenInfo.new(0.2)
+                ts:Create(fill, fo, {Size=UDim2.new(1,0,1,0)}):Play()
+                ts:Create(dot,  fo, {Position=UDim2.new(1,0,0.5,0)}):Play()
+                task.wait(0.22)
+                if not completed then
+                    completed = true
+                    local tg = TweenInfo.new(0.25,Enum.EasingStyle.Quad)
+                    ts:Create(fill, tg, {BackgroundColor3=Color3.fromRGB(40,180,70)}):Play()
+                    ts:Create(dot,  tg, {BackgroundColor3=Color3.fromRGB(80,220,100)}):Play()
+                    task.wait(0.28)
+                end
+                task.wait(0.3)
+                local fo2 = TweenInfo.new(0.45,Enum.EasingStyle.Quad,Enum.EasingDirection.In)
+                ts:Create(bg,        fo2, {BackgroundTransparency=1}):Play()
+                ts:Create(logo,      fo2, {ImageTransparency=1}):Play()
+                ts:Create(titleText, fo2, {TextTransparency=1, TextStrokeTransparency=1}):Play()
+                ts:Create(subText,   fo2, {TextTransparency=1}):Play()
+                ts:Create(track,     fo2, {BackgroundTransparency=1}):Play()
+                ts:Create(fill,      fo2, {BackgroundTransparency=1}):Play()
+                ts:Create(dot,       fo2, {BackgroundTransparency=1}):Play()
+                task.wait(0.5)
+                screen:Destroy()
+                env._RouteAtivo = false
+            end
+
+            return dismiss, markStep, waitUntilReady
+        end
+
+        env.IniciarRota = function()
+            if env._RouteTriggerConn then pcall(function() env._RouteTriggerConn:Disconnect() end); env._RouteTriggerConn = nil end
+            if env._RouteRemoveMarker   then pcall(env._RouteRemoveMarker);   env._RouteRemoveMarker   = nil end
+            if env._RouteRemoveWaypoint then pcall(env._RouteRemoveWaypoint); env._RouteRemoveWaypoint = nil end
+            env._RouteAtivo = false
+
+            env._RouteAtivo        = true
+            local removeMarker     = buildClone(routeConfig.startAt)
+            local removeWaypoint   = buildWaypoint()
+            env._RouteRemoveMarker   = removeMarker
+            env._RouteRemoveWaypoint = removeWaypoint
+
+            local ragChar    = ws:FindFirstChild(lp.Name)
+            local ragdoll    = ragChar and ragChar:FindFirstChild("Ragdoll")
+            local stopRagdoll = ragdoll and ragdoll.ChildAdded:Connect(function(c) c:Destroy() end)
+
+            local activated  = false
+            local triggerConn
+            triggerConn = rs.Heartbeat:Connect(function()
+                if activated then return end
+                local _, hrp = getPlayer()
+                if not hrp then return end
+                local delta  = hrp.Position - routeConfig.startAt.Position
+                local hDist  = Vector3.new(delta.X,0,delta.Z).Magnitude
+                if hDist > routeConfig.triggerDist  then return end
+                if math.abs(delta.Y) > routeConfig.triggerVert then return end
+                if hrp.CFrame.LookVector:Dot(routeConfig.startAt.LookVector) < math.cos(math.rad(routeConfig.triggerAngle)) then return end
+
+                activated = true; triggerConn:Disconnect(); env._RouteTriggerConn = nil
+                removeWaypoint(); removeMarker()
+
+                task.spawn(function()
+                    local dismiss, markStep, waitUntilReady = buildLoadScreen(#routeConfig.route)
+                    waitUntilReady()
+                    hrp.CFrame = routeConfig.enterAt
+                    toggleNoclip(true); task.wait(1)
+
+                    local _, _, hum = getPlayer()
+                    hum.WalkSpeed = routeConfig.walkSpeed
+
+                    local connMove, connCheck, connDeath
+                    local finished = false
+
+                    local function cancelRoute()
+                        if finished then return end; finished = true
+                        connMove:Disconnect(); connCheck:Disconnect(); connDeath:Disconnect()
+                        hum:MoveTo(hrp.Position); hum.WalkSpeed = 16
+                        toggleNoclip(false)
+                        if stopRagdoll then stopRagdoll:Disconnect() end
+                        dismiss()
+                    end
+
+                    local function completeRoute()
+                        if finished then return end; finished = true
+                        connMove:Disconnect(); connCheck:Disconnect(); connDeath:Disconnect()
+                        hum:MoveTo(hrp.Position); hum.WalkSpeed = 16
+                        toggleNoclip(false)
+                        if stopRagdoll then stopRagdoll:Disconnect() end
+                        task.spawn(function()
+                            for _, point in ipairs(routeConfig.route) do
+                                task.wait(routeConfig.stepDelay); hrp.CFrame = point; markStep()
+                            end
+                            dismiss()
+                        end)
+                    end
+
+                    connDeath = hum.Died:Connect(function()
+                        toggleNoclip(false)
+                        if stopRagdoll then stopRagdoll:Disconnect() end
+                        finished = true
+                        connMove:Disconnect(); connCheck:Disconnect(); connDeath:Disconnect()
+                        dismiss()
+                    end)
+
+                    lp.CharacterRemoving:Connect(function() toggleNoclip(false) end)
+
+                    connMove = rs.Heartbeat:Connect(function() hum:MoveTo(routeConfig.walkTo.Position) end)
+                    connCheck = rs.Heartbeat:Connect(function()
+                        if uis:IsKeyDown(Enum.KeyCode.W) or uis:IsKeyDown(Enum.KeyCode.A) or
+                           uis:IsKeyDown(Enum.KeyCode.S) or uis:IsKeyDown(Enum.KeyCode.D) or
+                           hum.MoveDirection.Magnitude > 0 then cancelRoute(); return end
+                        if (hrp.Position - routeConfig.walkTo.Position).Magnitude <= 1.6 then completeRoute() end
+                    end)
+                end)
+            end)
+            env._RouteTriggerConn = triggerConn
+        end
+    end
+
+    env.ApexLogic.ToggleSound = function(ativar)
+        env.SpamAtivo = ativar
+        if not ativar then
+            if env._SpamThread then pcall(task.cancel, env._SpamThread); env._SpamThread = nil end
+            limparConns(env._ApexSpamMasterConns)
+            limparConns(env._ApexSpamCharConns)
+            return
+        end
+        if env._SpamThread then pcall(task.cancel, env._SpamThread) end
+        limparConns(env._ApexSpamMasterConns)
+        limparConns(env._ApexSpamCharConns)
+
+        env._SpamThread = task.spawn(function()
+            local se    = rep:WaitForChild("ServerEvents", 5)
+            local fireClient = se and se:WaitForChild("FireClient", 5)
+            if not fireClient then
+                if env.notificar then env.notificar("Inválido", 3, "lucide:alert-triangle") end; return
+            end
+
+            local sessionToken, soundList, equippedTool = nil, {}, nil
+            local isReady = false
+            local rng     = Random.new()
+
+            local function refreshSounds()
+                local found, seen = {}, {}
+                for _, obj in ipairs(game:GetDescendants()) do
+                    if obj:IsA("Sound") and obj.SoundId ~= "" and not seen[obj.SoundId] then
+                        seen[obj.SoundId] = true
+                        found[#found+1] = obj
+                        if #found >= 200 then break end
+                    end
+                end
+                soundList = found
+            end
+
+            local function findSessionToken()
+                for _, obj in ipairs(getgc(true)) do
+                    if type(obj) == "function" and debug.getinfo(obj).name == "PlaySound" then
+                        local val = debug.getupvalue(obj, 2)
+                        if val then return val end
+                    end
+                end
+                return nil
+            end
+
+            local function isValidWeapon(tool)
+                if not tool then return false end
+                local n = 0
+                for _ in ipairs(tool:GetDescendants()) do n += 1; if n > 5 then return true end end
+                return false
+            end
+
+            local function findWeaponInBag()
+                local bag = lp:FindFirstChild(S_BP)
+                if not bag then return nil end
+                for _, item in ipairs(bag:GetChildren()) do
+                    if item:IsA("Tool") and isValidWeapon(item) then return item end
+                end
+                return nil
+            end
+
+            local function waitForWeapon(name)
+                local start = tick()
+                repeat
+                    task.wait(0.05)
+                    local char = getChar()
+                    local tool = char and char:FindFirstChild(name)
+                    if tool and tool:IsA("Tool") then return tool end
+                until (tick()-start) > 3
+                return nil
+            end
+
+            local function setupToken()
+                isReady = false
+                local char = getChar()
+                if not char then return false end
+                local hum = char:FindFirstChildOfClass(S_HUM)
+                if not hum then return false end
+                hum:UnequipTools(); task.wait(0.5)
+                local weapon = findWeaponInBag()
+                if not weapon then return false end
+                hum:EquipTool(weapon)
+                if not waitForWeapon(weapon.Name) then return false end
+                task.wait(1)
+                sessionToken = findSessionToken()
+                if not sessionToken then return false end
+                hum:UnequipTools(); task.wait(0.5)
+                hum:EquipTool(weapon)
+                if not waitForWeapon(weapon.Name) then return false end
+                equippedTool = weapon; task.wait(0.5)
+                isReady = true; return true
+            end
+
+            local function watchCharacter(char)
+                limparConns(env._ApexSpamCharConns)
+                isReady, sessionToken = false, nil
+                if not char then return end
+                local function checkEquipped()
+                    local tool = char:FindFirstChildOfClass("Tool")
+                    equippedTool = isValidWeapon(tool) and tool or nil
+                end
+                table.insert(env._ApexSpamCharConns, char.ChildAdded:Connect(function(c) if c:IsA("Tool") then checkEquipped() end end))
+                table.insert(env._ApexSpamCharConns, char.ChildRemoved:Connect(function(c) if c:IsA("Tool") then checkEquipped() end end))
+                checkEquipped()
+            end
+
+            table.insert(env._ApexSpamMasterConns, lp.CharacterAdded:Connect(watchCharacter))
+            if lp.Character then watchCharacter(lp.Character) end
+
+            task.spawn(function()
+                while env.SpamAtivo do task.wait(30); if env.SpamAtivo then refreshSounds() end end
+            end)
+
+            refreshSounds(); setupToken()
+
+            local t1 = TweenInfo.new(0.22)
+            while env.SpamAtivo do
+                if not equippedTool or not sessionToken or not isReady then
+                    task.wait(1)
+                    if not isReady and env.SpamAtivo then setupToken() end
+                    continue
+                end
+                local total = #soundList
+                if total > 0 then
+                    for i = 1, 50 do
+                        if not env.SpamAtivo or not equippedTool or not isReady then break end
+                        local s = soundList[rng:NextInteger(1, total)]
+                        if s and s.Parent then
+                            local vol = s.Volume; s.Volume = 10
+                            pcall(fireClient.FireServer, fireClient, sessionToken, "PlaySound", s, nil)
+                            s.Volume = vol
+                        end
+                        task.wait()
+                    end
+                end
+                task.wait()
+            end
+        end)
+    end
+end
