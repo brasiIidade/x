@@ -1,0 +1,3732 @@
+local BASE_URL  = "https://raw.githubusercontent.com/brasiIidade/x/main/"
+local FilePaths = {}
+
+local function download(url, tentativas)
+    for i = 1, tentativas or 3 do
+        local ok, res = pcall(game.HttpGet, game, url)
+        if ok and type(res) == "string" and res:sub(1, 4) ~= "404:" then return res end
+        task.wait(1)
+    end
+end
+
+local function exec(content)
+    local fn = loadstring(content)
+    return fn and pcall(fn)
+end
+
+local function carregarPaths()
+    local content = download(BASE_URL .. "path.lua?t=" .. os.time(), 5)
+    if not content then return false end
+    local fn = loadstring(content)
+    if fn then FilePaths = fn() end
+    return next(FilePaths) ~= nil
+end
+
+local function ler(key)
+    local nome = FilePaths[key]
+    if not nome then return end
+    nome = nome:match("^%s*(.-)%s*$")
+    local content = download(BASE_URL .. nome)
+    if content then exec(content) end
+end
+
+if not carregarPaths() then return end
+
+for _, nome in ipairs({ "jogos" }) do task.spawn(ler, nome) end
+
+
+-- serviços
+local cloneref = cloneref or function(o) return o end
+
+local Players          = cloneref(game:GetService("Players"))
+local TeamsService     = cloneref(game:GetService("Teams"))
+local UserInputService = cloneref(game:GetService("UserInputService"))
+local RunService       = cloneref(game:GetService("RunService"))
+local CoreGui          = cloneref(game:GetService("CoreGui"))
+local TextChatService  = cloneref(game:GetService("TextChatService"))
+local HttpService      = cloneref(game:GetService("HttpService"))
+local Workspace        = cloneref(game:GetService("Workspace"))
+local Stats            = cloneref(game:GetService("Stats"))
+local LocalPlayer      = cloneref(Players.LocalPlayer)
+
+do
+    local exec = identifyexecutor and string.lower(identifyexecutor()) or "unknown"
+    if exec:find("xeno") or exec:find("solara") then
+        LocalPlayer:Kick("Seu executor não tem suporte para rodar o michigun.xyz.")
+        task.wait(0.5)
+        while true do task.wait(60) end
+    end
+end
+
+local Conn = (function()
+    local connections = {}
+    local nextId = 0
+
+    local function add(conn, group)
+        nextId += 1
+        connections[nextId] = { conn = conn, group = group or "global" }
+        return nextId
+    end
+
+    local function remove(id)
+        local entry = connections[id]
+        if entry then entry.conn:Disconnect(); connections[id] = nil end
+    end
+
+    local function clear(group)
+        for id, entry in pairs(connections) do
+            if entry.group == group then entry.conn:Disconnect(); connections[id] = nil end
+        end
+    end
+
+    local function clearAll()
+        for id, entry in pairs(connections) do entry.conn:Disconnect(); connections[id] = nil end
+    end
+
+    return { add = add, remove = remove, clear = clear, clearAll = clearAll }
+end)()
+
+local PlayerCache = (function()
+    local nameCache, teamCache
+
+    local function buildNames()
+        local t = {}
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer then t[#t + 1] = p.Name end
+        end
+        nameCache = t
+    end
+
+    local function buildTeams()
+        local t = {}
+        if TeamsService then
+            for _, team in ipairs(TeamsService:GetTeams()) do t[#t + 1] = team.Name end
+        end
+        teamCache = t
+    end
+
+    Conn:add(Players.PlayerAdded:Connect(function()   nameCache = nil end), "playerCache")
+    Conn:add(Players.PlayerRemoving:Connect(function() nameCache = nil end), "playerCache")
+
+    if TeamsService then
+        Conn:add(TeamsService.ChildAdded:Connect(function()   teamCache = nil end), "playerCache")
+        Conn:add(TeamsService.ChildRemoved:Connect(function() teamCache = nil end), "playerCache")
+    end
+
+    return {
+        names   = function() if not nameCache then buildNames() end return nameCache end,
+        teams   = function() if not teamCache then buildTeams() end return teamCache end,
+        refresh = function() nameCache = nil; teamCache = nil end,
+    }
+end)()
+
+local function GetPlayerNames() return PlayerCache.names() end
+local function GetTeamNames()   return PlayerCache.teams() end
+
+local KeybindManager = (function()
+    local binds = {}
+    local nextId = 0
+    local masterConn
+
+    local function setupMaster()
+        if masterConn then return end
+        masterConn = UserInputService.InputBegan:Connect(function(input, gp)
+            if gp or input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+            for _, bind in pairs(binds) do
+                if bind.enabled and input.KeyCode == bind.key then pcall(bind.callback) end
+            end
+        end)
+        Conn:add(masterConn, "keybindManager")
+    end
+
+    local function register(name, key, callback)
+        setupMaster()
+        nextId += 1
+        binds[nextId] = { name = name, key = key, callback = callback, enabled = true }
+        return nextId
+    end
+
+    local function unregister(id) binds[id] = nil end
+    local function update(id, newKey) if binds[id] then binds[id].key = newKey end end
+    local function setEnabled(id, state) if binds[id] then binds[id].enabled = state end end
+
+    local function getAll()
+        local out = {}
+        for id, b in pairs(binds) do out[id] = { name = b.name, key = tostring(b.key), enabled = b.enabled } end
+        return out
+    end
+
+    return { register = register, unregister = unregister, update = update, setEnabled = setEnabled, getAll = getAll }
+end)()
+
+local LoaderStatus = (function()
+    local statusMap = {}
+    local paragraph
+
+    local function set(key, state)
+        statusMap[key] = state
+        if not paragraph then return end
+        local lines = {}
+        for k, s in pairs(statusMap) do
+            local icon = s == "ok" and "✓" or (s == "erro" and "✗" or "↓")
+            lines[#lines + 1] = icon .. " " .. k .. ": " .. s
+        end
+        table.sort(lines)
+        paragraph:SetDesc(table.concat(lines, "\n"))
+    end
+
+    local function setParagraph(p) paragraph = p end
+    local function getAll() return statusMap end
+
+    return { set = set, setParagraph = setParagraph, getAll = getAll }
+end)()
+
+-- execs
+do
+    local SECRET   = "michigun817282861nzjzhan_uqyaisn7klol"
+    local AUTH_URL = "https://michigun.xyz/script"
+    local userId    = tostring(LocalPlayer.UserId)
+    local placeId   = tostring(game.PlaceId)
+    local timestamp = tostring(os.time())
+    local data      = userId .. placeId .. timestamp .. SECRET
+
+    local signature = "nocrypto"
+    if crypt and crypt.hash then
+        signature = crypt.hash(data, "sha256")
+    elseif syn and syn.crypt then
+        signature = syn.crypt.hash(data)
+    elseif http and http.hash then
+        signature = http.hash(data, "sha256")
+    end
+
+    request({
+        Url    = AUTH_URL,
+        Method = "GET",
+        Headers = {
+            ["x-user-id"]   = userId,
+            ["x-place-id"]  = placeId,
+            ["x-timestamp"] = timestamp,
+            ["x-signature"] = signature,
+            ["x-mode"]      = "check",
+        },
+    })
+end
+
+-- hooks
+local NewCClosure = newcclosure or function(f) return f end
+local CheckCaller = checkcaller or function() return false end
+
+local GhostTable = setmetatable({}, { __mode = "k" })
+
+local function GetGhost(obj, key)
+    local t = GhostTable[obj]
+    return t and t[key]
+end
+getgenv().GetGhost = GetGhost
+
+local function SetGhost(obj, key, val)
+    if not GhostTable[obj] then GhostTable[obj] = {} end
+    GhostTable[obj][key] = val
+end
+
+local OldIndex
+OldIndex = hookmetamethod(game, "__index", NewCClosure(function(self, k)
+    if not CheckCaller() then
+        if k == "Size" and typeof(self) == "Instance" and self:IsA("BasePart") and self.Name == "HumanoidRootPart" then
+            local ghost = GetGhost(self, k)
+            return ghost ~= nil and ghost or Vector3.new(2, 2, 1)
+        end
+        local ghost = GetGhost(self, k)
+        if ghost ~= nil then return ghost end
+    end
+    return OldIndex(self, k)
+end))
+
+local OldNewIndex
+OldNewIndex = hookmetamethod(game, "__newindex", NewCClosure(function(self, k, v)
+    if not CheckCaller() and typeof(self) == "Instance" then
+        local isHum  = self:IsA("Humanoid")
+        local isRoot = self:IsA("BasePart") and self.Name == "HumanoidRootPart"
+        if isHum and k == "WalkSpeed" then
+            SetGhost(self, k, v)
+            if Config and Config.SpeedEnabled then return end
+        elseif isHum and k == "JumpPower" then
+            SetGhost(self, k, v)
+            if Config and Config.JumpEnabled then return end
+        elseif isRoot and k == "Size" then
+            SetGhost(self, k, v)
+            return
+        end
+    end
+    return OldNewIndex(self, k, v)
+end))
+
+local function InitSpoof(char)
+    local hum  = char:WaitForChild("Humanoid",        10)
+    local root = char:WaitForChild("HumanoidRootPart", 10)
+    if hum then
+        if not GetGhost(hum, "WalkSpeed") then SetGhost(hum, "WalkSpeed", hum.WalkSpeed) end
+        if not GetGhost(hum, "JumpPower") then SetGhost(hum, "JumpPower", hum.JumpPower) end
+    end
+    if root then
+        if not GetGhost(root, "Size") then SetGhost(root, "Size", root.Size) end
+    end
+end
+
+local function HandlePlayer(player)
+    if player.Character then InitSpoof(player.Character) end
+    Conn:add(player.CharacterAdded:Connect(InitSpoof), "spoof")
+end
+
+for _, p in ipairs(Players:GetPlayers()) do HandlePlayer(p) end
+Conn:add(Players.PlayerAdded:Connect(HandlePlayer), "spoof")
+
+-- cor
+function cor(...)
+    local out = {}
+    for i, seg in ipairs({ ... }) do
+        out[i] = string.format("<font color='%s'>%s</font>", seg[2] or "#ffffff", seg[1])
+    end
+    return table.concat(out)
+end
+
+local function lerpColor(a, b, t)
+    return Color3.new(a.R + (b.R - a.R) * t, a.G + (b.G - a.G) * t, a.B + (b.B - a.B) * t)
+end
+
+local COLOR_GREEN  = Color3.fromRGB(80,  220, 130)
+local COLOR_YELLOW = Color3.fromRGB(255, 190, 50)
+local COLOR_RED    = Color3.fromRGB(230, 70,  70)
+
+local function fpsColor(fps)
+    if fps >= 60 then return COLOR_GREEN
+    elseif fps >= 45 then return lerpColor(COLOR_GREEN,  COLOR_YELLOW, (60 - fps) / 15)
+    elseif fps >= 25 then return lerpColor(COLOR_YELLOW, COLOR_RED,    (45 - fps) / 20)
+    else return COLOR_RED end
+end
+
+local function pingColor(ping)
+    if ping <= 60  then return COLOR_GREEN
+    elseif ping <= 120 then return lerpColor(COLOR_GREEN,  COLOR_YELLOW, (ping - 60)  / 60)
+    elseif ping <= 250 then return lerpColor(COLOR_YELLOW, COLOR_RED,    (ping - 120) / 130)
+    else return COLOR_RED end
+end
+
+-- UI
+local UI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+UI:SetFont("rbxassetid://12188570269")
+loadstring(game:HttpGet("https://raw.githubusercontent.com/michigun-log/logs/refs/heads/main/740dd88a77e9cc25.lua.txt"))()
+
+local main = UI:CreateWindow({
+    Title              = "mich.xyz",
+    Icon               = "rbxthumb://type=Asset&id=137064182739714&w=420&h=420",
+    Author             = "Feito por fp3",
+    Folder             = "michigun.xyz",
+    Size               = UDim2.fromOffset(600, 300),
+    MinSize            = Vector2.new(560, 350),
+    MaxSize            = Vector2.new(850, 560),
+    Radius             = 5,
+    Transparent        = true,
+    Theme              = "Dark",
+    Resizable          = true,
+    SideBarWidth       = 200,
+    ShadowTransparency = 0.5,
+    -- Background         = "rbxthumb://type=Asset&id=137064182739714&w=420&h=420",
+    -- BackgroundImageTransparency = 0.9,
+    User = { Enabled = true, Callback = function() end },
+})
+
+local function notificar(msg, duracao, icone)
+    UI:Notify({ Title = "mich.xyz", Content = msg, Duration = duracao, Icon = icone })
+end
+
+main:CreateTopbarButton("Discord", "geist:logo-discord", function()
+    setclipboard("https://discord.gg/G5vEkrAXnF")
+    notificar("Link copiado!", 5, "geist:logo-discord")
+end, 990)
+
+do
+    local fpsTag  = main:Tag({ Title = "-- FPS", Radius = 20, Icon = "lucide:gauge",  Color = COLOR_GREEN })
+    local pingTag = main:Tag({ Title = "-- ms",  Radius = 20, Icon = "lucide:signal", Color = COLOR_GREEN })
+    local lastUpdate, frameCount = tick(), 0
+
+    Conn:add(RunService.RenderStepped:Connect(function()
+        frameCount += 1
+        local now   = tick()
+        local delta = now - lastUpdate
+        if delta >= 1 then
+            local current = math.floor(frameCount / delta)
+            fpsTag:SetTitle(current .. " FPS")
+            fpsTag:SetColor(fpsColor(current))
+            frameCount = 0
+            lastUpdate = now
+        end
+    end), "tags")
+
+    local pingItem = Stats.Network.ServerStatsItem["Data Ping"]
+    task.spawn(function()
+        while true do
+            local ok, value = pcall(function() return math.floor(pingItem:GetValue()) end)
+            if ok and value then pingTag:SetTitle(value .. " ms"); pingTag:SetColor(pingColor(value)) end
+            task.wait(2)
+        end
+    end)
+end
+
+local function criarSection(tab, titulo, desc, icone, aberto)
+    return tab:Section({ Title = titulo, Desc = desc, Icon = icone, Opened = aberto or false })
+end
+
+local function criarTab(titulo, icone, bloqueado)
+    return main:Tab({ Title = titulo, Icon = icone, Border = true, Locked = bloqueado or false })
+end
+
+criarsection = criarSection
+criartab     = criarTab
+
+criarSection(main, "Combate", "Seção de combate", nil, true)
+local SilentAim      = criarTab("Silent aim",      "lucide:crosshair",       false)
+local HitboxExpander = criarTab("Hitbox expander", "lucide:codesandbox",     false)
+local ESP            = criarTab("ESP",              "lucide:view",            false)
+local X1             = criarTab("PvP",              "lucide:person-standing", false)
+
+criarSection(main, "Parkour", "Seção de parkour", nil, true)
+local TAS     = criarTab("TAS",     "solar:running-outline", false)
+local JJs     = criarTab("JJ's",    "lucide:space",          false)
+local ChatGPT = criarTab("ChatGPT", "geist:logo-open-ai",    false)
+local F3X     = criarTab("F3X",     "lucide:hammer",         false)
+
+criarSection(main, "Local", "Seção local", nil, true)
+local Char   = criarTab("Char",   "solar:user-hands-bold", false)
+local Player = criarTab("Player", "solar:user-bold",       false)
+
+local Configs = criarTab("Configurações", "lucide:settings", false)
+
+
+-- SILENT AIM
+do
+    local safeCall     = pcall
+    local genv         = getgenv
+    local getRawMeta   = getrawmetatable
+    local setReadonly  = setreadonly
+    local newCClosure  = newcclosure
+    local getNamecall  = getnamecallmethod
+    local checkCaller  = checkcaller
+    local mathLib      = math
+    local strLib       = string
+    local tblLib       = table
+    local typeofFn     = typeof
+    local unpackFn     = unpack or table.unpack
+    local ipairsFn     = ipairs
+    local pairsFn      = pairs
+
+    local env = genv()
+    if env._saRC then safeCall(function() env._saRC:Disconnect() end); env._saRC = nil end
+    if env._saONC then
+        local mt = getRawMeta(game)
+        safeCall(function() setReadonly(mt, false); mt.__namecall = env._saONC; setReadonly(mt, true) end)
+        env._saONC = nil
+    end
+    if env._saGui then safeCall(function() env._saGui:Destroy() end); env._saGui = nil end
+
+    local svcPlayers   = game:GetService("Players")
+    local svcRun       = game:GetService("RunService")
+    local svcWorkspace = game:GetService("Workspace")
+    local svcInput     = game:GetService("UserInputService")
+    local svcCoreGui   = game:GetService("CoreGui")
+    local svcHttp      = game:GetService("HttpService")
+
+    local localPlayer  = svcPlayers.LocalPlayer
+    local camera       = svcWorkspace.CurrentCamera
+    local guiParent    = (genv().gethui or function() return svcCoreGui end)()
+
+    local cloneFn         = clonefunction or function(f) return f end
+    local fnRaycast       = cloneFn(svcWorkspace.Raycast)
+    local fnWorldToScreen = cloneFn(camera.WorldToScreenPoint)
+    local fnGetMouse      = cloneFn(svcInput.GetMouseLocation)
+
+    local localUserId = localPlayer.UserId
+
+    local partMap = {
+        ["Cabeça"]         = { "Head" },
+        ["Tronco"]         = { "Torso", "UpperTorso", "LowerTorso", "HumanoidRootPart" },
+        ["Braço direito"]  = { "Right Arm", "RightUpperArm", "RightLowerArm", "RightHand" },
+        ["Braço esquerdo"] = { "Left Arm",  "LeftUpperArm",  "LeftLowerArm",  "LeftHand" },
+        ["Perna direita"]  = { "Right Leg", "RightUpperLeg", "RightLowerLeg", "RightFoot" },
+        ["Perna esquerda"] = { "Left Leg",  "LeftUpperLeg",  "LeftLowerLeg",  "LeftFoot" },
+    }
+    local partCategories = { "Cabeça", "Tronco", "Braço direito", "Braço esquerdo", "Perna direita", "Perna esquerda" }
+
+    local visuals = { Gui = nil, Circle = nil, Stroke = nil, Highlight = nil, ESP = nil, Labels = {} }
+
+    local function mkLabel(parent, ax, font, size, color, xalign)
+        local l = Instance.new("TextLabel", parent)
+        l.BackgroundTransparency = 1
+        l.Size                   = UDim2.new(1, ax or 0, 0, size or 12)
+        l.Font                   = font or Enum.Font.Gotham
+        l.TextSize               = size or 12
+        l.TextColor3             = color or Color3.new(1,1,1)
+        l.TextStrokeTransparency = 1
+        l.TextXAlignment         = xalign or Enum.TextXAlignment.Left
+        l.Visible                = false
+        return l
+    end
+
+    local function initVisuals()
+        if visuals.Gui then safeCall(function() visuals.Gui:Destroy() end) end
+
+        local screenGui = Instance.new("ScreenGui")
+        screenGui.Name           = svcHttp:GenerateGUID(false)
+        screenGui.IgnoreGuiInset = true
+        screenGui.ResetOnSpawn   = false
+        screenGui.Parent         = guiParent
+        env._saGui               = screenGui
+
+        local fovCircle = Instance.new("Frame", screenGui)
+        fovCircle.BackgroundTransparency = 1
+        fovCircle.AnchorPoint            = Vector2.new(0.5, 0.5)
+        fovCircle.Visible                = false
+        local fovStroke = Instance.new("UIStroke", fovCircle)
+        fovStroke.Thickness       = 1.5
+        fovStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+        local fovCorner = Instance.new("UICorner", fovCircle)
+        fovCorner.CornerRadius = UDim.new(1, 0)
+
+        local highlight = Instance.new("Highlight", screenGui)
+        highlight.FillTransparency    = 0.5
+        highlight.OutlineTransparency = 0
+        highlight.DepthMode           = Enum.HighlightDepthMode.AlwaysOnTop
+        highlight.Enabled             = false
+
+        -- ── HUD card — canto superior direito ──────────────────────────
+        local card = Instance.new("Frame", screenGui)
+        card.AnchorPoint            = Vector2.new(1, 0)
+        card.Position               = UDim2.new(1, -12, 0, 12)
+        card.Size                   = UDim2.new(0, 200, 0, 148)
+        card.BackgroundColor3       = Color3.fromRGB(6, 6, 8)
+        card.BackgroundTransparency = 0.18
+        card.BorderSizePixel        = 0
+        card.Visible                = false
+        card.ClipsDescendants       = true
+        local cardCorner = Instance.new("UICorner", card)
+        cardCorner.CornerRadius = UDim.new(0, 8)
+        local cardStroke = Instance.new("UIStroke", card)
+        cardStroke.Color        = Color3.fromRGB(255, 255, 255)
+        cardStroke.Transparency  = 0.88
+        cardStroke.Thickness     = 1
+
+        -- accent bar (left edge)
+        local accent = Instance.new("Frame", card)
+        accent.Size             = UDim2.new(0, 3, 1, 0)
+        accent.Position         = UDim2.fromOffset(0, 0)
+        accent.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+        accent.BorderSizePixel  = 0
+        local accentCorner = Instance.new("UICorner", accent)
+        accentCorner.CornerRadius = UDim.new(0, 3)
+        visuals.Accent = accent
+
+        -- inner padding container
+        local inner = Instance.new("Frame", card)
+        inner.Size                   = UDim2.new(1, -14, 1, 0)
+        inner.Position               = UDim2.fromOffset(12, 0)
+        inner.BackgroundTransparency = 1
+        inner.BorderSizePixel        = 0
+
+        local layout = Instance.new("UIListLayout", inner)
+        layout.SortOrder           = Enum.SortOrder.LayoutOrder
+        layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+        layout.Padding             = UDim.new(0, 5)
+        local pad = Instance.new("UIPadding", inner)
+        pad.PaddingTop    = UDim.new(0, 10)
+        pad.PaddingBottom = UDim.new(0, 10)
+
+        -- row helper
+        local function mkRow(order)
+            local row = Instance.new("Frame", inner)
+            row.BackgroundTransparency = 1
+            row.Size                   = UDim2.new(1, 0, 0, 14)
+            row.LayoutOrder            = order
+            return row
+        end
+
+        -- ── NAME row ──────────────────────────────────────────────────
+        local rowName = mkRow(1)
+        rowName.Size = UDim2.new(1, 0, 0, 18)
+        local dotLock = Instance.new("Frame", rowName)
+        dotLock.Size             = UDim2.fromOffset(8, 8)
+        dotLock.Position         = UDim2.new(1, -8, 0.5, -4)
+        dotLock.BackgroundColor3 = Color3.fromRGB(80, 220, 100)
+        dotLock.BorderSizePixel  = 0
+        local dotCorner = Instance.new("UICorner", dotLock)
+        dotCorner.CornerRadius = UDim.new(1, 0)
+        visuals.DotLock = dotLock
+
+        local lblName = Instance.new("TextLabel", rowName)
+        lblName.Size                   = UDim2.new(1, -14, 1, 0)
+        lblName.BackgroundTransparency = 1
+        lblName.Font                   = Enum.Font.GothamBold
+        lblName.TextSize               = 13
+        lblName.TextColor3             = Color3.new(1, 1, 1)
+        lblName.TextStrokeTransparency = 0.6
+        lblName.TextXAlignment         = Enum.TextXAlignment.Left
+        lblName.Visible                = false
+
+        -- ── TEAM row ──────────────────────────────────────────────────
+        local rowTeam = mkRow(2)
+        local lblTeam = mkLabel(rowTeam, -14, Enum.Font.Gotham, 11, Color3.fromRGB(160,160,160))
+
+        -- ── HP bar row ────────────────────────────────────────────────
+        local rowHp = Instance.new("Frame", inner)
+        rowHp.BackgroundTransparency = 1
+        rowHp.Size                   = UDim2.new(1, 0, 0, 22)
+        rowHp.LayoutOrder            = 3
+
+        local hpTrack = Instance.new("Frame", rowHp)
+        hpTrack.Size             = UDim2.new(1, 0, 0, 5)
+        hpTrack.Position         = UDim2.new(0, 0, 0, 14)
+        hpTrack.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+        hpTrack.BorderSizePixel  = 0
+        local hpTCorner = Instance.new("UICorner", hpTrack)
+        hpTCorner.CornerRadius = UDim.new(1, 0)
+        local hpFill = Instance.new("Frame", hpTrack)
+        hpFill.Size             = UDim2.fromScale(1, 1)
+        hpFill.BackgroundColor3 = Color3.fromRGB(80, 220, 100)
+        hpFill.BorderSizePixel  = 0
+        local hpFCorner = Instance.new("UICorner", hpFill)
+        hpFCorner.CornerRadius = UDim.new(1, 0)
+
+        local lblHealth = mkLabel(rowHp, 0, Enum.Font.Code, 11, Color3.fromRGB(200,200,200))
+        lblHealth.Position = UDim2.fromOffset(0, 0)
+
+        -- ── WEAPON row ────────────────────────────────────────────────
+        local rowWpn = mkRow(4)
+        local lblWeapon = mkLabel(rowWpn, -14, Enum.Font.Gotham, 11, Color3.fromRGB(210,180,100))
+
+        -- ── DISTANCE row ──────────────────────────────────────────────
+        local rowDist = mkRow(5)
+        local lblDist = mkLabel(rowDist, -14, Enum.Font.Code, 11, Color3.fromRGB(120,190,255))
+
+        -- ── WALL CHECK indicator ──────────────────────────────────────
+        local rowWall = mkRow(6)
+        local lblWall = mkLabel(rowWall, -14, Enum.Font.Gotham, 11, Color3.fromRGB(160,160,160))
+
+        visuals.Gui       = screenGui
+        visuals.Circle    = fovCircle
+        visuals.Stroke    = fovStroke
+        visuals.Highlight = highlight
+        visuals.Card      = card
+        visuals.HpFill    = hpFill
+        visuals.HpTrack   = hpTrack
+        visuals.Labels    = {
+            Name   = lblName,
+            Team   = lblTeam,
+            Health = lblHealth,
+            Weapon = lblWeapon,
+            Dist   = lblDist,
+            Wall   = lblWall,
+        }
+    end
+    initVisuals()
+
+    local rayParams = RaycastParams.new()
+    rayParams.FilterType  = Enum.RaycastFilterType.Exclude
+    rayParams.IgnoreWater = true
+
+    local function isVisible(part, char, cfg)
+        if not cfg.WallCheck then return true end
+        rayParams.FilterDescendantsInstances = { localPlayer.Character, camera, char, visuals.Gui }
+        local origin    = camera.CFrame.Position
+        local direction = part.Position - origin
+        local result    = fnRaycast(svcWorkspace, origin, direction, rayParams)
+        return result == nil or result.Instance:IsDescendantOf(char)
+    end
+
+    local currentTarget = { Target = nil, Part = nil }
+
+    local wlUsers = {}
+    local wlTeams = {}
+    local flList  = {}
+
+    local function getTarget(cfg)
+        local bestChar, bestPart = nil, nil
+        local bestDist, bestHp   = mathLib.huge, mathLib.huge
+        local mousePos = (cfg.FOVBehavior == "Mouse") and fnGetMouse(svcInput) or (camera.ViewportSize * 0.5)
+        local maxDist  = cfg.MaxDistance
+        local priority = cfg.TargetPriority
+        local camPos   = camera.CFrame.Position
+        local parts    = cfg.TargetPart
+        if type(parts) ~= "table" or #parts == 0 then parts = { "Cabeça" } end
+
+        local isRandom = false
+        for _, v in ipairsFn(parts) do if v == "Aleatório" then isRandom = true; break end end
+
+        for k in pairsFn(wlUsers) do wlUsers[k] = nil end
+        for k in pairsFn(wlTeams) do wlTeams[k] = nil end
+        for k in pairsFn(flList)  do flList[k]  = nil end
+        if cfg.WhitelistedUsers then for _, v in ipairsFn(cfg.WhitelistedUsers) do wlUsers[v] = true end end
+        if cfg.WhitelistedTeams then for _, v in ipairsFn(cfg.WhitelistedTeams) do wlTeams[v] = true end end
+        if cfg.FocusList        then for _, v in ipairsFn(cfg.FocusList)        do flList[v]  = true end end
+
+        local fovRadius = cfg.FOVSize
+
+        for _, player in ipairsFn(svcPlayers:GetPlayers()) do
+            if player.UserId == localUserId then continue end
+            if cfg.TeamCheck == "Team" and player.Team == localPlayer.Team then continue end
+            if wlUsers[player.Name] then continue end
+            if player.Team and wlTeams[player.Team.Name] then continue end
+            if cfg.FocusMode and not flList[player.Name] then continue end
+
+            local char = player.Character
+            if not char then continue end
+
+            local root = char:FindFirstChild("HumanoidRootPart")
+            local hum  = char:FindFirstChild("Humanoid")
+            if not root or not hum or hum.Health <= 0 then continue end
+            if (root.Position - camPos).Magnitude > maxDist then continue end
+
+            local candidates = {}
+            if isRandom then
+                local allParts = {}
+                for _, cat in ipairsFn(partCategories) do
+                    for _, partName in ipairsFn(partMap[cat]) do
+                        local p = char:FindFirstChild(partName)
+                        if p then tblLib.insert(allParts, p) end
+                    end
+                end
+                if #allParts > 0 then tblLib.insert(candidates, allParts[mathLib.random(1, #allParts)]) end
+            else
+                for _, cat in ipairsFn(parts) do
+                    if partMap[cat] then
+                        for _, partName in ipairsFn(partMap[cat]) do
+                            local p = char:FindFirstChild(partName)
+                            if p then tblLib.insert(candidates, p) end
+                        end
+                    end
+                end
+            end
+
+            if #candidates == 0 then tblLib.insert(candidates, root) end
+
+            for _, partObj in ipairsFn(candidates) do
+                local screenPos, onScreen = fnWorldToScreen(camera, partObj.Position)
+                if onScreen then
+                    local dist2D = (mousePos - Vector2.new(screenPos.X, screenPos.Y)).Magnitude
+                    if dist2D <= fovRadius and isVisible(partObj, char, cfg) then
+                        local isCurrent = (currentTarget.Target == char)
+                        local dist3D    = (partObj.Position - camPos).Magnitude
+                        local score     = isCurrent and (dist3D - 5) or dist3D
+                        if priority == "Health" then
+                            if hum.Health < bestHp or (hum.Health == bestHp and score < bestDist) then
+                                bestHp = hum.Health; bestDist = score; bestChar = char; bestPart = partObj
+                            end
+                        else
+                            if score < bestDist then bestDist = score; bestChar = char; bestPart = partObj end
+                        end
+                    end
+                end
+            end
+        end
+
+        return bestChar, bestPart
+    end
+
+    local lastTargetTick = 0
+
+    env._saRC = svcRun.RenderStepped:Connect(function()
+        local cfg = env.SilentConfig
+        if not cfg or not cfg.Enabled then
+            visuals.Circle.Visible    = false
+            visuals.Highlight.Enabled = false
+            visuals.Card.Visible      = false
+            for _, lbl in pairsFn(visuals.Labels) do lbl.Visible = false end
+            currentTarget.Target = nil; currentTarget.Part = nil
+            return
+        end
+
+        local now = tick()
+        if now - lastTargetTick >= 0.05 then
+            currentTarget.Target, currentTarget.Part = getTarget(cfg)
+            lastTargetTick = now
+        end
+
+        if cfg.ShowFOV then
+            visuals.Circle.Visible  = true
+            visuals.Circle.Size     = UDim2.fromOffset(cfg.FOVSize * 2, cfg.FOVSize * 2)
+            visuals.Stroke.Color    = cfg.FOVColor
+            local fovPos = (cfg.FOVBehavior == "Mouse") and fnGetMouse(svcInput) or (camera.ViewportSize * 0.5)
+            visuals.Circle.Position = UDim2.fromOffset(fovPos.X, fovPos.Y)
+        else
+            visuals.Circle.Visible = false
+        end
+
+        local target = currentTarget.Target
+        if target then
+            visuals.Highlight.Adornee      = target
+            visuals.Highlight.FillColor    = cfg.HighlightColor
+            visuals.Highlight.OutlineColor = cfg.HighlightColor
+            visuals.Highlight.Enabled      = cfg.ShowHighlight
+
+            local espCfg = cfg.ESP
+            if espCfg and espCfg.Enabled then
+                local player = svcPlayers:GetPlayerFromCharacter(target)
+                local hum    = target:FindFirstChild("Humanoid")
+                local root   = target:FindFirstChild("HumanoidRootPart")
+                local lbls   = visuals.Labels
+
+                visuals.Card.Visible = true
+
+                -- accent bar matches highlight color
+                visuals.Accent.BackgroundColor3 = cfg.HighlightColor
+
+                -- lock dot: green = visible, red = behind wall
+                local camPos    = camera.CFrame.Position
+                local partToChk = currentTarget.Part or root
+                local isVis     = partToChk and isVisible(partToChk, target, cfg)
+                visuals.DotLock.BackgroundColor3 = isVis
+                    and Color3.fromRGB(80, 220, 100)
+                    or  Color3.fromRGB(220, 60, 60)
+
+                -- name
+                lbls.Name.Text    = (player and player.Name) or "?"
+                lbls.Name.Visible = espCfg.ShowName
+
+                -- team
+                if player and player.Team then
+                    lbls.Team.Text       = "◈  " .. player.Team.Name
+                    lbls.Team.TextColor3 = player.Team.TeamColor.Color
+                    lbls.Team.Visible    = espCfg.ShowTeam
+                else
+                    lbls.Team.Visible = false
+                end
+
+                -- health
+                if hum then
+                    local hp    = mathLib.floor(hum.Health)
+                    local maxHp = mathLib.max(mathLib.floor(hum.MaxHealth), 1)
+                    local ratio = hp / maxHp
+                    local r = mathLib.clamp(2 - ratio * 2, 0, 1)
+                    local g = mathLib.clamp(ratio * 2,     0, 1)
+                    local hpColor = Color3.new(r, g, 0.1)
+                    visuals.HpFill.Size             = UDim2.fromScale(ratio, 1)
+                    visuals.HpFill.BackgroundColor3 = hpColor
+                    visuals.HpTrack.Visible         = espCfg.ShowHealth
+                    lbls.Health.Text    = strLib.format("♥  %d / %d", hp, maxHp)
+                    lbls.Health.Visible = espCfg.ShowHealth
+                else
+                    visuals.HpTrack.Visible = false
+                    lbls.Health.Visible     = false
+                end
+
+                -- weapon
+                if espCfg.ShowWeapon then
+                    local tool = target:FindFirstChildOfClass("Tool")
+                    lbls.Weapon.Text    = tool and ("⚔  " .. tool.Name) or "⚔  Nenhum"
+                    lbls.Weapon.Visible = true
+                else
+                    lbls.Weapon.Visible = false
+                end
+
+                -- distance
+                if espCfg.ShowDist and root then
+                    local dist = mathLib.floor((root.Position - camPos).Magnitude)
+                    lbls.Dist.Text    = strLib.format("◎  %d studs", dist)
+                    lbls.Dist.Visible = true
+                else
+                    lbls.Dist.Visible = false
+                end
+
+                -- wall check status
+                if espCfg.ShowWall then
+                    lbls.Wall.Text    = cfg.WallCheck
+                        and (isVis and "▣  Visível" or "▣  Atrás de parede")
+                        or  "▣  Wall check off"
+                    lbls.Wall.TextColor3 = isVis
+                        and Color3.fromRGB(80, 220, 100)
+                        or  Color3.fromRGB(220, 100, 60)
+                    lbls.Wall.Visible = true
+                else
+                    lbls.Wall.Visible = false
+                end
+            else
+                visuals.Card.Visible    = false
+                visuals.HpTrack.Visible = false
+                for _, lbl in pairsFn(visuals.Labels) do lbl.Visible = false end
+            end
+        else
+            visuals.Highlight.Enabled = false
+            visuals.Card.Visible      = false
+            for _, lbl in pairsFn(visuals.Labels) do lbl.Visible = false end
+        end
+    end)
+
+    local bulletKeywords = { "fire", "shoot", "bullet", "ammo", "projectile", "missile", "hit", "damage", "attack" }
+    local bulletCache    = setmetatable({}, { __mode = "k" })
+
+    local function isBulletRemote(remote)
+        if bulletCache[remote] ~= nil then return bulletCache[remote] end
+        local name = strLib.lower(remote.Name)
+        for _, kw in ipairsFn(bulletKeywords) do
+            if strLib.find(name, kw) then bulletCache[remote] = true; return true end
+        end
+        bulletCache[remote] = false
+        return false
+    end
+
+    local function legitOffset(cfg)
+        if not cfg.UseLegitOffset then return Vector3.zero end
+        return Vector3.new(
+            (mathLib.random() - 0.5) * 0.5,
+            (mathLib.random() - 0.5) * 0.5,
+            (mathLib.random() - 0.5) * 0.5
+        )
+    end
+
+    local gameMeta     = getRawMeta(game)
+    local origNamecall = gameMeta.__namecall
+    env._saONC         = origNamecall
+
+    setReadonly(gameMeta, false)
+    gameMeta.__namecall = newCClosure(function(self, ...)
+        local method = getNamecall()
+        if checkCaller() then return origNamecall(self, ...) end
+
+        local cfg = env.SilentConfig
+        if cfg and cfg.Enabled and currentTarget.Part then
+            if method ~= "FireServer" and method ~= "InvokeServer"
+            and method ~= "Raycast" and method ~= "FindPartOnRayWithIgnoreList"
+            and method ~= "FindPartOnRayWithWhitelist" and method ~= "FindPartOnRay"
+            and method ~= "findPartOnRay" then
+                return origNamecall(self, ...)
+            end
+
+            if mathLib.random(1, 100) <= (cfg.HitChance or 100) then
+                local args      = { ... }
+                local targetPos = currentTarget.Part.Position + legitOffset(cfg)
+
+                if self == svcWorkspace then
+                    if method == "FindPartOnRayWithIgnoreList" or method == "FindPartOnRayWithWhitelist"
+                    or method == "FindPartOnRay" or method == "findPartOnRay" then
+                        local ray = args[1]
+                        if ray and typeofFn(ray) == "Ray" then
+                            args[1] = Ray.new(ray.Origin, (targetPos - ray.Origin).Unit * 10000)
+                            return origNamecall(self, unpackFn(args))
+                        end
+                    elseif method == "Raycast" then
+                        local origin = args[1]
+                        if origin and typeofFn(origin) == "Vector3" then
+                            args[2] = (targetPos - origin).Unit * 10000
+                            return origNamecall(self, unpackFn(args))
+                        end
+                    end
+                end
+
+                if (method == "FireServer" or method == "InvokeServer") and isBulletRemote(self) then
+                    local camPos = camera.CFrame.Position
+                    local aimDir = (targetPos - camPos).Unit
+                    for i = 1, #args do
+                        local v = args[i]
+                        if typeofFn(v) == "Vector3" then
+                            args[i] = (v.Magnitude <= 10) and aimDir or targetPos
+                        elseif typeofFn(v) == "CFrame" then
+                            args[i] = CFrame.new(camPos, targetPos)
+                        end
+                    end
+                    return origNamecall(self, unpackFn(args))
+                end
+            end
+        end
+
+        return origNamecall(self, ...)
+    end)
+    setReadonly(gameMeta, true)
+
+    env.SilentConfig = {
+        Enabled          = false,
+        TeamCheck        = "Team",
+        TargetPart       = { "Head" },
+        TargetPriority   = "Distance",
+        MaxDistance      = 3000,
+        HitChance        = 70,
+        WallCheck        = true,
+        UseLegitOffset   = true,
+        WhitelistedUsers = {},
+        WhitelistedTeams = {},
+        FocusList        = {},
+        FocusMode        = false,
+        ShowFOV          = true,
+        FOVSize          = 110,
+        FOVColor         = Color3.fromRGB(247, 255, 5),
+        FOVBehavior      = "Center",
+        ShowHighlight    = true,
+        HighlightColor   = Color3.fromRGB(255, 60, 60),
+        ESP = { Enabled = true, ShowName = true, ShowTeam = true, ShowHealth = true, ShowWeapon = true, ShowDist = true, ShowWall = true },
+    }
+
+    do
+        local SC = env.SilentConfig
+
+        local MainSection         = criarSection(SilentAim, "Principal", "Controle do silent aim", "lucide:crosshair", true)
+        local ToggleAim, firstRun = nil, true
+
+        local keybindId = KeybindManager.register("SilentAim", Enum.KeyCode.Q, function()
+            if ToggleAim then ToggleAim:Set(not SC.Enabled) end
+        end)
+
+        ToggleAim = MainSection:Toggle({
+            Title = "Silent aim",
+            Desc  = cor({ "Redireciona os " }, { "tiros", "#00FF00" }, { " para o alvo" }),
+            Icon = "lucide:power", Type = "Checkbox", Value = SC.Enabled, Flag = "SilentAim",
+            Callback = function(v)
+                SC.Enabled = v
+                if firstRun then firstRun = false; return end
+                notificar(v and "Ativado" or "Desativado", 2, v and "lucide:circle-check" or "lucide:circle-x")
+            end,
+        })
+
+        MainSection:Keybind({
+            Title = "Keybind",
+            Desc  = cor({ "Tecla para " }, { "ativar", "#00FF00" }, { " / " }, { "desativar", "#FF0000" }, { " o silent aim" }),
+            Value = "Q", Flag = "KeybindSilentAim",
+            Callback = function(v)
+                if v and Enum.KeyCode[v] then KeybindManager.update(keybindId, Enum.KeyCode[v]) end
+            end,
+        })
+
+        MainSection:Slider({
+            Title = "Hit chance", Desc = "Porcentagem de tiros que acertarão o alvo",
+            Step = 1, Value = { Min = 0, Max = 100, Default = SC.HitChance }, Flag = "ChanceSilentAim",
+            Callback = function(v) SC.HitChance = v end,
+        })
+
+        local WLSection = criarSection(SilentAim, "Lista de exceções", "Gerenciar amigos e times", "lucide:shield", false)
+        local playerWLDrop
+
+        WLSection:Button({
+            Title = "Atualizar lista", Desc = "Atualiza a lista de jogadores", Icon = "lucide:refresh-cw",
+            Callback = function()
+                PlayerCache.refresh()
+                if playerWLDrop then playerWLDrop:Refresh(GetPlayerNames()) end
+                notificar("Lista atualizada", 1, "lucide:refresh-ccw")
+            end,
+        })
+
+        playerWLDrop = WLSection:Dropdown({
+            Title = "Ignorar jogadores",
+            Desc  = cor({ "Não", "#FF0000" }, { " foca nesses jogadores" }),
+            Values = GetPlayerNames(), Value = SC.WhitelistedUsers,
+            Multi = true, AllowNone = true, Flag = "WhitelistPlayersSilentAim",
+            Callback = function(opts) SC.WhitelistedUsers = opts end,
+        })
+
+        WLSection:Dropdown({
+            Title = "Ignorar times",
+            Desc  = cor({ "Não", "#FF0000" }, { " foca nesses times" }),
+            Values = GetTeamNames(), Value = SC.WhitelistedTeams,
+            Multi = true, AllowNone = true, Flag = "WhitelistTimesSilentAim",
+            Callback = function(opts) SC.WhitelistedTeams = opts end,
+        })
+
+        local FocusSection  = criarSection(SilentAim, "Focar", "Focar em jogadores específicos", "lucide:scan-eye", false)
+        local firstRunFocus = true
+
+        FocusSection:Toggle({
+            Title = "Modo foco",
+            Desc  = cor({ "Foca " }, { "apenas", "#FFAA00" }, { " em quem está na lista" }),
+            Icon = "lucide:focus", Type = "Checkbox", Value = SC.FocusMode, Flag = "ModoFocarSilentAim",
+            Callback = function(v)
+                SC.FocusMode = v
+                if firstRunFocus then firstRunFocus = false; return end
+                notificar("Modo foco: " .. (v and "Ativado" or "Desativado"), 2, "lucide:circle-alert")
+            end,
+        })
+
+        local focusParagraph, focusRemoveDrop
+
+        local function updateFocusUI()
+            if focusParagraph then
+                focusParagraph:SetDesc(#SC.FocusList > 0 and tblLib.concat(SC.FocusList, ", ") or "Nenhum alvo definido.")
+            end
+            if focusRemoveDrop then focusRemoveDrop:Refresh(SC.FocusList) end
+        end
+
+        FocusSection:Input({
+            Title = "Adicionar alvo", Desc = cor({ "Digite o " }, { "nome", "#00AAFF" }),
+            Placeholder = "Digite aqui", InputIcon = "lucide:user-plus",
+            Callback = function(text)
+                if not text or text == "" then return end
+                for _, p in ipairsFn(svcPlayers:GetPlayers()) do
+                    if p.UserId ~= localUserId and p.Name:lower():sub(1, #text) == text:lower() then
+                        if not tblLib.find(SC.FocusList, p.Name) then
+                            tblLib.insert(SC.FocusList, p.Name)
+                            updateFocusUI()
+                            notificar("Alvo adicionado: " .. p.Name, 2, "lucide:check")
+                        end
+                        return
+                    end
+                end
+                notificar("Jogador não encontrado", 2, "lucide:search-x")
+            end,
+        })
+
+        focusRemoveDrop = FocusSection:Dropdown({
+            Title = "Remover da lista", Desc = cor({ "Selecione para " }, { "excluir", "#FF0000" }),
+            Values = {}, Value = nil, Multi = false, AllowNone = true,
+            Callback = function(val)
+                if not val then return end
+                local idx = tblLib.find(SC.FocusList, val)
+                if idx then tblLib.remove(SC.FocusList, idx); updateFocusUI(); focusRemoveDrop:Select(nil) end
+            end,
+        })
+
+        focusParagraph = FocusSection:Paragraph({
+            Title = "Jogadores focados", Desc = "Nenhum alvo",
+            Buttons = {{ Icon = "lucide:trash-2", Title = "Limpar", Callback = function()
+                SC.FocusList = {}; updateFocusUI(); notificar("Lista limpa", 2, "lucide:trash")
+            end }},
+        })
+
+        local LogicSection = criarSection(SilentAim, "Configurações", "Ajustar configurações", "lucide:settings-2", false)
+
+        LogicSection:Dropdown({ Title = "Prioridade",      Desc = "Como escolher o melhor alvo",   Values = { "Distance", "Health" }, Value = "Distance", Flag = "PrioridadeSilentAim", Callback = function(v) SC.TargetPriority = v end })
+        LogicSection:Dropdown({ Title = "Partes",          Desc = "Onde o tiro deve ir",            Values = { "Aleatório", "Cabeça", "Tronco", "Braço direito", "Braço esquerdo", "Perna direita", "Perna esquerda" }, Value = { "Aleatório" }, Multi = true, AllowNone = true, Flag = "PartesSilentAim", Callback = function(v) SC.TargetPart = v end })
+        LogicSection:Dropdown({ Title = "Alvos",           Desc = "Quem deve ser atacado",          Values = { "Todos", "Inimigos" }, Value = "Inimigos", Flag = "AlvosSilentAim", Callback = function(v) SC.TeamCheck = (v == "Todos") and "All" or "Team" end })
+        LogicSection:Toggle({   Title = "Humanizar",       Desc = cor({ "O tiro sairá mais " }, { "legit", "#00FF00" }),         Icon = "lucide:user-check", Type = "Checkbox", Value = SC.UseLegitOffset, Flag = "LegitSilentAim",     Callback = function(v) SC.UseLegitOffset = v end })
+        LogicSection:Toggle({   Title = "Wall check",      Desc = cor({ "Ignora", "#FF0000" }, { " inimigos atrás de paredes" }), Icon = "lucide:brick-wall", Type = "Checkbox", Value = SC.WallCheck,      Flag = "WallcheckSilentAim", Callback = function(v) SC.WallCheck = v end })
+        LogicSection:Slider({   Title = "Distância máxima",Desc = "Alcance do silent aim", Step = 10, Value = { Min = 50, Max = 5000, Default = SC.MaxDistance }, Flag = "AlcanceSilentAim", Callback = function(v) SC.MaxDistance = v end })
+
+        local VisSection = criarSection(SilentAim, "Visual", "FOV", "lucide:palette", false)
+
+        VisSection:Toggle({      Title = "FOV",        Desc = "Ativa o FOV",                                                     Icon = "lucide:check",    Type = "Checkbox", Value = SC.ShowFOV,      Flag = "FOV",                   Callback = function(v) SC.ShowFOV = v end })
+        VisSection:Dropdown({    Title = "Posição",    Desc = "Modifica a posição do FOV",     Values = { "Mouse", "Center" }, Value = "Center",           Flag = "PosicaoFOV",            Callback = function(v) SC.FOVBehavior = v end })
+        VisSection:Slider({      Title = "Tamanho",    Desc = "Modifica o tamanho do FOV",     Step = 5, Value = { Min = 40, Max = 1000, Default = SC.FOVSize }, Flag = "TamanhoFOV",        Callback = function(v) SC.FOVSize = v end })
+        VisSection:Colorpicker({ Title = "Cor do FOV",                                         Default = SC.FOVColor,       Transparency = 0, Locked = false, Flag = "CorFOV1",             Callback = function(c) SC.FOVColor = c end })
+        VisSection:Toggle({      Title = "Highlight",  Desc = cor({ "Brilha" }, { " a pessoa focada", "#00AAFF" }),               Icon = "lucide:sparkles", Type = "Checkbox", Value = SC.ShowHighlight, Flag = "HighlightSilentAim",  Callback = function(v) SC.ShowHighlight = v end })
+        VisSection:Colorpicker({ Title = "Cor da info",Desc = "HUD e highlight",               Default = SC.HighlightColor, Transparency = 0, Locked = false, Flag = "HighlightCorSilentAim", Callback = function(c) SC.HighlightColor = c end })
+
+        local InfoSection = criarSection(SilentAim, "HUD", "Informações dos alvos", "lucide:layout-template", false)
+
+        local togName, togHp, togWpn, togTeam, togDist, togWall
+        local function lockEspToggles(locked)
+            for _, t in ipairsFn({ togName, togTeam, togHp, togWpn, togDist, togWall }) do
+                if t then if locked then t:Lock() else t:Unlock() end end
+            end
+        end
+
+        InfoSection:Toggle({ Title = "HUD",  Desc = "Mostra informações do alvo",            Icon = "lucide:app-window",  Type = "Checkbox", Value = SC.ESP.Enabled,  Flag = "InfoSilentAim",     Callback = function(v) SC.ESP.Enabled   = v; lockEspToggles(not v) end })
+        togName = InfoSection:Toggle({ Title = "Nome", Desc = "Mostra o nome do jogador",    Icon = "lucide:text-cursor", Type = "Checkbox", Value = SC.ESP.ShowName,  Flag = "InfoNomeSilentAim", Callback = function(v) SC.ESP.ShowName  = v end })
+        togTeam = InfoSection:Toggle({ Title = "Time", Desc = "Mostra o time do jogador",    Icon = "lucide:users",       Type = "Checkbox", Value = SC.ESP.ShowTeam,  Flag = "InfoTimeSilentAim", Callback = function(v) SC.ESP.ShowTeam  = v end })
+        togHp   = InfoSection:Toggle({ Title = "Vida", Desc = "Mostra a vida do alvo",       Icon = "lucide:heart-pulse", Type = "Checkbox", Value = SC.ESP.ShowHealth,Flag = "InfoVidaSilentAim", Callback = function(v) SC.ESP.ShowHealth = v end })
+        togWpn  = InfoSection:Toggle({ Title = "Item",      Desc = "Mostra o que o alvo está segurando", Icon = "lucide:sword",    Type = "Checkbox", Value = SC.ESP.ShowWeapon, Flag = "InfoItemSilentAim",  Callback = function(v) SC.ESP.ShowWeapon = v end })
+        togDist = InfoSection:Toggle({ Title = "Distância", Desc = "Mostra a distância até o alvo em studs", Icon = "lucide:ruler",    Type = "Checkbox", Value = SC.ESP.ShowDist,   Flag = "InfoDistSilentAim",  Callback = function(v) SC.ESP.ShowDist   = v end })
+        togWall = InfoSection:Toggle({ Title = "Parede",    Desc = "Mostra se o alvo está atrás de parede",  Icon = "lucide:wall",     Type = "Checkbox", Value = SC.ESP.ShowWall,   Flag = "InfoWallSilentAim",  Callback = function(v) SC.ESP.ShowWall   = v end })
+
+        if not SC.ESP.Enabled then lockEspToggles(true) end
+    end
+end
+
+
+-- HITBOX EXPANDER
+local _sHRP  = "HumanoidRootPart"
+local _sHum  = "Humanoid"
+local _sHead = "Head"
+local _sTool = "Tool"
+
+local _CLR_RED   = Color3.fromRGB(255, 50,  50)
+local _CLR_GREEN = Color3.fromRGB(50,  255, 50)
+local _CLR_DEF   = Color3.new(1, 0, 0)
+
+local _gidN = 0
+local function _mkId() _gidN = _gidN + 1; return tostring(_gidN) end
+
+local function _safeDestroy(inst)
+    if inst and inst.Parent then pcall(inst.Destroy, inst) end
+end
+local function _safeDisconnect(conn)
+    if conn then pcall(conn.Disconnect, conn) end
+end
+
+local function safeGui()
+    local ok, hui = pcall(gethui)
+    return (ok and hui) and hui or CoreGui
+end
+
+local function isShielded(char)
+    if not char then return false end
+    local tool = char:FindFirstChildOfClass(_sTool)
+    if not tool then return false end
+    local n = tool.Name:lower()
+    return n:find("escudo") ~= nil or n:find("shield") ~= nil
+end
+
+-- Apex
+if game.PlaceId == 2069320852 then
+    local _oldFS
+    _oldFS = hookfunction(Instance.new("RemoteEvent").FireServer, function(remote, ...)
+        if remote.Name ~= "ClientKick" then return _oldFS(remote, ...) end
+        if select(1, ...) == "HitBox"  then return end
+        return _oldFS(remote, ...)
+    end)
+end
+
+local LOCAL_ID = LocalPlayer.UserId
+
+local _genv = getgenv()
+if _genv._hitboxConn         then _safeDisconnect(_genv._hitboxConn);         _genv._hitboxConn         = nil end
+if _genv._hitboxRemovingConn then _safeDisconnect(_genv._hitboxRemovingConn); _genv._hitboxRemovingConn = nil end
+
+if not _genv._hitboxSaved  then _genv._hitboxSaved  = {} end
+if not _genv._hitboxLights then _genv._hitboxLights = {} end
+
+local hitboxSaved  = _genv._hitboxSaved
+local hitboxLights = _genv._hitboxLights
+
+local function hitboxConfig() return _genv.HitboxConfig end
+
+local _playerCache = {}
+do
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p.UserId ~= LOCAL_ID then _playerCache[p.UserId] = p end
+    end
+end
+
+local _hbWU  = {}   -- WhitelistedUsers
+local _hbWT  = {}   -- WhitelistedTeams
+local _hbFL  = {}   -- FocusList
+local _hbST  = {}   -- SelectedTeams
+local _hbVer = -1   -- versão do config (invalidação de cache)
+
+local function _rebuildHBCache(cfg)
+    if (cfg._v or 0) == _hbVer then return end
+    _hbVer = cfg._v or 0
+    for k in pairs(_hbWU) do _hbWU[k] = nil end
+    for k in pairs(_hbWT) do _hbWT[k] = nil end
+    for k in pairs(_hbFL) do _hbFL[k] = nil end
+    for k in pairs(_hbST) do _hbST[k] = nil end
+    for _, v in ipairs(cfg.WhitelistedUsers) do _hbWU[v] = true end
+    for _, v in ipairs(cfg.WhitelistedTeams) do _hbWT[v] = true end
+    for _, v in ipairs(cfg.FocusList)        do _hbFL[v] = true end
+    for _, v in ipairs(cfg.SelectedTeams)    do _hbST[v] = true end
+end
+
+-- Target
+local function hitboxShouldTarget(player, cfg)
+    if player.UserId == LOCAL_ID then return false end
+    if _hbWU[player.Name] then return false end
+    if player.Team and _hbWT[player.Team.Name] then return false end
+    if cfg.FocusMode and not _hbFL[player.Name] then return false end
+    if cfg.TeamCheck and player.Team and LocalPlayer.Team and player.Team == LocalPlayer.Team then return false end
+    if cfg.TeamFilterEnabled and next(_hbST) then
+        local pt = player.Team and player.Team.Name or ""
+        if not _hbST[pt] then return false end
+    end
+    local char = player.Character
+    if not char then return false end
+    local hum  = char:FindFirstChild(_sHum)
+    local root = char:FindFirstChild(_sHRP)
+    if not hum or not root or hum.Health <= 0 then return false end
+    if cfg.HideOnShield and isShielded(char) then return false end
+    return true
+end
+
+-- Salvar
+local function hitboxSaveState(player, root)
+    if hitboxSaved[player.UserId] then return end
+    hitboxSaved[player.UserId] = {
+        size         = root.Size,
+        transparency = root.Transparency,
+        shape        = root.Shape,
+        canCollide   = root.CanCollide,
+        material     = root.Material,
+        color        = root.Color,
+    }
+end
+
+local function hitboxRestoreState(player)
+    local saved = hitboxSaved[player.UserId]
+    if not saved then return end
+    local char = player.Character
+    local root = char and char:FindFirstChild(_sHRP)
+    if root then
+        root.Size         = saved.size
+        root.Transparency = saved.transparency
+        root.Shape        = saved.shape
+        root.CanCollide   = saved.canCollide
+        root.Material     = saved.material
+        root.Color        = saved.color
+    end
+    hitboxSaved[player.UserId] = nil
+end
+
+local function hitboxRemoveHighlight(player)
+    local hl = hitboxLights[player.UserId]
+    if hl then
+        _safeDestroy(hl)
+        hitboxLights[player.UserId] = nil
+    end
+end
+
+local function hitboxCleanPlayer(player)
+    hitboxRestoreState(player)
+    hitboxRemoveHighlight(player)
+end
+
+-- Aplicar 
+local function hitboxApply(player, root, cfg)
+    local teamColor = (player.TeamColor and player.TeamColor.Color) or _CLR_DEF
+    root.Size         = cfg.Size
+    root.Transparency = cfg.Transparency
+    root.Shape        = cfg.Shape
+    root.CanCollide   = false
+    root.Material     = Enum.Material.ForceField
+
+    if cfg.Transparency < 1 then
+        local existing = hitboxLights[player.UserId]
+        if not existing then
+            local hl = Instance.new("Highlight")
+            hl.Name                = _mkId()
+            hl.Adornee             = root
+            hl.FillColor           = teamColor
+            hl.FillTransparency    = cfg.Transparency
+            hl.OutlineTransparency = cfg.Transparency
+            hl.Parent              = safeGui()
+            hitboxLights[player.UserId] = hl
+        else
+            existing.Adornee             = root
+            existing.FillColor           = teamColor
+            existing.FillTransparency    = cfg.Transparency
+            existing.OutlineTransparency = cfg.Transparency
+        end
+    else
+        hitboxRemoveHighlight(player)
+    end
+end
+
+_genv._hitboxConn = RunService.Heartbeat:Connect(function()
+    local cfg = hitboxConfig()
+
+    if not cfg or not cfg.Enabled then
+        for _, player in pairs(_playerCache) do
+            if hitboxSaved[player.UserId] then hitboxCleanPlayer(player) end
+        end
+        return
+    end
+
+    _rebuildHBCache(cfg)
+
+    for _, player in pairs(_playerCache) do
+        if hitboxShouldTarget(player, cfg) then
+            local root = player.Character and player.Character:FindFirstChild(_sHRP)
+            if root then
+                hitboxSaveState(player, root)
+                hitboxApply(player, root, cfg)
+            end
+        else
+            if hitboxSaved[player.UserId] then hitboxCleanPlayer(player) end
+        end
+    end
+end)
+
+_genv._hitboxRemovingConn = Players.PlayerRemoving:Connect(function(player)
+    _playerCache[player.UserId] = nil
+    hitboxCleanPlayer(player)
+end)
+
+Players.PlayerAdded:Connect(function(p)
+    if p.UserId ~= LOCAL_ID then _playerCache[p.UserId] = p end
+end)
+
+
+-- ESP
+local env = _genv
+env.espConns = env.espConns or {}
+env.espStore = env.espStore or {}
+env.espHold  = env.espHold  or nil
+
+local function espGetContainer()
+    if not env.espHold or not env.espHold.Parent then
+        local folder = Instance.new("Folder")
+        folder.Name   = _mkId()
+        folder.Parent = safeGui()
+        env.espHold   = folder
+    end
+    return env.espHold
+end
+
+local function espMakeLabel(parent, order, color, size)
+    local label = Instance.new("TextLabel")
+    label.Parent                 = parent
+    label.BackgroundTransparency = 1
+    label.Size                   = UDim2.new(1, 0, 0, size or 12)
+    label.TextColor3             = color or Color3.new(1, 1, 1)
+    label.TextStrokeTransparency = 0.2
+    label.TextStrokeColor3       = Color3.new(0, 0, 0)
+    label.Font                   = Enum.Font.GothamBold
+    label.TextSize               = size or 12
+    label.LayoutOrder            = order
+    label.Visible                = false
+    return label
+end
+
+local function espAddPlayer(player)
+    if not player or player.UserId == LOCAL_ID then return end
+    if env.espStore[player.UserId] then return end
+
+    local container = espGetContainer()
+    local hl = Instance.new("Highlight")
+    hl.Name                = _mkId()
+    hl.FillColor           = _CLR_DEF
+    hl.OutlineColor        = Color3.new(1, 1, 1)
+    hl.FillTransparency    = 0.6
+    hl.OutlineTransparency = 0
+    hl.DepthMode           = Enum.HighlightDepthMode.AlwaysOnTop
+    hl.Enabled             = false
+    hl.Parent              = container
+
+    local bb = Instance.new("BillboardGui")
+    bb.Name        = _mkId()
+    bb.Size        = UDim2.new(0, 200, 0, 60)
+    bb.StudsOffset = Vector3.new(0, 2, 0)
+    bb.AlwaysOnTop = true
+    bb.Enabled     = false
+    bb.Parent      = container
+
+    local layout = Instance.new("UIListLayout")
+    layout.Parent              = bb
+    layout.SortOrder           = Enum.SortOrder.LayoutOrder
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    layout.Padding             = UDim.new(0, 0)
+
+    env.espStore[player.UserId] = {
+        player    = player,   -- referência direta: evita GetPlayerByUserId por frame
+        highlight = hl,
+        billboard = bb,
+        labels    = {
+            name   = espMakeLabel(bb, 1, Color3.new(1, 1, 1), 13),
+            health = espMakeLabel(bb, 2, Color3.fromRGB(0, 255, 100), 11),
+            weapon = espMakeLabel(bb, 3, Color3.fromRGB(200, 200, 200), 11),
+            studs  = espMakeLabel(bb, 4, Color3.fromRGB(255, 220, 0), 11),
+        },
+    }
+end
+
+local function espRemovePlayer(player)
+    local entry = env.espStore[player.UserId]
+    if not entry then return end
+    _safeDestroy(entry.highlight)
+    _safeDestroy(entry.billboard)
+    env.espStore[player.UserId] = nil
+end
+
+local function espUpdate()
+    local cfg   = env.ESPConfig
+    local lchar = LocalPlayer.Character
+    local lroot = lchar and lchar:FindFirstChild(_sHRP)
+
+    for uid, entry in pairs(env.espStore) do
+        local player = entry.player
+        if not player or not player.Parent then
+            _safeDestroy(entry.highlight)
+            _safeDestroy(entry.billboard)
+            env.espStore[uid] = nil
+        else
+            local char  = player.Character
+            local root  = char and char:FindFirstChild(_sHRP)
+            local hum   = char and char:FindFirstChild(_sHum)
+            local head  = char and char:FindFirstChild(_sHead)
+            local alive = char and root and hum and hum.Health > 0 and head
+            local sameTeam = cfg.TeamCheck and LocalPlayer.Team and player.Team == LocalPlayer.Team
+
+            if not alive or sameTeam then
+                entry.highlight.Enabled = false
+                entry.billboard.Enabled = false
+            else
+                if cfg.Chams then
+                    entry.highlight.Adornee   = char
+                    entry.highlight.FillColor = (player.TeamColor and player.TeamColor.Color) or _CLR_DEF
+                    entry.highlight.Enabled   = true
+                else
+                    entry.highlight.Enabled = false
+                end
+
+                local showBB = cfg.Name or cfg.Health or cfg.WeaponN or cfg.Studs
+                if showBB then
+                    entry.billboard.Adornee = head
+                    entry.billboard.Enabled = true
+
+                    local lblName = entry.labels.name
+                    if cfg.Name then
+                        lblName.Text    = player.Name
+                        lblName.Visible = true
+                    else
+                        lblName.Visible = false
+                    end
+
+                    local lblHealth = entry.labels.health
+                    if cfg.Health then
+                        local hp  = math.floor(hum.Health)
+                        local mhp = math.max(hum.MaxHealth, 1)
+                        lblHealth.Text       = tostring(hp)
+                        lblHealth.TextColor3 = _CLR_RED:Lerp(_CLR_GREEN, hp / mhp)
+                        lblHealth.Visible    = true
+                    else
+                        lblHealth.Visible = false
+                    end
+
+                    local lblWeapon = entry.labels.weapon
+                    if cfg.WeaponN then
+                        local tool = char:FindFirstChildOfClass(_sTool)
+                        lblWeapon.Text    = tool and tool.Name or ""
+                        lblWeapon.Visible = tool ~= nil
+                    else
+                        lblWeapon.Visible = false
+                    end
+
+                    local lblStuds = entry.labels.studs
+                    if cfg.Studs then
+                        local dist = lroot and (lroot.Position - root.Position).Magnitude or 0
+                        lblStuds.Text    = string.format("[%d]", math.floor(dist))
+                        lblStuds.Visible = true
+                    else
+                        lblStuds.Visible = false
+                    end
+                else
+                    entry.billboard.Enabled = false
+                end
+            end
+        end
+    end
+end
+
+env.StopESP = function()
+    for _, conn in pairs(env.espConns) do _safeDisconnect(conn) end
+    table.clear(env.espConns)
+    for _, entry in pairs(env.espStore) do
+        _safeDestroy(entry.highlight)
+        _safeDestroy(entry.billboard)
+    end
+    table.clear(env.espStore)
+    if env.espHold then
+        _safeDestroy(env.espHold)
+        env.espHold = nil
+    end
+end
+
+env.StartESP = function()
+    env.StopESP()
+    espGetContainer()
+    for _, player in pairs(_playerCache) do espAddPlayer(player) end
+    table.insert(env.espConns, Players.PlayerAdded:Connect(espAddPlayer))
+    table.insert(env.espConns, Players.PlayerRemoving:Connect(espRemovePlayer))
+    table.insert(env.espConns, RunService.RenderStepped:Connect(espUpdate))
+end
+
+-- Config
+_genv.HitboxConfig = {
+    Enabled           = false,
+    Size              = Vector3.new(10, 5, 10),
+    Transparency      = 0.8,
+    Shape             = Enum.PartType.Block,
+    HideOnShield      = false,
+    TeamCheck         = true,
+    TeamFilterEnabled = false,
+    SelectedTeams     = {},
+    WhitelistedUsers  = {},
+    WhitelistedTeams  = {},
+    FocusList         = {},
+    FocusMode         = false,
+    _v                = 0,   -- versão para invalidação do hash-set cache
+}
+
+-- UI
+do
+    local HC = _genv.HitboxConfig
+    local function _bumpV() HC._v = (HC._v or 0) + 1 end
+
+    local MainSection = criarSection(HitboxExpander, "Principal", "Controles gerais", "lucide:box", true)
+    local firstRunHB  = true
+    MainSection:Toggle({
+        Title = "Hitbox", Desc = cor({ "Liga", "#00FF00" }, { " o hitbox expander" }),
+        Icon = "lucide:boxes", Value = HC.Enabled, Flag = "Hitbox",
+        Callback = function(v)
+            HC.Enabled = v
+            if firstRunHB then firstRunHB = false; return end
+            notificar(v and "Ligado" or "Desligado", 2, v and "lucide:play" or "lucide:pause")
+        end,
+    })
+    MainSection:Toggle({ Title = "Team check", Desc = cor({ "Ignora", "#FF0000" }, { " jogadores do mesmo time" }), Icon = "lucide:shield-check", Value = HC.TeamCheck, Flag = "TeamCheckHitbox", Callback = function(v) HC.TeamCheck = v end })
+
+    local ConfigSection = criarSection(HitboxExpander, "Configura\xC3\xA7\xC3\xA3o", "Ajustes visuais e t\xC3\xA9cnicos", "lucide:settings-2", false)
+    local SHAPE_MAP = { Sphere = Enum.PartType.Ball, Block = Enum.PartType.Block, Cylinder = Enum.PartType.Cylinder, Wedge = Enum.PartType.Wedge }
+
+    ConfigSection:Input({    Title = "Tamanho da hitbox", Placeholder = "20", InputIcon = "lucide:ruler", Flag = "TamanhoHitbox", Callback = function(v) local n = tonumber(v); if n then HC.Size = Vector3.new(n, n, n) end end })
+    ConfigSection:Dropdown({ Title = "Formato", Desc = cor({ "Formato", "#00AAFF" }, { " usado para a hitbox" }), Icon = "lucide:shapes", Values = { "Sphere", "Block", "Cylinder", "Wedge" }, Value = "Sphere", Flag = "FormatoHitbox", Callback = function(opt) HC.Shape = SHAPE_MAP[opt] end })
+    ConfigSection:Toggle({   Title = "Escudo check", Desc = cor({ "A hitbox volta ao normal se " }, { "equiparem", "#FFAA00" }, { " o escudo" }), Icon = "lucide:shield-alert", Value = HC.HideOnShield, Flag = "EscudoHitbox", Callback = function(v) HC.HideOnShield = v end })
+    ConfigSection:Slider({   Title = "Transpar\xC3\xAAncia", Desc = cor({ "0 = " }, { "vis\xC3\xADvel", "#00FF00" }, { "; 1 = " }, { "invis\xC3\xADvel", "#FF0000" }), Icon = "lucide:ghost", Step = 0.02, Value = { Min = 0, Max = 1, Default = HC.Transparency }, Flag = "VisibilidadeHitbox", Callback = function(v) HC.Transparency = v end })
+
+    local TeamSection = criarSection(HitboxExpander, "Filtros", "Configura\xC3\xA7\xC3\xA3o de times", "lucide:users", false)
+    TeamSection:Toggle({   Title = "Filtrar por time", Desc = cor({ "Aplica", "#00AAFF" }, { " a hitbox apenas nos times selecionados" }), Icon = "lucide:sliders-horizontal", Value = HC.TeamFilterEnabled, Flag = "FiltrarTimeHitbox", Callback = function(v) HC.TeamFilterEnabled = v; _bumpV() end })
+    TeamSection:Dropdown({ Title = "Times", Desc = cor({ "Selecione", "#FFFFFF" }, { " os times" }), Icon = "lucide:users-round", Values = GetTeamNames(), Value = {}, Multi = true, AllowNone = true, Flag = "TimesFiltradosHitbox", Callback = function(opt) HC.SelectedTeams = opt; _bumpV() end })
+
+    local WhitelistSection = criarSection(HitboxExpander, "Lista de exce\xC3\xA7\xC3\xB5es", "Gerenciar amigos e times", "lucide:shield", false)
+    local HBPlayerWhitelist
+    WhitelistSection:Button({ Title = "Atualizar lista", Desc = "Atualiza a lista de jogadores", Icon = "lucide:refresh-cw", Callback = function()
+        PlayerCache.refresh()
+        if HBPlayerWhitelist then HBPlayerWhitelist:Refresh(GetPlayerNames()) end
+        notificar("Lista atualizada", 1, "lucide:refresh-ccw")
+    end })
+    HBPlayerWhitelist = WhitelistSection:Dropdown({ Title = "Ignorar jogadores", Desc = cor({ "N\xC3\xA3o", "#FF0000" }, { " foca nesses jogadores" }), Values = GetPlayerNames(), Value = HC.WhitelistedUsers, Multi = true, AllowNone = true, Callback = function(opts) HC.WhitelistedUsers = opts; _bumpV() end })
+    WhitelistSection:Dropdown({ Title = "Ignorar times", Desc = cor({ "N\xC3\xA3o", "#FF0000" }, { " foca nesses times" }), Values = GetTeamNames(), Value = HC.WhitelistedTeams, Multi = true, AllowNone = true, Flag = "IgnorarTimesHitbox", Callback = function(opts) HC.WhitelistedTeams = opts; _bumpV() end })
+
+    local FocusSection    = criarSection(HitboxExpander, "Focar", "Focar em jogadores espec\xC3\xADficos", "lucide:scan-eye", false)
+    local firstRunHBFocus = true
+    FocusSection:Toggle({ Title = "Modo foco", Desc = cor({ "Foca " }, { "apenas", "#FFAA00" }, { " em quem est\xC3\xA1 na lista" }), Icon = "lucide:focus", Type = "Checkbox", Value = HC.FocusMode, Flag = "ModoFocarHitbox", Callback = function(state)
+        HC.FocusMode = state; _bumpV()
+        if firstRunHBFocus then firstRunHBFocus = false; return end
+        notificar("Modo foco: " .. (state and "Ativado" or "Desativado"), 2, "lucide:circle-alert")
+    end })
+
+    local HBFocusParagraph, HBFocusRemoveDrop
+    local function UpdateHBFocusUI()
+        if HBFocusParagraph then HBFocusParagraph:SetDesc(#HC.FocusList > 0 and table.concat(HC.FocusList, ", ") or "Nenhum alvo definido.") end
+        if HBFocusRemoveDrop then HBFocusRemoveDrop:Refresh(HC.FocusList) end
+    end
+
+    FocusSection:Input({ Title = "Adicionar alvo", Desc = cor({ "Digite o " }, { "nome", "#00AAFF" }), Placeholder = "Digite aqui", InputIcon = "lucide:user-plus", Callback = function(text)
+        if not text or text == "" then return end
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p.Name:lower():sub(1, #text) == text:lower() then
+                if not table.find(HC.FocusList, p.Name) then
+                    table.insert(HC.FocusList, p.Name); _bumpV(); UpdateHBFocusUI()
+                    notificar("Alvo adicionado: " .. p.Name, 2, "lucide:check")
+                end
+                return
+            end
+        end
+        notificar("Jogador n\xC3\xA3o encontrado", 2, "lucide:search-x")
+    end })
+
+    HBFocusRemoveDrop = FocusSection:Dropdown({ Title = "Remover da lista", Desc = cor({ "Selecione para " }, { "excluir", "#FF0000" }), Values = {}, Value = nil, Multi = false, AllowNone = true, Callback = function(val)
+        if not val then return end
+        local idx = table.find(HC.FocusList, val)
+        if idx then table.remove(HC.FocusList, idx); _bumpV(); UpdateHBFocusUI(); HBFocusRemoveDrop:Select(nil) end
+    end })
+
+    HBFocusParagraph = FocusSection:Paragraph({ Title = "Jogadores focados", Desc = "Nenhum alvo", Buttons = {{ Icon = "lucide:trash-2", Title = "Limpar", Callback = function()
+        HC.FocusList = {}; _bumpV(); UpdateHBFocusUI(); notificar("Lista limpa", 2, "lucide:trash")
+    end }} })
+end
+
+
+-- Config
+_genv.ESPConfig = { Enabled = false, TeamCheck = false, Chams = false, Name = false, Studs = false, Health = false, WeaponN = false }
+
+-- UI
+do
+    local EC = _genv.ESPConfig
+    local MainSection = criarSection(ESP, "Principal", "Controles gerais", "lucide:eye", true)
+    MainSection:Paragraph({ Title = "ESP", Image = "lucide:scan-eye", Desc = cor({ "Permite ver " }, { "jogadores", "#FFFFFF" }, { " atrav\xC3\xA9s das " }, { "paredes", "#FF0000" }) })
+
+    local firstRunESP = true
+    MainSection:Toggle({ Title = "ESP", Desc = cor({ "Liga", "#00FF00" }, { " o ESP" }), Icon = "lucide:power", Value = false, Flag = "ESP", Callback = function(v)
+        if firstRunESP then
+            firstRunESP = false
+            if v then env.StartESP() else env.StopESP() end
+            return
+        end
+        if v then env.StartESP(); notificar("Ativado", 2, "lucide:eye")
+        else      env.StopESP();  notificar("Desativado", 2, "lucide:eye-off") end
+    end })
+    MainSection:Toggle({ Title = "Team check", Desc = cor({ "N\xC3\xA3o", "#FF0000" }, { " mostra se do seu " }, { "time", "#00FF00" }), Icon = "lucide:shield-check", Value = EC.TeamCheck, Flag = "TimeESP", Callback = function(v) EC.TeamCheck = v end })
+
+    local VS = criarSection(ESP, "Visualiza\xC3\xA7\xC3\xA3o", "Elementos visuais", "lucide:monitor", true)
+    VS:Toggle({ Title = "Highlight", Desc = cor({ "Ativa o " }, { "brilho", "#FFAA00" }),                             Icon = "lucide:sparkles", Value = EC.Chams,   Flag = "ChamsESP",     Callback = function(v) EC.Chams   = v end })
+    VS:Toggle({ Title = "Nome",      Desc = cor({ "Exibe o " }, { "nome", "#FFFFFF" }),                               Icon = "lucide:user",     Value = EC.Name,    Flag = "NomeESP",      Callback = function(v) EC.Name    = v end })
+    VS:Toggle({ Title = "Dist\xC3\xA2ncia", Desc = cor({ "Mostra a " }, { "dist\xC3\xA2ncia", "#00AAFF" }),          Icon = "lucide:ruler",    Value = EC.Studs,   Flag = "DistanciaESP", Callback = function(v) EC.Studs   = v end })
+    VS:Toggle({ Title = "Vida",      Desc = cor({ "Exibe " }, { "a barra de vida", "#FF0000" }),                      Icon = "lucide:heart",    Value = EC.Health,  Flag = "VidaESP",      Callback = function(v) EC.Health  = v end })
+    VS:Toggle({ Title = "Item",      Desc = cor({ "Mostra o " }, { "item", "#FFAA00" }, { " que o jogador segura" }), Icon = "lucide:sword",    Value = EC.WeaponN, Flag = "ItemESP",      Callback = function(v) EC.WeaponN = v end })
+end
+
+
+-- UI
+do
+    local ugs = UserSettings():GetService("UserGameSettings")
+    local sl  = { on = false, loop = false, binds = {}, active = false }
+
+    local function setSL(state)
+        sl.active = state
+        if not state then pcall(function() ugs.RotationType = Enum.RotationType.MovementRelative end) end
+    end
+
+    local function checkShield(char)
+        if not sl.on or not char then return end
+        local found = false
+        for _, v in ipairs(char:GetChildren()) do
+            if v:IsA("Tool") and v.Name:lower():find("escudo") then found = true; break end
+        end
+        setSL(found)
+    end
+
+    local function initShieldWatch(char)
+        if not char then return end
+        checkShield(char)
+        table.insert(sl.binds, char.ChildAdded:Connect(function(c)   if c:IsA("Tool") then checkShield(char) end end))
+        table.insert(sl.binds, char.ChildRemoved:Connect(function(c) if c:IsA("Tool") then checkShield(char) end end))
+    end
+
+    local function manageSLLoop(enable)
+        if enable then
+            if sl.loop then return end
+            sl.loop = true
+            RunService:BindToRenderStep("SL_E", 201, function()
+                if not sl.active then return end
+                local cam = Workspace.CurrentCamera
+                if not cam then return end
+                ugs.RotationType = Enum.RotationType.CameraRelative
+                if (cam.Focus.Position - cam.CFrame.Position).Magnitude >= 0.99 then
+                    cam.CFrame *= CFrame.new(2.5, 0, 0)
+                    cam.Focus = CFrame.fromMatrix(cam.Focus.Position, cam.CFrame.RightVector, cam.CFrame.UpVector) * CFrame.new(2.5, 0, 0)
+                end
+            end)
+        else
+            if not sl.loop then return end
+            sl.loop = false
+            RunService:UnbindFromRenderStep("SL_E")
+            setSL(false)
+        end
+    end
+
+    X1:Toggle({ Title = "Escudo -> shiftlock", Desc = cor({ "Ativa", "#00FF00" }, { " o" }, { " shiftlock", "#00FF00" }, { " ao equipar o escudo" }), Icon = "lucide:brick-wall-shield", Value = false, Flag = "EscudoShiftlock", Callback = function(v)
+        sl.on = v
+        for _, b in ipairs(sl.binds) do b:Disconnect() end; table.clear(sl.binds)
+        if not v then manageSLLoop(false); return end
+        manageSLLoop(true)
+        local char = LocalPlayer.Character
+        if char then initShieldWatch(char) end
+        table.insert(sl.binds, LocalPlayer.CharacterAdded:Connect(function(nc) setSL(false); initShieldWatch(nc) end))
+    end })
+
+    local stretch  = { Enabled = false, X = 1.0, Y = 1.0, Z = 1.0, IsBound = false }
+    local sliderX, sliderY, sliderZ
+    local StretchSection = criarSection(X1, "Tela esticada", "Modificar tela", "lucide:fullscreen", true)
+
+    StretchSection:Toggle({ Title = "Tela esticada", Value = false, Flag = "TelaEsticada", Callback = function(v)
+        stretch.Enabled = v
+        for _, s in ipairs({ sliderX, sliderY, sliderZ }) do if s then if v then s:Unlock() else s:Lock() end end end
+        if v and not stretch.IsBound then
+            stretch.IsBound = true
+            RunService:BindToRenderStep("ForceStretchCamera", Enum.RenderPriority.Camera.Value + 1, function()
+                local c = Workspace.CurrentCamera; if not c then return end
+                local r, u, l = c.CFrame.RightVector.Unit, c.CFrame.UpVector.Unit, -c.CFrame.LookVector.Unit
+                c.CFrame = CFrame.fromMatrix(c.CFrame.Position, r, u, l) * CFrame.new(0,0,0, stretch.X,0,0, 0,stretch.Y,0, 0,0,stretch.Z)
+            end)
+        elseif not v and stretch.IsBound then
+            RunService:UnbindFromRenderStep("ForceStretchCamera"); stretch.IsBound = false
+        end
+    end })
+    StretchSection:Divider()
+
+    local function makeAxisSlider(label, f1, f2, default, max, setter)
+        local para   = StretchSection:Paragraph({ Title = label, Desc = "1.00", Flag = f1 })
+        local slider = StretchSection:Slider({ Title = "Valor", Value = { Min = 0.10, Max = max, Default = default }, Step = 0.01, Locked = true, Flag = f2, Callback = function(val) setter(val); para:SetDesc(string.format("%.2f", val)) end })
+        return slider
+    end
+
+    sliderX = makeAxisSlider("Largura",      "Largura1",      "Largura2",      1.00, 1.20, function(v) stretch.X = v end)
+    StretchSection:Divider()
+    sliderY = makeAxisSlider("Altura",       "Altura1",       "Altura2",       1.00, 1.30, function(v) stretch.Y = v end)
+    StretchSection:Divider()
+    sliderZ = makeAxisSlider("Profundidade", "Profundidade1", "Profundidade2", 1.00, 1.20, function(v) stretch.Z = v end)
+end
+
+
+-- TAS
+local rep = cloneref(game:GetService("ReplicatedStorage"))
+local vim = cloneref(game:GetService("VirtualInputManager"))
+local ts  = cloneref(game:GetService("TweenService"))
+local unp = table.unpack or unpack
+
+local stEnums = {}
+for _, e in ipairs(Enum.HumanoidStateType:GetEnumItems()) do stEnums[e.Value] = e end
+
+local tas_fDir = "michigun.xyz/tas"
+if writefile and not isfolder(tas_fDir) then makefolder(tas_fDir) end
+
+env.TAS = env.TAS or {}
+local tas = env.TAS
+
+tas.Loaded        = tas.Loaded or {}
+tas.Selection     = tas.Selection or {}
+tas.Recording     = false
+tas.ReqPlay       = false
+tas.RecFrames     = {}
+tas.CurrentName   = ""
+tas.RecConn       = nil
+tas.IsReady       = true
+tas.LastJump      = false
+tas.ActRad        = 0.8
+tas.ActH          = 1.5
+tas.ActAng        = 10
+tas.ColorBot      = Color3.fromRGB(0, 255, 0)
+tas.ColorPath     = Color3.fromRGB(0, 255, 0)
+tas.VisualOpacity = 0
+
+local function extractName(path)
+    return path:gsub("\\", "/"):match("([^/]+)%.json$")
+end
+
+local function filePath(name)
+    return tas_fDir .. "/" .. name .. ".json"
+end
+
+local function sNotif(t, m)
+    if tas.NotifyFunc then tas.NotifyFunc(t .. ": " .. m, 3, "lucide:info") end
+end
+
+local function stpMov()
+    local c = LocalPlayer.Character
+    local h = c and c:FindFirstChild(_sHum)
+    if h then
+        h.AutoRotate = true
+        h:Move(Vector3.zero, false)
+        task.defer(function()
+            if h and h.Parent then
+                pcall(function() h:ChangeState(Enum.HumanoidStateType.Running) end)
+            end
+        end)
+    end
+    local pg = LocalPlayer:FindFirstChild("PlayerGui")
+    local tg = pg and pg:FindFirstChild("TouchGui")
+    if tg then
+        tg.Enabled = false
+        task.defer(function() if tg and tg.Parent then tg.Enabled = true end end)
+    end
+end
+
+local function chkPlay()
+    local ip = false
+    for _, d in pairs(tas.Loaded) do if d.Playing then ip = true; break end end
+    if tas.UpdateButtonState then tas.UpdateButtonState(ip) end
+end
+
+local function capFr()
+    local c = LocalPlayer.Character
+    local hrp = c and c:FindFirstChild(_sHRP)
+    local hum = c and c:FindFirstChild(_sHum)
+    if not hrp or not hum then return end
+    local animator = hum:FindFirstChildOfClass("Animator")
+    local anims = {}
+    if animator then
+        for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+            table.insert(anims, { id = track.Animation.AnimationId, pos = track.TimePosition, speed = track.Speed, weight = track.WeightCurrent })
+        end
+    end
+    return {
+        cf    = { hrp.CFrame:GetComponents() },
+        vel   = { hrp.AssemblyLinearVelocity.X, hrp.AssemblyLinearVelocity.Y, hrp.AssemblyLinearVelocity.Z },
+        jump  = hum.Jump,
+        state = hum:GetState().Value,
+        anims = anims,
+    }
+end
+
+local function appFr(f, hrp, hum)
+    if not f or not hrp or not hum then return end
+    if f.cf then
+        hrp.CFrame = CFrame.new(f.cf[1],f.cf[2],f.cf[3],f.cf[4],f.cf[5],f.cf[6],f.cf[7],f.cf[8],f.cf[9],f.cf[10],f.cf[11],f.cf[12])
+    end
+    if f.vel then
+        hrp.AssemblyLinearVelocity = Vector3.new(f.vel[1], f.vel[2], f.vel[3])
+    end
+    if f.jump ~= tas.LastJump then
+        tas.LastJump = f.jump
+        if f.jump then pcall(function() hum:ChangeState(Enum.HumanoidStateType.Jumping) end) end
+    end
+    local recSt = stEnums[f.state]
+    if recSt and recSt ~= Enum.HumanoidStateType.Jumping then
+        if hum:GetState() ~= recSt then pcall(function() hum:ChangeState(recSt) end) end
+    end
+    local vel  = f.vel and Vector3.new(f.vel[1], f.vel[2], f.vel[3]) or Vector3.zero
+    local hvel = Vector3.new(vel.X, 0, vel.Z)
+    hum.AutoRotate = false
+    if hvel.Magnitude > 0.1 then hum:Move(hvel.Unit, false) else hum:Move(Vector3.zero, false) end
+end
+
+local function mkVp(worldPos, sz)
+    local vpf, vpc = Instance.new("ViewportFrame"), Instance.new("Camera")
+    vpf.Parent, vpf.BackgroundTransparency, vpf.Size, vpf.ZIndex = tasUi, 1, UDim2.new(0, 150, 0, 150), 10
+    vpc.Parent = vpf
+    local cl = Instance.new("Part")
+    cl.Size, cl.Anchored, cl.CanCollide = sz, true, false
+    cl.Transparency, cl.Material = 0, Enum.Material.Neon
+    cl.CFrame, cl.Parent = CFrame.new(), vpf
+    local mx = math.max(sz.X, sz.Y, sz.Z)
+    vpc.CFrame = CFrame.new(0, mx, mx * 2.5) * CFrame.Angles(math.rad(-20), math.rad(180), 0)
+    local active = true
+    local cnn = RunService.Stepped:Connect(function()
+        if not active then return end
+        local ps, vs = Workspace.CurrentCamera:WorldToScreenPoint(worldPos)
+        vpf.Position = UDim2.fromOffset(ps.X - 75, ps.Y - 75)
+        vpf.Visible  = vs
+        cl.CFrame    = CFrame.Angles(0, tick() % (math.pi * 2), 0)
+    end)
+    return { Frame = vpf, Connection = cnn, Deactivate = function() active = false end }
+end
+
+local function clrTas(n, playingOnly)
+    local d = tas.Loaded[n]
+    if not d then return end
+    if d.PlayConn then d.PlayConn:Disconnect(); d.PlayConn = nil end
+    if d.Playing then tas.LastJump = false; stpMov() end
+    d.Playing = false
+    if not playingOnly then
+        if d.MarkerConn then d.MarkerConn:Disconnect(); d.MarkerConn = nil end
+        if d.Adornments then for _, a in ipairs(d.Adornments) do if a and a.Parent then a:Destroy() end end end
+        if d.Viewports then
+            for _, v in ipairs(d.Viewports) do
+                if v.Deactivate then v.Deactivate() end
+                if v.Connection then v.Connection:Disconnect() end
+                if v.Frame      then v.Frame:Destroy() end
+            end
+        end
+        if d.PathParts then for _, p in ipairs(d.PathParts) do if p then p:Destroy() end end end
+        d.Viewports, d.PathParts, d.Adornments, d.Waiting = {}, {}, {}, false
+    end
+    chkPlay()
+end
+
+local function bldPth(fs)
+    local pts = {}
+    if not fs or #fs < 2 then return pts end
+    local colorPath  = tas.ColorPath
+    local visOpacity = tas.VisualOpacity
+    for i = 1, #fs - 1 do
+        if fs[i].cf and fs[i+1].cf then
+            local sp  = Vector3.new(fs[i].cf[1],   fs[i].cf[2],   fs[i].cf[3])
+            local ep  = Vector3.new(fs[i+1].cf[1], fs[i+1].cf[2], fs[i+1].cf[3])
+            local dst = (ep - sp).Magnitude
+            if dst > 0.05 then
+                local pt        = Instance.new("CylinderHandleAdornment")
+                pt.Radius       = 0.05
+                pt.Height       = dst
+                pt.CFrame       = CFrame.new(sp:Lerp(ep, 0.5), ep)
+                pt.Color3       = colorPath
+                pt.Transparency = visOpacity
+                pt.Adornee      = Workspace.Terrain
+                pt.ZIndex       = 0
+                pt.Parent       = Workspace.Terrain
+                table.insert(pts, pt)
+            end
+        end
+    end
+    return pts
+end
+
+local function actTas(n)
+    local d = tas.Loaded[n]
+    if not d or not d.Frames or #d.Frames == 0 or d.Waiting or d.Playing then return end
+    clrTas(n, true)
+    d.Waiting = true
+    local c  = d.Frames[1].cf
+    local cf = CFrame.new(c[1],c[2],c[3],c[4],c[5],c[6],c[7],c[8],c[9],c[10],c[11],c[12])
+    d.Adornments = {}
+    local bc, tr = tas.ColorBot, tas.VisualOpacity
+    local function mkM(nm, sz, c_frame, isC)
+        local p = isC and Instance.new("CylinderHandleAdornment") or Instance.new("BoxHandleAdornment")
+        if isC then p.Radius, p.Height = sz.X, sz.Y else p.Size = sz end
+        p.Name, p.CFrame, p.Color3, p.Transparency = nm, c_frame, bc, tr
+        p.Adornee, p.ZIndex, p.Parent = Workspace.Terrain, 1, Workspace.Terrain
+        table.insert(d.Adornments, p)
+        return p
+    end
+    mkM("Tor", Vector3.new(2, 2, 1), cf,                                                                 false)
+    mkM("LLg", Vector3.new(1, 2, 1), cf * CFrame.new(-0.5, -2,  0),                                     false)
+    mkM("RLg", Vector3.new(1, 2, 1), cf * CFrame.new( 0.5, -2,  0),                                     false)
+    mkM("LAm", Vector3.new(1, 2, 1), cf * CFrame.new(-1.5,  0,  0),                                     false)
+    mkM("RAm", Vector3.new(1, 2, 1), cf * CFrame.new( 1.5, 0.5, -1) * CFrame.Angles(math.rad(90),0,0), false)
+    d.Viewports = {}
+    table.insert(d.Viewports, mkVp(cf.Position, Vector3.new(2, 2, 1)))
+    d.PathParts = bldPth(d.Frames)
+
+    local actRad = tas.ActRad
+    local actH   = tas.ActH
+    local actAng = tas.ActAng
+
+    d.MarkerConn = RunService.Heartbeat:Connect(function()
+        local char    = LocalPlayer.Character
+        local hrp     = char and char:FindFirstChild(_sHRP)
+        if not hrp then return end
+        local dlt      = hrp.Position - cf.Position
+        local horizDst = Vector3.new(dlt.X, 0, dlt.Z).Magnitude
+        local vertDst  = math.abs(dlt.Y)
+        local dot      = hrp.CFrame.LookVector:Dot(cf.LookVector)
+        if horizDst <= actRad and vertDst <= actH and dot >= math.cos(math.rad(actAng)) then
+            if d.MarkerConn then d.MarkerConn:Disconnect(); d.MarkerConn = nil end
+            if d.Adornments then for _, a in ipairs(d.Adornments) do if a and a.Parent then a:Destroy() end end; d.Adornments = {} end
+            for _, v in ipairs(d.Viewports) do
+                if v.Deactivate then v.Deactivate() end
+                if v.Connection then v.Connection:Disconnect() end
+                if v.Frame      then v.Frame:Destroy() end
+            end
+            for _, p in ipairs(d.PathParts) do if p then p:Destroy() end end
+            d.Viewports, d.PathParts = {}, {}
+            d.Waiting, d.Playing = false, true
+            tas.LastJump = false
+            chkPlay()
+            local stT       = tick()
+            local lastC     = LocalPlayer.Character
+            local cachedHrp = lastC and lastC:FindFirstChild(_sHRP)
+            local cachedHum = lastC and lastC:FindFirstChild(_sHum)
+            d.PlayConn = RunService.Heartbeat:Connect(function()
+                if not d.Playing then return end
+                local currC = LocalPlayer.Character
+                if currC ~= lastC then
+                    lastC     = currC
+                    cachedHrp = currC and currC:FindFirstChild(_sHRP)
+                    cachedHum = currC and currC:FindFirstChild(_sHum)
+                end
+                local cIdx = math.floor((tick() - stT) * 60) + 1
+                if cIdx > #d.Frames then
+                    tas.LastJump = false
+                    stpMov()
+                    if d.PlayConn then d.PlayConn:Disconnect(); d.PlayConn = nil end
+                    d.Playing = false
+                    chkPlay()
+                    return
+                end
+                appFr(d.Frames[cIdx], cachedHrp, cachedHum)
+            end)
+        end
+    end)
+end
+
+tas.UpdateVisuals = function(bC, pC, op)
+    if bC ~= nil then tas.ColorBot      = bC end
+    if pC ~= nil then tas.ColorPath     = pC end
+    if op ~= nil then tas.VisualOpacity = op end
+    local colorBot   = tas.ColorBot
+    local colorPath  = tas.ColorPath
+    local visOpacity = tas.VisualOpacity
+    for _, d in pairs(tas.Loaded) do
+        if d.Adornments then for _, p in ipairs(d.Adornments) do if p and p.Parent then p.Color3 = colorBot;  p.Transparency = visOpacity end end end
+        if d.PathParts  then for _, p in ipairs(d.PathParts)  do if p              then p.Color3 = colorPath; p.Transparency = visOpacity end end end
+    end
+end
+
+tas.StopRecording = function()
+    if not tas.Recording then return end
+    tas.Recording = false
+    if tas.RecConn then tas.RecConn:Disconnect(); tas.RecConn = nil end
+    sNotif("TAS", string.format("Gravação parada (%.2fs)", #tas.RecFrames * (1/60)))
+end
+
+tas.StartRecording = function()
+    if tas.Recording then return end
+    tas.RecFrames, tas.Recording = {}, true
+    local acc, idl = 0, 0
+    tas.RecConn = RunService.Heartbeat:Connect(function(dt)
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild(_sHRP)
+        if hrp then idl = hrp.AssemblyLinearVelocity.Magnitude < 0.2 and idl + dt or 0 end
+        if idl >= 1 then tas.StopRecording(); return end
+        acc = acc + dt
+        while acc >= (1/60) do
+            acc = acc - (1/60)
+            local f = capFr()
+            if f then table.insert(tas.RecFrames, f) end
+        end
+    end)
+    sNotif("TAS", "Gravação iniciada")
+end
+
+tas.SaveCurrent = function()
+    if not tas.CurrentName or tas.CurrentName == "" then return end
+    local frames = tas.RecFrames
+    if not frames or #frames == 0 then return end
+    local rj = HttpService:JSONEncode({ Version = 1, Frames = frames })
+    writefile(filePath(tas.CurrentName), rj)
+    tas.RecFrames = {}
+    return tas.GetSaved()
+end
+
+tas.GetSaved = function()
+    local out = {}
+    if listfiles and tas_fDir and isfolder(tas_fDir) then
+        for _, f in ipairs(listfiles(tas_fDir)) do
+            local name = extractName(f)
+            if name then out[#out + 1] = name end
+        end
+    end
+    return out
+end
+
+tas.UpdateSelection = function(sL)
+    tas.Selection = type(sL) ~= "table" and { sL } or sL
+    for n in pairs(tas.Loaded) do
+        local ok = false
+        for _, v in ipairs(tas.Selection) do if v == n then ok = true; break end end
+        if not ok then clrTas(n); tas.Loaded[n] = nil end
+    end
+    task.spawn(function()
+        for i, n in ipairs(tas.Selection) do
+            if n ~= "" and not tas.Loaded[n] then
+                local p = filePath(n)
+                if isfile(p) then
+                    local raw = readfile(p)
+                    local d; pcall(function() d = HttpService:JSONDecode(raw) end)
+                    if d and d.Frames then
+                        tas.Loaded[n] = { Frames = d.Frames, Viewports = {}, PathParts = {}, Adornments = {}, Waiting = false, Playing = false }
+                    end
+                end
+            end
+            if i % 3 == 0 then task.wait() end
+        end
+        if tas.ReqPlay then for n in pairs(tas.Loaded) do actTas(n) end end
+    end)
+end
+
+tas.DeleteSelected = function()
+    if #tas.Selection == 0 then return end
+    for _, n in ipairs(tas.Selection) do
+        local p = filePath(n)
+        if isfile and isfile(p) and delfile then delfile(p) end
+        clrTas(n); tas.Loaded[n] = nil
+    end
+    tas.Selection = {}
+    return tas.GetSaved()
+end
+
+tas.ToggleAll = function(e)
+    tas.ReqPlay = e
+    if e then
+        for n in pairs(tas.Loaded) do actTas(n) end
+    else
+        for n, d in pairs(tas.Loaded) do d.Waiting = false; clrTas(n) end
+        tas.LastJump = false; stpMov(); chkPlay()
+    end
+end
+
+tas.ManualStopPlayback = function()
+    for n, d in pairs(tas.Loaded) do
+        if d.Playing or d.Waiting then d.Waiting = false; clrTas(n, true) end
+    end
+    tas.LastJump = false; stpMov(); chkPlay()
+end
+
+local function chCmd(m)
+    m = m:lower()
+    if m == "/e gravar" then tas.StartRecording()
+    elseif m == "/e parar" then tas.StopRecording()
+    end
+end
+if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+    TextChatService.OnIncomingMessage = function(m)
+        if m.TextSource and m.TextSource.UserId == LocalPlayer.UserId then chCmd(m.Text) end
+    end
+else
+    LocalPlayer.Chatted:Connect(chCmd)
+end
+
+
+-- JJ's
+env.JJs = nil
+_G.JJs  = nil
+env.JJs = env.JJs or {}
+_G.JJs  = env.JJs
+local jjs = env.JJs
+
+jjs.Config = jjs.Config or {
+    Running = false, StartValue = 1, EndValue = 100, DelayValue = 3,
+    RandomDelay = false, RandomMin = 2.5, RandomMax = 4, JumpEnabled = false,
+    SpacingEnabled = false, ReverseEnabled = false, FinishInTime = false,
+    FinishTotalTime = 60, Suffix = "!", CustomSuffix = "", Mode = "Padrão"
+}
+jjs.State = { Running = false, Current = 0, Total = 0, FinishTimestamp = 0 }
+
+local jj_u  = {[0]="zero",[1]="um",[2]="dois",[3]="três",[4]="quatro",[5]="cinco",[6]="seis",[7]="sete",[8]="oito",[9]="nove",[10]="dez",[11]="onze",[12]="doze",[13]="treze",[14]="quatorze",[15]="quinze",[16]="dezesseis",[17]="dezessete",[18]="dezoito",[19]="dezenove"}
+local jj_t  = {[2]="vinte",[3]="trinta",[4]="quarenta",[5]="cinquenta",[6]="sessenta",[7]="setenta",[8]="oitenta",[9]="noventa"}
+local jj_h  = {[1]="cento",[2]="duzentos",[3]="trezentos",[4]="quatrocentos",[5]="quinhentos",[6]="seiscentos",[7]="setecentos",[8]="oitocentos",[9]="novecentos"}
+local jj_ac = {["á"]="Á",["à"]="À",["ã"]="Ã",["â"]="Â",["é"]="É",["ê"]="Ê",["í"]="Í",["ó"]="Ó",["ô"]="Ô",["õ"]="Õ",["ú"]="Ú",["ç"]="Ç"}
+
+local RemoteChat = {}
+local jj_Connections = {}
+local jj_CurrentChannel
+local jj_InputBar = TextChatService:FindFirstChildOfClass("ChatInputBarConfiguration")
+local jj_ChatMethods = {
+    [Enum.ChatVersion.LegacyChatService] = function(Message)
+        if jj_CurrentChannel then jj_CurrentChannel:SendAsync(Message); return end
+        local channels = TextChatService:FindFirstChild("TextChannels")
+        local general  = channels and channels:FindFirstChild("RBXGeneral")
+        if general then general:SendAsync(Message); return end
+        local ChatUI = LocalPlayer:WaitForChild("PlayerGui", 95):FindFirstChild("Chat")
+        if ChatUI then
+            local ChatBar = ChatUI:FindFirstChild("ChatBar", true)
+            if ChatBar then ChatBar:CaptureFocus(); ChatBar.Text = Message; ChatBar:ReleaseFocus(true) end
+        end
+    end,
+    [Enum.ChatVersion.TextChatService] = function(Message)
+        if jj_CurrentChannel then jj_CurrentChannel:SendAsync(Message) end
+    end,
+}
+function RemoteChat:Send(Message) pcall(jj_ChatMethods[TextChatService.ChatVersion], Message) end
+if jj_InputBar then
+    if typeof(jj_InputBar.TargetTextChannel) == "Instance" and jj_InputBar.TargetTextChannel:IsA("TextChannel") then
+        jj_CurrentChannel = jj_InputBar.TargetTextChannel
+    end
+    table.insert(jj_Connections, jj_InputBar.Changed:Connect(function(Prop)
+        if Prop == "TargetTextChannel" and typeof(jj_InputBar.TargetTextChannel) == "Instance" and jj_InputBar.TargetTextChannel:IsA("TextChannel") then
+            jj_CurrentChannel = jj_InputBar.TargetTextChannel
+        end
+    end))
+end
+
+local function sc(m) RemoteChat:Send(tostring(m)) end
+
+local function jj_up(s)
+    local r = ""
+    for _, c in utf8.codes(s) do r = r .. (jj_ac[utf8.char(c)] or string.upper(utf8.char(c))) end
+    return r
+end
+
+local function ph(n)
+    if n == 0 then return "" end
+    if n == 100 then return "cem" end
+    local hv, rv = math.floor(n / 100), n % 100
+    local p = {}
+    if hv > 0 then table.insert(p, jj_h[hv]) end
+    if rv > 0 then
+        if #p > 0 then table.insert(p, "e") end
+        if rv < 20 then
+            table.insert(p, jj_u[rv])
+        else
+            table.insert(p, jj_t[math.floor(rv/10)])
+            local uv = rv % 10
+            if uv > 0 then table.insert(p, "e"); table.insert(p, jj_u[uv]) end
+        end
+    end
+    return table.concat(p, " ")
+end
+
+local function nt(n)
+    n = tonumber(n)
+    if not n or n == 0 then return n == 0 and "ZERO" or "N/A" end
+    local g, x = {}, {}
+    local temp = n
+    while temp > 0 do table.insert(g, temp % 1000); temp = math.floor(temp / 1000) end
+    for i = #g, 1, -1 do
+        local v = g[i]
+        if v ~= 0 then
+            local txt = ph(v)
+            if i == 2 then txt = (v == 1 and "mil" or txt .. " mil")
+            elseif i == 3 then txt = (v == 1 and "um milhão" or txt .. " milhões")
+            elseif i == 4 then txt = (v == 1 and "um bilhão" or txt .. " bilhões")
+            elseif i == 5 then txt = (v == 1 and "um trilhão" or txt .. " trilhões") end
+            table.insert(x, txt)
+        end
+    end
+    return jj_up(table.concat(x, " e "))
+end
+
+local function gc()
+    local c = LocalPlayer.Character
+    return (c and c:FindFirstChild("Humanoid") and c:FindFirstChild("HumanoidRootPart")) and c or nil
+end
+
+local function aj()
+    local c = gc(); if not c then return end
+    local hum = c.Humanoid
+    if hum:GetState() ~= Enum.HumanoidStateType.Jumping and hum:GetState() ~= Enum.HumanoidStateType.Freefall then
+        hum:ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end
+
+local function as()
+    local c = gc(); if not c then return end
+    local h, r = c.Humanoid, c.HumanoidRootPart
+    h.AutoRotate = false
+    local nv = Instance.new("NumberValue")
+    local tw = ts:Create(nv, TweenInfo.new(0.3, Enum.EasingStyle.Sine), {Value = 360 * (math.random(1,2)==1 and 1 or -1)})
+    local b  = r.CFrame.Rotation
+    local cn
+    cn = RunService.Heartbeat:Connect(function()
+        if r and r.Parent then r.CFrame = CFrame.new(r.Position) * b * CFrame.Angles(0, math.rad(nv.Value), 0)
+        else cn:Disconnect() end
+    end)
+    tw.Completed:Connect(function() cn:Disconnect(); nv:Destroy(); if h then h.AutoRotate = true end end)
+    tw:Play()
+end
+
+jjs.Start = function()
+    local c = jjs.Config
+    local token = {}
+    jjs._token = token
+    c.Running = true
+    task.spawn(function()
+        local s = tonumber(c.StartValue) or 1
+        local e = tonumber(c.EndValue)   or 100
+        local dir = (c.ReverseEnabled and s < e) and -1 or 1
+        if c.ReverseEnabled then s, e = e, s end
+        local currentMode = c.Mode
+        if currentMode == "Padrão" and game.PlaceId == 14511049 then
+            currentMode = "JJ (Delta)"
+        end
+        local tot = math.abs(e - s) + 1
+        local cnt = 0
+        local ft  = c.FinishInTime and ((tonumber(c.FinishTotalTime) or 60) / math.max(1, tot)) or nil
+        jjs.State.Running, jjs.State.Total, jjs.State.Current = true, tot, 0
+        local dt = nil
+        if currentMode == "JJ (Delta)" then
+            local ch = gc()
+            if ch then
+                local a = Instance.new("Animation")
+                a.AnimationId = "rbxassetid://105471471504794"
+                dt = ch.Humanoid:LoadAnimation(a)
+                dt.Priority = Enum.AnimationPriority.Action
+            end
+            local rm = rep:WaitForChild("Remotes"):WaitForChild("Polichinelos")
+            if rm then pcall(function() rm:FireServer("Prepare"); rm:FireServer("Start") end) end
+        end
+        for i = s, e, dir do
+            if not c.Running or jjs._token ~= token then break end
+            cnt = cnt + 1
+            jjs.State.Current = i
+            local delay = ft or (c.RandomDelay and (math.random(c.RandomMin * 10, c.RandomMax * 10) / 10) or (tonumber(c.DelayValue) or 3))
+            jjs.State.FinishTimestamp = tick() + ((tot - cnt) * delay)
+            local txt = nt(i)
+            local sf  = (c.CustomSuffix ~= "") and c.CustomSuffix or c.Suffix
+            local fn  = c.SpacingEnabled and (txt .. " " .. sf) or (txt .. sf)
+            if currentMode == "JJ (Delta)" then
+                local rm = rep:WaitForChild("Remotes"):WaitForChild("Polichinelos")
+                if rm then pcall(function() rm:FireServer("Add", 1) end) end
+                if dt then dt:Play() end
+            elseif currentMode == "Canguru" then
+                sc(fn); task.wait(0.2)
+                if not c.Running or jjs._token ~= token then break end
+                pcall(function()
+                    vim:SendKeyEvent(true,  Enum.KeyCode.C, false, game); task.wait(0.05)
+                    vim:SendKeyEvent(false, Enum.KeyCode.C, false, game); task.wait(0.2)
+                    vim:SendKeyEvent(true,  Enum.KeyCode.C, false, game); task.wait(0.05)
+                    vim:SendKeyEvent(false, Enum.KeyCode.C, false, game)
+                end)
+                if not c.Running or jjs._token ~= token then break end
+                task.wait(0.1); aj(); task.wait(0.2); as()
+            else
+                sc(fn)
+                if c.JumpEnabled then aj() end
+            end
+            if i ~= e then task.wait(delay) end
+            if not c.Running or jjs._token ~= token then break end
+        end
+        c.Running, jjs.State.Running = false, false
+        if dt then dt:Stop() end
+    end)
+end
+
+jjs.Stop = function()
+    jjs._token         = nil
+    jjs.Config.Running = false
+    jjs.State.Running  = false
+end
+
+
+-- F3X
+env.F3X = env.F3X or {}
+local f3x = env.F3X
+
+f3x.Enabled       = false
+f3x.SelectedParts = {}
+f3x.Highlights    = {}
+f3x.UndoStack     = {}
+f3x.RedoStack     = {}
+f3x.ModifiedParts = {}
+f3x.UpdateUI      = nil
+f3x.NotifyFunc    = nil
+f3x.IsReady       = true
+
+local f3x_fDir = "michigun.xyz/f3x"
+if writefile and not isfolder(f3x_fDir) then makefolder(f3x_fDir) end
+
+local hlParent
+local function getHlParent()
+    if hlParent then return hlParent end
+    local s, t = pcall(function() return gethui() end)
+    hlParent = (s and t) and t or CoreGui
+    return hlParent
+end
+
+local function clrHl()
+    for _, h in ipairs(f3x.Highlights) do if h then h:Destroy() end end
+    table.clear(f3x.Highlights)
+end
+
+local function mkHl(p)
+    task.defer(function()
+        if not p or not p.Parent then return end
+        local h = Instance.new("Highlight")
+        h.Name, h.FillTransparency, h.OutlineTransparency = HttpService:GenerateGUID(false), 1, 0
+        h.OutlineColor, h.Adornee, h.Parent = Color3.fromRGB(0, 255, 255), p, getHlParent()
+        table.insert(f3x.Highlights, h)
+    end)
+end
+
+f3x.ClearSelection = function()
+    table.clear(f3x.SelectedParts)
+    clrHl()
+    if f3x.UpdateUI then task.defer(f3x.UpdateUI) end
+end
+
+local function pushU()
+    local s = {}
+    for _, p in ipairs(f3x.SelectedParts) do s[p] = p.Size end
+    table.insert(f3x.UndoStack, s)
+    table.clear(f3x.RedoStack)
+end
+
+f3x.ApplySize = function(v)
+    if #f3x.SelectedParts == 0 then return end
+    pushU()
+    for _, p in ipairs(f3x.SelectedParts) do p.Size = v; f3x.ModifiedParts[p] = v end
+    if f3x.UpdateUI then task.defer(f3x.UpdateUI) end
+end
+
+f3x.Undo = function()
+    local s = table.remove(f3x.UndoStack); if not s then return end
+    local r = {}
+    for p, sz in pairs(s) do r[p] = p.Size; p.Size = sz; f3x.ModifiedParts[p] = sz end
+    table.insert(f3x.RedoStack, r)
+    if f3x.UpdateUI then task.defer(f3x.UpdateUI) end
+end
+
+f3x.Redo = function()
+    local s = table.remove(f3x.RedoStack); if not s then return end
+    local u = {}
+    for p, sz in pairs(s) do u[p] = p.Size; p.Size = sz; f3x.ModifiedParts[p] = sz end
+    table.insert(f3x.UndoStack, u)
+    if f3x.UpdateUI then task.defer(f3x.UpdateUI) end
+end
+
+f3x.ListConfigs = function()
+    local o = {}
+    if listfiles then for _, f in ipairs(listfiles(f3x_fDir)) do if f:sub(-5) == ".json" then o[#o + 1] = f:match("([^/]+)%.json$") end end end
+    return o
+end
+
+f3x.SaveConfig = function(n)
+    if not n or n == "" then if f3x.NotifyFunc then f3x.NotifyFunc("F3X: Nome inválido", 3, "lucide:alert-circle") end; return nil end
+    local d = { PlaceId = game.PlaceId, Parts = {} }
+    for p, sz in pairs(f3x.ModifiedParts) do
+        if p and p.Parent then
+            d.Parts[#d.Parts + 1] = { Path = p:GetFullName(), CFrame = { p.CFrame:GetComponents() }, Size = { sz.X, sz.Y, sz.Z } }
+        end
+    end
+    writefile(f3x_fDir .. "/" .. n .. ".json", HttpService:JSONEncode(d))
+    return f3x.ListConfigs()
+end
+
+local function getObj(path)
+    local cur = game
+    for s in path:gmatch("[^%.]+") do
+        if s ~= "Game" then
+            cur = cur:FindFirstChild(s)
+            if not cur then return nil end
+        end
+    end
+    return cur
+end
+
+f3x.ApplyConfig = function(n)
+    if not n then return end
+    local p = f3x_fDir .. "/" .. n .. ".json"
+    if not isfile(p) then return end
+    local d; pcall(function() d = HttpService:JSONDecode(readfile(p)) end)
+    if not d then return end
+    if d.PlaceId ~= game.PlaceId then if f3x.NotifyFunc then f3x.NotifyFunc("F3X: Config de outro mapa", 3, "lucide:alert-circle") end; return end
+    for _, v in ipairs(d.Parts or {}) do
+        local targetCf  = CFrame.new(unp(v.CFrame))
+        local foundPart = nil
+        local obj       = getObj(v.Path)
+        if obj and obj:IsA("BasePart") and (obj.Position - targetCf.Position).Magnitude < 2 then
+            foundPart = obj
+        else
+            for _, o in ipairs(Workspace:GetDescendants()) do
+                if o:IsA("BasePart") and o:GetFullName() == v.Path and (o.Position - targetCf.Position).Magnitude < 2 then
+                    foundPart = o; break
+                end
+            end
+        end
+        if foundPart then foundPart.Size = Vector3.new(unp(v.Size)); f3x.ModifiedParts[foundPart] = foundPart.Size end
+    end
+end
+
+f3x.DeleteConfig = function(n)
+    if not n then if f3x.NotifyFunc then f3x.NotifyFunc("F3X: Nenhuma seleção", 3, "lucide:alert-circle") end; return nil end
+    delfile(f3x_fDir .. "/" .. n .. ".json")
+    return f3x.ListConfigs()
+end
+
+f3x.Toggle = function(s)
+    f3x.Enabled = s
+    if not s then f3x.ClearSelection() end
+end
+
+local f3xMouseConn
+if LocalPlayer then
+    local ms = LocalPlayer:GetMouse()
+    f3xMouseConn = ms.Button1Down:Connect(function()
+        if not f3x.Enabled then return end
+        local t = ms.Target
+        if not t or not t:IsA("BasePart") then return end
+        for i, p in ipairs(f3x.SelectedParts) do
+            if p == t then
+                table.remove(f3x.SelectedParts, i); clrHl()
+                for _, sp in ipairs(f3x.SelectedParts) do mkHl(sp) end
+                if f3x.UpdateUI then task.defer(f3x.UpdateUI) end
+                return
+            end
+        end
+        if #f3x.SelectedParts > 0 then
+            local ref = f3x.SelectedParts[1].Size
+            local ts2 = t.Size
+            if math.abs(ref.X - ts2.X) > 1 or math.abs(ref.Y - ts2.Y) > 1 or math.abs(ref.Z - ts2.Z) > 1 then return end
+        end
+        table.insert(f3x.SelectedParts, t); mkHl(t)
+        if f3x.UpdateUI then task.defer(f3x.UpdateUI) end
+    end)
+end
+
+
+-- ChatGPT
+local HttpRequest = request or http and http.request or http_request or syn and syn.request
+
+_G.ChatGPT = _G.ChatGPT or {}
+_G.ChatGPT.History     = {}
+_G.ChatGPT.LastMessage = ""
+
+local PromptPath = "michigun.xyz/IA.txt"
+if not isfile(PromptPath) then writefile(PromptPath, "Você é uma IA útil dentro do Roblox.") end
+
+local Personality = readfile(PromptPath)
+_G.ChatGPT.History = {{role = "system", content = Personality}}
+
+local function extractLuaCode(responseText)
+    if type(responseText) ~= "string" then return nil, tostring(responseText or "") end
+    local luaCode = responseText:match("```lua\n?(.-)```") or responseText:match("```\n?(.-)```")
+    if luaCode then
+        local cleanText = responseText:gsub("```lua\n?.-```", ""):gsub("```\n?.-```", "")
+        return luaCode, cleanText
+    end
+    return nil, responseText
+end
+
+_G.ChatGPT.Ask = function(promptText)
+    table.insert(_G.ChatGPT.History, {role = "user", content = promptText})
+    local success, response = pcall(function()
+        return HttpRequest({
+            Url     = "https://text.pollinations.ai/openai",
+            Method  = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body    = HttpService:JSONEncode({ messages = _G.ChatGPT.History, model = "openai" })
+        })
+    end)
+    if not success or not response then return "Erro de conexão com a API.", nil end
+    local aiText = ""
+    local decodeSuccess, decoded = pcall(function() return HttpService:JSONDecode(response.Body) end)
+    if decodeSuccess and decoded and decoded.choices and decoded.choices[1] then
+        aiText = decoded.choices[1].message and decoded.choices[1].message.content or ""
+    elseif type(response.Body) == "string" then
+        aiText = response.Body
+    end
+    if aiText == "" then return "Resposta vazia da API.", nil end
+    local luaCode, cleanMessage = extractLuaCode(aiText)
+    _G.ChatGPT.LastMessage = cleanMessage
+    table.insert(_G.ChatGPT.History, {role = "assistant", content = aiText})
+    return cleanMessage, luaCode
+end
+
+_G.ChatGPT.SendToChat = function(msg)
+    if not msg or msg == "" then return end
+    RemoteChat:Send(tostring(msg))
+end
+
+-- UI
+do
+    local TASDropdown, StopButton, DeleteButton
+    local isConfirmingTASDelete = false
+
+    local function RefreshTASList(list)
+        if not TASDropdown then return end
+        table.sort(list, function(a, b) return a:lower() < b:lower() end)
+        TASDropdown:Refresh(list)
+    end
+
+    local PlaybackSection = criarSection(TAS, "Reprodução", "Controles de execução", "lucide:play", true)
+
+    PlaybackSection:Toggle({ Title = "Iniciar", Icon = "lucide:circle-play", Desc = cor({ "Inicia a " }, { "execução", "#00FF00" }, { " do percurso" }), Value = false, Flag = "TAS", Callback = function(v)
+        if getgenv().TAS and getgenv().TAS.ToggleAll then getgenv().TAS.ToggleAll(v) end
+    end })
+
+    StopButton = PlaybackSection:Button({ Title = "Parar", Desc = cor({ "Interrompe o ", "#FF0000" }, { " TAS" }), Icon = "lucide:circle-stop", Locked = true, Callback = function()
+        if getgenv().TAS and getgenv().TAS.ManualStopPlayback then getgenv().TAS.ManualStopPlayback() end
+    end })
+    PlaybackSection:Space()
+
+    TASDropdown = PlaybackSection:Dropdown({ Title = "Selecionar", Icon = "lucide:list", Desc = cor({ "Escolha os " }, { "TAS para iniciar", "#FFFFFF" }), Values = {}, Value = {}, Multi = true, AllowNone = true, Flag = "SelecaoTAS", Callback = function(v)
+        if getgenv().TAS and getgenv().TAS.UpdateSelection then getgenv().TAS.UpdateSelection(v) end
+    end })
+
+    DeleteButton = PlaybackSection:Button({ Title = "Deletar", Desc = cor({ "Apaga", "#FF0000" }, { " os TAS selecionados" }), Icon = "lucide:trash-2", Callback = function()
+        if isConfirmingTASDelete then
+            if getgenv().TAS and getgenv().TAS.DeleteSelected then RefreshTASList(getgenv().TAS.DeleteSelected()); TASDropdown:Select({}) end
+            isConfirmingTASDelete = false; DeleteButton:SetTitle("Deletar"); DeleteButton:SetDesc(cor({ "Apaga", "#FF0000" }, { " os TAS selecionados" }))
+        else
+            isConfirmingTASDelete = true; DeleteButton:SetTitle("Certeza?"); DeleteButton:SetDesc(cor({ "Clique novamente para " }, { "apagar", "#FF0000" }))
+            task.delay(3, function()
+                if isConfirmingTASDelete then
+                    isConfirmingTASDelete = false; DeleteButton:SetTitle("Deletar"); DeleteButton:SetDesc(cor({ "Apaga", "#FF0000" }, { " os TAS selecionados" }))
+                end
+            end)
+        end
+    end })
+
+    PlaybackSection:Colorpicker({ Title = "Humanoid",   Desc = "Muda a cor do personagem", Default = Color3.fromRGB(0,255,0), Flag = "TASHumanoidCor",   Callback = function(c) if getgenv().TAS and getgenv().TAS.UpdateVisuals then getgenv().TAS.UpdateVisuals(c,nil,nil) end end })
+    PlaybackSection:Colorpicker({ Title = "Trajetória", Desc = "Muda a cor da trajetória", Default = Color3.fromRGB(0,255,0), Flag = "TASTrajetoriaCor", Callback = function(c) if getgenv().TAS and getgenv().TAS.UpdateVisuals then getgenv().TAS.UpdateVisuals(nil,c,nil) end end })
+    PlaybackSection:Slider({     Title = "Opacidade",   Desc = cor({ "Visibilidade do  " }, { "TAS", "#FF0000" }), Value = { Min = 0, Max = 1, Default = 0 }, Step = 0.05, Flag = "OpacidadeTAS", Callback = function(v) if getgenv().TAS and getgenv().TAS.UpdateVisuals then getgenv().TAS.UpdateVisuals(nil,nil,v) end end })
+
+    local T = getgenv().TAS
+    T.NotifyFunc = notificar
+    local oldStop = T.StopRecording
+    T.StopRecording = function() if oldStop then oldStop() end; if main then main:Open() end end
+    T.UpdateButtonState = function(playing) if StopButton then if playing then StopButton:Unlock() else StopButton:Lock() end end end
+    if T.GetSaved then RefreshTASList(T.GetSaved()) end
+
+    local RecordSection = criarSection(TAS, "Gravação", "Criar novo percurso", "lucide:video", false)
+    RecordSection:Paragraph({ Title = "Observação", Color = Color3.fromHex("#800080"), Image = "lucide:message-square", ImageSize = 30, Desc = cor({ "Também é possível usar " }, { "/e gravar", "#00FF00" }, { " e " }, { "/e parar", "#FF0000" }, { " no chat" }) })
+    RecordSection:Input({ Title = "Nome", Desc = cor({ "Defina o " }, { "nome", "#00AAFF" }, { " do arquivo" }), Value = "", InputIcon = "lucide:pencil", Flag = "NomeTAS", Callback = function(v) if getgenv().TAS then getgenv().TAS.CurrentName = v end end })
+
+    local g = RecordSection:Group()
+    g:Button({ Title = "Gravar", Desc = cor({ "Inicia", "#00FF00" }, { " a gravação" }),   Icon = "lucide:circle-dot", Callback = function() if main then main:Close() end; if getgenv().TAS and getgenv().TAS.StartRecording then getgenv().TAS.StartRecording() end end })
+    g:Space()
+    g:Button({ Title = "Parar",  Desc = cor({ "Finaliza", "#FF0000" }, { " a gravação" }), Icon = "lucide:square",     Callback = function() if getgenv().TAS and getgenv().TAS.StopRecording then getgenv().TAS.StopRecording() end end })
+
+    RecordSection:Paragraph({ Title = "Observação", Color = Color3.fromHex("#800080"), Image = "lucide:hard-drive", ImageSize = 30, Desc = cor({ "O arquivo será salvo para a pasta " }, { "michigun.xyz/tas", "#00AAFF" }) })
+    RecordSection:Button({ Title = "Salvar", Desc = cor({ "Salva", "#FFAA00" }, { " o arquivo" }), Icon = "lucide:save", Callback = function()
+        local T2 = getgenv().TAS; if not T2 then return end
+        if not T2.CurrentName or T2.CurrentName == "" then notificar("Defina um nome antes de salvar", 3, "lucide:alert-circle"); return end
+        if T2.SaveCurrent then
+            local newList = T2.SaveCurrent()
+            if newList then RefreshTASList(newList); notificar("Salvo com sucesso", 3, "lucide:check")
+            else notificar("Nada gravado para salvar", 3, "lucide:x") end
+        end
+    end })
+end
+
+
+-- UI
+do
+    local ETAParagraph = JJs:Paragraph({ Title = "Status", Desc = "Aguardando...", Color = "Green" })
+
+    task.spawn(function()
+        repeat task.wait(0.5) until getgenv().JJs or _G.JJs
+        local ref = getgenv().JJs or _G.JJs
+        while true do
+            if ref.State and ref.State.Running then
+                local s = ref.State
+                ETAParagraph:SetDesc(string.format("Progresso: %d / %d\nEstimativa: %.1f s", s.Current, s.Total, math.max(0, s.FinishTimestamp - tick())))
+            else
+                ETAParagraph:SetDesc("Aguardando início...")
+            end
+            task.wait(0.1)
+        end
+    end)
+
+    local MS = criarSection(JJs, "Essenciais", "Configurações principais", "lucide:sliders-horizontal", true)
+    local jjTypes = { "Padrão" }
+    if game.PlaceId == 14511049    then table.insert(jjTypes, "JJ (Delta)") end
+    if game.PlaceId == 13132367906 then table.insert(jjTypes, "Canguru")   end
+
+    MS:Toggle({ Title = "Auto JJ's", Desc = cor({ "Créditos ao " }, { "Zv_yz", "#A020F0" }), Icon = "lucide:zap", Value = false, Callback = function(v)
+        if _G.JJs then if v then _G.JJs.Start(); notificar("Iniciado", 2, "lucide:play") else _G.JJs.Stop(); notificar("Parado", 2, "lucide:pause") end end
+    end })
+    MS:Dropdown({ Title = "Modo", Desc = cor({ "Escolha qual " }, { "JJ", "#00AAFF" }, { " fazer" }), Icon = "lucide:list", Values = jjTypes, Value = "Padrão", Flag = "TipoJJ", Callback = function(v) if _G.JJs then _G.JJs.Config.Mode = v end end })
+    MS:Space()
+    MS:Input({ Title = "Inicial", Placeholder = "1",   InputIcon = "lucide:hash", Callback = function(v) if _G.JJs and v ~= "" then _G.JJs.Config.StartValue = tonumber(v) or 1   end end })
+    MS:Input({ Title = "Final",   Placeholder = "100", InputIcon = "lucide:hash", Callback = function(v) if _G.JJs and v ~= "" then _G.JJs.Config.EndValue   = tonumber(v) or 100 end end })
+    MS:Toggle({ Title = "Pular",       Desc = cor({ "Pular", "#00FF00" }, { " ao enviar JJ's" }),       Icon = "lucide:arrow-up",        Value = false, Callback = function(v) if _G.JJs then _G.JJs.Config.JumpEnabled    = v end end })
+    MS:Toggle({ Title = "Espaçamento", Desc = cor({ "Separa", "#FFFFFF" }, { " o sufixo do número" }),  Icon = "lucide:move-horizontal", Value = false, Flag = "JJsEspacar", Callback = function(v) if _G.JJs then _G.JJs.Config.SpacingEnabled = v end end })
+    MS:Space()
+    MS:Toggle({ Title = "Intervalo inteligente", Desc = cor({ "Ignora", "#FF0000" }, { " intervalos e termina exatamente no tempo indicado" }), Icon = "lucide:brain-circuit", Value = false, Callback = function(v) if _G.JJs then _G.JJs.Config.FinishInTime = v end end })
+    MS:Input({ Title = "Tempo", Placeholder = "60 (segundos)", InputIcon = "lucide:hourglass", Callback = function(v) if _G.JJs and v ~= "" then _G.JJs.Config.FinishTotalTime = tonumber(v) or 60 end end })
+    MS:Space()
+    MS:Dropdown({ Title = "Sufixo", Icon = "lucide:quote", Values = { "!", "?", ".", ",", "/" }, Value = "!", Flag = "JJsSufixo", Callback = function(v) if _G.JJs then _G.JJs.Config.Suffix = v end end })
+    MS:Input({ Title = "Sufixo customizado", Placeholder = "@", InputIcon = "lucide:pen-line", Flag = "JJsSufixoCustomizado", Callback = function(v) if _G.JJs then _G.JJs.Config.CustomSuffix = tostring(v or "") end end })
+
+    local IV = criarSection(JJs, "Intervalo", "Configuração de tempo", "lucide:timer", false)
+    IV:Toggle({ Title = "Intervalo fixo",     Desc = cor({ "Ativa", "#00AAFF" }, { " o intervalo fixo" }),                                  Icon = "lucide:clock",   Value = false, Flag = "JJsIntervaloFixo",     Callback = function(v) if _G.JJs then _G.JJs.Config.DelayEnabled = v end end })
+    IV:Input({  Title = "Intervalo fixo",     Placeholder = "1.5 (segundos)", InputIcon = "lucide:watch", Flag = "JJsIntervaloFixoTempo",    Callback = function(v) if _G.JJs and v ~= "" then _G.JJs.Config.DelayValue  = tonumber(v) or 1.5 end end })
+    IV:Space()
+    IV:Toggle({ Title = "Intervalo dinâmico", Desc = cor({ "Usa um intervalo " }, { "aleatório", "#FFAA00" }, { " entre mínimo e máximo" }), Icon = "lucide:shuffle", Value = false, Flag = "JJsIntervaloDinamico", Callback = function(v) if _G.JJs then _G.JJs.Config.RandomDelay = v end end })
+    IV:Input({  Title = "Valor mínimo", Placeholder = "1", InputIcon = "lucide:arrow-down-to-line", Flag = "JJsDinamicoMinimo", Callback = function(v) if _G.JJs and v ~= "" then _G.JJs.Config.RandomMin = tonumber(v) or 1 end end })
+    IV:Input({  Title = "Valor máximo", Placeholder = "3", InputIcon = "lucide:arrow-up-to-line",   Flag = "JJsDinamicoMaximo", Callback = function(v) if _G.JJs and v ~= "" then _G.JJs.Config.RandomMax = tonumber(v) or 3 end end })
+
+    criarSection(JJs, "Extras", "Opções adicionais", "lucide:layers", false):Toggle({ Title = "Modo reverso", Desc = cor({ "Conta de " }, { "trás pra frente", "#FF0000" }), Icon = "lucide:arrow-up-down", Value = false, Flag = "JJsReverso", Callback = function(v) if _G.JJs then _G.JJs.Config.ReverseEnabled = v end end })
+end
+
+
+-- UI
+do
+    local currentPrompt = ""
+    local SendBtn
+
+    ChatGPT:Paragraph({ Title = "Observação", Desc = cor({ "O prompt está na pasta" }, { "michigun.xyz/IA", "#FFF000" }, { ". Você pode colocar leis no arquivo." }), Color = "Blue", Image = "lucide:info", ImageSize = 30 })
+    ChatGPT:Input({ Title = "Prompt", Placeholder = "Pergunte aqui", InputIcon = "lucide:message-square", Callback = function(text) currentPrompt = text end })
+
+    SendBtn = ChatGPT:Button({ Title = "Enviar prompt", Icon = "lucide:send", Justify = "Center", Callback = function()
+        if not (_G.ChatGPT and _G.ChatGPT.Ask) then notificar("Aguarde...", 2, "lucide:loader"); return end
+        if currentPrompt == "" then return end
+        SendBtn:Lock()
+        local tss = os.date("%H:%M:%S")
+        ChatGPT:Divider(); ChatGPT:Space()
+        ChatGPT:Paragraph({ Title = tss .. " Você:", Color = "Blue", Desc = currentPrompt, Image = "lucide:user-round", ImageSize = 25 })
+        task.spawn(function()
+            local cleanMsg, luaCode = _G.ChatGPT.Ask(currentPrompt)
+            ChatGPT:Paragraph({ Title = tss .. " Resposta:", Desc = cleanMsg, Color = "Green", Image = "geist:logo-open-ai", ImageSize = 28 })
+            if luaCode then ChatGPT:Code({ Code = luaCode }) end
+            SendBtn:Unlock()
+        end)
+    end })
+
+    ChatGPT:Button({ Title = "Enviar resposta no chat", Icon = "lucide:message-circle", Justify = "Center", Callback = function()
+        if _G.ChatGPT and _G.ChatGPT.SendToChat and _G.ChatGPT.LastMessage then _G.ChatGPT.SendToChat(_G.ChatGPT.LastMessage); notificar("Enviado no chat", 2, "lucide:message-square")
+        else notificar("Nada para enviar", 2, "lucide:x") end
+    end })
+    ChatGPT:Button({ Title = "Copiar resposta", Icon = "lucide:copy", Justify = "Center", Callback = function()
+        if _G.ChatGPT and _G.ChatGPT.LastMessage then
+            if setclipboard then setclipboard(_G.ChatGPT.LastMessage); notificar("Copiado!", 2, "lucide:copy")
+            else notificar("Executor sem 'setclipboard'", 2, "lucide:x") end
+        else notificar("Nada para copiar", 2, "lucide:x") end
+    end })
+end
+
+
+-- UI
+do
+    local InfoParagraph, InputX, InputY, InputZ, ConfigDropdown
+    local CurrentConfigName = ""
+    local SelectedConfig    = nil
+
+    local function round1(n) return math.floor(n * 10 + 0.5) / 10 end
+
+    local function UpdateF3XHUD()
+        if not f3x or not InfoParagraph then return end
+        if not f3x.SelectedParts or #f3x.SelectedParts == 0 then
+            InfoParagraph:SetTitle(cor({ "Nada ", "#FF0000" }, { "selecionado" })); InfoParagraph:SetDesc(""); return
+        end
+        local part = f3x.SelectedParts[1]; if not part then return end
+        local s = part.Size
+        InfoParagraph:SetTitle(cor({ part.Name, "#00AAFF" }))
+        InfoParagraph:SetDesc(cor({ "X: ", "#AAAAAA" }, { tostring(round1(s.X)), "#FFFFFF" }) .. "\n" .. cor({ "Y: ", "#AAAAAA" }, { tostring(round1(s.Y)), "#FFFFFF" }) .. "\n" .. cor({ "Z: ", "#AAAAAA" }, { tostring(round1(s.Z)), "#FFFFFF" }))
+        if InputX and InputX.Set then InputX:Set(tostring(round1(s.X))) end
+        if InputY and InputY.Set then InputY:Set(tostring(round1(s.Y))) end
+        if InputZ and InputZ.Set then InputZ:Set(tostring(round1(s.Z))) end
+    end
+
+    f3x.UpdateUI   = UpdateF3XHUD
+    f3x.NotifyFunc = notificar
+    task.defer(function()
+        if ConfigDropdown then ConfigDropdown:Refresh(f3x.ListConfigs()) end
+    end)
+
+    local SS = criarSection(F3X, "Seleção", "Status e ativação", "lucide:mouse-pointer-click", true)
+    SS:Toggle({ Title = "Selecionar", Desc = cor({ "Ativa a ferramenta de " }, { "seleção", "#00FF00" }), Icon = "lucide:mouse-pointer-2", Callback = function(v) if f3x and f3x.Toggle then f3x.Toggle(v) end end })
+    InfoParagraph = SS:Paragraph({ Title = "Nenhuma parte selecionada.", Desc = "" })
+
+    local ES = criarSection(F3X, "Edição", "Ajustes de tamanho", "lucide:scaling", true)
+    local function addAxisInput(label, descLabel, flag)
+        local inp = ES:Input({ Title = label, Desc = cor({ "Altera a " }, { descLabel, "#00AAFF" }), InputIcon = "lucide:move-3d", Flag = flag })
+        local gr  = ES:Group()
+        gr:Button({ Title = "-0.2", Callback = function() if inp.Value then inp:Set(tostring((tonumber(inp.Value) or 0) - 0.2)) end end })
+        gr:Button({ Title = "+0.2", Callback = function() if inp.Value then inp:Set(tostring((tonumber(inp.Value) or 0) + 0.2)) end end })
+        return inp
+    end
+
+    InputX = addAxisInput("X (largura)",      "largura",      "InputX"); ES:Space()
+    InputY = addAxisInput("Y (altura)",       "altura",       "InputY"); ES:Space()
+    InputZ = addAxisInput("Z (profundidade)", "profundidade", "InputZ"); ES:Space()
+
+    ES:Button({ Title = "Aplicar tamanho", Desc = cor({ "Aplica as " }, { "dimensões", "#00FF00" }, { " na parte selecionada" }), Icon = "lucide:check", Callback = function()
+        if f3x and f3x.ApplySize then f3x.ApplySize(Vector3.new(tonumber(InputX.Value), tonumber(InputY.Value), tonumber(InputZ.Value))) end
+    end })
+    local gUR = ES:Group()
+    gUR:Button({ Title = "Undo", Desc = cor({ "Desfaz", "#FFAA00" }, { " a última ação" }), Icon = "lucide:undo-2", Callback = function() if f3x and f3x.Undo then f3x.Undo() end end })
+    gUR:Button({ Title = "Redo", Desc = cor({ "Refaz", "#FFAA00"  }, { " a última ação" }), Icon = "lucide:redo-2", Callback = function() if f3x and f3x.Redo then f3x.Redo() end end })
+
+    local CS = criarSection(F3X, "Configurações", "Salvar e carregar", "lucide:save", false)
+    CS:Paragraph({ Title = "Sistema de salvamento", Desc = cor({ "Permite " }, { "salvar", "#00FF00" }, { ", " }, { "deletar", "#FF0000" }, { " e " }, { "aplicar", "#00AAFF" }, { " F3X" }) })
+    CS:Paragraph({ Title = "Observação", Color = Color3.fromHex("#800080"), Image = "lucide:info", ImageSize = 30, Desc = cor({ "Salvo em " }, { "michigun.xyz/F3X", "#00AAFF" }) })
+    CS:Input({ Title = "Nome da configuração", Desc = cor({ "Digite o " }, { "nome", "#FFFFFF" }, { " para salvar" }), InputIcon = "lucide:tag", Callback = function(v) CurrentConfigName = v end })
+
+    ConfigDropdown = CS:Dropdown({ Title = "F3X salvos", Desc = cor({ "Selecione um " }, { "arquivo", "#FFFFFF" }, { " da lista" }), Icon = "lucide:folder", Values = {}, Callback = function(v) SelectedConfig = v end })
+    ConfigDropdown:Refresh(f3x.ListConfigs())
+
+    local ActionDropdown
+    local function CreateF3XActions()
+        if ActionDropdown then ActionDropdown:Destroy(); ActionDropdown = nil end
+        ActionDropdown = CS:Dropdown({ Title = "Ações", Desc = cor({ "Gerenciar " }, { "configurações", "#FFAA00" }), Icon = "lucide:settings-2", Values = {
+            { Title = "Salvar novo F3X", Desc = cor({ "Cria",    "#00FF00" }, { " um novo registro" }),         Icon = "lucide:save",   Callback = function()
+                if not CurrentConfigName or CurrentConfigName == "" then notificar("Digite um nome primeiro", 3, "lucide:alert-circle"); CreateF3XActions(); return end
+                local nl = f3x.SaveConfig(CurrentConfigName); if nl then ConfigDropdown:Refresh(nl); notificar("Salvo com sucesso", 3, "lucide:check") end; CreateF3XActions() end },
+            { Title = "Carregar F3X",   Desc = cor({ "Carrega", "#00AAFF" }, { " os dados selecionados" }),     Icon = "lucide:upload", Callback = function()
+                if not SelectedConfig then notificar("Selecione um F3X primeiro", 3, "lucide:mouse-pointer-click"); CreateF3XActions(); return end
+                f3x.ApplyConfig(SelectedConfig); notificar("Configuração aplicada", 3, "lucide:check"); CreateF3XActions() end },
+            { Title = "Deletar F3X",    Desc = cor({ "Remove",  "#FF0000" }, { " permanentemente o arquivo" }), Icon = "lucide:trash-2",Callback = function()
+                if not SelectedConfig then notificar("Selecione um F3X primeiro", 3, "lucide:mouse-pointer-click"); CreateF3XActions(); return end
+                local nl = f3x.DeleteConfig(SelectedConfig); if nl then ConfigDropdown:Refresh(nl); SelectedConfig = nil; ConfigDropdown:Select(nil); notificar("F3X deletado", 3, "lucide:trash") end; CreateF3XActions() end },
+        }, Value = "Nenhuma" })
+    end
+    CreateF3XActions()
+end
+
+
+-- PLAYER
+if getgenv()._playerSteppedConn then
+    pcall(function() getgenv()._playerSteppedConn:Disconnect() end)
+    getgenv()._playerSteppedConn = nil
+end
+if getgenv()._playerSpecConn then
+    pcall(function() getgenv()._playerSpecConn:Disconnect() end)
+    getgenv()._playerSpecConn = nil
+end
+if getgenv()._playerCharConn then
+    pcall(function() getgenv()._playerCharConn:Disconnect() end)
+    getgenv()._playerCharConn = nil
+end
+if getgenv()._playerStateTask then
+    pcall(function() task.cancel(getgenv()._playerStateTask) end)
+    getgenv()._playerStateTask = nil
+end
+if getgenv()._playerOldNC then
+    local mt = getrawmetatable(game)
+    pcall(function()
+        setreadonly(mt, false)
+        mt.__namecall = getgenv()._playerOldNC
+        setreadonly(mt, true)
+    end)
+    getgenv()._playerOldNC = nil
+end
+
+local PL_Camera = Workspace.CurrentCamera
+
+local function playerConfig()
+    return getgenv().PlayerConfig
+end
+
+local function PL_getRootPart(player)
+    local char = player.Character
+    return char and char:FindFirstChild(_sHRP)
+end
+
+local function PL_getHumanoid(player)
+    local char = player.Character
+    return char and char:FindFirstChild(_sHum)
+end
+
+local function PL_findPlayer(query)
+    if not query or query == "" then return nil end
+    query = query:lower()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.UserId ~= LocalPlayer.UserId then
+            if player.Name:lower():sub(1, #query) == query
+            or player.DisplayName:lower():sub(1, #query) == query then
+                return player
+            end
+        end
+    end
+    return nil
+end
+
+local PL_anonConns     = {}
+local PL_anonMiscConns = {}
+
+local function PL_spoofText(str)
+    local cfg = playerConfig()
+    if not cfg or not cfg.AnonEnabled or type(str) ~= "string" then return str end
+    local fakeName    = cfg.FakeName or "Anônimo"
+    local realName    = LocalPlayer.Name
+    local realDisplay = LocalPlayer.DisplayName
+    if str:find(realName, 1, true) or str:find(realDisplay, 1, true) then
+        local function escape(s) return s:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1") end
+        str = str:gsub(escape(realName),    fakeName)
+        str = str:gsub(escape(realDisplay), fakeName)
+    end
+    return str
+end
+
+local function PL_monitorLabel(obj)
+    if not obj or PL_anonConns[obj] then return end
+    if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
+        local function refresh()
+            local cfg = playerConfig()
+            if not cfg or not cfg.AnonEnabled then return end
+            local s = PL_spoofText(obj.Text)
+            if obj.Text ~= s then obj.Text = s end
+        end
+        refresh()
+        PL_anonConns[obj] = obj:GetPropertyChangedSignal("Text"):Connect(refresh)
+    end
+end
+
+local function PL_scanGuiLayer(layer)
+    if not layer then return end
+    for _, obj in ipairs(layer:GetDescendants()) do pcall(PL_monitorLabel, obj) end
+    local conn = layer.DescendantAdded:Connect(function(obj) task.wait(); pcall(PL_monitorLabel, obj) end)
+    table.insert(PL_anonMiscConns, conn)
+end
+
+local function PL_clearAnonConns()
+    for _, c in pairs(PL_anonConns)      do if typeof(c) == "RBXScriptConnection" then c:Disconnect() end end
+    for _, c in ipairs(PL_anonMiscConns) do if typeof(c) == "RBXScriptConnection" then c:Disconnect() end end
+    table.clear(PL_anonConns)
+    table.clear(PL_anonMiscConns)
+end
+
+local function PL_applyAnonVisuals()
+    local cfg = playerConfig()
+    if not cfg then return end
+    if cfg.AnonEnabled then
+        local char = LocalPlayer.Character
+        if char then
+            local hum = char:FindFirstChild(_sHum)
+            if hum then
+                hum.DisplayName = cfg.FakeName
+                local conn = hum:GetPropertyChangedSignal("DisplayName"):Connect(function()
+                    local c = playerConfig()
+                    if c and c.AnonEnabled and hum.DisplayName ~= c.FakeName then
+                        hum.DisplayName = c.FakeName
+                    end
+                end)
+                table.insert(PL_anonMiscConns, conn)
+            end
+            PL_scanGuiLayer(char)
+        end
+        PL_scanGuiLayer(LocalPlayer:WaitForChild("PlayerGui"))
+        pcall(PL_scanGuiLayer, CoreGui)
+    else
+        PL_clearAnonConns()
+        local char = LocalPlayer.Character
+        if char then
+            local hum = char:FindFirstChild(_sHum)
+            if hum then hum.DisplayName = LocalPlayer.DisplayName end
+        end
+    end
+end
+
+local PL_invisState = { seat = nil, weld = nil }
+
+local function PL_setTransparency(value)
+    local char = LocalPlayer.Character
+    if not char then return end
+    for _, obj in ipairs(char:GetDescendants()) do
+        if obj:IsA("BasePart") and obj.Name ~= _sHRP then
+            obj.Transparency = value
+        elseif obj:IsA("Decal") then
+            obj.Transparency = value
+        end
+    end
+end
+
+local function PL_toggleInvis(enable)
+    local root = PL_getRootPart(LocalPlayer)
+    if not root then return end
+    if enable then
+        local savedCFrame  = root.CFrame
+        local savedCamType = PL_Camera.CameraType
+        PL_Camera.CameraType = Enum.CameraType.Scriptable
+        root.CFrame = CFrame.new(-25.95, 84, 3537.55)
+        task.wait(0.15)
+        local seat        = Instance.new("Seat")
+        seat.Name         = HttpService:GenerateGUID(false)
+        seat.Transparency = 1
+        seat.CanCollide   = false
+        seat.Anchored     = false
+        seat.Position     = Vector3.new(-25.95, 84, 3537.55)
+        seat.Parent       = Workspace
+        local weld  = Instance.new("Weld")
+        weld.Part0  = seat
+        weld.Part1  = LocalPlayer.Character:FindFirstChild("Torso")
+                   or LocalPlayer.Character:FindFirstChild("UpperTorso")
+        weld.Parent = seat
+        PL_invisState.seat = seat
+        PL_invisState.weld = weld
+        task.wait()
+        seat.CFrame          = savedCFrame
+        PL_Camera.CameraType = savedCamType
+        PL_setTransparency(0.5)
+    else
+        if PL_invisState.seat then PL_invisState.seat:Destroy() end
+        PL_invisState.seat = nil
+        PL_invisState.weld = nil
+        PL_setTransparency(0)
+    end
+end
+
+local PL_flingState = { connection = nil, startCFrame = nil }
+
+local function PL_stopFling(restore)
+    if PL_flingState.connection then
+        PL_flingState.connection:Disconnect()
+        PL_flingState.connection = nil
+    end
+    local root = PL_getRootPart(LocalPlayer)
+    if root then
+        root.Velocity    = Vector3.zero
+        root.RotVelocity = Vector3.zero
+        if restore and PL_flingState.startCFrame then root.CFrame = PL_flingState.startCFrame end
+    end
+    if restore then
+        PL_flingState.startCFrame = nil
+        local cfg = playerConfig(); if cfg then cfg.FlingActive = false end
+    end
+end
+
+local function PL_startFling(targetName)
+    PL_stopFling(false)
+    local target = PL_findPlayer(targetName)
+    if not target then return end
+    local myRoot = PL_getRootPart(LocalPlayer)
+    if myRoot then PL_flingState.startCFrame = myRoot.CFrame end
+    local startTime = tick()
+    PL_flingState.connection = RunService.Heartbeat:Connect(function()
+        local cfg = playerConfig()
+        if tick() - startTime >= 2 then PL_stopFling(true); return end
+        if not cfg or not cfg.FlingActive or not target.Character or not LocalPlayer.Character then PL_stopFling(true); return end
+        local tRoot = target.Character:FindFirstChild(_sHRP)
+        local mRoot = LocalPlayer.Character:FindFirstChild(_sHRP)
+        if tRoot and mRoot then
+            mRoot.CFrame      = CFrame.new(tRoot.Position + Vector3.new(0, -1, 0)) * CFrame.Angles(-math.pi / 2, 0, 0)
+            local force       = Vector3.new(0, 10000, 0)
+            mRoot.Velocity    = force
+            mRoot.RotVelocity = force
+            pcall(sethiddenproperty, mRoot, "PhysicsRepRootPart", tRoot)
+        else
+            PL_stopFling(true)
+        end
+    end)
+end
+
+local PL_noclipParts = {}
+
+local function PL_cacheNoclipParts(char)
+    table.clear(PL_noclipParts)
+    if not char then return end
+    for _, part in ipairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then table.insert(PL_noclipParts, part) end
+    end
+end
+
+getgenv()._playerSteppedConn = RunService.Stepped:Connect(function()
+    local cfg = playerConfig()
+    if not cfg or not cfg.Noclip then return end
+    for _, part in ipairs(PL_noclipParts) do
+        if part and part.Parent and part.CanCollide then part.CanCollide = false end
+    end
+end)
+
+local PL_physConn = nil
+
+local function PL_startPhysicsLoop()
+    if PL_physConn then return end
+    PL_physConn = RunService.RenderStepped:Connect(function()
+        local cfg = playerConfig(); if not cfg then return end
+        local hum = PL_getHumanoid(LocalPlayer); if not hum then return end
+        if cfg.SpeedEnabled then hum.WalkSpeed = cfg.SpeedVal end
+        if cfg.JumpEnabled  then hum.JumpPower = cfg.JumpVal; hum.UseJumpPower = true end
+    end)
+end
+
+local function PL_stopPhysicsLoop()
+    if PL_physConn then PL_physConn:Disconnect(); PL_physConn = nil end
+end
+
+getgenv()._playerSpecConn = RunService.RenderStepped:Connect(function()
+    local cfg = playerConfig(); if not cfg then return end
+    local hum = PL_getHumanoid(LocalPlayer); if not hum then return end
+    if cfg.SpectateActive then
+        local target = PL_findPlayer(cfg.TargetPlayer)
+        if target then
+            local th = PL_getHumanoid(target)
+            if th then PL_Camera.CameraSubject = th end
+        end
+    else
+        if PL_Camera.CameraSubject ~= hum then PL_Camera.CameraSubject = hum end
+    end
+end)
+
+local PL_fakeId = math.random(1000000, 2000000000)
+
+local PL_PrevIndex
+PL_PrevIndex = hookmetamethod(game, "__index", NewCClosure(function(self, key)
+    if not CheckCaller() then
+        local cfg = playerConfig()
+        if cfg and cfg.AnonEnabled and self == LocalPlayer then
+            if key == "UserId"      then return PL_fakeId end
+            if key == "Name"        then return cfg.FakeName end
+            if key == "DisplayName" then return cfg.FakeName end
+        end
+    end
+    return PL_PrevIndex(self, key)
+end))
+
+local PL_PrevNewIndex
+PL_PrevNewIndex = hookmetamethod(game, "__newindex", NewCClosure(function(self, key, value)
+    if not CheckCaller() then
+        local cfg = playerConfig()
+        if cfg and cfg.AnonEnabled and key == "Text" and type(value) == "string" then
+            return PL_PrevNewIndex(self, key, PL_spoofText(value))
+        end
+    end
+    return PL_PrevNewIndex(self, key, value)
+end))
+
+local PL_mt     = getrawmetatable(game)
+local PL_old_nc = PL_mt.__namecall
+getgenv()._playerOldNC = PL_old_nc
+
+setreadonly(PL_mt, false)
+PL_mt.__namecall = newcclosure(function(self, ...)
+    local method = getnamecallmethod()
+    local args   = { ... }
+    local cfg    = playerConfig()
+
+    if not checkcaller() and cfg and cfg.AnonEnabled then
+        if method == "SetCore" and args[1] == "SendNotification" then
+            local data = args[2]
+            if type(data) == "table" then
+                if data.Title then data.Title = PL_spoofText(data.Title) end
+                if data.Text  then data.Text  = PL_spoofText(data.Text)  end
+                return PL_old_nc(self, table.unpack(args))
+            end
+        end
+    end
+
+    return PL_old_nc(self, ...)
+end)
+setreadonly(PL_mt, true)
+
+if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+    TextChatService.OnIncomingMessage = function(msg)
+        local cfg   = playerConfig()
+        local props = Instance.new("TextChatMessageProperties")
+        if cfg and cfg.AnonEnabled then
+            if msg.TextSource and msg.TextSource.UserId == LocalPlayer.UserId then
+                props.PrefixText = string.format("<font color='#F5CD30'>[%s]</font>", cfg.FakeName or "Anônimo")
+            else
+                props.PrefixText = PL_spoofText(msg.PrefixText)
+            end
+        end
+        return props
+    end
+end
+
+local PL_lastPosition = nil
+
+local function PL_hookCharacter(char)
+    PL_cacheNoclipParts(char)
+    char.DescendantAdded:Connect(function(obj)
+        if obj:IsA("BasePart") then table.insert(PL_noclipParts, obj) end
+    end)
+    local hum  = char:WaitForChild(_sHum, 10)
+    local root = char:WaitForChild(_sHRP, 10)
+    if hum and root then
+        hum.Died:Connect(function()
+            local cfg = playerConfig()
+            if cfg and cfg.RespawnEnabled then PL_lastPosition = root.CFrame end
+        end)
+    end
+    local cfg = playerConfig()
+    if cfg and cfg.AnonEnabled then PL_scanGuiLayer(char) end
+end
+
+getgenv()._playerCharConn = LocalPlayer.CharacterAdded:Connect(function(char)
+    local cfg = playerConfig()
+    if cfg and cfg.RespawnEnabled and PL_lastPosition then
+        task.spawn(function()
+            local root = char:WaitForChild(_sHRP, 10)
+            if root then task.wait(0.2); root.CFrame = PL_lastPosition; root.Velocity = Vector3.zero end
+        end)
+    end
+    PL_hookCharacter(char)
+    if cfg and cfg.InvisEnabled then task.wait(0.5); PL_toggleInvis(true) end
+    if cfg and cfg.AnonEnabled  then task.wait(1);   PL_applyAnonVisuals() end
+    if cfg and (cfg.SpeedEnabled or cfg.JumpEnabled) then PL_startPhysicsLoop() end
+end)
+
+if LocalPlayer.Character then PL_hookCharacter(LocalPlayer.Character) end
+
+local PL_lastState = { anon = false, invis = false, speed = false }
+
+getgenv()._playerStateTask = task.spawn(function()
+    while task.wait(0.1) do
+        local cfg = playerConfig(); if not cfg then continue end
+
+        if cfg.TriggerFling then
+            cfg.TriggerFling = false; cfg.FlingActive = true
+            PL_startFling(cfg.TargetPlayer)
+        end
+
+        if cfg.TriggerTeleport then
+            cfg.TriggerTeleport = false
+            local target = PL_findPlayer(cfg.TargetPlayer)
+            if target and target.Character then
+                local myRoot = PL_getRootPart(LocalPlayer)
+                local tRoot  = target.Character:FindFirstChild(_sHRP)
+                if myRoot and tRoot then
+                    PL_lastPosition = myRoot.CFrame
+                    myRoot.CFrame   = tRoot.CFrame * CFrame.new(0, 0, 3)
+                end
+            end
+        end
+
+        if cfg.TriggerReturn then
+            cfg.TriggerReturn = false
+            if PL_lastPosition then
+                local root = PL_getRootPart(LocalPlayer)
+                if root then root.CFrame = PL_lastPosition end
+            end
+        end
+
+        if cfg.InvisEnabled ~= PL_lastState.invis then
+            PL_lastState.invis = cfg.InvisEnabled
+            PL_toggleInvis(cfg.InvisEnabled)
+        end
+
+        if cfg.AnonEnabled ~= PL_lastState.anon then
+            PL_lastState.anon = cfg.AnonEnabled
+            PL_applyAnonVisuals()
+        end
+
+        local needsPhysics = cfg.SpeedEnabled or cfg.JumpEnabled
+        if needsPhysics and not PL_lastState.speed then
+            PL_startPhysicsLoop()
+        elseif not needsPhysics and PL_lastState.speed then
+            PL_stopPhysicsLoop()
+        end
+        PL_lastState.speed = needsPhysics
+    end
+end)
+
+if not isfolder("michigun.xyz") then makefolder("michigun.xyz") end
+
+-- CHAR
+getgenv().Avatar = getgenv().Avatar or {}
+local Avatar = getgenv().Avatar
+
+Avatar.TargetInput      = ""
+Avatar.CurrentAppliedId = LocalPlayer.UserId
+Avatar.SkinFolder       = "michigun.xyz/skins"
+
+if not isfolder(Avatar.SkinFolder) then makefolder(Avatar.SkinFolder) end
+
+local function PL_applyDescription(character, fakeName, fakeId, description)
+    if not character then return end
+    if character == LocalPlayer.Character then
+        Avatar.CurrentAppliedId = fakeId or Avatar.CurrentAppliedId
+    end
+    task.spawn(function()
+        pcall(function()
+            task.wait(0.3)
+            local hum = character:WaitForChild(_sHum, 10); if not hum then return end
+            for _, obj in ipairs(character:GetDescendants()) do
+                if obj:IsA("Accessory") or obj:IsA("Hat")
+                or obj:IsA("Shirt") or obj:IsA("Pants")
+                or obj:IsA("ShirtGraphic") or obj:IsA("CharacterMesh") then
+                    obj:Destroy()
+                end
+            end
+            local bc = hum:FindFirstChildOfClass("BodyColors"); if bc then bc:Destroy() end
+            for _, limb in ipairs({"Torso","Left Arm","Right Arm","Left Leg","Right Leg"}) do
+                local l = character:FindFirstChild(limb)
+                if l then for _, m in ipairs(l:GetChildren()) do if m:IsA("SpecialMesh") then m:Destroy() end end end
+            end
+            local head = character:FindFirstChild(_sHead)
+            if head then
+                local mesh = head:FindFirstChildOfClass("SpecialMesh")
+                if mesh then mesh.MeshId = ""; mesh.TextureId = "" end
+            end
+            task.wait(0.1)
+            if description then hum:ApplyDescriptionClientServer(description) end
+        end)
+    end)
+end
+
+local function PL_resolveUserId(input)
+    local id = tonumber(input)
+    local name
+    local ok = pcall(function()
+        if id then
+            name = Players:GetNameFromUserIdAsync(id)
+        else
+            id   = Players:GetUserIdFromNameAsync(input)
+            name = Players:GetNameFromUserIdAsync(id)
+        end
+    end)
+    if ok and id then return id, name end
+    return nil, nil
+end
+
+Avatar.ApplySkin = function(input)
+    if not LocalPlayer.Character or not input or input == "" then return end
+    local id, name = PL_resolveUserId(input); if not id then return end
+    local ok, desc = pcall(Players.GetHumanoidDescriptionFromUserId, Players, id)
+    if ok and desc then PL_applyDescription(LocalPlayer.Character, name, id, desc) end
+end
+
+Avatar.ApplySkinToOther = function(targetName, skinInput, fromSaved)
+    local target = PL_findPlayer(targetName); if not target or not target.Character then return end
+    local id, name
+    if fromSaved then
+        local ok, data = pcall(readfile, Avatar.SkinFolder .. "/" .. skinInput .. ".txt")
+        if not ok or not data then return end
+        id = tonumber(data); name = "SavedSkin"
+    else
+        id, name = PL_resolveUserId(skinInput)
+    end
+    if not id then return end
+    local ok, desc = pcall(Players.GetHumanoidDescriptionFromUserId, Players, id)
+    if ok and desc then PL_applyDescription(target.Character, name, id, desc) end
+end
+
+Avatar.RestoreOther = function(targetName)
+    local target = PL_findPlayer(targetName); if not target or not target.Character then return end
+    local ok, desc = pcall(Players.GetHumanoidDescriptionFromUserId, Players, target.UserId)
+    if ok and desc then PL_applyDescription(target.Character, target.Name, target.UserId, desc) end
+end
+
+Avatar.RestoreSkin = function()
+    if not LocalPlayer.Character then return end
+    local ok, desc = pcall(Players.GetHumanoidDescriptionFromUserId, Players, LocalPlayer.UserId)
+    if ok and desc then PL_applyDescription(LocalPlayer.Character, LocalPlayer.Name, LocalPlayer.UserId, desc) end
+end
+
+Avatar.GetSavedSkins = function()
+    local folder = Avatar.SkinFolder
+    if not folder or not isfolder(folder) then return {{ Title = "Nenhuma salva", Icon = "lucide:frown" }} end
+    local ok, files = pcall(listfiles, folder)
+    if not ok or not files then return {{ Title = "Erro ao ler pasta", Icon = "lucide:alert-triangle" }} end
+    local skins = {}
+    for _, path in ipairs(files) do
+        local name = path:match("([^\\/]+)%.txt$")
+        if name then table.insert(skins, name) end
+    end
+    if #skins == 0 then table.insert(skins, { Title = "Nenhuma salva", Icon = "lucide:frown" }) end
+    return skins
+end
+
+Avatar.SaveSkin = function(customName)
+    local id   = Avatar.CurrentAppliedId or 0
+    local name = (customName ~= "" and customName:gsub("[^%w%s]", "")) or ("Skin_" .. id)
+    writefile(Avatar.SkinFolder .. "/" .. name .. ".txt", tostring(id))
+end
+
+Avatar.LoadSkin = function(name)
+    if not LocalPlayer.Character then return end
+    local ok, data = pcall(readfile, Avatar.SkinFolder .. "/" .. name .. ".txt")
+    if not ok or not data then return end
+    local id = tonumber(data); if not id then return end
+    local ok2, desc = pcall(Players.GetHumanoidDescriptionFromUserId, Players, id)
+    if ok2 and desc then PL_applyDescription(LocalPlayer.Character, name, id, desc) end
+end
+
+Avatar.DeleteSkin = function(name)
+    local path = Avatar.SkinFolder .. "/" .. name .. ".txt"
+    if isfile(path) then delfile(path) end
+end
+
+
+-- LOCAL
+do
+    local targetInput      = ""
+    local otherTargetName  = ""
+    local otherSkinInput   = ""
+    local selectedFavorite, confirmTask = nil, nil
+
+    local MS = criarSection(Char, "Principal", "Char", "lucide:shirt", true)
+    MS:Paragraph({ Title = "Observação", Desc = cor({ "A skin aplicada é visual. " }, { "Skins salvas em michigun/skins", "#FF0000" }), Color = "Blue", Image = "lucide:circle-alert", ImageSize = 30 })
+    MS:Input({ Title = "Nome", Desc = cor({ "Digite o " }, { "nome", "#FFFFFF" }, { " ou " }, { "ID", "#FFFFFF" }, { " do usuário" }), Value = "", InputIcon = "lucide:search", Placeholder = "Digite aqui", Callback = function(v) targetInput = v end })
+
+    local g1 = MS:Group()
+    g1:Button({ Title = "Aplicar",   Desc = cor({ "Aplica",   "#00FF00" }, { " o char" }),            Icon = "lucide:check",      Callback = function() if Avatar and Avatar.ApplySkin   then Avatar.ApplySkin(targetInput)   end end })
+    g1:Space()
+    g1:Button({ Title = "Restaurar", Desc = cor({ "Restaura", "#FF0000" }, { " sua skin original" }), Icon = "lucide:rotate-ccw", Callback = function() if Avatar and Avatar.RestoreSkin then Avatar.RestoreSkin()             end end })
+
+    local OS = criarSection(Char, "Outros", "Modifica a skin de terceiros", "lucide:users", false)
+    OS:Input({ Title = "Nome", Desc = cor({ "Nome do " }, { "jogador", "#00AAFF" }), Value = "", InputIcon = "lucide:user-search", Placeholder = "sanctuaryangels", Callback = function(v) otherTargetName = v end })
+    OS:Input({ Title = "Nome", Desc = cor({ "Nome ou ID do char que será " }, { "aplicado", "#00FF00" }, { " no jogador" }), Value = "", InputIcon = "lucide:shirt", Placeholder = "ID ou Nome", Callback = function(v) otherSkinInput = v end })
+    local g2 = OS:Group()
+    g2:Button({ Title = "Aplicar",   Desc = cor({ "Muda",   "#00FF00" }, { " a skin do jogador alvo" }), Icon = "lucide:wand-2",      Callback = function() if Avatar and Avatar.ApplySkinToOther then Avatar.ApplySkinToOther(otherTargetName, otherSkinInput) end end })
+    g2:Button({ Title = "Restaurar", Desc = cor({ "Reseta", "#FF0000" }, { " a skin do jogador alvo" }), Icon = "lucide:refresh-ccw", Callback = function() if Avatar and Avatar.RestoreOther      then Avatar.RestoreOther(otherTargetName)                  end end })
+    OS:Button({ Title = "Aplicar favorito", Desc = cor({ "Aplica a skin " }, { "favoritada", "#FFAA00" }, { " selecionada no alvo" }), Icon = "lucide:star", Callback = function()
+        if not selectedFavorite then notificar("Nenhum favorito selecionado", 3, "lucide:x"); return end
+        if Avatar and Avatar.ApplySkinToOther then Avatar.ApplySkinToOther(otherTargetName, selectedFavorite, true) end
+    end })
+
+    local FS = criarSection(Char, "Favoritos", "Gerenciar skins salvas", "lucide:star", false)
+    local SkinSelectDropdown, ActionDropdown
+    local isConfirmingFavDelete = false
+
+    local function RefreshFavList()
+        if not (Avatar and Avatar.GetSavedSkins and SkinSelectDropdown) then return end
+        local skins = Avatar.GetSavedSkins()
+        SkinSelectDropdown:Refresh(skins)
+        local found = false
+        for _, v in pairs(skins) do
+            local title = (type(v) == "table" and v.Title) or v
+            if title == selectedFavorite then found = true; break end
+        end
+        if not found then selectedFavorite = nil; SkinSelectDropdown:Select(nil) end
+    end
+
+    local CreateFavActions
+    SkinSelectDropdown = FS:Dropdown({ Title = "Selecionar skin", Desc = cor({ "Escolha para " }, { "carregar", "#00FF00" }, { " ou " }, { "deletar", "#FF0000" }), Icon = "lucide:list", Values = {}, Value = "", Callback = function(option)
+        isConfirmingFavDelete = false
+        if confirmTask then task.cancel(confirmTask); confirmTask = nil end
+        local title = (type(option) == "table" and option.Title) or option
+        selectedFavorite = (title ~= "Nenhuma salva" and title ~= "") and title or nil
+        if ActionDropdown then CreateFavActions() end
+    end })
+
+    CreateFavActions = function()
+        if ActionDropdown then ActionDropdown:Destroy(); ActionDropdown = nil end
+        ActionDropdown = FS:Dropdown({ Title = "Gerenciar", Desc = cor({ "Gerenciar " }, { "favoritos", "#FFFFFF" }), Icon = "lucide:settings-2", Values = {
+            { Title = "Aplicar em mim",       Desc = cor({ "Usa", "#00FF00" }, { " o char selecionado em você" }),     Icon = "lucide:user-check", Callback = function()
+                if not selectedFavorite then notificar("Selecione um char primeiro", 3, "lucide:mouse-pointer-click"); return end
+                if Avatar and Avatar.LoadSkin then Avatar.LoadSkin(selectedFavorite); notificar("Aplicado: " .. selectedFavorite, 3, "lucide:check") end end },
+            { Title = "Favoritar char atual", Desc = cor({ "Salva", "#FFAA00" }, { " o char que você está usando" }), Icon = "lucide:save",       Callback = function()
+                if Avatar and Avatar.SaveSkin then Avatar.SaveSkin(targetInput); notificar("Char salvo", 3, "lucide:check"); RefreshFavList() end; CreateFavActions() end },
+            { Title = isConfirmingFavDelete and "Confirmar deleção?" or "Deletar selecionado",
+              Desc  = isConfirmingFavDelete and cor({ "Clique novamente para " }, { "apagar", "#FF0000" }) or cor({ "Remove", "#FF0000" }, { " a skin selecionada" }),
+              Icon  = isConfirmingFavDelete and "lucide:alert-triangle" or "lucide:trash-2",
+              Callback = function()
+                if not selectedFavorite then notificar("Selecione um char primeiro", 3, "lucide:mouse-pointer-click"); CreateFavActions(); return end
+                if not isConfirmingFavDelete then
+                    isConfirmingFavDelete = true; notificar("Confirme a ação", 2, "lucide:alert-triangle"); CreateFavActions()
+                    if confirmTask then task.cancel(confirmTask) end
+                    confirmTask = task.delay(3, function() if isConfirmingFavDelete then isConfirmingFavDelete = false; if ActionDropdown then CreateFavActions() end end end)
+                else
+                    if Avatar and Avatar.DeleteSkin then Avatar.DeleteSkin(selectedFavorite); notificar("Deletado: " .. selectedFavorite, 3, "lucide:trash") end
+                    isConfirmingFavDelete = false; if confirmTask then task.cancel(confirmTask) end
+                    selectedFavorite = nil; RefreshFavList(); CreateFavActions()
+                end
+              end },
+            { Type = "Divider" },
+            { Title = "Atualizar lista", Desc = cor({ "Recarrega", "#00AAFF" }, { " a lista de favoritos" }), Icon = "lucide:rotate-ccw", Callback = function() RefreshFavList(); notificar("Lista atualizada", 2, "lucide:check"); CreateFavActions() end },
+        }, Value = "Nenhuma" })
+    end
+    CreateFavActions()
+
+    task.spawn(function()
+        repeat task.wait(0.5) until getgenv().Avatar and getgenv().Avatar.GetSavedSkins
+        RefreshFavList()
+    end)
+end
+
+
+-- UI
+getgenv().PlayerConfig = {
+    SpeedEnabled = false, SpeedVal = 16, JumpEnabled = false, JumpVal = 50,
+    Noclip = false, RespawnEnabled = false, AnonEnabled = false, FakeName = "Anônimo",
+    InvisEnabled = false, SpectateActive = false, FlingActive = false, TargetPlayer = "",
+    TriggerTeleport = false, TriggerReturn = false, TriggerFling = false,
+}
+
+do
+    local PC = getgenv().PlayerConfig
+
+    local CS = criarSection(Player, "Personagem", "Modificar personagem", "lucide:user-cog", true)
+    CS:Toggle({ Title = "Anônimo",       Desc = cor({ "Altera o seu nome" }, { " visualmente", "#00AAFF" }),                Flag = "Anonimo",  Icon = "lucide:square-user-round", Callback = function(v) PC.AnonEnabled = v; if v then local h = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild(_sHum); if h then h.DisplayName = PC.FakeName end end end })
+    CS:Input({ Title = "Nome", Desc = cor({ "Nome para o modo " }, { "anônimo", "#00AAFF" }), Placeholder = "Anônimo", InputIcon = "lucide:user-pen", Callback = function(v) if v ~= "" then PC.FakeName = v end end })
+    CS:Space()
+    CS:Toggle({ Title = "Invisibilidade", Desc = cor({ "Fica " }, { "invisível", "#FFFFFF" }, { " para outros jogadores" }), Flag = "Invisivel", Icon = "lucide:hat-glasses",       Callback = function(v) PC.InvisEnabled   = v end })
+    CS:Toggle({ Title = "Respawn",        Desc = cor({ "Volta ao lugar onde você " }, { "morreu", "#FF0000" }),             Flag = "Respawn",   Icon = "lucide:map-pin",            Callback = function(v) PC.RespawnEnabled = v; if v then notificar("Respawn ativado", 2, "lucide:check") end end })
+    CS:Toggle({ Title = "Noclip",         Desc = cor({ "Atravessa ", "#00AAFF" }, { "paredes" }),                          Flag = "Noclip",    Icon = "lucide:ghost",              Callback = function(v) PC.Noclip         = v end })
+
+    local MS = criarSection(Player, "Física", "Velocidade e pulo", "lucide:activity", false)
+    local spdVal = 16
+    MS:Input({ Title = "Speed", Placeholder = "16", InputIcon = "lucide:gauge", Callback = function(v) spdVal = tonumber(v) or 16 end })
+    local gs = MS:Group()
+    gs:Button({ Title = "Aplicar", Icon = "lucide:check-circle", Callback = function() PC.SpeedVal = spdVal; PC.SpeedEnabled = true; notificar("Velocidade: " .. spdVal, 2, "lucide:zap") end })
+    gs:Button({ Title = "Resetar", Icon = "lucide:rotate-ccw",   Callback = function() PC.SpeedEnabled = false; PC.SpeedVal = 16; local h = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild(_sHum); if h then h.WalkSpeed = GetGhost(h, "WalkSpeed") or 16 end end })
+    MS:Space()
+    local jmpVal = 50
+    MS:Input({ Title = "Jump", Placeholder = "50", InputIcon = "lucide:arrow-up", Callback = function(v) jmpVal = tonumber(v) or 50 end })
+    local gj = MS:Group()
+    gj:Button({ Title = "Aplicar", Icon = "lucide:check-circle", Callback = function() PC.JumpVal = jmpVal; PC.JumpEnabled = true; notificar("Pulo: " .. jmpVal, 2, "lucide:zap") end })
+    gj:Button({ Title = "Resetar", Icon = "lucide:rotate-ccw",   Callback = function() PC.JumpEnabled = false; PC.JumpVal = 50; local h = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild(_sHum); if h then h.JumpPower = GetGhost(h, "JumpPower") or 50 end end })
+
+    local IS = criarSection(Player, "Interação", "Outros jogadores", "lucide:users", false)
+    local ActionDrop
+    IS:Input({ Title = "Jogador", Desc = "Nome ou Display", Placeholder = "Digite aqui", InputIcon = "lucide:search", Callback = function(v)
+        if v == "" then return end
+        local found = PL_findPlayer(v)
+        if found then PC.TargetPlayer = found.Name; notificar("Selecionado: " .. found.Name, 3, "lucide:user-check")
+        else notificar("Jogador não encontrado", 2, "lucide:search-x") end
+    end })
+
+    local function RefreshActionDrop()
+        if ActionDrop then ActionDrop:Destroy(); ActionDrop = nil end
+        ActionDrop = IS:Dropdown({ Title = "Ações", Icon = "lucide:mouse-pointer-click", Values = {
+            { Title = "Fling", Desc = "Arremessa o alvo (arriscado)", Icon = "lucide:earth", Callback = function()
+                if PC.TargetPlayer == "" then notificar("Selecione um jogador primeiro", 2, "lucide:alert-circle"); return end
+                PC.TriggerFling = true; notificar("Flingando " .. PC.TargetPlayer, 3, "lucide:helicopter") end },
+            { Title = PC.SpectateActive and "Parar Espectar" or "Espectar", Desc = "Visualiza a câmera do alvo", Icon = "lucide:eye", Callback = function()
+                if PC.TargetPlayer == "" then notificar("Selecione um jogador", 2, "lucide:alert-circle"); return end
+                PC.SpectateActive = not PC.SpectateActive; RefreshActionDrop()
+                notificar(PC.SpectateActive and "Espectando..." or "Restaurado", 2, PC.SpectateActive and "lucide:eye" or "lucide:eye-off") end },
+            { Title = "Teleportar", Desc = "Vai até o jogador",          Icon = "lucide:plane",  Callback = function() if PC.TargetPlayer == "" then return end; PC.TriggerTeleport = true; notificar("Teleportando...", 2, "lucide:plane")   end },
+            { Title = "Voltar",     Desc = "Retorna à posição anterior", Icon = "lucide:undo-2", Callback = function() PC.TriggerReturn = true; notificar("Retornando...", 2, "lucide:undo-2") end },
+        }, Value = "Selecione" })
+    end
+    RefreshActionDrop()
+end
+
+
+-- UI
+do
+    local GerenciadorConfig = main.ConfigManager
+    local NomeConfig        = ""
+    local ConfigSelecionada = nil
+    local DropdownListaConfig
+
+    local function AtualizarListaConfig()
+        if DropdownListaConfig then DropdownListaConfig:Refresh(GerenciadorConfig:AllConfigs()) end
+    end
+
+    local CreationSection = criarSection(Configs, "Criação", "Criar configuração", "lucide:file-plus", true)
+    CreationSection:Input({ Title = "Nome da configuração", Desc = cor({ "Dê um " }, { "nome", "#FFFFFF" }, { " para o arquivo" }), Value = "", Placeholder = "Digite aqui...", InputIcon = "lucide:pencil", Callback = function(t) NomeConfig = t end })
+    CreationSection:Button({ Title = "Criar configuração", Desc = cor({ "Salva", "#00FF00" }, { " o estado atual das funções" }), Icon = "lucide:save-all", Callback = function()
+        if NomeConfig ~= "" then
+            GerenciadorConfig:CreateConfig(NomeConfig):Save()
+            notificar("Salvo como " .. NomeConfig, 3, "lucide:check"); AtualizarListaConfig()
+        else notificar("Digite um nome válido", 3, "lucide:x") end
+    end })
+
+    local loaderParagraph = criarSection(Configs, "Módulos", "Status de carregamento", "lucide:package", false):Paragraph({ Title = "Módulos remotos", Desc = "Aguardando carregamento..." })
+    LoaderStatus.setParagraph(loaderParagraph)
+
+    local ManagementSection = criarSection(Configs, "Gerenciamento", "Gerenciar configurações", "lucide:folder-open", true)
+    DropdownListaConfig = ManagementSection:Dropdown({ Title = "Selecionar arquivo", Desc = cor({ "Escolha a " }, { "configuração", "#00AAFF" }, { " alvo" }), Icon = "lucide:folder", Values = GerenciadorConfig:AllConfigs(), Value = "Nenhuma", Callback = function(v) ConfigSelecionada = v end })
+    ManagementSection:Dropdown({ Title = "Ações", Desc = cor({ "Executa uma " }, { "ação", "#FFAA00" }, { " no arquivo selecionado" }), Icon = "lucide:settings-2", Values = {
+        { Title = "Carregar",     Desc = cor({ "Carrega",   "#00FF00" }, { " os dados salvos" }),                  Icon = "lucide:upload",    Callback = function() if ConfigSelecionada and ConfigSelecionada ~= "Nenhuma" then GerenciadorConfig:CreateConfig(ConfigSelecionada):Load(); notificar("Carregado: " .. ConfigSelecionada, 3, "lucide:check") else notificar("Nenhuma configuração selecionada", 3, "lucide:x") end end },
+        { Title = "Sobrescrever", Desc = cor({ "Substitui", "#FFAA00" }, { " os dados deste arquivo" }),           Icon = "lucide:refresh-cw",Callback = function() if ConfigSelecionada and ConfigSelecionada ~= "Nenhuma" then GerenciadorConfig:CreateConfig(ConfigSelecionada):Save(); notificar("Alterado: " .. ConfigSelecionada, 3, "lucide:check") else notificar("Nenhuma configuração selecionada", 3, "lucide:x") end end },
+        { Type = "Divider" },
+        { Title = "Deletar arquivo", Desc = cor({ "Apaga", "#FF0000" }, { " permanentemente o registro" }),        Icon = "lucide:trash-2",   Callback = function() if ConfigSelecionada and ConfigSelecionada ~= "Nenhuma" then GerenciadorConfig:CreateConfig(ConfigSelecionada):Delete(); notificar("Deletado: " .. ConfigSelecionada, 3, "lucide:trash"); AtualizarListaConfig(); ConfigSelecionada = "Nenhuma"; DropdownListaConfig:Select("Nenhuma") else notificar("Nenhuma configuração selecionada", 3, "lucide:x") end end },
+        { Title = "Atualizar lista", Desc = cor({ "Recarrega", "#00AAFF" }, { " a lista de arquivos" }),            Icon = "lucide:rotate-ccw",Callback = function() AtualizarListaConfig(); notificar("Lista atualizada", 2, "lucide:check") end },
+    } })
+
+    local InterfaceSection = criarSection(Configs, "Interface", "Opções da UI", "lucide:monitor", false)
+
+    InterfaceSection:Toggle({ Title = "Botão UI", Desc = cor({ "Ativa", "#00FF00" }, { " o botão flutuante ao " }, { "minimizar", "#FFAA00" }), Icon = "lucide:check", IconColor = "Green", Type = "Checkbox", Value = true, Callback = function(state)
+        main:EditOpenButton({ Title = "", Icon = "rbxthumb://type=Asset&id=137064182739714&w=420&h=420", CornerRadius = UDim.new(10, 10), StrokeThickness = 1, Color = ColorSequence.new(Color3.fromHex("#282828"), Color3.fromHex("#FFFFFF")), OnlyMobile = false, Enabled = state, Draggable = true })
+    end })
+
+    -- Palavra secreta
+    local secretWord = "/e"
+    local chatConn
+
+    local function setupChatToggle()
+        if chatConn then chatConn:Disconnect() end
+        chatConn = LocalPlayer.Chatted:Connect(function(msg) if msg == secretWord then main:Toggle() end end)
+        Conn:add(chatConn, "uiToggle")
+    end
+    setupChatToggle()
+
+    local uiBindId = KeybindManager.register("UI_Toggle", Enum.KeyCode.Z, function() main:Toggle() end)
+
+    InterfaceSection:Input({ Title = "Palavra secreta", Desc = cor({ "Usa o " }, { "chat", "#FFFFFF" }, { " para abrir a UI" }), Placeholder = "/e", InputIcon = "lucide:message-square", Flag = "PalavraSecreta", Callback = function(v)
+        if v == "" then return end
+        if not v:find("%s") then secretWord = v; setupChatToggle(); notificar("Definida para: " .. v, 3, "lucide:check")
+        else secretWord = "/e"; setupChatToggle(); notificar("Texto inválido, resetada para: /e", 3, "lucide:alert-circle") end
+    end })
+
+    InterfaceSection:Input({ Title = "Keybind", Desc = cor({ "Define a tecla para " }, { "abrir/fechar", "#FFFFFF" }, { " a interface" }), Flag = "KeybindUI", InputIcon = "lucide:keyboard", Placeholder = "Z", Callback = function(v)
+        local keyName = string.upper((v or ""):gsub("%s+", ""))
+        if #keyName == 0 then return end
+        local ok, newKey = pcall(function() return Enum.KeyCode[keyName] end)
+        if ok and newKey then
+            KeybindManager.update(uiBindId, newKey)
+            notificar("Keybind UI: " .. keyName, 3, "lucide:keyboard")
+        else notificar("Tecla inválida", 3, "lucide:x") end
+    end })
+
+    local ThemeSection = criarSection(Configs, "Temas", "Customize a UI", "lucide:palette", false)
+    local function BuildThemeList()
+        local list = {}
+        for k, v in pairs(UI:GetThemes()) do
+            local name = type(k) == "string" and k or (type(v) == "string" and v)
+            if name then list[#list + 1] = { Title = name, Desc = cor({ "Tema " }, { name, "#00AAFF" }), Icon = "lucide:paintbrush" } end
+        end
+        table.sort(list, function(a, b) return a.Title < b.Title end)
+        return list
+    end
+    ThemeSection:Dropdown({ Title = "Temas", Desc = cor({ "Escolha o " }, { "tema", "#FFFFFF" }, { " da interface" }), Icon = "lucide:palette", Values = BuildThemeList(), Flag = "Tema", Callback = function(val)
+        local name = (type(val) == "table" and val.Title) or val
+        if name then UI:SetTheme(name); notificar("Aplicado " .. name, 2, "lucide:check") end
+    end })
+end
+
+
+-- JOGOS
+local MAPA_IDS = {
+    [13132367906]     = "Tevez",
+    [14511049]        = "Delta",
+    [16150352]        = "Christian",
+    [129890257340707] = "Soucre",
+    [134858056613772] = "NovaEra",
+    [2069320852]      = "Apex",
+}
+
+local MapaAtual = MAPA_IDS[game.PlaceId]
+
+if MapaAtual then
+    criarSection(main, "Mapa", "Exclusivos do mapa", "lucide:compass", true)
+
+    if MapaAtual == "Tevez" then
+        local TevezTab = criarTab("Tevez", "https://tr.rbxcdn.com/180DAY-84c7c1edcc63c7dfab5712b1ad377133/768/432/Image/Webp/noFilter")
+
+        local LS = criarSection(TevezTab, "Local", "Chat", "lucide:message-circle", true)
+        LS:Input({ Title = "Mensagem", Desc = cor({ "Digite o " }, { "texto", "#FFFFFF" }, { " para enviar no chat" }), Value = "", InputIcon = "lucide:text-cursor", Placeholder = "Digite aqui...", Callback = function(v) if getgenv().TevezMods then getgenv().TevezMods.ChatMessage = v end end })
+        LS:Toggle({ Title = "Spam",   Desc = cor({ "Envia a mensagem " }, { "várias vezes", "#FFAA00" }),      Icon = "lucide:repeat", Value = false, Callback = function(s) if getgenv().TevezMods and getgenv().TevezMods.ToggleSpam   then getgenv().TevezMods.ToggleSpam(s) end end })
+        LS:Button({ Title = "Enviar", Desc = cor({ "Manda", "#00FF00" }, { " a mensagem atual" }), Color = "Green", Icon = "lucide:send", Callback = function() if getgenv().TevezMods and getgenv().TevezMods.SendMessage then getgenv().TevezMods.SendMessage() end end })
+
+        local SpS = criarSection(TevezTab, "Spoofer", "Alterar dispositivo", "lucide:smartphone", false)
+        SpS:Paragraph({ Title = "Spoofer", Desc = cor({ "O " }, { "spoofer", "#00AAFF" }, { " permite você alterar o dispositivo para todos" }) })
+        SpS:Dropdown({ Title = "Dispositivo", Desc = cor({ "Selecione o " }, { "dispositivo", "#FFFFFF" }), Icon = "lucide:laptop", Values = { "Mobile", "Computer" }, Value = "Computer", Callback = function(opt) if getgenv().TevezMods then getgenv().TevezMods.SelectedDevice = opt end end })
+        SpS:Toggle({ Title = "Ativar", Desc = cor({ "Altera", "#00FF00" }, { " o dispositivo (reseta o personagem)" }), Icon = "lucide:power", Value = false, Callback = function(v) if getgenv().TevezMods and getgenv().TevezMods.ToggleSpoof then getgenv().TevezMods.ToggleSpoof(v) end end })
+        SpS:Space()
+        SpS:Dropdown({ Title = "AFK", Desc = cor({ "Permite " }, { "ativar", "#00FF00" }, { " ou " }, { "desativar", "#FF0000" }, { " o " }, { "AFK", "#FFAA00" }), Icon = "lucide:coffee", Values = { "Ativar", "Desativar" }, Value = "Desativar", Callback = function(opt) if getgenv().TevezMods and getgenv().TevezMods.SetAFK then getgenv().TevezMods.SetAFK(opt == "Ativar") end end })
+
+        local FaS = criarSection(TevezTab, "Autofarm", "Farm do banco", "lucide:banknote", false)
+        local FarmStatus = FaS:Paragraph({ Title = "Status", Desc = "Aguardando...", Color = "Green", Image = "lucide:activity" })
+        task.spawn(function()
+            repeat task.wait(0.5) until getgenv().TevezAutoFarm
+            getgenv().TevezAutoFarm.UpdateCallback = function(msg, money)
+                if FarmStatus then FarmStatus:SetDesc(cor({ msg, "#AAAAAA" }) .. cor({ "\n💰 Farmado: R$ ", "#AAAAAA" }, { tostring(money), "#00FF00" })) end
+            end
+        end)
+        FaS:Toggle({ Title = "Ativar",      Desc = cor({ "Inicia",  "#00FF00" }, { " o autofarm" }),                                         Icon = "lucide:play",         Value = false, Callback = function(v) if getgenv().TevezAutoFarm then getgenv().TevezAutoFarm.Toggle(v) end end })
+        FaS:Toggle({ Title = "Modo seguro", Desc = cor({ "Pausa",   "#FF0000" }, { " se houver jogadores por perto" }),                       Icon = "lucide:shield-check", Value = false, Flag = "ModoSeguroAutofarmTevez", Callback = function(v) if getgenv().TevezAutoFarm then getgenv().TevezAutoFarm.SafeMode = v end end })
+        FaS:Input({  Title = "Raio de segurança", Desc = cor({ "Distância para " }, { "detectar", "#FF0000" }, { " se há alguém por perto" }), Placeholder = "60", InputIcon = "lucide:radio", Flag = "RaioDeSegurancaAutofarmTevez", Callback = function(v) local n = tonumber(v); if n and getgenv().TevezAutoFarm then getgenv().TevezAutoFarm.SafeRadius = n end end })
+
+        local CoS = criarSection(TevezTab, "Combate", "Kill aura", "lucide:swords", false)
+        CoS:Paragraph({ Title = "Kill aura", Image = "lucide:triangle-alert", Color = Color3.fromHex("#FF1D0D"), Desc = cor({ "Risco.", "#FF0000" }, { " Você será banido caso alguém te denuncie" }) })
+        local KillAuraToggle
+        CoS:Toggle({ Title = "Permitir", Desc = cor({ "Libera", "#00FF00" }, { " o uso do kill-aura" }), Icon = "lucide:lock-open", Value = false, Callback = function(state)
+            if state then if KillAuraToggle then KillAuraToggle:Unlock() end; notificar("Permissão concedida", 2, "lucide:key")
+            else if KillAuraToggle then KillAuraToggle:Set(false); KillAuraToggle:Lock() end; notificar("Permissão negada", 2, "lucide:key") end
+        end })
+        KillAuraToggle = CoS:Toggle({ Title = "Kill aura", Desc = cor({ "Mata", "#FF0000" }, { " jogadores próximos" }), Icon = "lucide:skull", Value = false, Callback = function(state)
+            if getgenv().TevezMods and getgenv().TevezMods.ToggleAura then getgenv().TevezMods.ToggleAura(state, KillAuraToggle) end
+        end })
+        KillAuraToggle:Lock()
+
+        local ShS = criarSection(TevezTab, "Loja", "Comprar itens", "lucide:shopping-bag", false)
+        local SHOP_ITEMS = { ["AK-47"] = 15000, ["MPT-76"] = 8500, ["UZI"] = 8200, ["M4A1"] = 13000, ["GLOCK 18"] = 4300, ["Colete"] = 15000 }
+        local shopValues, displayToKey = {}, {}
+        for name, price in pairs(SHOP_ITEMS) do local d = name .. " - $" .. price; table.insert(shopValues, d); displayToKey[d] = name end
+        ShS:Dropdown({ Title = "Comprar itens", Desc = cor({ "Seleciona um " }, { "item", "#FFFFFF" }, { " na loja" }), Icon = "lucide:tag", Values = shopValues, Value = "GLOCK 18 - $4300", Callback = function(opt) if getgenv().TevezMods then getgenv().TevezMods.SelectedShopItem = displayToKey[opt] end end })
+        ShS:Button({ Title = "Comprar", Desc = cor({ "Compra", "#00FF00" }, { " o item selecionado" }), Icon = "lucide:credit-card", Callback = function() if getgenv().TevezMods and getgenv().TevezMods.BuyItem then getgenv().TevezMods.BuyItem() end end })
+
+        local MoS = criarSection(TevezTab, "Mods", "Modifica a arma", "lucide:hammer", false)
+        MoS:Input({ Title = "Bullets", Desc = cor({ "Quantidade de " }, { "balas", "#00AAFF" }, { " por disparo" }), Placeholder = "Valor", InputIcon = "lucide:hash",   Flag = "BalasTevez",  Callback = function(v) if v ~= "" and getgenv().TevezMods then getgenv().TevezMods.GunConfig.Bullets = tonumber(v) end end })
+        MoS:Input({ Title = "Spread",  Desc = cor({ "Muda o " }, { "espalhamento", "#FFAA00" }),                     Placeholder = "Valor", InputIcon = "lucide:expand",  Flag = "SpreadTevez", Callback = function(v) if v ~= "" and getgenv().TevezMods then getgenv().TevezMods.GunConfig.Spread  = tonumber(v) end end })
+        MoS:Input({ Title = "Range",   Desc = cor({ "O quão " }, { "longe", "#00AAFF" }, { " as balas vão" }),       Placeholder = "Valor", InputIcon = "lucide:target",  Flag = "RangeTevez",  Callback = function(v) if v ~= "" and getgenv().TevezMods then getgenv().TevezMods.GunConfig.Range   = tonumber(v) end end })
+        MoS:Button({ Title = "Aplicar mods", Desc = cor({ "Muda", "#00FF00" }, { " os atributos da arma" }), Icon = "lucide:check-circle", Callback = function() if getgenv().TevezMods and getgenv().TevezMods.ApplyGunMods then getgenv().TevezMods.ApplyGunMods() end end })
+
+    elseif MapaAtual == "Christian" then
+        local ChristianTab = criarTab("Christian", "https://tr.rbxcdn.com/180DAY-048e9d153b3fd43e5ee5207b61b810f7/768/432/Image/Webp/noFilter")
+
+        if not getgenv().ChristianSpooferConfig then
+            getgenv().ChristianSpooferConfig = { Enabled = false, Device = "Pc" }
+        end
+        if not getgenv().ChristianSpooferHooked then
+            getgenv().ChristianSpooferHooked = true
+            local OldNameCall
+            OldNameCall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+                if not checkcaller() and getnamecallmethod() == "FireServer" and tostring(self) == "Dispositivo" and getgenv().ChristianSpooferConfig.Enabled then
+                    local args = { ... }; args[1] = getgenv().ChristianSpooferConfig.Device; return OldNameCall(self, table.unpack(args))
+                end
+                return OldNameCall(self, ...)
+            end))
+        end
+
+        local Sp = criarSection(ChristianTab, "Dispositivo", "Modificar dispositivo", "lucide:phone", true)
+        Sp:Paragraph({ Title = "Spoofer", Desc = cor({ "O " }, { "spoofer", "#00AAFF" }, { " permite você alterar o dispositivo para todos" }) })
+        Sp:Dropdown({ Title = "Dispositivo", Desc = cor({ "Selecione o " }, { "dispositivo", "#FFFFFF" }), Icon = "lucide:laptop", Values = { "Celular", "PC" }, Value = "Celular", Callback = function(opt) getgenv().ChristianSpooferConfig.Device = (opt == "PC") and "Pc" or "Mobile" end })
+        Sp:Toggle({ Title = "Ativar", Desc = cor({ "Altera", "#00FF00" }, { " o dispositivo (reseta o personagem)" }), Icon = "lucide:power", Value = false, Callback = function(v)
+            getgenv().ChristianSpooferConfig.Enabled = v
+            if v and LocalPlayer.Character then local h = LocalPlayer.Character:FindFirstChildOfClass("Humanoid"); if h and h.Health > 0 then h.Health = 0 end end
+        end })
+
+    elseif MapaAtual == "Delta" then
+        local DeltaTab = criarTab("Delta", "https://tr.rbxcdn.com/180DAY-8952e9d8abbff8104b22356f8b66f962/768/432/Image/Webp/noFilter")
+        if type(notificar) == "function" then getgenv().notificar = notificar end
+
+        criarSection(DeltaTab, "Combate", "Kill aura", "lucide:swords", false):Toggle({ Title = "Kill aura", Desc = cor({ "Mata", "#FF0000" }, { " todos os inimigos ao redor" }), Icon = "lucide:skull", Value = false, Callback = function(s) if getgenv().DeltaLogic then getgenv().DeltaLogic.KillAuraAtiva = s end end })
+
+        local JS = criarSection(DeltaTab, "Polichinelos", "Modificar", "lucide:activity", true)
+        JS:Input({ Title = "Quantidade", Desc = cor({ "Valor para " }, { "adicionar ou remover", "#FFFFFF" }), Placeholder = "10", InputIcon = "lucide:hash", Callback = function(v) if getgenv().DeltaLogic then getgenv().DeltaLogic.JJValue = v:gsub("%D", "") end end })
+        JS:Button({ Title = "Modificar", Desc = cor({ "Muda", "#00FF00" }, { " seus polichinelos" }), Icon = "lucide:edit-2", Callback = function() if getgenv().DeltaLogic and getgenv().DeltaLogic.SetJJ then getgenv().DeltaLogic.SetJJ() end end })
+
+        local ES = criarSection(DeltaTab, "Economia", "Dinheiro", "lucide:coins", false)
+        ES:Input({ Title = "Quantidade", Desc = cor({ "Valor para receber" }), Placeholder = "1000000", InputIcon = "lucide:circle-dollar-sign", Callback = function(v) if getgenv().DeltaLogic then getgenv().DeltaLogic.GetRichValue = v:gsub("%D", "") end end })
+        ES:Button({ Title = "Money", Desc = cor({ "Pega", "#00FF00" }, { " o dinheiro" }), Icon = "lucide:gem", Callback = function() if getgenv().DeltaLogic and getgenv().DeltaLogic.GetRich then getgenv().DeltaLogic.GetRich() end end })
+
+    elseif MapaAtual == "Soucre" then
+        local SoucreTab  = criarTab("Soucre", "https://tr.rbxcdn.com/180DAY-9b65f927dea36f98c1a720694fd00fd3/768/432/Image/Webp/noFilter")
+        local FaS = criarSection(SoucreTab, "Entregador", "Autofarm", "lucide:banknote-arrow-up", true)
+        local MP  = FaS:Paragraph({ Title = "Status", Desc = "Dinheiro farmado: $0", Color = "Green", Image = "lucide:coins" })
+        task.spawn(function()
+            repeat task.wait(0.5) until getgenv().SoucreLogic
+            getgenv().SoucreLogic.UpdateCallback = function(val) if MP then MP:SetDesc(cor({ "Dinheiro farmado: ", "#AAAAAA" }, { "$", "#00FF00" }, { tostring(val), "#00FF00" })) end end
+        end)
+        FaS:Toggle({ Title = "Autofarm", Desc = cor({ "Inicia", "#00FF00" }, { " o autofarm" }), Icon = "lucide:circle-play", Value = false, Callback = function(v) if getgenv().SoucreLogic then getgenv().SoucreLogic.Toggle(v) end end })
+
+    elseif MapaAtual == "NovaEra" then
+        local NovaEraTab = criarTab("Nova Era", "https://tr.rbxcdn.com/180DAY-9b65f927dea36f98c1a720694fd00fd3/768/432/Image/Webp/noFilter")
+        local FaS = criarSection(NovaEraTab, "Dinheiro", "Autofarm", "lucide:coins", true)
+        local MP  = FaS:Paragraph({ Title = "Status", Desc = "Dinheiro farmado: $0", Color = "Green", Image = "lucide:coins" })
+        task.spawn(function()
+            repeat task.wait(0.5) until getgenv().NovaEraLogic
+            getgenv().NovaEraLogic.UpdateCallback = function(val) if MP then MP:SetDesc(cor({ "Dinheiro farmado: ", "#AAAAAA" }, { "$", "#00FF00" }, { tostring(val), "#00FF00" })) end end
+        end)
+        FaS:Dropdown({ Title = "Modo", Values = { "Lixeiro", "Barbeiro" }, Value = "Lixeiro", Callback = function(v) if getgenv().NovaEraLogic and getgenv().NovaEraLogic.SetMode then getgenv().NovaEraLogic.SetMode(v) end end })
+        FaS:Toggle({ Title = "Autofarm", Desc = cor({ "Inicia", "#00FF00" }, { " o autofarm de coleta" }), Icon = "lucide:circle-play", Value = false, Callback = function(v) if getgenv().NovaEraLogic and getgenv().NovaEraLogic.Toggle then getgenv().NovaEraLogic.Toggle(v) end end })
+
+    elseif MapaAtual == "Apex" then
+        local ApexTab = criarTab("Apex", "https://tr.rbxcdn.com/180DAY-9b65f927dea36f98c1a720694fd00fd3/768/432/Image/Webp/noFilter")
+        ApexTab:Button({ Title = "Invadir base", Desc = "Autoexplicativo", Icon = "lucide:log-in", IconAlign = "Left", Locked = not JD_IS_PREMIUM, LockedTitle = "Premium", Callback = function() if getgenv().IniciarRota then getgenv().IniciarRota() end end })
+
+        local MoS  = criarSection(ApexTab, "Modificações", "Modificações de arma", "lucide:chevrons-left-right-ellipsis", false)
+        local TrS  = criarSection(ApexTab, "Troll", "Funções de troll", "https://pngfre.com/wp-content/uploads/1000117874.png", true)
+
+        MoS:Toggle({ Title = "Bala infinita", Desc = cor({ "Congela", "#00FF00" }, { " a munição da arma" }), Icon = "lucide:infinity", Flag = "ApexBalaInfinita", Value = false, Callback = function(v)
+            if getgenv()._InfiniteAmmoConn     then getgenv()._InfiniteAmmoConn:Disconnect();     getgenv()._InfiniteAmmoConn     = nil end
+            if getgenv()._InfiniteAmmoAddedConn then getgenv()._InfiniteAmmoAddedConn:Disconnect(); getgenv()._InfiniteAmmoAddedConn = nil end
+            if not v then return end
+            local function fillAmmo(parent)
+                if not parent then return end
+                for _, tool in ipairs(parent:GetChildren()) do
+                    if tool:IsA("Tool") and #tool:GetDescendants() > 5 then
+                        local ammo = tool:FindFirstChild("Ammo"); if ammo then ammo.Value = ammo.MaxValue end
+                    end
+                end
+            end
+            getgenv()._InfiniteAmmoConn = RunService.Heartbeat:Connect(function() fillAmmo(LocalPlayer:FindFirstChild("Backpack")); fillAmmo(LocalPlayer.Character) end)
+            getgenv()._InfiniteAmmoAddedConn = LocalPlayer.Backpack.ChildAdded:Connect(function(tool)
+                task.wait(0.1)
+                if tool:IsA("Tool") and #tool:GetDescendants() > 5 then local ammo = tool:FindFirstChild("Ammo"); if ammo then ammo.Value = ammo.MaxValue end end
+            end)
+        end })
+
+        TrS:Toggle({ Title = "Spammar sons", Desc = cor({ "Precisa", "#FF0000" }, { " de uma arma." }, { " Esses sons tocam para todos.", "#03F916" }), Icon = "lucide:audio-lines", Value = false, Callback = function(v)
+            if getgenv().ApexLogic and getgenv().ApexLogic.ToggleSound then getgenv().ApexLogic.ToggleSound(v) end
+        end })
+    end
+end
