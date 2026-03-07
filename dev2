@@ -572,7 +572,7 @@ local env = getgenv()
 
 do
     if env._silentRenderConn then
-        pcall(env._silentRenderConn.Disconnect, env._silentRenderConn)
+        pcall(function() env._silentRenderConn:Disconnect() end)
         env._silentRenderConn = nil
     end
     if env._silentOldNC then
@@ -585,7 +585,7 @@ do
         env._silentOldNC = nil
     end
     if env._silentGui then
-        pcall(env._silentGui.Destroy, env._silentGui)
+        pcall(function() env._silentGui:Destroy() end)
         env._silentGui = nil
     end
 end
