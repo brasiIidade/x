@@ -623,7 +623,7 @@ rp.FilterType  = Enum.RaycastFilterType.Exclude
 rp.IgnoreWater = true
 
 local function SA_InitVisuals()
-    if V.Gui then pcall(V.Gui.Destroy, V.Gui) end
+    if V.Gui then pcall(function() V.Gui:Destroy() end) end
 
     local gui = Instance.new("ScreenGui")
     gui.Name, gui.IgnoreGuiInset, gui.ResetOnSpawn = SA_HttpSvc:GenerateGUID(false), true, false
