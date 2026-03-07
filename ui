@@ -3594,28 +3594,28 @@ if MapaAtual then
         local TevezTab = criarTab("Tevez", "https://tr.rbxcdn.com/180DAY-84c7c1edcc63c7dfab5712b1ad377133/768/432/Image/Webp/noFilter")
 
         local LS = criarSection(TevezTab, "Local", "Chat", "lucide:message-circle", true)
-        LS:Input({ Title = "Mensagem", Desc = cor({ "Digite o " }, { "texto", "#FFFFFF" }, { " para enviar no chat" }), Value = "", InputIcon = "lucide:text-cursor", Placeholder = "Digite aqui...", Callback = function(v) if _G.TevezMods then _G.TevezMods.ChatMessage = v end end })
-        LS:Toggle({ Title = "Spam",   Desc = cor({ "Envia a mensagem " }, { "várias vezes", "#FFAA00" }),      Icon = "lucide:repeat", Value = false, Callback = function(s) if _G.TevezMods and _G.TevezMods.ToggleSpam   then _G.TevezMods.ToggleSpam(s) end end })
-        LS:Button({ Title = "Enviar", Desc = cor({ "Manda", "#00FF00" }, { " a mensagem atual" }), Color = "Green", Icon = "lucide:send", Callback = function() if _G.TevezMods and _G.TevezMods.SendMessage then _G.TevezMods.SendMessage() end end })
+        LS:Input({ Title = "Mensagem", Desc = cor({ "Digite o " }, { "texto", "#FFFFFF" }, { " para enviar no chat" }), Value = "", InputIcon = "lucide:text-cursor", Placeholder = "Digite aqui...", Callback = function(v) if getgenv().TevezMods then getgenv().TevezMods.ChatMessage = v end end })
+        LS:Toggle({ Title = "Spam",   Desc = cor({ "Envia a mensagem " }, { "várias vezes", "#FFAA00" }),      Icon = "lucide:repeat", Value = false, Callback = function(s) if getgenv().TevezMods and getgenv().TevezMods.ToggleSpam   then getgenv().TevezMods.ToggleSpam(s) end end })
+        LS:Button({ Title = "Enviar", Desc = cor({ "Manda", "#00FF00" }, { " a mensagem atual" }), Color = "Green", Icon = "lucide:send", Callback = function() if getgenv().TevezMods and getgenv().TevezMods.SendMessage then getgenv().TevezMods.SendMessage() end end })
 
         local SpS = criarSection(TevezTab, "Spoofer", "Alterar dispositivo", "lucide:smartphone", false)
         SpS:Paragraph({ Title = "Spoofer", Desc = cor({ "O " }, { "spoofer", "#00AAFF" }, { " permite você alterar o dispositivo para todos" }) })
-        SpS:Dropdown({ Title = "Dispositivo", Desc = cor({ "Selecione o " }, { "dispositivo", "#FFFFFF" }), Icon = "lucide:laptop", Values = { "Mobile", "Computer" }, Value = "Computer", Callback = function(opt) if _G.TevezMods then _G.TevezMods.SelectedDevice = opt end end })
-        SpS:Toggle({ Title = "Ativar", Desc = cor({ "Altera", "#00FF00" }, { " o dispositivo (reseta o personagem)" }), Icon = "lucide:power", Value = false, Callback = function(v) if _G.TevezMods and _G.TevezMods.ToggleSpoof then _G.TevezMods.ToggleSpoof(v) end end })
+        SpS:Dropdown({ Title = "Dispositivo", Desc = cor({ "Selecione o " }, { "dispositivo", "#FFFFFF" }), Icon = "lucide:laptop", Values = { "Mobile", "Computer" }, Value = "Computer", Callback = function(opt) if getgenv().TevezMods then getgenv().TevezMods.SelectedDevice = opt end end })
+        SpS:Toggle({ Title = "Ativar", Desc = cor({ "Altera", "#00FF00" }, { " o dispositivo (reseta o personagem)" }), Icon = "lucide:power", Value = false, Callback = function(v) if getgenv().TevezMods and getgenv().TevezMods.ToggleSpoof then getgenv().TevezMods.ToggleSpoof(v) end end })
         SpS:Space()
-        SpS:Dropdown({ Title = "AFK", Desc = cor({ "Permite " }, { "ativar", "#00FF00" }, { " ou " }, { "desativar", "#FF0000" }, { " o " }, { "AFK", "#FFAA00" }), Icon = "lucide:coffee", Values = { "Ativar", "Desativar" }, Value = "Desativar", Callback = function(opt) if _G.TevezMods and _G.TevezMods.SetAFK then _G.TevezMods.SetAFK(opt == "Ativar") end end })
+        SpS:Dropdown({ Title = "AFK", Desc = cor({ "Permite " }, { "ativar", "#00FF00" }, { " ou " }, { "desativar", "#FF0000" }, { " o " }, { "AFK", "#FFAA00" }), Icon = "lucide:coffee", Values = { "Ativar", "Desativar" }, Value = "Desativar", Callback = function(opt) if getgenv().TevezMods and getgenv().TevezMods.SetAFK then getgenv().TevezMods.SetAFK(opt == "Ativar") end end })
 
         local FaS = criarSection(TevezTab, "Autofarm", "Farm do banco", "lucide:banknote", false)
         local FarmStatus = FaS:Paragraph({ Title = "Status", Desc = "Aguardando...", Color = "Green", Image = "lucide:activity" })
         task.spawn(function()
-            repeat task.wait(0.5) until _G.TevezAutoFarm
-            _G.TevezAutoFarm.UpdateCallback = function(msg, money)
+            repeat task.wait(0.5) until getgenv().TevezAutoFarm
+            getgenv().TevezAutoFarm.UpdateCallback = function(msg, money)
                 if FarmStatus then FarmStatus:SetDesc(cor({ msg, "#AAAAAA" }) .. cor({ "\n💰 Farmado: R$ ", "#AAAAAA" }, { tostring(money), "#00FF00" })) end
             end
         end)
-        FaS:Toggle({ Title = "Ativar",      Desc = cor({ "Inicia",  "#00FF00" }, { " o autofarm" }),                                         Icon = "lucide:play",         Value = false, Callback = function(v) if _G.TevezAutoFarm then _G.TevezAutoFarm.Toggle(v) end end })
-        FaS:Toggle({ Title = "Modo seguro", Desc = cor({ "Pausa",   "#FF0000" }, { " se houver jogadores por perto" }),                       Icon = "lucide:shield-check", Value = false, Flag = "ModoSeguroAutofarmTevez", Callback = function(v) if _G.TevezAutoFarm then _G.TevezAutoFarm.SafeMode = v end end })
-        FaS:Input({  Title = "Raio de segurança", Desc = cor({ "Distância para " }, { "detectar", "#FF0000" }, { " se há alguém por perto" }), Placeholder = "60", InputIcon = "lucide:radio", Flag = "RaioDeSegurancaAutofarmTevez", Callback = function(v) local n = tonumber(v); if n and _G.TevezAutoFarm then _G.TevezAutoFarm.SafeRadius = n end end })
+        FaS:Toggle({ Title = "Ativar",      Desc = cor({ "Inicia",  "#00FF00" }, { " o autofarm" }),                                         Icon = "lucide:play",         Value = false, Callback = function(v) if getgenv().TevezAutoFarm then getgenv().TevezAutoFarm.Toggle(v) end end })
+        FaS:Toggle({ Title = "Modo seguro", Desc = cor({ "Pausa",   "#FF0000" }, { " se houver jogadores por perto" }),                       Icon = "lucide:shield-check", Value = false, Flag = "ModoSeguroAutofarmTevez", Callback = function(v) if getgenv().TevezAutoFarm then getgenv().TevezAutoFarm.SafeMode = v end end })
+        FaS:Input({  Title = "Raio de segurança", Desc = cor({ "Distância para " }, { "detectar", "#FF0000" }, { " se há alguém por perto" }), Placeholder = "60", InputIcon = "lucide:radio", Flag = "RaioDeSegurancaAutofarmTevez", Callback = function(v) local n = tonumber(v); if n and getgenv().TevezAutoFarm then getgenv().TevezAutoFarm.SafeRadius = n end end })
 
         local CoS = criarSection(TevezTab, "Combate", "Kill aura", "lucide:swords", false)
         CoS:Paragraph({ Title = "Kill aura", Image = "lucide:triangle-alert", Color = Color3.fromHex("#FF1D0D"), Desc = cor({ "Risco.", "#FF0000" }, { " Você será banido caso alguém te denuncie" }) })
@@ -3625,7 +3625,7 @@ if MapaAtual then
             else if KillAuraToggle then KillAuraToggle:Set(false); KillAuraToggle:Lock() end; notificar("Permissão negada", 2, "lucide:key") end
         end })
         KillAuraToggle = CoS:Toggle({ Title = "Kill aura", Desc = cor({ "Mata", "#FF0000" }, { " jogadores próximos" }), Icon = "lucide:skull", Value = false, Callback = function(state)
-            if _G.TevezMods and _G.TevezMods.ToggleAura then _G.TevezMods.ToggleAura(state, KillAuraToggle) end
+            if getgenv().TevezMods and getgenv().TevezMods.ToggleAura then getgenv().TevezMods.ToggleAura(state, KillAuraToggle) end
         end })
         KillAuraToggle:Lock()
 
@@ -3633,14 +3633,14 @@ if MapaAtual then
         local SHOP_ITEMS = { ["AK-47"] = 15000, ["MPT-76"] = 8500, ["UZI"] = 8200, ["M4A1"] = 13000, ["GLOCK 18"] = 4300, ["Colete"] = 15000 }
         local shopValues, displayToKey = {}, {}
         for name, price in pairs(SHOP_ITEMS) do local d = name .. " - $" .. price; table.insert(shopValues, d); displayToKey[d] = name end
-        ShS:Dropdown({ Title = "Comprar itens", Desc = cor({ "Seleciona um " }, { "item", "#FFFFFF" }, { " na loja" }), Icon = "lucide:tag", Values = shopValues, Value = "GLOCK 18 - $4300", Callback = function(opt) if _G.TevezMods then _G.TevezMods.SelectedShopItem = displayToKey[opt] end end })
-        ShS:Button({ Title = "Comprar", Desc = cor({ "Compra", "#00FF00" }, { " o item selecionado" }), Icon = "lucide:credit-card", Callback = function() if _G.TevezMods and _G.TevezMods.BuyItem then _G.TevezMods.BuyItem() end end })
+        ShS:Dropdown({ Title = "Comprar itens", Desc = cor({ "Seleciona um " }, { "item", "#FFFFFF" }, { " na loja" }), Icon = "lucide:tag", Values = shopValues, Value = "GLOCK 18 - $4300", Callback = function(opt) if getgenv().TevezMods then getgenv().TevezMods.SelectedShopItem = displayToKey[opt] end end })
+        ShS:Button({ Title = "Comprar", Desc = cor({ "Compra", "#00FF00" }, { " o item selecionado" }), Icon = "lucide:credit-card", Callback = function() if getgenv().TevezMods and getgenv().TevezMods.BuyItem then getgenv().TevezMods.BuyItem() end end })
 
         local MoS = criarSection(TevezTab, "Mods", "Modifica a arma", "lucide:hammer", false)
-        MoS:Input({ Title = "Bullets", Desc = cor({ "Quantidade de " }, { "balas", "#00AAFF" }, { " por disparo" }), Placeholder = "Valor", InputIcon = "lucide:hash",   Flag = "BalasTevez",  Callback = function(v) if v ~= "" and _G.TevezMods then _G.TevezMods.GunConfig.Bullets = tonumber(v) end end })
-        MoS:Input({ Title = "Spread",  Desc = cor({ "Muda o " }, { "espalhamento", "#FFAA00" }),                     Placeholder = "Valor", InputIcon = "lucide:expand",  Flag = "SpreadTevez", Callback = function(v) if v ~= "" and _G.TevezMods then _G.TevezMods.GunConfig.Spread  = tonumber(v) end end })
-        MoS:Input({ Title = "Range",   Desc = cor({ "O quão " }, { "longe", "#00AAFF" }, { " as balas vão" }),       Placeholder = "Valor", InputIcon = "lucide:target",  Flag = "RangeTevez",  Callback = function(v) if v ~= "" and _G.TevezMods then _G.TevezMods.GunConfig.Range   = tonumber(v) end end })
-        MoS:Button({ Title = "Aplicar mods", Desc = cor({ "Muda", "#00FF00" }, { " os atributos da arma" }), Icon = "lucide:check-circle", Callback = function() if _G.TevezMods and _G.TevezMods.ApplyGunMods then _G.TevezMods.ApplyGunMods() end end })
+        MoS:Input({ Title = "Bullets", Desc = cor({ "Quantidade de " }, { "balas", "#00AAFF" }, { " por disparo" }), Placeholder = "Valor", InputIcon = "lucide:hash",   Flag = "BalasTevez",  Callback = function(v) if v ~= "" and getgenv().TevezMods then getgenv().TevezMods.GunConfig.Bullets = tonumber(v) end end })
+        MoS:Input({ Title = "Spread",  Desc = cor({ "Muda o " }, { "espalhamento", "#FFAA00" }),                     Placeholder = "Valor", InputIcon = "lucide:expand",  Flag = "SpreadTevez", Callback = function(v) if v ~= "" and getgenv().TevezMods then getgenv().TevezMods.GunConfig.Spread  = tonumber(v) end end })
+        MoS:Input({ Title = "Range",   Desc = cor({ "O quão " }, { "longe", "#00AAFF" }, { " as balas vão" }),       Placeholder = "Valor", InputIcon = "lucide:target",  Flag = "RangeTevez",  Callback = function(v) if v ~= "" and getgenv().TevezMods then getgenv().TevezMods.GunConfig.Range   = tonumber(v) end end })
+        MoS:Button({ Title = "Aplicar mods", Desc = cor({ "Muda", "#00FF00" }, { " os atributos da arma" }), Icon = "lucide:check-circle", Callback = function() if getgenv().TevezMods and getgenv().TevezMods.ApplyGunMods then getgenv().TevezMods.ApplyGunMods() end end })
 
     elseif MapaAtual == "Christian" then
         local ChristianTab = criarTab("Christian", "https://tr.rbxcdn.com/180DAY-048e9d153b3fd43e5ee5207b61b810f7/768/432/Image/Webp/noFilter")
