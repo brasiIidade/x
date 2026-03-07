@@ -1,6 +1,11 @@
 local CHANGELOG = {
+	-- Adicione novidades assim:
 	-- {data = "27/01/2026", notas = {"Suporte adicionado", "Correção de bugs"}},
 }
+
+local function AddNovidade(data, notas)
+	table.insert(CHANGELOG, {data=data, notas=notas})
+end
 
 local function Finalizar(m)
 	print(m) task.wait(0.5)
@@ -65,15 +70,16 @@ local C = {
 }
 
 local ICONS = {
-	Logo  = "rbxassetid://137064182739714",
-	Key   = "rbxassetid://10723415903",
-	Check = "rbxassetid://10709790644",
-	Ok    = "rbxassetid://10709790537",
-	Err   = "rbxassetid://10747384394",
-	User  = "rbxassetid://4003186770",
-	Copy  = "rbxassetid://10734950309",
-	News  = "rbxassetid://9894440388",
-	Info  = "rbxassetid://9894440388",
+	Logo      = "rbxassetid://137064182739714",
+	Key       = "rbxassetid://10723415903",
+	Check     = "rbxassetid://10709790644",
+	Ok        = "rbxassetid://10709790537",
+	Err       = "rbxassetid://10747384394",
+	User      = "rbxassetid://4483362458",
+	Clipboard = "rbxassetid://96265482350413",
+	News      = "rbxassetid://12707252279",
+	Discord   = "rbxassetid://70865253669298",
+	Bell      = "rbxassetid://6031071053",
 }
 
 local SFX = {Ok="rbxassetid://6895079853",Err="rbxassetid://4590662766",Hover="rbxassetid://6895079632",Click="rbxassetid://4590657391"}
@@ -142,99 +148,133 @@ task.spawn(function()
 	for _,i in pairs(tmp) do i:Destroy() end
 end)
 
-local NToast={list={},max=4,gap=6}
+local NToast = {queue={}, active=false}
+local TOAST_W = MOBILE and 210 or 268
+local TOAST_H = 52
+local TOAST_GAP = 8
+local TOAST_MAX = 4
 
-function NToast.reflow()
-	for i,card in ipairs(NToast.list) do
-		tw(card,{Position=UDim2.new(1,-14,0,14+(i-1)*(50+NToast.gap))},.3)
+local function countToasts(screen)
+	local n = 0
+	for _, c in ipairs(screen:GetChildren()) do
+		if c:IsA("Frame") and c:FindFirstChild("_toast") then n = n + 1 end
 	end
+	return n
 end
 
-function NToast.show(screen,title,msg,kind,dur)
-	if #NToast.list>=NToast.max then
-		local old=table.remove(NToast.list,1)
-		if old and old.Parent then old:Destroy() end
-	end
-	local isErr=(kind=="error")
-	local accent=isErr and C.ERR or C.OK
-	local icon=isErr and ICONS.Err or ICONS.Ok
-	local W=MOBILE and 210 or 252
-	local H=50
+local function toastNext(screen)
+	if #NToast.queue == 0 then return end
+	local item = table.remove(NToast.queue, 1)
 
-	local card=mkFrame(screen,{
-		Size=UDim2.new(0,H,0,H),
-		Position=UDim2.new(1,-14,0,14),
-		AnchorPoint=Vector2.new(1,0),
-		BackgroundColor3=C.Card,
-		ClipsDescendants=true,
-		ZIndex=200,
-	})
-	mkCorner(card,10)
+	local slot = countToasts(screen)
 
-	local acBar=mkFrame(card,{
-		Size=UDim2.new(0,3,1,0),
-		Position=UDim2.new(0,0,0,0),
-		BackgroundColor3=accent,
-		ZIndex=201,
-	})
+	local isErr = (item.kind == "error")
+	local accent = isErr and C.ERR or C.OK
+	local icon = isErr and ICONS.Err or ICONS.Ok
 
-	local iw=mkFrame(card,{
-		Size=UDim2.new(0,28,0,28),
-		Position=UDim2.new(0,11,0.5,0),
-		AnchorPoint=Vector2.new(0,0.5),
-		BackgroundColor3=accent,
-		BackgroundTransparency=0.82,
-		ZIndex=201,
+	local msgLines = math.ceil(#item.msg / 34)
+	local cardH = math.max(TOAST_H, 20 + 16 + msgLines * 14 + 6)
+	local targetY = 14 + slot * (cardH + TOAST_GAP)
+
+	local card = mkFrame(screen, {
+		Size = UDim2.new(0, TOAST_W, 0, cardH),
+		Position = UDim2.new(1, TOAST_W + 30, 0, targetY),
+		AnchorPoint = Vector2.new(1, 0),
+		BackgroundColor3 = C.Card,
+		ZIndex = 200,
 	})
-	mkCorner(iw,14)
-	mkImage(iw,{
-		Size=UDim2.fromOffset(14,14),
-		Position=UDim2.fromScale(.5,.5),
-		AnchorPoint=Vector2.new(.5,.5),
-		Image=icon,
-		ImageColor3=accent,
-		ZIndex=202,
+	mkCorner(card, 10)
+	mkStroke(card, C.Edge, 1)
+
+	local tag = Instance.new("BoolValue")
+	tag.Name = "_toast"
+	tag.Parent = card
+
+	mkFrame(card, {
+		Size = UDim2.new(0, 3, 1, -8),
+		Position = UDim2.new(0, 0, 0, 4),
+		BackgroundColor3 = accent,
+		ZIndex = 201,
 	})
 
-	mkLabel(card,{
-		Size=UDim2.new(1,-50,0,16),
-		Position=UDim2.new(0,46,0,8),
-		Text=title,
-		TextColor3=C.White,
-		TextSize=12,
-		Font=Enum.Font.GothamBold,
-		TextXAlignment=Enum.TextXAlignment.Left,
-		ZIndex=201,
+	local iw = mkFrame(card, {
+		Size = UDim2.new(0, 28, 0, 28),
+		Position = UDim2.new(0, 11, 0.5, 0),
+		AnchorPoint = Vector2.new(0, 0.5),
+		BackgroundColor3 = accent,
+		BackgroundTransparency = 0.82,
+		ZIndex = 201,
 	})
-	mkLabel(card,{
-		Size=UDim2.new(1,-50,0,14),
-		Position=UDim2.new(0,46,0,26),
-		Text=msg,
-		TextColor3=C.Grey,
-		TextSize=10,
-		Font=Enum.Font.Gotham,
-		TextXAlignment=Enum.TextXAlignment.Left,
-		TextWrapped=true,
-		ZIndex=201,
+	mkCorner(iw, 14)
+	mkImage(iw, {
+		Size = UDim2.fromOffset(14, 14),
+		Position = UDim2.fromScale(.5, .5),
+		AnchorPoint = Vector2.new(.5, .5),
+		Image = icon,
+		ImageColor3 = accent,
+		ZIndex = 202,
 	})
 
-	table.insert(NToast.list,card)
-	NToast.reflow()
+	mkLabel(card, {
+		Size = UDim2.new(1, -52, 0, 16),
+		Position = UDim2.new(0, 48, 0, 9),
+		Text = item.title,
+		TextColor3 = C.White,
+		TextSize = 12,
+		Font = Enum.Font.GothamBold,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ZIndex = 201,
+	})
+	mkLabel(card, {
+		Size = UDim2.new(1, -54, 0, cardH - 26),
+		Position = UDim2.new(0, 48, 0, 27),
+		Text = item.msg,
+		TextColor3 = C.Grey,
+		TextSize = 10,
+		Font = Enum.Font.Gotham,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextWrapped = true,
+		ZIndex = 201,
+	})
 
-	tw(card,{Size=UDim2.new(0,W,0,H)},.3,Enum.EasingStyle.Quint)
+	tw(card, {Position = UDim2.new(1, -14, 0, targetY)}, .32, Enum.EasingStyle.Quint)
 
-	task.delay(dur or 3.5,function()
-		if not card.Parent then return end
-		tw(card,{Position=UDim2.new(1,W+20,0,card.Position.Y.Offset)},.28,Enum.EasingStyle.Quint,Enum.EasingDirection.In)
-		task.wait(.32)
-		for i,t in ipairs(NToast.list) do if t==card then table.remove(NToast.list,i) break end end
-		pcall(function() card:Destroy() end)
-		NToast.reflow()
+	task.delay(item.dur or 3.5, function()
+		if card.Parent then
+			tw(card, {Position = UDim2.new(1, TOAST_W + 40, 0, targetY)}, .25, Enum.EasingStyle.Quint, Enum.EasingDirection.In)
+			task.wait(.28)
+			pcall(function() card:Destroy() end)
+		end
+		toastNext(screen)
 	end)
 end
 
+function NToast.show(screen, title, msg, kind, dur)
+	if #NToast.queue >= TOAST_MAX then
+		table.remove(NToast.queue, 1)
+	end
+	table.insert(NToast.queue, {title=title, msg=msg, kind=kind, dur=dur})
+	toastNext(screen)
+end
+
 local function BuildUI()
-	if CoreGui:FindFirstChild("\0") then CoreGui["\0"]:Destroy() end
+	local existing = CoreGui:FindFirstChild("\0")
+	if existing then
+		local oldBlur = Lighting:FindFirstChild("MichiBlur")
+		TweenSvc:Create(existing,TweenInfo.new(.38,Enum.EasingStyle.Back,Enum.EasingDirection.In),{Size=UDim2.new(0,0,0,0),Position=UDim2.new(.5,0,.44,0)}):Play()
+		for _,v in ipairs(existing:GetDescendants()) do
+			if v:IsA("TextLabel") or v:IsA("TextButton") or v:IsA("TextBox") then TweenSvc:Create(v,TweenInfo.new(.16),{TextTransparency=1}):Play() end
+			if v:IsA("ImageLabel") then TweenSvc:Create(v,TweenInfo.new(.16),{ImageTransparency=1}):Play() end
+			if v:IsA("UIStroke") then TweenSvc:Create(v,TweenInfo.new(.16),{Transparency=1}):Play() end
+			if v:IsA("Frame") then TweenSvc:Create(v,TweenInfo.new(.16),{BackgroundTransparency=1}):Play() end
+		end
+		if oldBlur then TweenSvc:Create(oldBlur,TweenInfo.new(.38),{Size=0}):Play() end
+		task.delay(.5,function()
+			if existing and existing.Parent then existing:Destroy() end
+			if oldBlur and oldBlur.Parent then oldBlur:Destroy() end
+		end)
+		task.wait(.28)
+	end
 
 	local screen=Instance.new("ScreenGui")
 	screen.Name="\0"; screen.ResetOnSpawn=false
@@ -277,7 +317,6 @@ local function BuildUI()
 			Size=UDim2.new(0,w,1,0),
 			Position=UDim2.new(0,xOff,0,0),
 			BackgroundColor3=C.Panel,
-			ClipsDescendants=true,
 		})
 		mkCorner(p,12)
 		mkStroke(p,C.Edge,1)
@@ -289,46 +328,58 @@ local function BuildUI()
 	local pLog  = mkPanel(P1W+P2W+GAP*2, P3W)
 
 	local function closeAll()
-		tw(blur,{Size=0},.38)
-		tw(overlay,{BackgroundTransparency=1},.3)
-		tw(container,{Size=UDim2.new(0,TOTAL_W,0,0),Position=UDim2.new(.5,0,.44,0)},.38,Enum.EasingStyle.Back,Enum.EasingDirection.In)
 		for _,v in ipairs(container:GetDescendants()) do
-			if v:IsA("TextLabel") or v:IsA("TextButton") or v:IsA("TextBox") then tw(v,{TextTransparency=1},.16) end
-			if v:IsA("ImageLabel") then tw(v,{ImageTransparency=1},.16) end
-			if v:IsA("UIStroke") then tw(v,{Transparency=1},.16) end
-			if v:IsA("Frame") then tw(v,{BackgroundTransparency=1},.16) end
+			if v:IsA("TextLabel") or v:IsA("TextButton") or v:IsA("TextBox") then tw(v,{TextTransparency=1},.18) end
+			if v:IsA("ImageLabel") then tw(v,{ImageTransparency=1},.18) end
+			if v:IsA("UIStroke") then tw(v,{Transparency=1},.18) end
+			if v:IsA("Frame") then tw(v,{BackgroundTransparency=1},.18) end
 		end
-		task.delay(.5,function()
+		tw(blur,{Size=0},.42)
+		tw(overlay,{BackgroundTransparency=1},.38)
+		task.delay(.18,function()
+			tw(container,{Size=UDim2.new(0,TOTAL_W,0,0),Position=UDim2.new(.5,0,.44,0)},.34,Enum.EasingStyle.Back,Enum.EasingDirection.In)
+		end)
+		task.delay(.58,function()
 			if screen and screen.Parent then screen:Destroy() end
 			if blur and blur.Parent then blur:Destroy() end
 		end)
 	end
 
-	local function mkHeader(panel,icon,title)
-		local hBar=mkFrame(panel,{
-			Size=UDim2.new(1,0,0,HBAR),
+	local function mkHeader(panel,icon,title,isLogo)
+		local hOuter=mkFrame(panel,{
+			Size=UDim2.new(1,0,0,HBAR+12),
+			Position=UDim2.new(0,0,0,-12),
 			BackgroundColor3=C.Header,
 		})
-		mkImage(hBar,{
-			Size=UDim2.fromOffset(16,16),
-			Position=UDim2.new(0,13,.5,0),
-			AnchorPoint=Vector2.new(0,.5),
-			Image=icon,
-			ImageColor3=C.Grey,
+		mkCorner(hOuter,12)
+		local hFill=mkFrame(panel,{
+			Size=UDim2.new(1,0,0,12),
+			Position=UDim2.new(0,0,0,HBAR),
+			BackgroundColor3=C.Header,
 		})
-		mkLabel(hBar,{
-			Size=UDim2.new(1,-56,1,0),
-			Position=UDim2.new(0,35,0,0),
+		mkFrame(panel,{Size=UDim2.new(1,-16,0,1),Position=UDim2.new(0,8,0,HBAR),BackgroundColor3=C.Edge})
+		local icoProps = {
+			Size=UDim2.fromOffset(18,18),
+			Position=UDim2.new(0,13,0,HBAR/2),
+			AnchorPoint=Vector2.new(0,0.5),
+			Image=icon,
+		}
+		if not isLogo then icoProps.ImageColor3=C.Grey end
+		mkImage(hOuter,icoProps)
+		mkLabel(hOuter,{
+			Size=UDim2.new(1,-56,0,20),
+			Position=UDim2.new(0,37,0,HBAR/2),
+			AnchorPoint=Vector2.new(0,0.5),
 			Text=title,
 			TextColor3=C.White,
 			TextSize=13,
 			Font=Enum.Font.GothamBold,
 			TextXAlignment=Enum.TextXAlignment.Left,
 		})
-		local xb=mkBtn(hBar,{
+		local xb=mkBtn(hOuter,{
 			Size=UDim2.fromOffset(26,26),
-			Position=UDim2.new(1,-9,.5,0),
-			AnchorPoint=Vector2.new(1,.5),
+			Position=UDim2.new(1,-9,0,HBAR/2),
+			AnchorPoint=Vector2.new(1,0.5),
 			BackgroundColor3=C.CardHi,
 			BackgroundTransparency=1,
 			Text="×",
@@ -341,13 +392,12 @@ local function BuildUI()
 		xb.MouseEnter:Connect(function() tw(xb,{BackgroundTransparency=0.35,TextColor3=C.White},.15) end)
 		xb.MouseLeave:Connect(function() tw(xb,{BackgroundTransparency=1,TextColor3=C.Grey},.15) end)
 		xb.MouseButton1Click:Connect(function() snd(SFX.Click) closeAll() end)
-		mkFrame(panel,{Size=UDim2.new(1,-16,0,1),Position=UDim2.new(0,8,0,HBAR),BackgroundColor3=C.Edge})
 		return HBAR+10
 	end
 
-	local uY = mkHeader(pUser, ICONS.User,  "Informações")
-	local kY = mkHeader(pKey,  ICONS.Logo,  "michigun.xyz")
-	          mkHeader(pLog,  ICONS.News,  "Novidades")
+	local uY = mkHeader(pUser, ICONS.User,  "Informações", false)
+	local kY = mkHeader(pKey,  ICONS.Logo,  "michigun.xyz", true)
+	          mkHeader(pLog,  ICONS.News,  "Novidades",    true)
 
 	local player = Players.LocalPlayer
 	local avatarUrl = ("rbxthumb://type=AvatarHeadShot&id=%d&w=150&h=150"):format(player.UserId)
@@ -447,7 +497,7 @@ local function BuildUI()
 		bl.Padding=UDim.new(0,6)
 		bl.Parent=copyBtn
 	end
-	mkImage(copyBtn,{Size=UDim2.fromOffset(12,12),Image=ICONS.Copy,ImageColor3=C.Grey})
+	mkImage(copyBtn,{Size=UDim2.fromOffset(12,12),Image=ICONS.Clipboard})
 	mkLabel(copyBtn,{
 		Size=UDim2.new(0,0,0,16),AutomaticSize=Enum.AutomaticSize.X,
 		Text="Copiar informações",TextColor3=C.Grey,TextSize=10,Font=Enum.Font.GothamMedium,
@@ -547,13 +597,13 @@ local function BuildUI()
 		gl.VerticalAlignment=Enum.VerticalAlignment.Center
 		gl.Padding=UDim.new(0,7); gl.Parent=getBtn
 	end
-	local gIcon=mkImage(getBtn,{Size=UDim2.fromOffset(14,14),Image=ICONS.Key,ImageColor3=C.Grey})
+	local gIcon=mkImage(getBtn,{Size=UDim2.fromOffset(14,14),Image="rbxassetid://16149081299"})
 	local gTxt=mkLabel(getBtn,{
 		Size=UDim2.new(0,0,0,18),AutomaticSize=Enum.AutomaticSize.X,
 		Text="Obter chave",TextColor3=C.Grey,TextSize=12,Font=Enum.Font.GothamBold,
 	})
-	getBtn.MouseEnter:Connect(function() tw(getBtn,{BackgroundColor3=C.BtnHi},.15) tw(gTxt,{TextColor3=C.White},.15) tw(gIcon,{ImageColor3=C.White},.15) end)
-	getBtn.MouseLeave:Connect(function() tw(getBtn,{BackgroundColor3=C.BtnBg},.15) tw(gTxt,{TextColor3=C.Grey},.15) tw(gIcon,{ImageColor3=C.Grey},.15) end)
+	getBtn.MouseEnter:Connect(function() tw(getBtn,{BackgroundColor3=C.BtnHi},.15) tw(gTxt,{TextColor3=C.White},.15) end)
+	getBtn.MouseLeave:Connect(function() tw(getBtn,{BackgroundColor3=C.BtnBg},.15) tw(gTxt,{TextColor3=C.Grey},.15) end)
 
 	local verBtn=mkBtn(pKey,{
 		Size=UDim2.new(1,-pad*2,0,42),Position=UDim2.new(0,pad,0,btnY+46),
@@ -578,42 +628,71 @@ local function BuildUI()
 	local footerY = TOTAL_H - FOOTH
 	mkFrame(pKey,{Size=UDim2.new(1,-16,0,1),Position=UDim2.new(0,8,0,footerY-1),BackgroundColor3=C.Edge})
 
-	local footer=mkFrame(pKey,{
-		Size=UDim2.new(1,0,0,FOOTH),
-		Position=UDim2.new(0,0,0,footerY),
+	local footerOuter=mkFrame(pKey,{
+		Size=UDim2.new(1,0,0,FOOTH+12),
+		Position=UDim2.new(0,0,0,footerY-12),
+		BackgroundColor3=C.Header,
+	})
+	mkCorner(footerOuter,12)
+	mkFrame(footerOuter,{
+		Size=UDim2.new(1,0,0,12),
+		Position=UDim2.new(0,0,0,0),
+		BackgroundColor3=C.Header,
+	})
+	local footer=mkFrame(footerOuter,{
+		Size=UDim2.new(1,0,1,-12),
+		Position=UDim2.new(0,0,0,12),
 		BackgroundColor3=C.Header,
 	})
 
 	do
-		local logoSz=28
-		mkImage(footer,{
-			Size=UDim2.fromOffset(logoSz,logoSz),
-			Position=UDim2.new(0,11,.5,0),AnchorPoint=Vector2.new(0,.5),
-			Image=ICONS.Logo,ScaleType=Enum.ScaleType.Fit,
+		local starIco=mkImage(footer,{
+			Size=UDim2.fromOffset(38,38),
+			Position=UDim2.new(0,10,.5,0),
+			AnchorPoint=Vector2.new(0,.5),
+			Image=ICONS.Logo,
+			ScaleType=Enum.ScaleType.Fit,
+		})
+		local textX=56
+		mkLabel(footer,{
+			Size=UDim2.new(1,-textX-80,0,17),
+			Position=UDim2.new(0,textX,0,8),
+			Text="Acesso premium",
+			TextColor3=C.White,TextSize=12,
+			Font=Enum.Font.GothamBold,
+			TextXAlignment=Enum.TextXAlignment.Left,
 		})
 		mkLabel(footer,{
-			Size=UDim2.new(1,-114,0,17),Position=UDim2.new(0,logoSz+18,0,9),
-			Text="Acesso premium",TextColor3=C.White,TextSize=12,
-			Font=Enum.Font.GothamBold,TextXAlignment=Enum.TextXAlignment.Left,
-		})
-		mkLabel(footer,{
-			Size=UDim2.new(1,-114,0,28),Position=UDim2.new(0,logoSz+18,0,26),
-			Text="Cansado de pegar chave?\nCompre a versão premium!",
+			Size=UDim2.new(1,-textX-80,0,14),
+			Position=UDim2.new(0,textX,0,27),
+			Text="Cansado de pegar chaves? Entre no Discord.",
 			TextColor3=C.Grey,TextSize=9,Font=Enum.Font.Gotham,
-			TextXAlignment=Enum.TextXAlignment.Left,TextWrapped=true,
+			TextXAlignment=Enum.TextXAlignment.Left,
+			TextTruncate=Enum.TextTruncate.AtEnd,
 		})
 		local discBtn=mkBtn(footer,{
-			Size=UDim2.new(0,62,0,28),
-			Position=UDim2.new(1,-9,.5,0),AnchorPoint=Vector2.new(1,.5),
-			BackgroundColor3=C.CardHi,
+			Size=UDim2.new(0,72,0,32),
+			Position=UDim2.new(1,-10,.5,0),
+			AnchorPoint=Vector2.new(1,.5),
+			BackgroundColor3=C.VerBg,
 		})
-		mkCorner(discBtn,7); mkStroke(discBtn,C.EdgeHi,1)
+		mkCorner(discBtn,8)
+		mkStroke(discBtn,C.EdgeHi,1)
+		do
+			local dl=Instance.new("UIListLayout")
+			dl.FillDirection=Enum.FillDirection.Horizontal
+			dl.HorizontalAlignment=Enum.HorizontalAlignment.Center
+			dl.VerticalAlignment=Enum.VerticalAlignment.Center
+			dl.Padding=UDim.new(0,5)
+			dl.Parent=discBtn
+		end
+		mkImage(discBtn,{Size=UDim2.fromOffset(13,13),Image=ICONS.Discord})
 		mkLabel(discBtn,{
-			Size=UDim2.fromScale(1,1),Text="Discord",
-			TextColor3=C.White,TextSize=11,Font=Enum.Font.GothamBold,
+			Size=UDim2.new(0,0,0,18),AutomaticSize=Enum.AutomaticSize.X,
+			Text="Discord",TextColor3=C.White,TextSize=11,Font=Enum.Font.GothamBold,
 		})
-		discBtn.MouseEnter:Connect(function() tw(discBtn,{BackgroundColor3=C.Edge},.15) end)
-		discBtn.MouseLeave:Connect(function() tw(discBtn,{BackgroundColor3=C.CardHi},.15) end)
+		discBtn.MouseEnter:Connect(function() tw(discBtn,{BackgroundColor3=C.VerHi},.15) end)
+		discBtn.MouseLeave:Connect(function() tw(discBtn,{BackgroundColor3=C.VerBg},.15) end)
 		discBtn.MouseButton1Click:Connect(function()
 			snd(SFX.Click)
 			setclipboard("https://discord.gg/pWeJUBabvF")
