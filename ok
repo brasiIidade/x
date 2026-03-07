@@ -1896,8 +1896,8 @@ tas.LastJump      = false
 tas.ActRad        = 0.8
 tas.ActH          = 1.5
 tas.ActAng        = 10
-tas.ColorBot      = Color3.fromRGB(0, 255, 0)
-tas.ColorPath     = Color3.fromRGB(0, 255, 0)
+tas.ColorBot      = Color3.fromRGB(238, 238, 238)
+tas.ColorPath     = Color3.fromRGB(255, 188, 0)
 tas.VisualOpacity = 0
 
 local function extractName(path)
@@ -2662,7 +2662,6 @@ end
 
 
 
-
 -- JJ's
 env.JJs = nil
 _G.JJs  = nil
@@ -2914,7 +2913,6 @@ do
 end
 
 
-
 -- ChatGPT
 local HttpRequest = request or http and http.request or http_request or syn and syn.request
 
@@ -2926,7 +2924,7 @@ local PromptPath = "michigun.xyz/IA.txt"
 if not isfile(PromptPath) then writefile(PromptPath, "Você é uma IA útil dentro do Roblox.") end
 
 local Personality = readfile(PromptPath)
-_G.ChatGPT.History = {{role = "system", content = Personality}}
+_G.ChatGPT.History = {{ role = "system", content = Personality }}
 
 local function extractLuaCode(responseText)
     if type(responseText) ~= "string" then return nil, tostring(responseText or "") end
@@ -2939,19 +2937,19 @@ local function extractLuaCode(responseText)
 end
 
 _G.ChatGPT.Ask = function(promptText)
-    table.insert(_G.ChatGPT.History, {role = "user", content = promptText})
+    table.insert(_G.ChatGPT.History, { role = "user", content = promptText })
     local success, response = pcall(function()
         return HttpRequest({
             Url     = "https://text.pollinations.ai/openai",
             Method  = "POST",
-            Headers = {["Content-Type"] = "application/json"},
-            Body    = HttpService:JSONEncode({ messages = _G.ChatGPT.History, model = "openai" })
+            Headers = { ["Content-Type"] = "application/json" },
+            Body    = HttpService:JSONEncode({ messages = _G.ChatGPT.History, model = "openai" }),
         })
     end)
     if not success or not response then return "Erro de conexão com a API.", nil end
     local aiText = ""
-    local decodeSuccess, decoded = pcall(function() return HttpService:JSONDecode(response.Body) end)
-    if decodeSuccess and decoded and decoded.choices and decoded.choices[1] then
+    local ok, decoded = pcall(function() return HttpService:JSONDecode(response.Body) end)
+    if ok and decoded and decoded.choices and decoded.choices[1] then
         aiText = decoded.choices[1].message and decoded.choices[1].message.content or ""
     elseif type(response.Body) == "string" then
         aiText = response.Body
@@ -2959,7 +2957,7 @@ _G.ChatGPT.Ask = function(promptText)
     if aiText == "" then return "Resposta vazia da API.", nil end
     local luaCode, cleanMessage = extractLuaCode(aiText)
     _G.ChatGPT.LastMessage = cleanMessage
-    table.insert(_G.ChatGPT.History, {role = "assistant", content = aiText})
+    table.insert(_G.ChatGPT.History, { role = "assistant", content = aiText })
     return cleanMessage, luaCode
 end
 
@@ -2973,34 +2971,120 @@ do
     local currentPrompt = ""
     local SendBtn
 
-    ChatGPT:Paragraph({ Title = "Observação", Desc = cor({ "O prompt está na pasta" }, { "michigun.xyz/IA", "#FFF000" }, { ". Você pode colocar leis no arquivo." }), Color = "Blue", Image = "lucide:info", ImageSize = 30 })
-    ChatGPT:Input({ Title = "Prompt", Placeholder = "Pergunte aqui", InputIcon = "lucide:message-square", Callback = function(text) currentPrompt = text end })
+    local function timestamp()
+        local h = math.floor(tick() / 3600) % 24
+        local m = math.floor(tick() / 60)   % 60
+        local s = math.floor(tick())         % 60
+        return string.format("%02d:%02d:%02d", h, m, s)
+    end
 
-    SendBtn = ChatGPT:Button({ Title = "Enviar prompt", Icon = "lucide:send", Justify = "Center", Callback = function()
-        if not (_G.ChatGPT and _G.ChatGPT.Ask) then notificar("Aguarde...", 2, "lucide:loader"); return end
-        if currentPrompt == "" then return end
-        SendBtn:Lock()
-        local tss = os.date("%H:%M:%S")
-        ChatGPT:Divider(); ChatGPT:Space()
-        ChatGPT:Paragraph({ Title = tss .. " Você:", Color = "Blue", Desc = currentPrompt, Image = "lucide:user-round", ImageSize = 25 })
-        task.spawn(function()
-            local cleanMsg, luaCode = _G.ChatGPT.Ask(currentPrompt)
-            ChatGPT:Paragraph({ Title = tss .. " Resposta:", Desc = cleanMsg, Color = "Green", Image = "geist:logo-open-ai", ImageSize = 28 })
-            if luaCode then ChatGPT:Code({ Code = luaCode }) end
-            SendBtn:Unlock()
-        end)
-    end })
+    ChatGPT:Paragraph({
+        Title     = "Observação",
+        Desc      = cor(
+            { "O prompt está na pasta " },
+            { "michigun.xyz/IA.txt", "#FFD700" },
+            { ". Personalize a personalidade da IA no arquivo." }
+        ),
+        Color     = Color3.fromRGB(50, 100, 200),
+        Image     = "lucide:info",
+        ImageSize = 28,
+    })
 
-    ChatGPT:Button({ Title = "Enviar resposta no chat", Icon = "lucide:message-circle", Justify = "Center", Callback = function()
-        if _G.ChatGPT and _G.ChatGPT.SendToChat and _G.ChatGPT.LastMessage then _G.ChatGPT.SendToChat(_G.ChatGPT.LastMessage); notificar("Enviado no chat", 2, "lucide:message-square")
-        else notificar("Nada para enviar", 2, "lucide:x") end
-    end })
-    ChatGPT:Button({ Title = "Copiar resposta", Icon = "lucide:copy", Justify = "Center", Callback = function()
-        if _G.ChatGPT and _G.ChatGPT.LastMessage then
-            if setclipboard then setclipboard(_G.ChatGPT.LastMessage); notificar("Copiado!", 2, "lucide:copy")
-            else notificar("Executor sem 'setclipboard'", 2, "lucide:x") end
-        else notificar("Nada para copiar", 2, "lucide:x") end
-    end })
+    ChatGPT:Input({
+        Title       = "Mensagem",
+        Placeholder = "Pergunte algo...",
+        InputIcon   = "lucide:message-square",
+        Callback    = function(text) currentPrompt = text end,
+    })
+
+    local btnGroup = ChatGPT:Group()
+
+    SendBtn = btnGroup:Button({
+        Title    = "Enviar",
+        Icon     = "lucide:send",
+        Callback = function()
+            if not (_G.ChatGPT and _G.ChatGPT.Ask) then
+                notificar("Aguarde...", 2, "lucide:loader"); return
+            end
+            if currentPrompt == "" then return end
+
+            SendBtn:Lock()
+            local ts  = timestamp()
+            local msg = currentPrompt
+
+            ChatGPT:Divider()
+            ChatGPT:Paragraph({
+                Title     = ts .. "  Você",
+                Desc      = msg,
+                Color     = Color3.fromRGB(60, 130, 230),
+                Image     = "lucide:user-round",
+                ImageSize = 24,
+            })
+
+            task.spawn(function()
+                local cleanMsg, luaCode = _G.ChatGPT.Ask(msg)
+                local tsResp = timestamp()
+
+                ChatGPT:Paragraph({
+                    Title     = tsResp .. "  IA",
+                    Desc      = cleanMsg,
+                    Color     = Color3.fromRGB(40, 180, 100),
+                    Image     = "geist:logo-open-ai",
+                    ImageSize = 24,
+                })
+
+                if luaCode then
+                    ChatGPT:Code({ Code = luaCode })
+                end
+
+                SendBtn:Unlock()
+            end)
+        end,
+    })
+
+    btnGroup:Button({
+        Title    = "Limpar",
+        Icon     = "lucide:trash-2",
+        Callback = function()
+            _G.ChatGPT.History     = {{ role = "system", content = Personality }}
+            _G.ChatGPT.LastMessage = ""
+            notificar("Histórico limpo", 2, "lucide:trash")
+        end,
+    })
+
+    ChatGPT:Space()
+
+    local actionGroup = ChatGPT:Group()
+
+    actionGroup:Button({
+        Title    = "Enviar no chat",
+        Icon     = "lucide:message-circle",
+        Callback = function()
+            if _G.ChatGPT and _G.ChatGPT.LastMessage and _G.ChatGPT.LastMessage ~= "" then
+                _G.ChatGPT.SendToChat(_G.ChatGPT.LastMessage)
+                notificar("Enviado no chat", 2, "lucide:message-square")
+            else
+                notificar("Nada para enviar", 2, "lucide:x")
+            end
+        end,
+    })
+
+    actionGroup:Button({
+        Title    = "Copiar",
+        Icon     = "lucide:copy",
+        Callback = function()
+            if _G.ChatGPT and _G.ChatGPT.LastMessage and _G.ChatGPT.LastMessage ~= "" then
+                if setclipboard then
+                    setclipboard(_G.ChatGPT.LastMessage)
+                    notificar("Copiado!", 2, "lucide:copy")
+                else
+                    notificar("Executor sem 'setclipboard'", 2, "lucide:x")
+                end
+            else
+                notificar("Nada para copiar", 2, "lucide:x")
+            end
+        end,
+    })
 end
 
 
