@@ -324,13 +324,13 @@ local function lerpColor(a, b, t)
     )
 end
 
-local FPS_HIGH   = Color3.fromRGB(140, 255, 200)  -- menta fria
-local FPS_MID    = Color3.fromRGB(200, 160, 255)  -- lilás suave
-local FPS_LOW    = Color3.fromRGB(255, 100, 120)  -- rosa-coral escuro
+local FPS_HIGH  = Color3.fromRGB(60,  120,  90)
+local FPS_MID   = Color3.fromRGB(80,   60, 110)
+local FPS_LOW   = Color3.fromRGB(110,  35,  50)
 
-local PING_LOW   = Color3.fromRGB(100, 220, 200)  -- ciano apagado
-local PING_MID   = Color3.fromRGB(180, 140, 255)  -- violeta
-local PING_HIGH  = Color3.fromRGB(255, 90,  110)  -- vermelho rosado
+local PING_LOW  = Color3.fromRGB(40,   90,  85)
+local PING_MID  = Color3.fromRGB(70,   50, 100)
+local PING_HIGH = Color3.fromRGB(100,  30,  45)
 
 local function fpsColor(fps)
     if fps >= 60 then
@@ -357,37 +357,38 @@ local function pingColor(ping)
 end
 
 local DISCORD_PALETTE = {
-    Color3.fromRGB( 88, 101, 242),   -- blurple (Discord original)
-    Color3.fromRGB(140,  80, 255),   -- roxo profundo
-    Color3.fromRGB(200,  60, 220),   -- magenta escuro
-    Color3.fromRGB(255,  80, 130),   -- rosa quente
-    Color3.fromRGB(255, 140,  80),   -- laranja suave
-    Color3.fromRGB(100, 200, 255),   -- azul céu frio
-    Color3.fromRGB( 70, 180, 200),   -- ciano escuro
-    Color3.fromRGB( 88, 101, 242),   -- volta ao blurple (fecha o loop suave)
+    Color3.fromRGB( 40,  45, 110),
+    Color3.fromRGB( 60,  25,  90),
+    Color3.fromRGB( 80,  20,  70),
+    Color3.fromRGB( 90,  25,  40),
+    Color3.fromRGB( 70,  30,  70),
+    Color3.fromRGB( 45,  35, 100),
+    Color3.fromRGB( 30,  40, 100),
+    Color3.fromRGB( 40,  45, 110),
 }
 
 local CYCLE_DURATION = 6
 
 local function discordColor(t)
-    local count   = #DISCORD_PALETTE - 1          -- número de segmentos
-    local scaled  = t * count                      -- posição float na paleta
-    local idx     = math.floor(scaled) + 1         -- índice do segmento atual
-    local frac    = scaled - math.floor(scaled)    -- fração dentro do segmento
-
-    idx = math.clamp(idx, 1, count)
+    local count  = #DISCORD_PALETTE - 1
+    local scaled = t * count
+    local idx    = math.clamp(math.floor(scaled) + 1, 1, count)
+    local frac   = scaled - math.floor(scaled)
     return lerpColor(DISCORD_PALETTE[idx], DISCORD_PALETTE[idx + 1], frac)
 end
 
+local function colorToHex(c)
+    return string.format("#%02X%02X%02X",
+        math.floor(c.R * 255),
+        math.floor(c.G * 255),
+        math.floor(c.B * 255)
+    )
+end
+
 do
-    local fpsTag  = main:Tag({ Title = "-- FPS", Radius = 20, Icon = "lucide:gauge",  Color = FPS_HIGH  })
-    local pingTag = main:Tag({ Title = "-- ms",  Radius = 20, Icon = "lucide:signal", Color = PING_LOW  })
-    local fp3Tag  = main:Tag({
-        Title  = "@fp3",
-        Radius = 20,
-        Icon   = "rbxassetid://115249452401470",
-        Color  = DISCORD_PALETTE[1],
-    })
+    local fpsTag  = main:Tag({ Title = "-- FPS", Radius = 20, Icon = "lucide:gauge",                Color = FPS_HIGH                   })
+    local pingTag = main:Tag({ Title = "-- ms",  Radius = 20, Icon = "lucide:signal",               Color = PING_LOW                   })
+    local fp3Tag  = main:Tag({ Title = "@fp3",    Radius = 20, Icon = "rbxassetid://115249452401470", Color = Color3.fromRGB(35, 39, 42) })
 
     local lastUpdate, frameCount = tick(), 0
 
@@ -404,8 +405,9 @@ do
             lastUpdate = now
         end
 
-        local t = (now % CYCLE_DURATION) / CYCLE_DURATION
-        fp3Tag:SetColor(discordColor(t))
+        local t   = (now % CYCLE_DURATION) / CYCLE_DURATION
+        local hex = colorToHex(discordColor(t))
+        fp3Tag:SetTitle(string.format("<font color='%s'>fp3</font>", hex))
     end), "tags")
 
     local pingItem = Stats.Network.ServerStatsItem["Data Ping"]
