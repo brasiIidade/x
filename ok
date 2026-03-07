@@ -312,7 +312,6 @@ local main = UI:CreateWindow({
     ShadowTransparency = 0.4,
     -- Background         = "rbxthumb://type=Asset&id=137064182739714&w=420&h=420",
     -- BackgroundImageTransparency = 0.9,
-    User = { Enabled = true, Callback = function() end },
 })
 
 -- tags
@@ -523,6 +522,65 @@ do
 
     local visuals = { Gui = nil, Circle = nil, Stroke = nil, Highlight = nil, ESP = nil, Labels = {} }
 
+    local function mkLabel(parent, font, size, color, xAlign)
+        local lbl = Instance.new("TextLabel", parent)
+        lbl.BackgroundTransparency = 1
+        lbl.Font                   = font or Enum.Font.Gotham
+        lbl.TextSize               = size or 11
+        lbl.TextColor3             = color or Color3.fromRGB(200, 200, 210)
+        lbl.TextStrokeTransparency = 1
+        lbl.TextXAlignment         = xAlign or Enum.TextXAlignment.Left
+        lbl.TextTruncate           = Enum.TextTruncate.AtEnd
+        lbl.Visible                = false
+        return lbl
+    end
+
+
+    local function mkInfoRow(parent, order, iconChar, accentColor)
+        local row = Instance.new("Frame", parent)
+        row.Size                   = UDim2.new(1, 0, 0, 22)
+        row.BackgroundTransparency = 1
+        row.LayoutOrder            = order
+
+        local pad = Instance.new("UIPadding", row)
+        pad.PaddingLeft  = UDim.new(0, 14)
+        pad.PaddingRight = UDim.new(0, 14)
+
+        local pipe = Instance.new("Frame", row)
+        pipe.Size             = UDim2.fromOffset(2, 10)
+        pipe.Position         = UDim2.new(0, 0, 0.5, -5)
+        pipe.BackgroundColor3 = accentColor or Color3.fromRGB(100, 100, 120)
+        pipe.BorderSizePixel  = 0
+        local pipeC = Instance.new("UICorner", pipe)
+        pipeC.CornerRadius = UDim.new(1, 0)
+
+        local ico = Instance.new("TextLabel", row)
+        ico.Size                   = UDim2.fromOffset(14, 22)
+        ico.Position               = UDim2.fromOffset(8, 0)
+        ico.BackgroundTransparency = 1
+        ico.Font                   = Enum.Font.Code
+        ico.TextSize               = 10
+        ico.TextColor3             = accentColor or Color3.fromRGB(80, 80, 100)
+        ico.TextStrokeTransparency = 1
+        ico.TextXAlignment         = Enum.TextXAlignment.Center
+        ico.Text                   = iconChar or "·"
+
+        local val = Instance.new("TextLabel", row)
+        val.Size                   = UDim2.new(1, -28, 1, 0)
+        val.Position               = UDim2.fromOffset(26, 0)
+        val.BackgroundTransparency = 1
+        val.Font                   = Enum.Font.Gotham
+        val.TextSize               = 11
+        val.TextColor3             = Color3.fromRGB(215, 215, 228)
+        val.TextStrokeTransparency = 1
+        val.TextXAlignment         = Enum.TextXAlignment.Left
+        val.TextTruncate           = Enum.TextTruncate.AtEnd
+        val.Visible                = false
+
+        return { Row = row, Pipe = pipe, Icon = ico, Value = val }
+    end
+
+    -- init
     local function initVisuals()
         if visuals.Gui then safeCall(function() visuals.Gui:Destroy() end) end
 
@@ -533,7 +591,6 @@ do
         screenGui.Parent         = guiParent
         env._saGui               = screenGui
 
-        -- FOV circle
         local fovCircle = Instance.new("Frame", screenGui)
         fovCircle.BackgroundTransparency = 1
         fovCircle.AnchorPoint            = Vector2.new(0.5, 0.5)
@@ -545,173 +602,183 @@ do
         fovCorner.CornerRadius = UDim.new(1, 0)
 
         local highlight = Instance.new("Highlight", screenGui)
-        highlight.FillTransparency    = 0.5
+        highlight.FillTransparency    = 0.6
         highlight.OutlineTransparency = 0
         highlight.DepthMode           = Enum.HighlightDepthMode.AlwaysOnTop
         highlight.Enabled             = false
 
-        -- ── CARD ─────────────────────────────────────────────────────
-        -- Posicionado no canto superior direito, auto-altura via UIListLayout
+        -- hud
         local card = Instance.new("Frame", screenGui)
-        card.AnchorPoint      = Vector2.new(1, 0)
-        card.Position         = UDim2.new(1, -14, 0, 14)
-        card.Size             = UDim2.new(0, 210, 0, 0)
-        card.AutomaticSize    = Enum.AutomaticSize.Y
-        card.BackgroundColor3 = Color3.fromRGB(15, 15, 19)
-        card.BackgroundTransparency = 0.08
-        card.BorderSizePixel  = 0
-        card.Visible          = false
-        card.ClipsDescendants = false
+        card.AnchorPoint            = Vector2.new(1, 0)
+        card.Position               = UDim2.new(1, -16, 0, 16)
+        card.Size                   = UDim2.new(0, 224, 0, 0)
+        card.AutomaticSize          = Enum.AutomaticSize.Y
+        card.BackgroundColor3       = Color3.fromRGB(9, 9, 15)
+        card.BackgroundTransparency = 0.05
+        card.BorderSizePixel        = 0
+        card.Visible                = false
+        card.ClipsDescendants       = false
+
         local cCorner = Instance.new("UICorner", card)
-        cCorner.CornerRadius = UDim.new(0, 8)
+        cCorner.CornerRadius = UDim.new(0, 10)
+
         local cStroke = Instance.new("UIStroke", card)
         cStroke.Color        = Color3.fromRGB(255, 255, 255)
-        cStroke.Transparency = 0.88
+        cStroke.Transparency = 0.91
         cStroke.Thickness    = 1
 
         local cardList = Instance.new("UIListLayout", card)
         cardList.SortOrder = Enum.SortOrder.LayoutOrder
         cardList.Padding   = UDim.new(0, 0)
 
-        -- accent linha no topo (2px, cor do HighlightColor)
-        local accentBar = Instance.new("Frame", card)
-        accentBar.Size             = UDim2.new(1, 0, 0, 2)
-        accentBar.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
-        accentBar.BorderSizePixel  = 0
-        accentBar.LayoutOrder      = 0
-        local accentCorner = Instance.new("UICorner", accentBar)
-        accentCorner.CornerRadius = UDim.new(0, 8)
-        visuals.Accent = accentBar
-
-        -- ── HEADER ───────────────────────────────────────────────────
         local header = Instance.new("Frame", card)
-        header.Size                   = UDim2.new(1, 0, 0, 38)
+        header.Size                   = UDim2.new(1, 0, 0, 50)
         header.BackgroundTransparency = 1
         header.LayoutOrder            = 1
+
         local hPad = Instance.new("UIPadding", header)
-        hPad.PaddingLeft   = UDim.new(0, 12)
-        hPad.PaddingRight  = UDim.new(0, 12)
-        hPad.PaddingTop    = UDim.new(0, 9)
+        hPad.PaddingLeft  = UDim.new(0, 14)
+        hPad.PaddingRight = UDim.new(0, 14)
+        hPad.PaddingTop   = UDim.new(0, 10)
+
+        local avatar = Instance.new("Frame", header)
+        avatar.Size             = UDim2.fromOffset(28, 28)
+        avatar.Position         = UDim2.fromOffset(0, 0)
+        avatar.BackgroundColor3 = Color3.fromRGB(22, 22, 32)
+        avatar.BorderSizePixel  = 0
+        local avC = Instance.new("UICorner", avatar)
+        avC.CornerRadius = UDim.new(0, 6)
+        local avStroke = Instance.new("UIStroke", avatar)
+        avStroke.Color        = Color3.fromRGB(255, 255, 255)
+        avStroke.Transparency = 0.88
+        avStroke.Thickness    = 1
+
+        local avInit = Instance.new("TextLabel", avatar)
+        avInit.Size                   = UDim2.fromScale(1, 1)
+        avInit.BackgroundTransparency = 1
+        avInit.Font                   = Enum.Font.GothamBold
+        avInit.TextSize               = 13
+        avInit.TextColor3             = Color3.fromRGB(200, 200, 215)
+        avInit.TextStrokeTransparency = 1
+        avInit.TextXAlignment         = Enum.TextXAlignment.Center
+        avInit.Text                   = "?"
+        avInit.ZIndex                 = 1
+        visuals.AvatarInit = avInit
+
+        local avImg = Instance.new("ImageLabel", avatar)
+        avImg.Size                   = UDim2.fromScale(1, 1)
+        avImg.BackgroundTransparency = 1
+        avImg.Image                  = ""
+        avImg.ScaleType              = Enum.ScaleType.Crop
+        avImg.ZIndex                 = 2
+        local avImgC = Instance.new("UICorner", avImg)
+        avImgC.CornerRadius = UDim.new(0, 6)
+        visuals.AvatarImg = avImg
 
         local lblName = Instance.new("TextLabel", header)
-        lblName.Size                   = UDim2.new(1, -18, 0, 16)
-        lblName.Position               = UDim2.fromOffset(0, 0)
+        lblName.Size                   = UDim2.new(1, -46, 0, 15)
+        lblName.Position               = UDim2.fromOffset(36, 0)
         lblName.BackgroundTransparency = 1
         lblName.Font                   = Enum.Font.GothamBold
         lblName.TextSize               = 13
-        lblName.TextColor3             = Color3.fromRGB(238, 238, 244)
+        lblName.TextColor3             = Color3.fromRGB(240, 240, 250)
         lblName.TextStrokeTransparency = 1
         lblName.TextXAlignment         = Enum.TextXAlignment.Left
         lblName.TextTruncate           = Enum.TextTruncate.AtEnd
         lblName.Visible                = false
 
         local lblSub = Instance.new("TextLabel", header)
-        lblSub.Size                   = UDim2.new(1, -18, 0, 11)
-        lblSub.Position               = UDim2.fromOffset(0, 18)
+        lblSub.Size                   = UDim2.new(1, -46, 0, 12)
+        lblSub.Position               = UDim2.fromOffset(36, 18)
         lblSub.BackgroundTransparency = 1
-        lblSub.Font                   = Enum.Font.Gotham
-        lblSub.TextSize               = 10
-        lblSub.TextColor3             = Color3.fromRGB(55, 55, 65)
+        lblSub.Font                   = Enum.Font.Code
+        lblSub.TextSize               = 9
+        lblSub.TextColor3             = Color3.fromRGB(55, 55, 70)
         lblSub.TextStrokeTransparency = 1
         lblSub.TextXAlignment         = Enum.TextXAlignment.Left
         lblSub.Text                   = "SILENT AIM"
         lblSub.Visible                = true
 
-        -- dot indicador de visibilidade (canto direito)
-        local dotLock = Instance.new("Frame", header)
-        dotLock.Size             = UDim2.fromOffset(7, 7)
-        dotLock.Position         = UDim2.new(1, -7, 0, 5)
-        dotLock.BackgroundColor3 = Color3.fromRGB(80, 220, 100)
-        dotLock.BorderSizePixel  = 0
-        local dotCorner = Instance.new("UICorner", dotLock)
-        dotCorner.CornerRadius = UDim.new(1, 0)
-        visuals.DotLock = dotLock
+        local dotWrap = Instance.new("Frame", header)
+        dotWrap.Size             = UDim2.fromOffset(8, 8)
+        dotWrap.Position         = UDim2.new(1, -8, 0, 4)
+        dotWrap.BackgroundTransparency = 1
 
-        -- ── DIVISOR ──────────────────────────────────────────────────
-        local divider = Instance.new("Frame", card)
-        divider.Size             = UDim2.new(1, 0, 0, 1)
-        divider.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        divider.BackgroundTransparency = 0.9
-        divider.BorderSizePixel  = 0
-        divider.LayoutOrder      = 2
+        local dot = Instance.new("Frame", dotWrap)
+        dot.Size             = UDim2.fromScale(1, 1)
+        dot.BackgroundColor3 = Color3.fromRGB(80, 220, 100)
+        dot.BorderSizePixel  = 0
+        local dotC = Instance.new("UICorner", dot)
+        dotC.CornerRadius = UDim.new(1, 0)
+        visuals.DotLock = dot
 
-        -- ── BODY ─────────────────────────────────────────────────────
-        local body = Instance.new("Frame", card)
-        body.Size             = UDim2.new(1, 0, 0, 0)
-        body.AutomaticSize    = Enum.AutomaticSize.Y
-        body.BackgroundTransparency = 1
-        body.LayoutOrder      = 3
+        local div1 = Instance.new("Frame", card)
+        div1.Size             = UDim2.new(1, -28, 0, 1)
+        div1.Position         = UDim2.fromOffset(14, 0)  -- não posicionar, LayoutOrder resolve
+        div1.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        div1.BackgroundTransparency = 0.92
+        div1.BorderSizePixel  = 0
+        div1.LayoutOrder      = 2
 
-        local bodyList = Instance.new("UIListLayout", body)
-        bodyList.SortOrder = Enum.SortOrder.LayoutOrder
-        bodyList.Padding   = UDim.new(0, 0)
+        local div1Wrap = Instance.new("Frame", card)
+        div1Wrap.Size                   = UDim2.new(1, 0, 0, 1)
+        div1Wrap.BackgroundTransparency = 1
+        div1Wrap.LayoutOrder            = 2
+        local div1Inner = Instance.new("Frame", div1Wrap)
+        div1Inner.Size             = UDim2.new(1, -28, 0, 1)
+        div1Inner.Position         = UDim2.fromOffset(14, 0)
+        div1Inner.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        div1Inner.BackgroundTransparency = 0.92
+        div1Inner.BorderSizePixel  = 0
+        div1.Destroy(div1)
 
-        local bodyPad = Instance.new("UIPadding", body)
-        bodyPad.PaddingTop    = UDim.new(0, 6)
-        bodyPad.PaddingBottom = UDim.new(0, 8)
+        local hpSection = Instance.new("Frame", card)
+        hpSection.Size                   = UDim2.new(1, 0, 0, 0)
+        hpSection.AutomaticSize          = Enum.AutomaticSize.Y
+        hpSection.BackgroundTransparency = 1
+        hpSection.LayoutOrder            = 3
+        local hpPad = Instance.new("UIPadding", hpSection)
+        hpPad.PaddingLeft   = UDim.new(0, 14)
+        hpPad.PaddingRight  = UDim.new(0, 14)
+        hpPad.PaddingTop    = UDim.new(0, 10)
+        hpPad.PaddingBottom = UDim.new(0, 4)
+        local hpList = Instance.new("UIListLayout", hpSection)
+        hpList.SortOrder = Enum.SortOrder.LayoutOrder
+        hpList.Padding   = UDim.new(0, 4)
 
-        -- helper: cria uma row com ícone ImageLabel + TextLabel
-        -- iconId: asset id do ícone (usamos DrawingLib icon ou ImageLabel com SVG rbxasset)
-        -- Como Roblox nao tem SVG, usamos TextLabel com caractere unicode limpo como placeholder
-        local function mkRow(order, iconChar, iconColor)
-            local row = Instance.new("Frame", body)
-            row.Size                   = UDim2.new(1, 0, 0, 20)
-            row.BackgroundTransparency = 1
-            row.LayoutOrder            = order
+        local hpRow = Instance.new("Frame", hpSection)
+        hpRow.Size                   = UDim2.new(1, 0, 0, 14)
+        hpRow.BackgroundTransparency = 1
+        hpRow.LayoutOrder            = 1
 
-            local pad = Instance.new("UIPadding", row)
-            pad.PaddingLeft  = UDim.new(0, 12)
-            pad.PaddingRight = UDim.new(0, 12)
+        local hpLabelKey = Instance.new("TextLabel", hpRow)
+        hpLabelKey.Size                   = UDim2.fromOffset(60, 14)
+        hpLabelKey.BackgroundTransparency = 1
+        hpLabelKey.Font                   = Enum.Font.Code
+        hpLabelKey.TextSize               = 9
+        hpLabelKey.TextColor3             = Color3.fromRGB(60, 60, 75)
+        hpLabelKey.TextStrokeTransparency = 1
+        hpLabelKey.TextXAlignment         = Enum.TextXAlignment.Left
+        hpLabelKey.Text                   = "HP"
 
-            -- ícone (TextLabel com GothamBold, caractere minimalista)
-            local ico = Instance.new("TextLabel", row)
-            ico.Size                   = UDim2.fromOffset(14, 20)
-            ico.Position               = UDim2.fromOffset(0, 0)
-            ico.BackgroundTransparency = 1
-            ico.Font                   = Enum.Font.GothamBold
-            ico.TextSize               = 10
-            ico.TextColor3             = iconColor or Color3.fromRGB(60, 60, 72)
-            ico.TextStrokeTransparency = 1
-            ico.TextXAlignment         = Enum.TextXAlignment.Center
-            ico.Text                   = iconChar or "-"
+        local lblHealth = Instance.new("TextLabel", hpRow)
+        lblHealth.Size                   = UDim2.new(1, 0, 1, 0)
+        lblHealth.BackgroundTransparency = 1
+        lblHealth.Font                   = Enum.Font.GothamBold
+        lblHealth.TextSize               = 11
+        lblHealth.TextColor3             = Color3.fromRGB(90, 230, 110)
+        lblHealth.TextStrokeTransparency = 1
+        lblHealth.TextXAlignment         = Enum.TextXAlignment.Right
+        lblHealth.Visible                = false
 
-            -- texto
-            local txt = Instance.new("TextLabel", row)
-            txt.Size                   = UDim2.new(1, -20, 1, 0)
-            txt.Position               = UDim2.fromOffset(18, 0)
-            txt.BackgroundTransparency = 1
-            txt.Font                   = Enum.Font.Gotham
-            txt.TextSize               = 11
-            txt.TextColor3             = Color3.fromRGB(195, 195, 205)
-            txt.TextStrokeTransparency = 1
-            txt.TextXAlignment         = Enum.TextXAlignment.Left
-            txt.TextTruncate           = Enum.TextTruncate.AtEnd
-            txt.Visible                = false
-            return txt
-        end
+        local hpTrackWrap = Instance.new("Frame", hpSection)
+        hpTrackWrap.Size                   = UDim2.new(1, 0, 0, 5)
+        hpTrackWrap.BackgroundTransparency = 1
+        hpTrackWrap.LayoutOrder            = 2
 
-        -- Time
-        local lblTeam   = mkRow(1, "//",  Color3.fromRGB(55, 55, 68))
-
-        -- HP label
-        local lblHealth = mkRow(2, "-",   Color3.fromRGB(55, 55, 68))
-        lblHealth.Font      = Enum.Font.GothamBold
-        lblHealth.TextColor3 = Color3.fromRGB(210, 210, 218)
-
-        -- HP bar row (sem texto, só a barra)
-        local rowBar = Instance.new("Frame", body)
-        rowBar.Size                   = UDim2.new(1, 0, 0, 9)
-        rowBar.BackgroundTransparency = 1
-        rowBar.LayoutOrder            = 3
-        local barPad = Instance.new("UIPadding", rowBar)
-        barPad.PaddingLeft  = UDim.new(0, 12)
-        barPad.PaddingRight = UDim.new(0, 12)
-        barPad.PaddingBottom = UDim.new(0, 2)
-
-        local hpTrack = Instance.new("Frame", rowBar)
-        hpTrack.Size             = UDim2.new(1, 0, 0, 3)
-        hpTrack.Position         = UDim2.fromOffset(0, 2)
-        hpTrack.BackgroundColor3 = Color3.fromRGB(32, 32, 40)
+        local hpTrack = Instance.new("Frame", hpTrackWrap)
+        hpTrack.Size             = UDim2.fromScale(1, 1)
+        hpTrack.BackgroundColor3 = Color3.fromRGB(22, 22, 32)
         hpTrack.BorderSizePixel  = 0
         local hpTC = Instance.new("UICorner", hpTrack)
         hpTC.CornerRadius = UDim.new(1, 0)
@@ -723,18 +790,59 @@ do
         local hpFC = Instance.new("UICorner", hpFill)
         hpFC.CornerRadius = UDim.new(1, 0)
 
-        -- Weapon
-        local lblWeapon = mkRow(4, ">",   Color3.fromRGB(55, 55, 68))
-        lblWeapon.TextColor3 = Color3.fromRGB(210, 178, 98)
+        local div2Wrap = Instance.new("Frame", card)
+        div2Wrap.Size                   = UDim2.new(1, 0, 0, 1)
+        div2Wrap.BackgroundTransparency = 1
+        div2Wrap.LayoutOrder            = 4
+        local div2Inner = Instance.new("Frame", div2Wrap)
+        div2Inner.Size             = UDim2.new(1, -28, 0, 1)
+        div2Inner.Position         = UDim2.fromOffset(14, 0)
+        div2Inner.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        div2Inner.BackgroundTransparency = 0.92
+        div2Inner.BorderSizePixel  = 0
 
-        -- Distance
-        local lblDist   = mkRow(5, "~",   Color3.fromRGB(55, 55, 68))
-        lblDist.Font      = Enum.Font.Code
-        lblDist.TextSize  = 11
-        lblDist.TextColor3 = Color3.fromRGB(115, 180, 255)
+        local body = Instance.new("Frame", card)
+        body.Size                   = UDim2.new(1, 0, 0, 0)
+        body.AutomaticSize          = Enum.AutomaticSize.Y
+        body.BackgroundTransparency = 1
+        body.LayoutOrder            = 5
 
-        -- Wall status
-        local lblWall   = mkRow(6, "!",   Color3.fromRGB(55, 55, 68))
+        local bodyList = Instance.new("UIListLayout", body)
+        bodyList.SortOrder = Enum.SortOrder.LayoutOrder
+        bodyList.Padding   = UDim.new(0, 2)
+
+        local bodyPad = Instance.new("UIPadding", body)
+        bodyPad.PaddingTop    = UDim.new(0, 8)
+        bodyPad.PaddingBottom = UDim.new(0, 10)
+
+        local COL_TEAM   = Color3.fromRGB(90,  160, 255)
+        local COL_WEAPON = Color3.fromRGB(255, 195,  60)
+        local COL_DIST   = Color3.fromRGB(60,  200, 255)
+        local COL_WALL   = Color3.fromRGB(220,  80,  60)
+
+        local rowTeam   = mkInfoRow(body, 1, "TM", COL_TEAM)
+        local rowWeapon = mkInfoRow(body, 2, "WP", COL_WEAPON)
+        local rowDist   = mkInfoRow(body, 3, "DT", COL_DIST)
+        local rowWall   = mkInfoRow(body, 4, "WL", COL_WALL)
+
+        local footer = Instance.new("Frame", card)
+        footer.Size                   = UDim2.new(1, 0, 0, 20)
+        footer.BackgroundColor3       = Color3.fromRGB(12, 12, 18)
+        footer.BackgroundTransparency = 0.3
+        footer.BorderSizePixel        = 0
+        footer.LayoutOrder            = 6
+        local footPad = Instance.new("UIPadding", footer)
+        footPad.PaddingLeft  = UDim.new(0, 14)
+        footPad.PaddingRight = UDim.new(0, 14)
+        local footLbl = Instance.new("TextLabel", footer)
+        footLbl.Size                   = UDim2.fromScale(1, 1)
+        footLbl.BackgroundTransparency = 1
+        footLbl.Font                   = Enum.Font.Code
+        footLbl.TextSize               = 8
+        footLbl.TextColor3             = Color3.fromRGB(45, 45, 58)
+        footLbl.TextStrokeTransparency = 1
+        footLbl.TextXAlignment         = Enum.TextXAlignment.Right
+        footLbl.Text                   = "HUD"
 
         visuals.Gui       = screenGui
         visuals.Circle    = fovCircle
@@ -743,13 +851,25 @@ do
         visuals.Card      = card
         visuals.HpFill    = hpFill
         visuals.HpTrack   = hpTrack
+        visuals.HpTrackWrap = hpTrackWrap
+        visuals.HpSection = hpSection
+        visuals.FooterLbl = footLbl
         visuals.Labels    = {
             Name   = lblName,
-            Team   = lblTeam,
+            Team   = rowTeam.Value,
             Health = lblHealth,
-            Weapon = lblWeapon,
-            Dist   = lblDist,
-            Wall   = lblWall,
+            Weapon = rowWeapon.Value,
+            Dist   = rowDist.Value,
+            Wall   = rowWall.Value,
+        }
+        visuals.Rows = {
+            Team   = rowTeam.Row,
+            Weapon = rowWeapon.Row,
+            Dist   = rowDist.Row,
+            Wall   = rowWall.Row,
+        }
+        visuals.RowPipes = {
+            Wall = rowWall.Pipe,
         }
     end
     initVisuals()
@@ -865,6 +985,7 @@ do
             visuals.Highlight.Enabled = false
             visuals.Card.Visible      = false
             for _, lbl in pairsFn(visuals.Labels) do lbl.Visible = false end
+            for _, row in pairsFn(visuals.Rows)   do row.Visible = false end
             currentTarget.Target = nil; currentTarget.Part = nil
             return
         end
@@ -875,6 +996,7 @@ do
             lastTargetTick = now
         end
 
+        -- FOV
         if cfg.ShowFOV then
             visuals.Circle.Visible  = true
             visuals.Circle.Size     = UDim2.fromOffset(cfg.FOVSize * 2, cfg.FOVSize * 2)
@@ -898,30 +1020,53 @@ do
                 local hum    = target:FindFirstChild("Humanoid")
                 local root   = target:FindFirstChild("HumanoidRootPart")
                 local lbls   = visuals.Labels
+                local rows   = visuals.Rows
 
                 visuals.Card.Visible            = true
-                visuals.Accent.BackgroundColor3 = cfg.HighlightColor
 
                 local camPos    = camera.CFrame.Position
                 local partToChk = currentTarget.Part or root
                 local isVis     = partToChk and isVisible(partToChk, target, cfg)
+
                 visuals.DotLock.BackgroundColor3 = isVis
                     and Color3.fromRGB(80, 220, 100)
                     or  Color3.fromRGB(220, 60, 60)
 
-                if espCfg.ShowName then
-                    lbls.Name.Text    = (player and player.Name) or "?"
+                if espCfg.ShowName and player then
+                    local nm = player.Name
+                    lbls.Name.Text    = nm
                     lbls.Name.Visible = true
+                    visuals.AvatarInit.Text = strLib.upper(strLib.sub(nm, 1, 1))
+
+                    if not visuals._lastThumbId or visuals._lastThumbId ~= player.UserId then
+                        visuals._lastThumbId = player.UserId
+                        visuals.AvatarImg.Image = ""  -- limpa enquanto carrega
+                        safeCall(function()
+                            local thumbUrl, _ = svcPlayers:GetUserThumbnailAsync(
+                                player.UserId,
+                                Enum.ThumbnailType.HeadShot,
+                                Enum.ThumbnailSize.Size48x48
+                            )
+                            if visuals._lastThumbId == player.UserId then
+                                visuals.AvatarImg.Image = thumbUrl or ""
+                            end
+                        end)
+                    end
                 else
                     lbls.Name.Visible = false
+                    visuals.AvatarInit.Text = "?"
+                    visuals.AvatarImg.Image = ""
+                    visuals._lastThumbId = nil
                 end
 
                 if espCfg.ShowTeam and player and player.Team then
                     lbls.Team.Text       = player.Team.Name
                     lbls.Team.TextColor3 = player.Team.TeamColor.Color
                     lbls.Team.Visible    = true
+                    rows.Team.Visible    = true
                 else
                     lbls.Team.Visible = false
+                    rows.Team.Visible = false
                 end
 
                 if hum then
@@ -930,60 +1075,83 @@ do
                     local ratio = hp / maxHp
                     local r = mathLib.clamp(2 - ratio * 2, 0, 1)
                     local g = mathLib.clamp(ratio * 2,     0, 1)
+                    local hpColor = Color3.new(r, g, 0.08)
                     visuals.HpFill.Size             = UDim2.fromScale(ratio, 1)
-                    visuals.HpFill.BackgroundColor3 = Color3.new(r, g, 0.1)
+                    visuals.HpFill.BackgroundColor3 = hpColor
+
                     if espCfg.ShowHealth then
-                        visuals.HpTrack.Visible = true
-                        lbls.Health.Text        = strLib.format("%d / %d HP", hp, maxHp)
+                        visuals.HpTrackWrap.Visible = true
+                        visuals.HpSection.Visible   = true
+                        lbls.Health.Text        = strLib.format("%d / %d", hp, maxHp)
+                        lbls.Health.TextColor3  = hpColor
                         lbls.Health.Visible     = true
                     else
-                        visuals.HpTrack.Visible = false
-                        lbls.Health.Visible     = false
+                        visuals.HpTrackWrap.Visible = false
+                        visuals.HpSection.Visible   = false
+                        lbls.Health.Visible         = false
                     end
                 else
-                    visuals.HpTrack.Visible = false
-                    lbls.Health.Visible     = false
+                    visuals.HpTrackWrap.Visible = false
+                    visuals.HpSection.Visible   = false
+                    lbls.Health.Visible         = false
                 end
 
                 if espCfg.ShowWeapon then
                     local tool = target:FindFirstChildOfClass("Tool")
                     lbls.Weapon.Text    = tool and tool.Name or "Nenhum"
                     lbls.Weapon.Visible = true
+                    rows.Weapon.Visible = true
                 else
                     lbls.Weapon.Visible = false
+                    rows.Weapon.Visible = false
                 end
 
                 if espCfg.ShowDist and root then
                     local dist = mathLib.floor((root.Position - camPos).Magnitude)
                     lbls.Dist.Text    = strLib.format("%d studs", dist)
                     lbls.Dist.Visible = true
+                    rows.Dist.Visible = true
                 else
                     lbls.Dist.Visible = false
+                    rows.Dist.Visible = false
                 end
 
                 if espCfg.ShowWall then
                     if cfg.WallCheck then
-                        lbls.Wall.Text       = isVis and "Visivel" or "Atras de parede"
+                        lbls.Wall.Text       = isVis and "Visível" or "Atrás de parede"
                         lbls.Wall.TextColor3 = isVis
                             and Color3.fromRGB(80, 220, 100)
-                            or  Color3.fromRGB(220, 100, 60)
+                            or  Color3.fromRGB(220, 80, 60)
+                        -- pipe muda de cor também
+                        visuals.RowPipes.Wall.BackgroundColor3 = isVis
+                            and Color3.fromRGB(80, 220, 100)
+                            or  Color3.fromRGB(220, 80, 60)
                     else
                         lbls.Wall.Text       = "Wall check off"
-                        lbls.Wall.TextColor3 = Color3.fromRGB(100, 100, 110)
+                        lbls.Wall.TextColor3 = Color3.fromRGB(80, 80, 95)
+                        visuals.RowPipes.Wall.BackgroundColor3 = Color3.fromRGB(60, 60, 75)
                     end
                     lbls.Wall.Visible = true
+                    rows.Wall.Visible = true
                 else
                     lbls.Wall.Visible = false
+                    rows.Wall.Visible = false
                 end
+
             else
-                visuals.Card.Visible    = false
-                visuals.HpTrack.Visible = false
+                visuals.Card.Visible        = false
+                visuals.HpSection.Visible   = false
+                visuals.HpTrackWrap.Visible = false
                 for _, lbl in pairsFn(visuals.Labels) do lbl.Visible = false end
+                for _, row in pairsFn(visuals.Rows)   do row.Visible = false end
             end
         else
-            visuals.Highlight.Enabled = false
-            visuals.Card.Visible      = false
+            visuals.Highlight.Enabled   = false
+            visuals.Card.Visible        = false
+            visuals.HpSection.Visible   = false
+            visuals.HpTrackWrap.Visible = false
             for _, lbl in pairsFn(visuals.Labels) do lbl.Visible = false end
+            for _, row in pairsFn(visuals.Rows)   do row.Visible = false end
         end
     end)
 
@@ -1083,10 +1251,10 @@ do
         FocusMode        = false,
         ShowFOV          = true,
         FOVSize          = 110,
-        FOVColor         = Color3.fromRGB(247, 255, 5),
+        FOVColor         = Color3.fromRGB(0, 0, 0),
         FOVBehavior      = "Center",
         ShowHighlight    = true,
-        HighlightColor   = Color3.fromRGB(255, 60, 60),
+        HighlightColor   = Color3.fromRGB(59, 255, 0),
         ESP = { Enabled = true, ShowName = true, ShowTeam = true, ShowHealth = true, ShowWeapon = true, ShowDist = true, ShowWall = true },
     }
 
@@ -1398,7 +1566,7 @@ local function hitboxCleanPlayer(player)
     hitboxRemoveHighlight(player)
 end
 
--- Aplicar 
+-- aplicar 
 local function hitboxApply(player, root, cfg)
     local teamColor = (player.TeamColor and player.TeamColor.Color) or _CLR_DEF
     root.Size         = cfg.Size
@@ -1467,7 +1635,7 @@ end)
 -- Config
 _genv.HitboxConfig = {
     Enabled           = false,
-    Size              = Vector3.new(10, 5, 10),
+    Size              = Vector3.new(10, 10, 10),
     Transparency      = 0.8,
     Shape             = Enum.PartType.Block,
     HideOnShield      = false,
@@ -1478,7 +1646,7 @@ _genv.HitboxConfig = {
     WhitelistedTeams  = {},
     FocusList         = {},
     FocusMode         = false,
-    _v                = 0,   -- versão para invalidação do hash-set cache
+    _v                = 0,
 }
 
 -- UI
@@ -2968,8 +3136,11 @@ end
 
 -- UI
 do
-    local currentPrompt = ""
+    local currentPrompt  = ""
     local SendBtn
+    local thinkingPara   = nil
+    local thinkingThread = nil
+    local msgParagraphs  = {}
 
     local function timestamp()
         local h = math.floor(tick() / 3600) % 24
@@ -2978,20 +3149,69 @@ do
         return string.format("%02d:%02d:%02d", h, m, s)
     end
 
+    local function stopThinking()
+        if thinkingThread then
+            task.cancel(thinkingThread)
+            thinkingThread = nil
+        end
+        if thinkingPara then
+            pcall(function() thinkingPara:Destroy() end)
+            thinkingPara = nil
+        end
+    end
+
+    local function startThinking()
+        stopThinking()
+        thinkingPara = ChatGPT:Paragraph({
+            Title = "IA",
+            Desc  = "Pensando",
+            Image = "geist:logo-open-ai",
+            ImageSize = 24,
+            Color = Color3.fromRGB(40, 180, 100),
+        })
+        local dots = { "", ".", "..", "..." }
+        local idx  = 1
+        thinkingThread = task.spawn(function()
+            while true do
+                task.wait(0.4)
+                if thinkingPara then
+                    idx = idx % #dots + 1
+                    thinkingPara:SetDesc("Pensando" .. dots[idx])
+                end
+            end
+        end)
+    end
+
+    local function clearChat()
+        for _, p in ipairs(msgParagraphs) do
+            pcall(function() p:Destroy() end)
+        end
+        table.clear(msgParagraphs)
+        stopThinking()
+        _G.ChatGPT.History     = {{ role = "system", content = Personality }}
+        _G.ChatGPT.LastMessage = ""
+        notificar("Conversa limpa", 2, "lucide:trash")
+    end
+
     ChatGPT:Paragraph({
         Title     = "Observação",
         Desc      = cor(
-            { "O prompt está na pasta " },
-            { "michigun.xyz/IA.txt", "#FFD700" },
-            { ". Personalize a personalidade da IA no arquivo." }
+            { "Personalize a IA editando " },
+            { "michigun.xyz/IA.txt", "#FFD700" }
         ),
         Color     = Color3.fromRGB(50, 100, 200),
         Image     = "lucide:info",
-        ImageSize = 28,
+        ImageSize = 24,
+        Buttons   = {{
+            Title    = "Limpar conversa",
+            Icon     = "lucide:trash-2",
+            Callback = clearChat,
+        }},
     })
 
     ChatGPT:Input({
         Title       = "Mensagem",
+        Type        = "Textarea",
         Placeholder = "Pergunte algo...",
         InputIcon   = "lucide:message-square",
         Callback    = function(text) currentPrompt = text end,
@@ -3013,28 +3233,56 @@ do
             local msg = currentPrompt
 
             ChatGPT:Divider()
-            ChatGPT:Paragraph({
-                Title     = ts .. "  Você",
+
+            local userPara = ChatGPT:Paragraph({
+                Title     = "Você (" .. ts .. ")",
                 Desc      = msg,
                 Color     = Color3.fromRGB(60, 130, 230),
                 Image     = "lucide:user-round",
                 ImageSize = 24,
             })
+            table.insert(msgParagraphs, userPara)
+
+            startThinking()
 
             task.spawn(function()
                 local cleanMsg, luaCode = _G.ChatGPT.Ask(msg)
                 local tsResp = timestamp()
 
-                ChatGPT:Paragraph({
-                    Title     = tsResp .. "  IA",
+                stopThinking()
+
+                local aiPara = ChatGPT:Paragraph({
+                    Title     = "IA (" .. tsResp .. ")",
                     Desc      = cleanMsg,
                     Color     = Color3.fromRGB(40, 180, 100),
                     Image     = "geist:logo-open-ai",
                     ImageSize = 24,
+                    Buttons   = {
+                        {
+                            Title    = "Copiar",
+                            Icon     = "lucide:copy",
+                            Callback = function()
+                                if setclipboard then
+                                    setclipboard(cleanMsg)
+                                    notificar("Copiado!", 2, "lucide:copy")
+                                end
+                            end,
+                        },
+                        {
+                            Title    = "Enviar no chat",
+                            Icon     = "lucide:message-circle",
+                            Callback = function()
+                                _G.ChatGPT.SendToChat(cleanMsg)
+                                notificar("Enviado no chat", 2, "lucide:message-square")
+                            end,
+                        },
+                    },
                 })
+                table.insert(msgParagraphs, aiPara)
 
                 if luaCode then
-                    ChatGPT:Code({ Code = luaCode })
+                    local codePara = ChatGPT:Code({ Code = luaCode })
+                    if codePara then table.insert(msgParagraphs, codePara) end
                 end
 
                 SendBtn:Unlock()
@@ -3045,45 +3293,7 @@ do
     btnGroup:Button({
         Title    = "Limpar",
         Icon     = "lucide:trash-2",
-        Callback = function()
-            _G.ChatGPT.History     = {{ role = "system", content = Personality }}
-            _G.ChatGPT.LastMessage = ""
-            notificar("Histórico limpo", 2, "lucide:trash")
-        end,
-    })
-
-    ChatGPT:Space()
-
-    local actionGroup = ChatGPT:Group()
-
-    actionGroup:Button({
-        Title    = "Enviar no chat",
-        Icon     = "lucide:message-circle",
-        Callback = function()
-            if _G.ChatGPT and _G.ChatGPT.LastMessage and _G.ChatGPT.LastMessage ~= "" then
-                _G.ChatGPT.SendToChat(_G.ChatGPT.LastMessage)
-                notificar("Enviado no chat", 2, "lucide:message-square")
-            else
-                notificar("Nada para enviar", 2, "lucide:x")
-            end
-        end,
-    })
-
-    actionGroup:Button({
-        Title    = "Copiar",
-        Icon     = "lucide:copy",
-        Callback = function()
-            if _G.ChatGPT and _G.ChatGPT.LastMessage and _G.ChatGPT.LastMessage ~= "" then
-                if setclipboard then
-                    setclipboard(_G.ChatGPT.LastMessage)
-                    notificar("Copiado!", 2, "lucide:copy")
-                else
-                    notificar("Executor sem 'setclipboard'", 2, "lucide:x")
-                end
-            else
-                notificar("Nada para copiar", 2, "lucide:x")
-            end
-        end,
+        Callback = clearChat,
     })
 end
 
@@ -3100,7 +3310,6 @@ f3x.UndoStack     = {}
 f3x.RedoStack     = {}
 f3x.ModifiedParts = {}
 f3x.UpdateUI      = nil
-f3x.NotifyFunc    = nil
 f3x.IsReady       = true
 
 local f3x_fDir = "michigun.xyz/f3x"
@@ -3167,12 +3376,20 @@ end
 
 f3x.ListConfigs = function()
     local o = {}
-    if listfiles then for _, f in ipairs(listfiles(f3x_fDir)) do if f:sub(-5) == ".json" then o[#o + 1] = f:match("([^/]+)%.json$") end end end
+    if listfiles then
+        for _, f in ipairs(listfiles(f3x_fDir)) do
+            if f:sub(-5) == ".json" then
+                -- suporta tanto / quanto \ como separador (varia por executor)
+                local name = f:match("([^/\\]+)%.json$")
+                if name then o[#o + 1] = name end
+            end
+        end
+    end
     return o
 end
 
 f3x.SaveConfig = function(n)
-    if not n or n == "" then if f3x.NotifyFunc then f3x.NotifyFunc("F3X: Nome inválido", 3, "lucide:alert-circle") end; return nil end
+    if not n or n == "" then notificar("F3X: Nome inválido", 3, "lucide:alert-circle"); return nil end
     local d = { PlaceId = game.PlaceId, Parts = {} }
     for p, sz in pairs(f3x.ModifiedParts) do
         if p and p.Parent then
@@ -3183,43 +3400,78 @@ f3x.SaveConfig = function(n)
     return f3x.ListConfigs()
 end
 
+local unp = table.unpack or unpack
+
 local function getObj(path)
+    -- GetFullName() retorna "game.Workspace.Parte" ou "Game.Workspace.Parte"
+    -- percorre cada segmento ignorando o primeiro se for "game"/"Game"
+    local parts = {}
+    for s in path:gmatch("[^%.]+") do parts[#parts + 1] = s end
     local cur = game
-    for s in path:gmatch("[^%.]+") do
-        if s ~= "Game" then
-            cur = cur:FindFirstChild(s)
-            if not cur then return nil end
-        end
+    local start = (parts[1] and parts[1]:lower() == "game") and 2 or 1
+    for i = start, #parts do
+        local child = cur:FindFirstChild(parts[i])
+        if not child then return nil end
+        cur = child
     end
     return cur
 end
 
 f3x.ApplyConfig = function(n)
-    if not n then return end
+    if not n then return false end
     local p = f3x_fDir .. "/" .. n .. ".json"
-    if not isfile(p) then return end
-    local d; pcall(function() d = HttpService:JSONDecode(readfile(p)) end)
-    if not d then return end
-    if d.PlaceId ~= game.PlaceId then if f3x.NotifyFunc then f3x.NotifyFunc("F3X: Config de outro mapa", 3, "lucide:alert-circle") end; return end
+    if not isfile(p) then return false end
+    local d
+    pcall(function() d = HttpService:JSONDecode(readfile(p)) end)
+    if not d then return false end
+    if d.PlaceId ~= game.PlaceId then
+        notificar("F3X de outro mapa", 3, "lucide:alert-circle")
+        return false
+    end
+
+    local fallbackByName = {}
+    for _, o in ipairs(game:GetService("Workspace"):GetDescendants()) do
+        if o:IsA("BasePart") then
+            local bucket = fallbackByName[o.Name]
+            if not bucket then bucket = {}; fallbackByName[o.Name] = bucket end
+            bucket[#bucket + 1] = o
+        end
+    end
+
     for _, v in ipairs(d.Parts or {}) do
-        local targetCf  = CFrame.new(unp(v.CFrame))
+        local targetCf = CFrame.new(unp(v.CFrame))
+        local sz       = Vector3.new(unp(v.Size))
         local foundPart = nil
-        local obj       = getObj(v.Path)
+
+        -- 1) tenta pelo path exato
+        local obj = getObj(v.Path)
         if obj and obj:IsA("BasePart") and (obj.Position - targetCf.Position).Magnitude < 2 then
             foundPart = obj
-        else
-            for _, o in ipairs(Workspace:GetDescendants()) do
-                if o:IsA("BasePart") and o:GetFullName() == v.Path and (o.Position - targetCf.Position).Magnitude < 2 then
-                    foundPart = o; break
+        end
+
+        -- 2) fallback: usa o lookup já construído, busca só pelo último segmento do path
+        if not foundPart then
+            local partName = v.Path:match("([^%.]+)$")
+            local bucket   = fallbackByName[partName]
+            if bucket then
+                for _, o in ipairs(bucket) do
+                    if (o.Position - targetCf.Position).Magnitude < 2 then
+                        foundPart = o; break
+                    end
                 end
             end
         end
-        if foundPart then foundPart.Size = Vector3.new(unp(v.Size)); f3x.ModifiedParts[foundPart] = foundPart.Size end
+
+        if foundPart then
+            foundPart.Size = sz
+            f3x.ModifiedParts[foundPart] = sz
+        end
     end
+    return true
 end
 
 f3x.DeleteConfig = function(n)
-    if not n then if f3x.NotifyFunc then f3x.NotifyFunc("F3X: Nenhuma seleção", 3, "lucide:alert-circle") end; return nil end
+    if not n then notificar("F3X: Nenhuma seleção", 3, "lucide:alert-circle"); return nil end
     delfile(f3x_fDir .. "/" .. n .. ".json")
     return f3x.ListConfigs()
 end
@@ -3276,8 +3528,7 @@ do
         if InputZ and InputZ.Set then InputZ:Set(tostring(round1(s.Z))) end
     end
 
-    f3x.UpdateUI   = UpdateF3XHUD
-    f3x.NotifyFunc = notificar
+    f3x.UpdateUI = UpdateF3XHUD
     task.defer(function()
         if ConfigDropdown then ConfigDropdown:Refresh(f3x.ListConfigs()) end
     end)
@@ -3323,7 +3574,9 @@ do
                 local nl = f3x.SaveConfig(CurrentConfigName); if nl then ConfigDropdown:Refresh(nl); notificar("Salvo com sucesso", 3, "lucide:check") end; CreateF3XActions() end },
             { Title = "Carregar F3X",   Desc = cor({ "Carrega", "#00AAFF" }, { " os dados selecionados" }),     Icon = "lucide:upload", Callback = function()
                 if not SelectedConfig then notificar("Selecione um F3X primeiro", 3, "lucide:mouse-pointer-click"); CreateF3XActions(); return end
-                f3x.ApplyConfig(SelectedConfig); notificar("Configuração aplicada", 3, "lucide:check"); CreateF3XActions() end },
+                local ok = f3x.ApplyConfig(SelectedConfig)
+                if ok then notificar("Configuração aplicada", 3, "lucide:check") end
+                CreateF3XActions() end },
             { Title = "Deletar F3X",    Desc = cor({ "Remove",  "#FF0000" }, { " permanentemente o arquivo" }), Icon = "lucide:trash-2",Callback = function()
                 if not SelectedConfig then notificar("Selecione um F3X primeiro", 3, "lucide:mouse-pointer-click"); CreateF3XActions(); return end
                 local nl = f3x.DeleteConfig(SelectedConfig); if nl then ConfigDropdown:Refresh(nl); SelectedConfig = nil; ConfigDropdown:Select(nil); notificar("F3X deletado", 3, "lucide:trash") end; CreateF3XActions() end },
@@ -3911,7 +4164,7 @@ do
     g2:Button({ Title = "Aplicar",   Desc = cor({ "Muda",   "#00FF00" }, { " a skin do jogador alvo" }), Icon = "lucide:wand-2",      Callback = function() if Avatar and Avatar.ApplySkinToOther then Avatar.ApplySkinToOther(otherTargetName, otherSkinInput) end end })
     g2:Button({ Title = "Restaurar", Desc = cor({ "Reseta", "#FF0000" }, { " a skin do jogador alvo" }), Icon = "lucide:refresh-ccw", Callback = function() if Avatar and Avatar.RestoreOther      then Avatar.RestoreOther(otherTargetName)                  end end })
     OS:Button({ Title = "Aplicar favorito", Desc = cor({ "Aplica a skin " }, { "favoritada", "#FFAA00" }, { " selecionada no alvo" }), Icon = "lucide:star", Callback = function()
-        if not selectedFavorite then notificar("Nenhum favorito selecionado", 3, "lucide:x"); return end
+        if not selectedFavorite then notificar("Nenhum char favorito selecionado", 3, "lucide:x"); return end
         if Avatar and Avatar.ApplySkinToOther then Avatar.ApplySkinToOther(otherTargetName, selectedFavorite, true) end
     end })
 
@@ -3945,7 +4198,7 @@ do
         ActionDropdown = FS:Dropdown({ Title = "Gerenciar", Desc = cor({ "Gerenciar " }, { "favoritos", "#FFFFFF" }), Icon = "lucide:settings-2", Values = {
             { Title = "Aplicar em mim",       Desc = cor({ "Usa", "#00FF00" }, { " o char selecionado em você" }),     Icon = "lucide:user-check", Callback = function()
                 if not selectedFavorite then notificar("Selecione um char primeiro", 3, "lucide:mouse-pointer-click"); return end
-                if Avatar and Avatar.LoadSkin then Avatar.LoadSkin(selectedFavorite); notificar("Aplicado: " .. selectedFavorite, 3, "lucide:check") end end },
+                if Avatar and Avatar.LoadSkin then Avatar.LoadSkin(selectedFavorite); notificar("Aplicado " .. selectedFavorite, 3, "lucide:check") end end },
             { Title = "Favoritar char atual", Desc = cor({ "Salva", "#FFAA00" }, { " o char que você está usando" }), Icon = "lucide:save",       Callback = function()
                 if Avatar and Avatar.SaveSkin then Avatar.SaveSkin(targetInput); notificar("Char salvo", 3, "lucide:check"); RefreshFavList() end; CreateFavActions() end },
             { Title = isConfirmingFavDelete and "Confirmar deleção?" or "Deletar selecionado",
@@ -3954,11 +4207,11 @@ do
               Callback = function()
                 if not selectedFavorite then notificar("Selecione um char primeiro", 3, "lucide:mouse-pointer-click"); CreateFavActions(); return end
                 if not isConfirmingFavDelete then
-                    isConfirmingFavDelete = true; notificar("Confirme a ação", 2, "lucide:alert-triangle"); CreateFavActions()
+                    isConfirmingFavDelete = true; notificar("Confirme", 2, "lucide:alert-triangle"); CreateFavActions()
                     if confirmTask then task.cancel(confirmTask) end
                     confirmTask = task.delay(3, function() if isConfirmingFavDelete then isConfirmingFavDelete = false; if ActionDropdown then CreateFavActions() end end end)
                 else
-                    if Avatar and Avatar.DeleteSkin then Avatar.DeleteSkin(selectedFavorite); notificar("Deletado: " .. selectedFavorite, 3, "lucide:trash") end
+                    if Avatar and Avatar.DeleteSkin then Avatar.DeleteSkin(selectedFavorite); notificar("Deletado " .. selectedFavorite, 3, "lucide:trash") end
                     isConfirmingFavDelete = false; if confirmTask then task.cancel(confirmTask) end
                     selectedFavorite = nil; RefreshFavList(); CreateFavActions()
                 end
@@ -3999,13 +4252,13 @@ do
     local spdVal = 16
     MS:Input({ Title = "Speed", Placeholder = "16", InputIcon = "lucide:gauge", Callback = function(v) spdVal = tonumber(v) or 16 end })
     local gs = MS:Group()
-    gs:Button({ Title = "Aplicar", Icon = "lucide:check-circle", Callback = function() PC.SpeedVal = spdVal; PC.SpeedEnabled = true; notificar("Velocidade: " .. spdVal, 2, "lucide:zap") end })
+    gs:Button({ Title = "Aplicar", Icon = "lucide:check-circle", Callback = function() PC.SpeedVal = spdVal; PC.SpeedEnabled = true; notificar("Velocidade setada para " .. spdVal, 2, "lucide:zap") end })
     gs:Button({ Title = "Resetar", Icon = "lucide:rotate-ccw",   Callback = function() PC.SpeedEnabled = false; PC.SpeedVal = 16; local h = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild(_sHum); if h then h.WalkSpeed = GetGhost(h, "WalkSpeed") or 16 end end })
     MS:Space()
     local jmpVal = 50
     MS:Input({ Title = "Jump", Placeholder = "50", InputIcon = "lucide:arrow-up", Callback = function(v) jmpVal = tonumber(v) or 50 end })
     local gj = MS:Group()
-    gj:Button({ Title = "Aplicar", Icon = "lucide:check-circle", Callback = function() PC.JumpVal = jmpVal; PC.JumpEnabled = true; notificar("Pulo: " .. jmpVal, 2, "lucide:zap") end })
+    gj:Button({ Title = "Aplicar", Icon = "lucide:check-circle", Callback = function() PC.JumpVal = jmpVal; PC.JumpEnabled = true; notificar("Pulo setado para " .. jmpVal, 2, "lucide:zap") end })
     gj:Button({ Title = "Resetar", Icon = "lucide:rotate-ccw",   Callback = function() PC.JumpEnabled = false; PC.JumpVal = 50; local h = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild(_sHum); if h then h.JumpPower = GetGhost(h, "JumpPower") or 50 end end })
 
     local IS = criarSection(Player, "Interação", "Outros jogadores", "lucide:users", false)
@@ -4013,21 +4266,21 @@ do
     IS:Input({ Title = "Jogador", Desc = "Nome ou Display", Placeholder = "Digite aqui", InputIcon = "lucide:search", Callback = function(v)
         if v == "" then return end
         local found = PL_findPlayer(v)
-        if found then PC.TargetPlayer = found.Name; notificar("Selecionado: " .. found.Name, 3, "lucide:user-check")
-        else notificar("Jogador não encontrado", 2, "lucide:search-x") end
+        if found then PC.TargetPlayer = found.Name; notificar("Usuário: " .. found.Name, 3, "lucide:user-check")
+        else notificar("Não encontrado", 2, "lucide:search-x") end
     end })
 
     local function RefreshActionDrop()
         if ActionDrop then ActionDrop:Destroy(); ActionDrop = nil end
         ActionDrop = IS:Dropdown({ Title = "Ações", Icon = "lucide:mouse-pointer-click", Values = {
             { Title = "Fling", Desc = "Arremessa o alvo (arriscado)", Icon = "lucide:earth", Callback = function()
-                if PC.TargetPlayer == "" then notificar("Selecione um jogador primeiro", 2, "lucide:alert-circle"); return end
+                if PC.TargetPlayer == "" then notificar("Selecione alguém primeiro", 2, "lucide:alert-circle"); return end
                 PC.TriggerFling = true; notificar("Flingando " .. PC.TargetPlayer, 3, "lucide:helicopter") end },
             { Title = PC.SpectateActive and "Parar Espectar" or "Espectar", Desc = "Visualiza a câmera do alvo", Icon = "lucide:eye", Callback = function()
-                if PC.TargetPlayer == "" then notificar("Selecione um jogador", 2, "lucide:alert-circle"); return end
+                if PC.TargetPlayer == "" then notificar("Selecione alguém", 2, "lucide:alert-circle"); return end
                 PC.SpectateActive = not PC.SpectateActive; RefreshActionDrop()
                 notificar(PC.SpectateActive and "Espectando..." or "Restaurado", 2, PC.SpectateActive and "lucide:eye" or "lucide:eye-off") end },
-            { Title = "Teleportar", Desc = "Vai até o jogador",          Icon = "lucide:plane",  Callback = function() if PC.TargetPlayer == "" then return end; PC.TriggerTeleport = true; notificar("Teleportando...", 2, "lucide:plane")   end },
+            { Title = "Teleportar", Desc = "Teleporta ao jogador",          Icon = "lucide:plane",  Callback = function() if PC.TargetPlayer == "" then return end; PC.TriggerTeleport = true; notificar("Teleportando...", 2, "lucide:plane")   end },
             { Title = "Voltar",     Desc = "Retorna à posição anterior", Icon = "lucide:undo-2", Callback = function() PC.TriggerReturn = true; notificar("Retornando...", 2, "lucide:undo-2") end },
         }, Value = "Selecione" })
     end
@@ -4055,16 +4308,13 @@ do
         else notificar("Digite um nome válido", 3, "lucide:x") end
     end })
 
-    local loaderParagraph = criarSection(Configs, "Módulos", "Status de carregamento", "lucide:package", false):Paragraph({ Title = "Módulos remotos", Desc = "Aguardando carregamento..." })
-    LoaderStatus.setParagraph(loaderParagraph)
-
     local ManagementSection = criarSection(Configs, "Gerenciamento", "Gerenciar configurações", "lucide:folder-open", true)
     DropdownListaConfig = ManagementSection:Dropdown({ Title = "Selecionar arquivo", Desc = cor({ "Escolha a " }, { "configuração", "#00AAFF" }, { " alvo" }), Icon = "lucide:folder", Values = GerenciadorConfig:AllConfigs(), Value = "Nenhuma", Callback = function(v) ConfigSelecionada = v end })
     ManagementSection:Dropdown({ Title = "Ações", Desc = cor({ "Executa uma " }, { "ação", "#FFAA00" }, { " no arquivo selecionado" }), Icon = "lucide:settings-2", Values = {
-        { Title = "Carregar",     Desc = cor({ "Carrega",   "#00FF00" }, { " os dados salvos" }),                  Icon = "lucide:upload",    Callback = function() if ConfigSelecionada and ConfigSelecionada ~= "Nenhuma" then GerenciadorConfig:CreateConfig(ConfigSelecionada):Load(); notificar("Carregado: " .. ConfigSelecionada, 3, "lucide:check") else notificar("Nenhuma configuração selecionada", 3, "lucide:x") end end },
-        { Title = "Sobrescrever", Desc = cor({ "Substitui", "#FFAA00" }, { " os dados deste arquivo" }),           Icon = "lucide:refresh-cw",Callback = function() if ConfigSelecionada and ConfigSelecionada ~= "Nenhuma" then GerenciadorConfig:CreateConfig(ConfigSelecionada):Save(); notificar("Alterado: " .. ConfigSelecionada, 3, "lucide:check") else notificar("Nenhuma configuração selecionada", 3, "lucide:x") end end },
+        { Title = "Carregar",     Desc = cor({ "Carrega",   "#00FF00" }, { " os dados salvos" }),                  Icon = "lucide:upload",    Callback = function() if ConfigSelecionada and ConfigSelecionada ~= "Nenhuma" then GerenciadorConfig:CreateConfig(ConfigSelecionada):Load(); notificar("Carregado " .. ConfigSelecionada, 3, "lucide:check") else notificar("Nenhuma configuração selecionada", 3, "lucide:x") end end },
+        { Title = "Sobrescrever", Desc = cor({ "Substitui", "#FFAA00" }, { " os dados deste arquivo" }),           Icon = "lucide:refresh-cw",Callback = function() if ConfigSelecionada and ConfigSelecionada ~= "Nenhuma" then GerenciadorConfig:CreateConfig(ConfigSelecionada):Save(); notificar("Alterado " .. ConfigSelecionada, 3, "lucide:check") else notificar("Nenhuma configuração selecionada", 3, "lucide:x") end end },
         { Type = "Divider" },
-        { Title = "Deletar arquivo", Desc = cor({ "Apaga", "#FF0000" }, { " permanentemente o registro" }),        Icon = "lucide:trash-2",   Callback = function() if ConfigSelecionada and ConfigSelecionada ~= "Nenhuma" then GerenciadorConfig:CreateConfig(ConfigSelecionada):Delete(); notificar("Deletado: " .. ConfigSelecionada, 3, "lucide:trash"); AtualizarListaConfig(); ConfigSelecionada = "Nenhuma"; DropdownListaConfig:Select("Nenhuma") else notificar("Nenhuma configuração selecionada", 3, "lucide:x") end end },
+        { Title = "Deletar arquivo", Desc = cor({ "Apaga", "#FF0000" }, { " permanentemente o registro" }),        Icon = "lucide:trash-2",   Callback = function() if ConfigSelecionada and ConfigSelecionada ~= "Nenhuma" then GerenciadorConfig:CreateConfig(ConfigSelecionada):Delete(); notificar("Deletado " .. ConfigSelecionada, 3, "lucide:trash"); AtualizarListaConfig(); ConfigSelecionada = "Nenhuma"; DropdownListaConfig:Select("Nenhuma") else notificar("Nenhuma configuração selecionada", 3, "lucide:x") end end },
         { Title = "Atualizar lista", Desc = cor({ "Recarrega", "#00AAFF" }, { " a lista de arquivos" }),            Icon = "lucide:rotate-ccw",Callback = function() AtualizarListaConfig(); notificar("Lista atualizada", 2, "lucide:check") end },
     } })
 
@@ -4089,7 +4339,7 @@ do
 
     InterfaceSection:Input({ Title = "Palavra secreta", Desc = cor({ "Usa o " }, { "chat", "#FFFFFF" }, { " para abrir a UI" }), Placeholder = "/e", InputIcon = "lucide:message-square", Flag = "PalavraSecreta", Callback = function(v)
         if v == "" then return end
-        if not v:find("%s") then secretWord = v; setupChatToggle(); notificar("Definida para: " .. v, 3, "lucide:check")
+        if not v:find("%s") then secretWord = v; setupChatToggle(); notificar("Definida para " .. v, 3, "lucide:check")
         else secretWord = "/e"; setupChatToggle(); notificar("Texto inválido, resetada para: /e", 3, "lucide:alert-circle") end
     end })
 
