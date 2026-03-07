@@ -1,0 +1,966 @@
+Tab Configuration
+Tabs are used to organize content within a window into multiple sections. Each tab acts as a container for elements.
+
+Basic
+Full
+
+local Tab = Window:Tab({
+    Title = "My Tab",
+    Desc = "Tab description", -- optional
+    Icon = "bird", -- lucide icon or "rbxassetid://" or URL. optional
+    IconColor = Color3.fromRGB(255, 100, 100), -- custom icon color. optional
+    IconShape = "Square", -- "Square" or "Circle". optional
+    IconThemed = true, -- use theme colors. optional
+    Locked = false, -- disable tab interaction. optional
+    ShowTabTitle = false, -- show title inside tab. optional
+    Border = true, -- add border around tab. optional
+})
+Tab Parameters
+
+Hide Details
+Title: string
+Desc: string?
+Icon: string?
+IconColor: Color3?
+IconShape: string?
+IconThemed: boolean?
+Locked: boolean?
+ShowTabTitle: boolean?
+Border: boolean?
+Tab Methods
+Select Tab
+Select and show the tab
+
+
+Tab:Select()
+Set Title
+Change tab title dynamically
+
+
+Tab:SetTitle("New Title")
+Set Description
+Update tab description/tooltip
+
+
+Tab:SetDesc("New Description")
+Lock Tab
+Disable interaction with the tab
+
+
+Tab:Lock()
+Unlock Tab
+Re-enable tab interaction
+
+
+Tab:Unlock()
+Scroll To Element
+Automatically scroll to a specific element in the tab
+
+
+Tab:ScrollToTheElement(1)
+Select Tab
+Selects the tab
+
+
+Tab:Select()
+Tab Elements
+Add Elements
+Tab Section
+Tab Group
+
+local Tab = Window:Tab({ Title = "Elements" })
+ 
+-- Add various elements
+Tab:Button({
+    Title = "Click Me",
+    Callback = function()
+        print("Button clicked")
+    end
+})
+ 
+Tab:Toggle({
+    Title = "Enable Feature",
+    Callback = function(state)
+        print("Toggle:", state)
+    end
+})
+ 
+Tab:Slider({
+    Title = "Volume",
+    Value = { Min = 0, Max = 100, Default = 50 },
+    Callback = function(value)
+        print("Volume:", value)
+    end
+})
+ 
+Tab:Input({
+    Title = "Username",
+    Callback = function(value)
+        print("Username:", value)
+    end
+})
+
+local Tab = Window:Tab({ Title = "With Sections" })
+ 
+-- Create sections to organize elements
+local Section1 = Tab:Section({
+    Title = "Basic Settings",
+    Icon = "settings",
+    Opened = true,
+})
+ 
+Section1:Button({ Title = "Button in Section" })
+Section1:Toggle({ Title = "Toggle in Section" })
+ 
+local Section2 = Tab:Section({
+    Title = "Advanced Settings",
+    Opened = false,
+})
+ 
+Section2:Slider({ Title = "Advanced Slider" })
+
+local Tab = Window:Tab({ Title = "With Groups" })
+ 
+-- Create groups for horizontal layout
+local Group1 = Tab:Group({})
+ 
+Group1:Button({ Title = "Button 1" })
+Group1:Button({ Title = "Button 2" })
+Group1:Button({ Title = "Button 3" })
+
+Section Element
+Sections organize related elements into collapsible groups. They're useful for grouping related settings or features.
+
+Basic
+Full
+
+local Section = Tab:Section({
+    Title = "General Settings",
+    Desc = "Section description", -- optional
+    Icon = "settings", -- lucide icon or "rbxassetid://". optional
+    IconColor = Color3.fromRGB(100, 100, 255), -- custom icon color. optional
+    TextSize = 19, -- title text size. optional
+    TextXAlignment = "Left", -- "Left", "Center", "Right". optional
+    Box = false, -- show box around section. optional
+    BoxBorder = false, -- show border on box. optional
+    Opened = true, -- section expanded by default. optional
+    FontWeight = Enum.FontWeight.SemiBold, -- title font weight. optional
+    DescFontWeight = Enum.FontWeight.Medium, -- description font weight. optional
+    TextTransparency = 0.05, -- title transparency. optional
+    DescTextTransparency = 0.4, -- description transparency. optional
+})
+Section Parameters
+
+Hide Details
+Title: string
+Desc: string?
+Icon: string?
+IconColor: Color3?
+TextSize: number?
+TextXAlignment: string?
+Box: boolean?
+BoxBorder: boolean?
+Opened: boolean?
+FontWeight: Enum.FontWeight?
+DescFontWeight: Enum.FontWeight?
+TextTransparency: number?
+DescTextTransparency: number?
+Section Function
+
+Hide Details
+:SetTitle(Title: string)
+:SetDesc(Description: string)
+:Open()
+:Close()
+:Destroy()
+Section Variants
+Simple Section
+
+local BasicSection = Tab:Section({
+    Title = "Basic Options"
+})
+ 
+BasicSection:Button({ Title = "Option 1" })
+BasicSection:Button({ Title = "Option 2" })
+BasicSection:Button({ Title = "Option 3" })
+Section with Icon
+
+local DisplaySection = Tab:Section({
+    Title = "Display",
+    Icon = "monitor",
+    Opened = true
+})
+ 
+DisplaySection:Toggle({ Title = "Dark Mode" })
+DisplaySection:Slider({ 
+    Title = "Brightness",
+    Value = { Min = 0, Max = 100, Default = 80 }
+})
+Section with Description
+
+local AdvancedSection = Tab:Section({
+    Title = "Advanced Settings",
+    Desc = "Configure expert-level options",
+    Icon = "zap",
+    Opened = false
+})
+ 
+AdvancedSection:Toggle({ Title = "Enable Debug Mode" })
+AdvancedSection:Input({ Title = "API Key" })
+Boxed Section
+
+local BoxedSection = Tab:Section({
+    Title = "Important Settings",
+    Box = true,
+    BoxBorder = true,
+    Icon = "alert-circle",
+    Opened = true
+})
+ 
+BoxedSection:Toggle({ Title = "Require Confirmation" })
+BoxedSection:Button({ Title = "Apply Changes" })
+Closed Section
+
+local CollapsedSection = Tab:Section({
+    Title = "Advanced Options",
+    Icon = "settings",
+    Opened = false,
+    TextSize = 16
+})
+ 
+CollapsedSection:Button({ Title = "Advanced Setting 1" })
+CollapsedSection:Button({ Title = "Advanced Setting 2" })
+Centered Section
+
+local CenteredSection = Tab:Section({
+    Title = "Features",
+    TextXAlignment = "Center",
+    TextSize = 20
+})
+ 
+CenteredSection:Button({ Title = "Feature A" })
+CenteredSection:Button({ Title = "Feature B" })
+
+Button Element
+Buttons are interactive elements that trigger callbacks when clicked. They can display icons, descriptions, and support locked states.
+
+Basic
+Full
+
+local Button = Tab:Button({
+    Title = "Click Me",
+    Desc = "Button description", -- optional
+    Icon = "mouse-pointer-click", -- lucide icon or "rbxassetid://". optional
+    IconAlign = "Right", -- "Left" or "Right". optional
+    Color = Color3.fromRGB(100, 100, 255), -- custom color. optional
+    Locked = false, -- disable button. optional
+    LockedTitle = "Locked", -- text shown when locked. optional
+    Justify = "Between", -- "Between" or "Center". optional
+    Flag = "my_button", -- for config saving. optional
+    Callback = function()
+        print("Clicked!")
+    end
+})
+Button Parameters
+
+Hide Details
+Title: string
+Desc: string?
+Icon: string?
+IconAlign: string?
+Color: Color3?
+Locked: boolean?
+LockedTitle: string?
+Justify: string?
+Flag: string?
+Callback: function?
+Button Functions
+
+Hide Details
+:SetTitle(Title: string)
+:SetDesc(Description: string)
+:Lock()
+:Unlock()
+:Highlight()
+:Destroy()
+Button Variants
+Simple Button
+
+Tab:Button({
+    Title = "Simple Action",
+    Callback = function()
+        print("Action triggered")
+    end
+})
+Button with Icon
+
+Tab:Button({
+    Title = "Save Settings",
+    Icon = "save",
+    IconAlign = "Left",
+    Callback = function()
+        print("Settings saved")
+    end
+})
+Button with Description
+
+Tab:Button({
+    Title = "Advanced Option",
+    Desc = "Click here to access advanced features",
+    Callback = function()
+        print("Opening advanced menu...")
+    end
+})
+Colored Button
+
+Tab:Button({
+    Title = "Delete Item",
+    Color = Color3.fromRGB(255, 100, 100), -- red
+    Callback = function()
+        print("Item deleted")
+    end
+})
+Locked Button
+
+local LimitedButton = Tab:Button({
+    Title = "Premium Feature",
+    Locked = true,
+    LockedTitle = "Requires Premium",
+    Callback = function()
+        print("Premium feature activated")
+    end
+})
+Button with Centered Layout
+
+Tab:Button({
+    Title = "Center Button",
+    Justify = "Center",
+    Callback = function()
+        print("Centered button clicked")
+    end
+})
+
+Toggle Element
+Toggles are switch elements that represent binary states (on/off, true/false). They're ideal for enabling/disabling features.
+
+Basic
+Full
+
+local Toggle = Tab:Toggle({
+    Title = "Enable Feature",
+    Desc = "Toggle description", -- optional
+    Icon = "power", -- lucide icon or "rbxassetid://". optional
+    Value = false, -- initial state. optional
+    Type = "Toggle", -- "Toggle" or "Checkbox". optional
+    Color = Color3.fromRGB(100, 200, 100), -- custom color. optional
+    Locked = false, -- disable toggle. optional
+    Flag = "my_toggle", -- for config saving. optional
+    Callback = function(state)
+        print("State changed:", state)
+    end
+})
+Toggle Parameters
+
+Hide Details
+Title: string
+Desc: string?
+Icon: string?
+Value: boolean?
+Type: string?
+Locked: boolean?
+Flag: string?
+Callback: function?
+Toggle Functions
+
+Hide Details
+:SetTitle(Title: string)
+:SetDesc(Description: string)
+:Set(Value: boolean)
+:Toggle()
+:Lock()
+:Unlock()
+:Highlight()
+:Destroy()
+Toggle Variants
+Simple Toggle
+
+Tab:Toggle({
+    Title = "Feature Enabled",
+    Value = false,
+    Callback = function(state)
+        print("Feature enabled:", state)
+    end
+})
+Checkbox Style Toggle
+
+Tab:Toggle({
+    Title = "Accept Terms",
+    Type = "Checkbox",
+    Value = false,
+    Callback = function(state)
+        print("Terms accepted:", state)
+    end
+})
+Toggle with Icon
+
+Tab:Toggle({
+    Title = "Enable Notifications",
+    Icon = "bell",
+    Value = true,
+    Callback = function(state)
+        print("Notifications:", state and "Enabled" or "Disabled")
+    end
+})
+Locked Toggle
+
+local PremiumToggle = Tab:Toggle({
+    Title = "Premium Feature",
+    Locked = true,
+    Value = false,
+    Callback = function(state)
+        print("Premium feature:", state)
+    end
+})
+
+Slider Element
+Sliders allow users to select a numeric value within a range. They support both integer and floating-point numbers.
+
+Basic
+Full
+
+local Slider = Tab:Slider({
+    Title = "Effect Strength",
+    Desc = "Slider description", -- optional
+    Value = {
+        Min = 0, -- minimum value
+        Max = 100, -- maximum value
+        Default = 50 -- initial value
+    },
+    Step = 1, -- increment step (use 0.1 for floats). optional
+    Locked = false, -- disable slider. optional
+    Flag = "my_slider", -- for config saving. optional
+    Callback = function(value)
+        print("Value changed:", value)
+    end
+})
+Slider Parameters
+
+Hide Details
+Title: string
+Desc: string?
+Value.Min: number
+Value.Max: number
+Value.Default: number
+Step: number?
+Locked: boolean?
+Flag: string?
+Callback: function?
+Slider Functions
+
+Hide Details
+:SetTitle(Title: string)
+:SetDesc(Description: string)
+:Set(Value: number)
+:SetMin(Min: number)
+:SetMax(Max: number)
+:Lock()
+:Unlock()
+:Highlight()
+:Destroy()
+Slider Variants
+Integer Slider
+
+Tab:Slider({
+    Title = "Speed",
+    Value = { Min = 1, Max = 10, Default = 5 },
+    Step = 1, -- integer steps
+    Callback = function(value)
+        print("Speed:", value)
+    end
+})
+Float Slider
+
+Tab:Slider({
+    Title = "Sensitivity",
+    Value = { Min = 0, Max = 1, Default = 0.5 },
+    Step = 0.1, -- decimal steps
+    Callback = function(value)
+        print("Sensitivity:", value)
+    end
+})
+Large Range Slider
+
+Tab:Slider({
+    Title = "Population",
+    Value = { Min = 0, Max = 1000000, Default = 500000 },
+    Step = 10000,
+    Callback = function(value)
+        print("Population:", value)
+    end
+})
+Slider with Icons
+
+Tab:Slider({
+    Title = "Brightness",
+    Icons = {
+        From = "sfsymbols:sunMinFill",
+        To = "sfsymbols:sunMaxFill",
+    },
+    Value = { Min = 0, Max = 100, Default = 75 },
+    Callback = function(value)
+        print("Brightness:", value)
+    end
+})
+
+Input Element
+Input fields allow users to enter text data. They support both single-line and multi-line (textarea) inputs.
+
+Basic
+Full
+
+local Input = Tab:Input({
+    Title = "Username",
+    Desc = "Enter your username", -- optional
+    Icon = "user", -- lucide icon or "rbxassetid://". optional
+    Type = "Default", -- "Default" or "Textarea". optional
+    Placeholder = "Type here...", -- placeholder text. optional
+    Value = "", -- initial value. optional
+    Locked = false, -- disable input. optional
+    Flag = "my_input", -- for config saving. optional
+    Callback = function(text)
+        print("Text entered:", text)
+    end
+})
+Input Parameters
+
+Hide Details
+Title: string
+Desc: string?
+Icon: string?
+Type: string?
+Placeholder: string?
+Value: string?
+Locked: boolean?
+Flag: string?
+Callback: function?
+Input Functions
+
+Hide Details
+:SetTitle(Title: string)
+:SetDesc(Description: string)
+:Set(Value: string)
+:Lock()
+:Unlock()
+:Highlight()
+:Destroy()
+Input Variants
+Textarea Input
+
+Tab:Input({
+    Title = "Description",
+    Type = "Textarea",
+    Placeholder = "Enter detailed description...",
+    Callback = function(text)
+        print("Description:", text)
+    end
+})
+Input with Icon
+
+Tab:Input({
+    Title = "Icon Input",
+    Icon = "key",
+    Callback = function(v)
+        print("Entered", v)
+    end
+})
+
+Dropdown Element
+Dropdowns allow users to select from a list of predefined Values. They're useful for presenting multiple choices in a compact format.
+
+Basic
+Full
+Advanced
+
+local AdvancedDropdown = Tab:Dropdown({
+    Title = "Advanced Values",
+    Values = {
+        {
+            Title = "New file",
+            Desc = "Create a new file",
+            Icon = "file-plus",
+            Callback = function()
+                print("Clicked 'New file'")
+            end
+        },
+        {
+            Title = "Copy link",
+            Desc = "Copy the file link",
+            Icon = "copy",
+            Callback = function()
+                print("Clicked 'Copy link'")
+            end
+        },
+        {
+            Title = "Edit file",
+            Desc = "Allows you to edit the file",
+            Icon = "file-pen",
+            Callback = function()
+                print("Clicked 'Edit file'")
+            end
+        },
+        {
+            Type = "Divider",
+        },
+        {
+            Title = "Delete file",
+            Desc = "Permanently delete the file",
+            Icon = "trash",
+            Callback = function()
+                print("Clicked 'Delete file'")
+            end
+        },
+    }
+})
+Dropdown Parameters
+
+Hide Details
+Title: string
+Desc: string?
+Values: table
+Value: string?
+AllowNone: boolean?
+SearchBarEnabled: boolean?
+Multi: boolean?
+Locked: boolean?
+Flag: string?
+Callback: function?
+Dropdown Functions
+
+Hide Details
+:SetTitle(Title: string)
+:SetDesc(Description: string)
+:Select(Value: string | table)
+:Lock()
+:Unlock()
+:Highlight()
+:Destroy()
+Dropdown Variants
+Simple Dropdown
+
+Tab:Dropdown({
+    Title = "Choose Theme",
+    Values = {
+        "Light",
+        "Dark",
+        "Auto"
+    },
+    Value = "Dark",
+    Callback = function(selected)
+        print("Theme:", selected)
+    end
+})
+Multi-Select Dropdown
+
+Tab:Dropdown({
+    Title = "Select Features",
+    Desc = "Choose multiple features to enable",
+    Values = {
+        "Feature A",
+        "Feature B",
+        "Feature C",
+        "Feature D"
+    },
+    Multi = true,
+    AllowNone = true,
+    Callback = function(selected)
+        print("Selected features:", selected)
+    end
+})
+
+Paragraph Element
+Paragraph displays text content with optional icons, thumbnails, and buttons.
+Use it for information blocks, status messages, descriptions, or annotated UI text.
+
+Basic
+Full
+
+Tab:Paragraph({
+    Title = "Full Paragraph",
+    Desc = "This paragraph has icons, thumbnail and buttons.",
+    Image = "info",
+    ImageSize = 24,
+    Thumbnail = "rbxassetid://123456789",
+    ThumbnailSize = 64,
+    Color = Color3.fromRGB(100, 200, 255),
+    Buttons = {
+        {
+            Title = "Action",
+            Icon = "check",
+            Callback = function()
+                print("Action clicked")
+            end
+        }
+    }
+})
+Paragraph Properties
+
+Hide Details
+Title: string
+Desc: string
+Image: string?
+ImageSize: number?
+Thumbnail: string?
+ThumbnailSize: number?
+Color: string | Color3?
+Buttons: table?
+Locked: boolean?
+Button Properties
+
+Hide Details
+Title: string
+Icon: string?
+Variant: string?
+Callback()
+Paragraph Functions
+
+Hide Details
+:SetTitle(Title: string)
+:SetDesc(Description: string)
+:SetImage(Image: string, ImageSize: number?)
+:SetThumbnail(Thumbnail: string, ThumbnailSize: number?)
+:SetColor(Color: Color3)
+:Destroy()
+Examples
+Simple Paragraph
+
+Tab:Paragraph({
+    Title = "Version",
+    Desc = "App version 2.1.0"
+})
+With Image
+
+Tab:Paragraph({
+    Title = "Status",
+    Desc = "All systems operational",
+    Image = "check-circle",
+    ImageSize = 20
+})
+With Thumbnail
+
+Tab:Paragraph({
+    Title = "Feature Highlight",
+    Desc = "See the new UI",
+    Thumbnail = "rbxassetid://",
+    ThumbnailSize = 80
+})
+With Buttons
+
+Tab:Paragraph({
+    Title = "Update Available",
+    Desc = "Version 3.0 ready to install",
+    Buttons = {
+        { Title = "Install", Icon = "download", Callback = function() end }
+    }
+})
+
+Keybind Element
+Keybinds allow users to bind keyboard shortcuts to actions. They support all keyboard keys and modifier combinations.
+
+Basic
+Full
+
+local Keybind = Tab:Keybind({
+    Title = "Toggle UI",
+    Desc = "Press this key to toggle the UI", -- optional
+    Value = "V", -- default key. optional
+    Locked = false, -- disable keybind. optional
+    Flag = "toggle_ui_key", -- for config saving. optional
+    Callback = function(key)
+        print("Keybind activated, key:", key)
+    end
+})
+Keybind Parameters
+
+Hide Details
+Title: string
+Desc: string?
+Value: string?
+Locked: boolean?
+Flag: string?
+Callback: function?
+Keybind Methods
+
+Hide Details
+:SetTitle(Title: string)
+:Set(Value: Enum.KeyCode)
+:Lock()
+:Unlock()
+
+Colorpicker Element
+Colorpickers allow users to select colors with a visual interface. They return Color3 values for use in your application.
+
+Basic
+Full
+
+local Colorpicker = Tab:Colorpicker({
+    Title = "Select Color",
+    Desc = "Pick a color", -- optional
+    Default = Color3.fromRGB(255, 100, 100), -- default color. optional
+    Locked = false, -- disable colorpicker. optional
+    Flag = "custom_color", -- for config saving. optional
+    Callback = function(color)
+        print("Selected color:", color)
+    end
+})
+Colorpicker Parameters
+
+Hide Details
+Title: string
+Desc: string?
+Default: Color3?
+Locked: boolean?
+Flag: string?
+Callback: function?
+Colorpicker Functions
+
+Hide Details
+:Set(Color: Color3, Transparency: number?)
+:Lock()
+:Unlock()
+
+Code Element
+Code elements display formatted code with syntax highlighting and copy functionality.
+
+Basic
+Full
+
+Tab:Code({
+    Title = "Example Code",
+    Code = "local x = 10\\nprint(x)",
+    OnCopy = function()
+        print("Code copied to clipboard")
+    end
+})
+Code Parameters
+
+Hide Details
+Title: string?
+Code: string
+OnCopy: function?
+Code Functions
+
+Hide Details
+:SetCode(Code: string)
+:Destroy()
+
+Divider Element
+Dividers are visual separators used to organize and group elements visually.
+
+
+Your_Tab:Divider()
+Usage Examples
+Separate Sections
+
+Tab:Button({ Title = "Option 1" })
+Tab:Button({ Title = "Option 2" })
+ 
+Tab:Divider() -- visual separator
+ 
+Tab:Button({ Title = "Option 3" })
+Tab:Button({ Title = "Option 4" })
+Organize Content
+
+Tab:Paragraph({
+    Title = "Basic Features",
+    Desc = "Core functionality"
+})
+ 
+Tab:Button({ Title = "Feature 1" })
+Tab:Button({ Title = "Feature 2" })
+ 
+Tab:Divider()
+ 
+Tab:Paragraph({
+    Title = "Advanced Features",
+    Desc = "Expert options"
+})
+ 
+Tab:Button({ Title = "Feature 3" })
+Tab:Button({ Title = "Feature 4" })
+
+"Space" Element
+Spaces add vertical or horizontal gaps between elements for better visual organization.
+
+
+Tab:Space({ Columns = 1 })
+Space Parameters
+
+Hide Details
+Columns: number?
+Usage Examples
+Add Vertical Spacing
+
+Tab:Button({ Title = "Button 1" })
+ 
+Tab:Space()
+ 
+Tab:Button({ Title = "Button 2" })
+Multi-Column Space
+
+Tab:Space({ Columns = 3 })
+Organize Groups
+
+Tab:Button({ Title = "Save" })
+Tab:Button({ Title = "Cancel" })
+ 
+Tab:Space({ Columns = 2 })
+ 
+Tab:Button({ Title = "Delete" })
+
+Image Element
+Images display visual content from URLs or asset IDs rbxassetid://.
+
+
+Tab:Image({
+    Image = "https://example.com/image.png",
+    AspectRatio = "16:9",
+    Radius = 12,
+})
+Image Parameters
+
+Hide Details
+Image: string
+AspectRatio: string?
+Radius: number?
+
+Group Element
+Groups arrange elements horizontally for compact layouts and side-by-side arrangements.
+
+
+local Group = Tab:Group({})
+ 
+Group:Button({ Title = "Button 1" })
+Group:Button({ Title = "Button 2" })
+Group:Button({ Title = "Button 3" })
+Usage Examples
+Button Group
+
+local ActionGroup = Tab:Group({})
+ 
+ActionGroup:Button({ Title = "Save", Icon = "save", Justify = "Center" })
+ActionGroup:Button({ Title = "Edit", Icon = "edit", Justify = "Center" })
+ActionGroup:Button({ Title = "Delete", Icon = "trash", Justify = "Center" })
+Toggle Group
+
+local SettingsGroup = Tab:Group({})
+ 
+SettingsGroup:Toggle({ Title = "Option A" })
+SettingsGroup:Toggle({ Title = "Option B" })
+SettingsGroup:Toggle({ Title = "Option C" })
+Mixed Elements
+
+local ControlGroup = Tab:Group({})
+ 
+ControlGroup:Input({ Title = "Search" })
+ControlGroup:Button({ Title = "Go" })
+
