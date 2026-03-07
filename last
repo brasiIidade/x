@@ -1467,6 +1467,30 @@ if game.PlaceId == 2069320852 then
     end)
 end
 
+-- Tevez
+if game.PlaceId == 13132367906 then
+    local function desativarHitboxAC()
+        local char = LocalPlayer.Character
+        if char then
+            local s = char:FindFirstChild("Hitbox")
+            if s then pcall(function() s.Disabled = true; s:Destroy() end) end
+        end
+        local sc = game:GetService("StarterPlayer"):FindFirstChild("StarterCharacterScripts")
+        if sc then
+            local s = sc:FindFirstChild("Hitbox")
+            if s then pcall(function() s.Disabled = true; s:Destroy() end) end
+        end
+    end
+
+    desativarHitboxAC()
+
+    LocalPlayer.CharacterAdded:Connect(function(char)
+        task.wait()
+        local s = char:FindFirstChild("Hitbox")
+        if s then pcall(function() s.Disabled = true; s:Destroy() end) end
+    end)
+end
+
 local LOCAL_ID = LocalPlayer.UserId
 
 local _genv = getgenv()
