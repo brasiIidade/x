@@ -178,7 +178,6 @@ if MapaAtual == "Tevez" then
     end
 
     task.spawn(function()
-    task.spawn(function()
         while task.wait(0.05) do
             if not TL.Active then break end
 
@@ -222,6 +221,7 @@ if MapaAtual == "Tevez" then
                     end
                 end
             end
+
         end
     end)
 
