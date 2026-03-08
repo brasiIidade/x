@@ -192,41 +192,35 @@ if MapaAtual == "Tevez" then
             end
 
             if TL.Aura and HasGun() and fireEvent then
-                local c    = getChar()
-                local tool = c and c:FindFirstChildWhichIsA("Tool")
-                if tool then
-                    for _, plr in ipairs(plrs:GetPlayers()) do
-                        if plr ~= lp and (plr.Team == nil or plr.Team ~= lp.Team) and plr.Character then
-                            local h = plr.Character:FindFirstChildOfClass(S_HUM)
-                            if h and h.Health > 0 then
-                                local hrp = plr.Character:FindFirstChild(S_HRP)
-                                local head = plr.Character:FindFirstChild("Head") or hrp
-                                if hrp and head then
-                                    local headPos = head.Position
-                                    local hrpPos  = hrp.Position
-
-                                    -- chave é o vetor da posição do HRP, igual ao remote real
-                                    local hitInfo = {
-                                        [hrpPos] = {
-                                            Normal   = Vector3.new(0, 1, 0),
-                                            Position = headPos,
-                                            Instance = hrp,
-                                            Distance = (headPos - (getHRP() and getHRP().Position or Vector3.zero)).Magnitude,
-                                            Material = Enum.Material.ForceField,
-                                        }
-                                    }
-
-                                    for i = 1, 15 do
-                                        pcall(fireEvent.FireServer, fireEvent, tool, hitInfo, headPos)
-                                    end
-                                end
-                            end
-                        end
+    local c    = getChar()
+    local tool = c and c:FindFirstChildWhichIsA("Tool")
+    local myHRP = getHRP()
+    if tool and myHRP then
+        for _, plr in ipairs(plrs:GetPlayers()) do
+            if plr ~= lp and (plr.Team == nil or plr.Team ~= lp.Team) and plr.Character then
+                local h = plr.Character:FindFirstChildOfClass(S_HUM)
+                if h and h.Health > 0 then
+                    local hrp  = plr.Character:FindFirstChild(S_HRP)
+                    local head = plr.Character:FindFirstChild("Head") or hrp
+                    if hrp and head then
+                        local headPos = head.Position
+                        local hrpPos  = hrp.Position
+                        local hitInfo = {
+                            [hrpPos] = {
+                                Normal   = Vector3.new(0, 1, 0),
+                                Position = headPos,
+                                Instance = hrp,
+                                Distance = (headPos - myHRP.Position).Magnitude,
+                                Material = Enum.Material.ForceField,
+                            }
+                        }
+                        pcall(fireEvent.FireServer, fireEvent, tool, hitInfo, headPos)
                     end
                 end
             end
         end
-    end)
+    end
+end
 
     local FL = {
         Enabled        = false,
