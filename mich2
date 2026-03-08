@@ -4591,8 +4591,14 @@ if MapaAtual then
         local FaS = criarSection(NovaEraTab, "Dinheiro", "Autofarm", "lucide:coins", true)
         local MP  = FaS:Paragraph({ Title = "Status", Desc = "Dinheiro farmado: $0", Color = "Green", Image = "lucide:coins" })
         task.spawn(function()
-            repeat task.wait(0.5) until _G.NovaEraLogic
-            _G.NovaEraLogic.UpdateCallback = function(val) if MP then MP:SetDesc(cor({ "Dinheiro farmado: ", "#AAAAAA" }, { "$", "#00FF00" }, { tostring(val), "#00FF00" })) end end
+            repeat task.wait(0.1) until _G.NovaEraLogic
+            _G.NovaEraLogic.UpdateCallback = function(val)
+                if not MP then return end
+                local n = math.floor(tonumber(val) or 0)
+                local ativo = _G.NovaEraLogic and _G.NovaEraLogic.Enabled
+                local status = ativo and cor({ "● Farmando", "#00FF00" }) or cor({ "● Pausado", "#FFAA00" })
+                MP:SetDesc(status .. cor({ "\nDinheiro farmado: ", "#AAAAAA" }, { "$" .. tostring(n), "#00FF00" }))
+            end
         end)
         FaS:Dropdown({ Title = "Modo", Values = { "Lixeiro", "Barbeiro" }, Value = "Lixeiro", Callback = function(v) if _G.NovaEraLogic and _G.NovaEraLogic.SetMode then _G.NovaEraLogic.SetMode(v) end end })
         FaS:Toggle({ Title = "Autofarm", Desc = cor({ "Inicia", "#00FF00" }, { " o autofarm de coleta" }), Icon = "lucide:circle-play", Value = false, Callback = function(v) if _G.NovaEraLogic and _G.NovaEraLogic.Toggle then _G.NovaEraLogic.Toggle(v) end end })
