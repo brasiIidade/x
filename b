@@ -1265,6 +1265,9 @@ do
    do
     local SC = env.SilentConfig
 
+    -- ══════════════════════════════════════════
+    --  PRINCIPAL
+    -- ══════════════════════════════════════════
     local MainSection         = criarSection(SilentAim, "Principal", "Controle do silent aim", "lucide:crosshair", true)
     local ToggleAim, firstRun = nil, true
 
@@ -1322,14 +1325,14 @@ do
     })
 
     LogicSection:Dropdown({
-        Title    = "Partes do corpo",
-        Desc     = "Onde o tiro deve ir",
-        Values   = { "Aleatório", "Cabeça", "Tronco", "Braço direito", "Braço esquerdo", "Perna direita", "Perna esquerda" },
-        Value    = { "Aleatório" },
-        Multi    = true,
+        Title     = "Partes do corpo",
+        Desc      = "Onde o tiro deve ir",
+        Values    = { "Aleatório", "Cabeça", "Tronco", "Braço direito", "Braço esquerdo", "Perna direita", "Perna esquerda" },
+        Value     = { "Aleatório" },
+        Multi     = true,
         AllowNone = true,
-        Flag     = "PartesSilentAim",
-        Callback = function(v) SC.TargetPart = v end,
+        Flag      = "PartesSilentAim",
+        Callback  = function(v) SC.TargetPart = v end,
     })
 
     LogicSection:Dropdown({
@@ -1377,7 +1380,7 @@ do
     -- ══════════════════════════════════════════
     --  LISTA DE EXCEÇÕES
     -- ══════════════════════════════════════════
-    local WLSection   = criarSection(SilentAim, "Exceções", "Gerenciar amigos e times ignorados", "lucide:shield", false)
+    local WLSection    = criarSection(SilentAim, "Exceções", "Gerenciar amigos e times ignorados", "lucide:shield", false)
     local playerWLDrop
 
     WLSection:Button({
@@ -1435,7 +1438,8 @@ do
 
     FocusSection:Divider()
 
-    local focusParagraph, focusRemoveDrop
+    local focusParagraph  = nil
+    local focusRemoveDrop = nil
 
     local function updateFocusUI()
         if focusParagraph then
@@ -1444,9 +1448,7 @@ do
         if focusRemoveDrop then focusRemoveDrop:Refresh(SC.FocusList) end
     end
 
-    local GroupFocusInput = FocusSection:Group({})
-
-    GroupFocusInput:Input({
+    FocusSection:Input({
         Title       = "Adicionar alvo",
         Desc        = cor({ "Digite o " }, { "nome", "#00AAFF" }),
         Placeholder = "Nome do jogador",
@@ -1467,7 +1469,7 @@ do
         end,
     })
 
-    GroupFocusInput:Dropdown({
+    focusRemoveDrop = FocusSection:Dropdown({
         Title     = "Remover alvo",
         Desc      = cor({ "Selecione para " }, { "excluir", "#FF0000" }),
         Values    = {},
@@ -1484,8 +1486,6 @@ do
             end
         end,
     })
-
-    focusRemoveDrop = FocusSection -- referência atualizada acima no Group
 
     focusParagraph = FocusSection:Paragraph({
         Title   = "Alvos na lista",
