@@ -4599,7 +4599,7 @@ if MapaAtual then
 
     elseif MapaAtual == "Apex" then
         local ApexTab = criarTab("Apex", "https://tr.rbxcdn.com/180DAY-9b65f927dea36f98c1a720694fd00fd3/768/432/Image/Webp/noFilter")
-        ApexTab:Button({ Title = "Invadir base", Desc = "Autoexplicativo", Icon = "lucide:log-in", IconAlign = "Left", Locked = not JD_IS_PREMIUM, LockedTitle = "Premium", Callback = function() if _G.IniciarRota then _G.IniciarRota() end end })
+        ApexTab:Button({ Title = "Invadir base", Desc = "Autoexplicativo", Icon = "lucide:log-in", IconAlign = "Left", Locked = not JD_IS_PREMIUM, LockedTitle = "Para usuários premium", Callback = function() if _G.IniciarRota then _G.IniciarRota() end end })
 
         local MoS = criarSection(ApexTab, "Modificações", "Modificações de arma", "lucide:chevrons-left-right-ellipsis", false)
         local TrS = criarSection(ApexTab, "Troll", "Funções de troll", "https://pngfre.com/wp-content/uploads/1000117874.png", true)
