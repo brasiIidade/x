@@ -1,3 +1,3 @@
 return {
-    jogos = "jogos5"
+    jogos = "jogos"
 }
