@@ -4469,6 +4469,7 @@ do
 end
 
 
+
 -- JOGOS
 local MAPA_IDS = {
     [13132367906]     = "Tevez",
@@ -4488,28 +4489,28 @@ if MapaAtual then
         local TevezTab = criarTab("Tevez", "https://tr.rbxcdn.com/180DAY-84c7c1edcc63c7dfab5712b1ad377133/768/432/Image/Webp/noFilter")
 
         local LS = criarSection(TevezTab, "Local", "Chat", "lucide:message-circle", true)
-        LS:Input({ Title = "Mensagem", Desc = cor({ "Digite o " }, { "texto", "#FFFFFF" }, { " para enviar no chat" }), Value = "", InputIcon = "lucide:text-cursor", Placeholder = "Digite aqui...", Callback = function(v) if getgenv().TevezMods then getgenv().TevezMods.ChatMessage = v end end })
-        LS:Toggle({ Title = "Spam",   Desc = cor({ "Envia a mensagem " }, { "várias vezes", "#FFAA00" }),      Icon = "lucide:repeat", Value = false, Callback = function(s) if getgenv().TevezMods and getgenv().TevezMods.ToggleSpam   then getgenv().TevezMods.ToggleSpam(s) end end })
-        LS:Button({ Title = "Enviar", Desc = cor({ "Manda", "#00FF00" }, { " a mensagem atual" }), Color = "Green", Icon = "lucide:send", Callback = function() if getgenv().TevezMods and getgenv().TevezMods.SendMessage then getgenv().TevezMods.SendMessage() end end })
+        LS:Input({ Title = "Mensagem", Desc = cor({ "Digite o " }, { "texto", "#FFFFFF" }, { " para enviar no chat" }), Value = "", InputIcon = "lucide:text-cursor", Placeholder = "Digite aqui...", Callback = function(v) if _G.TevezMods then _G.TevezMods.ChatMessage = v end end })
+        LS:Toggle({ Title = "Spam",   Desc = cor({ "Envia a mensagem " }, { "várias vezes", "#FFAA00" }),      Icon = "lucide:repeat", Value = false, Callback = function(s) if _G.TevezMods and _G.TevezMods.ToggleSpam   then _G.TevezMods.ToggleSpam(s) end end })
+        LS:Button({ Title = "Enviar", Desc = cor({ "Manda", "#00FF00" }, { " a mensagem atual" }), Color = "Green", Icon = "lucide:send", Callback = function() if _G.TevezMods and _G.TevezMods.SendMessage then _G.TevezMods.SendMessage() end end })
 
         local SpS = criarSection(TevezTab, "Spoofer", "Alterar dispositivo", "lucide:smartphone", false)
         SpS:Paragraph({ Title = "Spoofer", Desc = cor({ "O " }, { "spoofer", "#00AAFF" }, { " permite você alterar o dispositivo para todos" }) })
-        SpS:Dropdown({ Title = "Dispositivo", Desc = cor({ "Selecione o " }, { "dispositivo", "#FFFFFF" }), Icon = "lucide:laptop", Values = { "Mobile", "Computer" }, Value = "Computer", Callback = function(opt) if getgenv().TevezMods then getgenv().TevezMods.SelectedDevice = opt end end })
-        SpS:Toggle({ Title = "Ativar", Desc = cor({ "Altera", "#00FF00" }, { " o dispositivo (reseta o personagem)" }), Icon = "lucide:power", Value = false, Callback = function(v) if getgenv().TevezMods and getgenv().TevezMods.ToggleSpoof then getgenv().TevezMods.ToggleSpoof(v) end end })
+        SpS:Dropdown({ Title = "Dispositivo", Desc = cor({ "Selecione o " }, { "dispositivo", "#FFFFFF" }), Icon = "lucide:laptop", Values = { "Mobile", "Computer" }, Value = "Computer", Callback = function(opt) if _G.TevezMods then _G.TevezMods.SelectedDevice = opt end end })
+        SpS:Toggle({ Title = "Ativar", Desc = cor({ "Altera", "#00FF00" }, { " o dispositivo (reseta o personagem)" }), Icon = "lucide:power", Value = false, Callback = function(v) if _G.TevezMods and _G.TevezMods.ToggleSpoof then _G.TevezMods.ToggleSpoof(v) end end })
         SpS:Space()
-        SpS:Dropdown({ Title = "AFK", Desc = cor({ "Permite " }, { "ativar", "#00FF00" }, { " ou " }, { "desativar", "#FF0000" }, { " o " }, { "AFK", "#FFAA00" }), Icon = "lucide:coffee", Values = { "Ativar", "Desativar" }, Value = "Desativar", Callback = function(opt) if getgenv().TevezMods and getgenv().TevezMods.SetAFK then getgenv().TevezMods.SetAFK(opt == "Ativar") end end })
+        SpS:Dropdown({ Title = "AFK", Desc = cor({ "Permite " }, { "ativar", "#00FF00" }, { " ou " }, { "desativar", "#FF0000" }, { " o " }, { "AFK", "#FFAA00" }), Icon = "lucide:coffee", Values = { "Ativar", "Desativar" }, Value = "Desativar", Callback = function(opt) if _G.TevezMods and _G.TevezMods.SetAFK then _G.TevezMods.SetAFK(opt == "Ativar") end end })
 
         local FaS = criarSection(TevezTab, "Autofarm", "Farm do banco", "lucide:banknote", false)
         local FarmStatus = FaS:Paragraph({ Title = "Status", Desc = "Aguardando...", Color = "Green", Image = "lucide:activity" })
         task.spawn(function()
-            repeat task.wait(0.5) until getgenv().TevezAutoFarm
-            getgenv().TevezAutoFarm.UpdateCallback = function(msg, money)
+            repeat task.wait(0.5) until _G.TevezAutoFarm
+            _G.TevezAutoFarm.UpdateCallback = function(msg, money)
                 if FarmStatus then FarmStatus:SetDesc(cor({ msg, "#AAAAAA" }) .. cor({ "\n💰 Farmado: R$ ", "#AAAAAA" }, { tostring(money), "#00FF00" })) end
             end
         end)
-        FaS:Toggle({ Title = "Ativar",      Desc = cor({ "Inicia",  "#00FF00" }, { " o autofarm" }),                                         Icon = "lucide:play",         Value = false, Callback = function(v) if getgenv().TevezAutoFarm then getgenv().TevezAutoFarm.Toggle(v) end end })
-        FaS:Toggle({ Title = "Modo seguro", Desc = cor({ "Pausa",   "#FF0000" }, { " se houver jogadores por perto" }),                       Icon = "lucide:shield-check", Value = false, Flag = "ModoSeguroAutofarmTevez", Callback = function(v) if getgenv().TevezAutoFarm then getgenv().TevezAutoFarm.SafeMode = v end end })
-        FaS:Input({  Title = "Raio de segurança", Desc = cor({ "Distância para " }, { "detectar", "#FF0000" }, { " se há alguém por perto" }), Placeholder = "60", InputIcon = "lucide:radio", Flag = "RaioDeSegurancaAutofarmTevez", Callback = function(v) local n = tonumber(v); if n and getgenv().TevezAutoFarm then getgenv().TevezAutoFarm.SafeRadius = n end end })
+        FaS:Toggle({ Title = "Ativar",      Desc = cor({ "Inicia",  "#00FF00" }, { " o autofarm" }),                                         Icon = "lucide:play",         Value = false, Callback = function(v) if _G.TevezAutoFarm then _G.TevezAutoFarm.Toggle(v) end end })
+        FaS:Toggle({ Title = "Modo seguro", Desc = cor({ "Pausa",   "#FF0000" }, { " se houver jogadores por perto" }),                       Icon = "lucide:shield-check", Value = false, Flag = "ModoSeguroAutofarmTevez", Callback = function(v) if _G.TevezAutoFarm then _G.TevezAutoFarm.SafeMode = v end end })
+        FaS:Input({  Title = "Raio de segurança", Desc = cor({ "Distância para " }, { "detectar", "#FF0000" }, { " se há alguém por perto" }), Placeholder = "60", InputIcon = "lucide:radio", Flag = "RaioDeSegurancaAutofarmTevez", Callback = function(v) local n = tonumber(v); if n and _G.TevezAutoFarm then _G.TevezAutoFarm.SafeRadius = n end end })
 
         local CoS = criarSection(TevezTab, "Combate", "Kill aura", "lucide:swords", false)
         CoS:Paragraph({ Title = "Kill aura", Image = "lucide:triangle-alert", Color = Color3.fromHex("#FF1D0D"), Desc = cor({ "Risco.", "#FF0000" }, { " Você será banido caso alguém te denuncie" }) })
@@ -4519,7 +4520,7 @@ if MapaAtual then
             else if KillAuraToggle then KillAuraToggle:Set(false); KillAuraToggle:Lock() end; notificar("Permissão negada", 2, "lucide:key") end
         end })
         KillAuraToggle = CoS:Toggle({ Title = "Kill aura", Desc = cor({ "Mata", "#FF0000" }, { " jogadores próximos" }), Icon = "lucide:skull", Value = false, Callback = function(state)
-            if getgenv().TevezMods and getgenv().TevezMods.ToggleAura then getgenv().TevezMods.ToggleAura(state, KillAuraToggle) end
+            if _G.TevezMods and _G.TevezMods.ToggleAura then _G.TevezMods.ToggleAura(state, KillAuraToggle) end
         end })
         KillAuraToggle:Lock()
 
@@ -4527,27 +4528,27 @@ if MapaAtual then
         local SHOP_ITEMS = { ["AK-47"] = 15000, ["MPT-76"] = 8500, ["UZI"] = 8200, ["M4A1"] = 13000, ["GLOCK 18"] = 4300, ["Colete"] = 15000 }
         local shopValues, displayToKey = {}, {}
         for name, price in pairs(SHOP_ITEMS) do local d = name .. " - $" .. price; table.insert(shopValues, d); displayToKey[d] = name end
-        ShS:Dropdown({ Title = "Comprar itens", Desc = cor({ "Seleciona um " }, { "item", "#FFFFFF" }, { " na loja" }), Icon = "lucide:tag", Values = shopValues, Value = "GLOCK 18 - $4300", Callback = function(opt) if getgenv().TevezMods then getgenv().TevezMods.SelectedShopItem = displayToKey[opt] end end })
-        ShS:Button({ Title = "Comprar", Desc = cor({ "Compra", "#00FF00" }, { " o item selecionado" }), Icon = "lucide:credit-card", Callback = function() if getgenv().TevezMods and getgenv().TevezMods.BuyItem then getgenv().TevezMods.BuyItem() end end })
+        ShS:Dropdown({ Title = "Comprar itens", Desc = cor({ "Seleciona um " }, { "item", "#FFFFFF" }, { " na loja" }), Icon = "lucide:tag", Values = shopValues, Value = "GLOCK 18 - $4300", Callback = function(opt) if _G.TevezMods then _G.TevezMods.SelectedShopItem = displayToKey[opt] end end })
+        ShS:Button({ Title = "Comprar", Desc = cor({ "Compra", "#00FF00" }, { " o item selecionado" }), Icon = "lucide:credit-card", Callback = function() if _G.TevezMods and _G.TevezMods.BuyItem then _G.TevezMods.BuyItem() end end })
 
         local MoS = criarSection(TevezTab, "Mods", "Modifica a arma", "lucide:hammer", false)
-        MoS:Input({ Title = "Bullets", Desc = cor({ "Quantidade de " }, { "balas", "#00AAFF" }, { " por disparo" }), Placeholder = "Valor", InputIcon = "lucide:hash",   Flag = "BalasTevez",  Callback = function(v) if v ~= "" and getgenv().TevezMods then getgenv().TevezMods.GunConfig.Bullets = tonumber(v) end end })
-        MoS:Input({ Title = "Spread",  Desc = cor({ "Muda o " }, { "espalhamento", "#FFAA00" }),                     Placeholder = "Valor", InputIcon = "lucide:expand",  Flag = "SpreadTevez", Callback = function(v) if v ~= "" and getgenv().TevezMods then getgenv().TevezMods.GunConfig.Spread  = tonumber(v) end end })
-        MoS:Input({ Title = "Range",   Desc = cor({ "O quão " }, { "longe", "#00AAFF" }, { " as balas vão" }),       Placeholder = "Valor", InputIcon = "lucide:target",  Flag = "RangeTevez",  Callback = function(v) if v ~= "" and getgenv().TevezMods then getgenv().TevezMods.GunConfig.Range   = tonumber(v) end end })
-        MoS:Button({ Title = "Aplicar mods", Desc = cor({ "Muda", "#00FF00" }, { " os atributos da arma" }), Icon = "lucide:check-circle", Callback = function() if getgenv().TevezMods and getgenv().TevezMods.ApplyGunMods then getgenv().TevezMods.ApplyGunMods() end end })
+        MoS:Input({ Title = "Bullets", Desc = cor({ "Quantidade de " }, { "balas", "#00AAFF" }, { " por disparo" }), Placeholder = "Valor", InputIcon = "lucide:hash",   Flag = "BalasTevez",  Callback = function(v) if v ~= "" and _G.TevezMods then _G.TevezMods.GunConfig.Bullets = tonumber(v) end end })
+        MoS:Input({ Title = "Spread",  Desc = cor({ "Muda o " }, { "espalhamento", "#FFAA00" }),                     Placeholder = "Valor", InputIcon = "lucide:expand",  Flag = "SpreadTevez", Callback = function(v) if v ~= "" and _G.TevezMods then _G.TevezMods.GunConfig.Spread  = tonumber(v) end end })
+        MoS:Input({ Title = "Range",   Desc = cor({ "O quão " }, { "longe", "#00AAFF" }, { " as balas vão" }),       Placeholder = "Valor", InputIcon = "lucide:target",  Flag = "RangeTevez",  Callback = function(v) if v ~= "" and _G.TevezMods then _G.TevezMods.GunConfig.Range   = tonumber(v) end end })
+        MoS:Button({ Title = "Aplicar mods", Desc = cor({ "Muda", "#00FF00" }, { " os atributos da arma" }), Icon = "lucide:check-circle", Callback = function() if _G.TevezMods and _G.TevezMods.ApplyGunMods then _G.TevezMods.ApplyGunMods() end end })
 
     elseif MapaAtual == "Christian" then
         local ChristianTab = criarTab("Christian", "https://tr.rbxcdn.com/180DAY-048e9d153b3fd43e5ee5207b61b810f7/768/432/Image/Webp/noFilter")
 
-        if not getgenv().ChristianSpooferConfig then
-            getgenv().ChristianSpooferConfig = { Enabled = false, Device = "Pc" }
+        if not _G.ChristianSpooferConfig then
+            _G.ChristianSpooferConfig = { Enabled = false, Device = "Pc" }
         end
-        if not getgenv().ChristianSpooferHooked then
-            getgenv().ChristianSpooferHooked = true
+        if not _G.ChristianSpooferHooked then
+            _G.ChristianSpooferHooked = true
             local OldNameCall
-            OldNameCall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
-                if not checkcaller() and getnamecallmethod() == "FireServer" and tostring(self) == "Dispositivo" and getgenv().ChristianSpooferConfig.Enabled then
-                    local args = { ... }; args[1] = getgenv().ChristianSpooferConfig.Device; return OldNameCall(self, table.unpack(args))
+            OldNameCall = _G._hookmeta(game, "__namecall", _G._newcc(function(self, ...)
+                if not _G._checkcall() and _G._getnamecall() == "FireServer" and tostring(self) == "Dispositivo" and _G.ChristianSpooferConfig.Enabled then
+                    local args = { ... }; args[1] = _G.ChristianSpooferConfig.Device; return OldNameCall(self, table.unpack(args))
                 end
                 return OldNameCall(self, ...)
             end))
@@ -4555,57 +4556,57 @@ if MapaAtual then
 
         local Sp = criarSection(ChristianTab, "Dispositivo", "Modificar dispositivo", "lucide:phone", true)
         Sp:Paragraph({ Title = "Spoofer", Desc = cor({ "O " }, { "spoofer", "#00AAFF" }, { " permite você alterar o dispositivo para todos" }) })
-        Sp:Dropdown({ Title = "Dispositivo", Desc = cor({ "Selecione o " }, { "dispositivo", "#FFFFFF" }), Icon = "lucide:laptop", Values = { "Celular", "PC" }, Value = "Celular", Callback = function(opt) getgenv().ChristianSpooferConfig.Device = (opt == "PC") and "Pc" or "Mobile" end })
+        Sp:Dropdown({ Title = "Dispositivo", Desc = cor({ "Selecione o " }, { "dispositivo", "#FFFFFF" }), Icon = "lucide:laptop", Values = { "Celular", "PC" }, Value = "Celular", Callback = function(opt) _G.ChristianSpooferConfig.Device = (opt == "PC") and "Pc" or "Mobile" end })
         Sp:Toggle({ Title = "Ativar", Desc = cor({ "Altera", "#00FF00" }, { " o dispositivo (reseta o personagem)" }), Icon = "lucide:power", Value = false, Callback = function(v)
-            getgenv().ChristianSpooferConfig.Enabled = v
+            _G.ChristianSpooferConfig.Enabled = v
             if v and LocalPlayer.Character then local h = LocalPlayer.Character:FindFirstChildOfClass("Humanoid"); if h and h.Health > 0 then h.Health = 0 end end
         end })
 
     elseif MapaAtual == "Delta" then
         local DeltaTab = criarTab("Delta", "https://tr.rbxcdn.com/180DAY-8952e9d8abbff8104b22356f8b66f962/768/432/Image/Webp/noFilter")
-        if type(notificar) == "function" then getgenv().notificar = notificar end
+        if type(notificar) == "function" then _G.notificar = notificar end
 
-        criarSection(DeltaTab, "Combate", "Kill aura", "lucide:swords", false):Toggle({ Title = "Kill aura", Desc = cor({ "Mata", "#FF0000" }, { " todos os inimigos ao redor" }), Icon = "lucide:skull", Value = false, Callback = function(s) if getgenv().DeltaLogic then getgenv().DeltaLogic.KillAuraAtiva = s end end })
+        criarSection(DeltaTab, "Combate", "Kill aura", "lucide:swords", false):Toggle({ Title = "Kill aura", Desc = cor({ "Mata", "#FF0000" }, { " todos os inimigos ao redor" }), Icon = "lucide:skull", Value = false, Callback = function(s) if _G.DeltaLogic then _G.DeltaLogic.KillAuraAtiva = s end end })
 
         local JS = criarSection(DeltaTab, "Polichinelos", "Modificar", "lucide:activity", true)
-        JS:Input({ Title = "Quantidade", Desc = cor({ "Valor para " }, { "adicionar ou remover", "#FFFFFF" }), Placeholder = "10", InputIcon = "lucide:hash", Callback = function(v) if getgenv().DeltaLogic then getgenv().DeltaLogic.JJValue = v:gsub("%D", "") end end })
-        JS:Button({ Title = "Modificar", Desc = cor({ "Muda", "#00FF00" }, { " seus polichinelos" }), Icon = "lucide:edit-2", Callback = function() if getgenv().DeltaLogic and getgenv().DeltaLogic.SetJJ then getgenv().DeltaLogic.SetJJ() end end })
+        JS:Input({ Title = "Quantidade", Desc = cor({ "Valor para " }, { "adicionar ou remover", "#FFFFFF" }), Placeholder = "10", InputIcon = "lucide:hash", Callback = function(v) if _G.DeltaLogic then _G.DeltaLogic.JJValue = v:gsub("%D", "") end end })
+        JS:Button({ Title = "Modificar", Desc = cor({ "Muda", "#00FF00" }, { " seus polichinelos" }), Icon = "lucide:edit-2", Callback = function() if _G.DeltaLogic and _G.DeltaLogic.SetJJ then _G.DeltaLogic.SetJJ() end end })
 
         local ES = criarSection(DeltaTab, "Economia", "Dinheiro", "lucide:coins", false)
-        ES:Input({ Title = "Quantidade", Desc = cor({ "Valor para receber" }), Placeholder = "1000000", InputIcon = "lucide:circle-dollar-sign", Callback = function(v) if getgenv().DeltaLogic then getgenv().DeltaLogic.GetRichValue = v:gsub("%D", "") end end })
-        ES:Button({ Title = "Money", Desc = cor({ "Pega", "#00FF00" }, { " o dinheiro" }), Icon = "lucide:gem", Callback = function() if getgenv().DeltaLogic and getgenv().DeltaLogic.GetRich then getgenv().DeltaLogic.GetRich() end end })
+        ES:Input({ Title = "Quantidade", Desc = cor({ "Valor para receber" }), Placeholder = "1000000", InputIcon = "lucide:circle-dollar-sign", Callback = function(v) if _G.DeltaLogic then _G.DeltaLogic.GetRichValue = v:gsub("%D", "") end end })
+        ES:Button({ Title = "Money", Desc = cor({ "Pega", "#00FF00" }, { " o dinheiro" }), Icon = "lucide:gem", Callback = function() if _G.DeltaLogic and _G.DeltaLogic.GetRich then _G.DeltaLogic.GetRich() end end })
 
     elseif MapaAtual == "Soucre" then
-        local SoucreTab  = criarTab("Soucre", "https://tr.rbxcdn.com/180DAY-9b65f927dea36f98c1a720694fd00fd3/768/432/Image/Webp/noFilter")
+        local SoucreTab = criarTab("Soucre", "https://tr.rbxcdn.com/180DAY-9b65f927dea36f98c1a720694fd00fd3/768/432/Image/Webp/noFilter")
         local FaS = criarSection(SoucreTab, "Entregador", "Autofarm", "lucide:banknote-arrow-up", true)
         local MP  = FaS:Paragraph({ Title = "Status", Desc = "Dinheiro farmado: $0", Color = "Green", Image = "lucide:coins" })
         task.spawn(function()
-            repeat task.wait(0.5) until getgenv().SoucreLogic
-            getgenv().SoucreLogic.UpdateCallback = function(val) if MP then MP:SetDesc(cor({ "Dinheiro farmado: ", "#AAAAAA" }, { "$", "#00FF00" }, { tostring(val), "#00FF00" })) end end
+            repeat task.wait(0.5) until _G.SoucreLogic
+            _G.SoucreLogic.UpdateCallback = function(val) if MP then MP:SetDesc(cor({ "Dinheiro farmado: ", "#AAAAAA" }, { "$", "#00FF00" }, { tostring(val), "#00FF00" })) end end
         end)
-        FaS:Toggle({ Title = "Autofarm", Desc = cor({ "Inicia", "#00FF00" }, { " o autofarm" }), Icon = "lucide:circle-play", Value = false, Callback = function(v) if getgenv().SoucreLogic then getgenv().SoucreLogic.Toggle(v) end end })
+        FaS:Toggle({ Title = "Autofarm", Desc = cor({ "Inicia", "#00FF00" }, { " o autofarm" }), Icon = "lucide:circle-play", Value = false, Callback = function(v) if _G.SoucreLogic then _G.SoucreLogic.Toggle(v) end end })
 
     elseif MapaAtual == "NovaEra" then
         local NovaEraTab = criarTab("Nova Era", "https://tr.rbxcdn.com/180DAY-9b65f927dea36f98c1a720694fd00fd3/768/432/Image/Webp/noFilter")
         local FaS = criarSection(NovaEraTab, "Dinheiro", "Autofarm", "lucide:coins", true)
         local MP  = FaS:Paragraph({ Title = "Status", Desc = "Dinheiro farmado: $0", Color = "Green", Image = "lucide:coins" })
         task.spawn(function()
-            repeat task.wait(0.5) until getgenv().NovaEraLogic
-            getgenv().NovaEraLogic.UpdateCallback = function(val) if MP then MP:SetDesc(cor({ "Dinheiro farmado: ", "#AAAAAA" }, { "$", "#00FF00" }, { tostring(val), "#00FF00" })) end end
+            repeat task.wait(0.5) until _G.NovaEraLogic
+            _G.NovaEraLogic.UpdateCallback = function(val) if MP then MP:SetDesc(cor({ "Dinheiro farmado: ", "#AAAAAA" }, { "$", "#00FF00" }, { tostring(val), "#00FF00" })) end end
         end)
-        FaS:Dropdown({ Title = "Modo", Values = { "Lixeiro", "Barbeiro" }, Value = "Lixeiro", Callback = function(v) if getgenv().NovaEraLogic and getgenv().NovaEraLogic.SetMode then getgenv().NovaEraLogic.SetMode(v) end end })
-        FaS:Toggle({ Title = "Autofarm", Desc = cor({ "Inicia", "#00FF00" }, { " o autofarm de coleta" }), Icon = "lucide:circle-play", Value = false, Callback = function(v) if getgenv().NovaEraLogic and getgenv().NovaEraLogic.Toggle then getgenv().NovaEraLogic.Toggle(v) end end })
+        FaS:Dropdown({ Title = "Modo", Values = { "Lixeiro", "Barbeiro" }, Value = "Lixeiro", Callback = function(v) if _G.NovaEraLogic and _G.NovaEraLogic.SetMode then _G.NovaEraLogic.SetMode(v) end end })
+        FaS:Toggle({ Title = "Autofarm", Desc = cor({ "Inicia", "#00FF00" }, { " o autofarm de coleta" }), Icon = "lucide:circle-play", Value = false, Callback = function(v) if _G.NovaEraLogic and _G.NovaEraLogic.Toggle then _G.NovaEraLogic.Toggle(v) end end })
 
     elseif MapaAtual == "Apex" then
         local ApexTab = criarTab("Apex", "https://tr.rbxcdn.com/180DAY-9b65f927dea36f98c1a720694fd00fd3/768/432/Image/Webp/noFilter")
-        ApexTab:Button({ Title = "Invadir base", Desc = "Autoexplicativo", Icon = "lucide:log-in", IconAlign = "Left", Locked = not JD_IS_PREMIUM, LockedTitle = "Premium", Callback = function() if getgenv().IniciarRota then getgenv().IniciarRota() end end })
+        ApexTab:Button({ Title = "Invadir base", Desc = "Autoexplicativo", Icon = "lucide:log-in", IconAlign = "Left", Locked = not JD_IS_PREMIUM, LockedTitle = "Premium", Callback = function() if _G.IniciarRota then _G.IniciarRota() end end })
 
-        local MoS  = criarSection(ApexTab, "Modificações", "Modificações de arma", "lucide:chevrons-left-right-ellipsis", false)
-        local TrS  = criarSection(ApexTab, "Troll", "Funções de troll", "https://pngfre.com/wp-content/uploads/1000117874.png", true)
+        local MoS = criarSection(ApexTab, "Modificações", "Modificações de arma", "lucide:chevrons-left-right-ellipsis", false)
+        local TrS = criarSection(ApexTab, "Troll", "Funções de troll", "https://pngfre.com/wp-content/uploads/1000117874.png", true)
 
         MoS:Toggle({ Title = "Bala infinita", Desc = cor({ "Congela", "#00FF00" }, { " a munição da arma" }), Icon = "lucide:infinity", Flag = "ApexBalaInfinita", Value = false, Callback = function(v)
-            if getgenv()._InfiniteAmmoConn     then getgenv()._InfiniteAmmoConn:Disconnect();     getgenv()._InfiniteAmmoConn     = nil end
-            if getgenv()._InfiniteAmmoAddedConn then getgenv()._InfiniteAmmoAddedConn:Disconnect(); getgenv()._InfiniteAmmoAddedConn = nil end
+            if _G._InfiniteAmmoConn      then _G._InfiniteAmmoConn:Disconnect();      _G._InfiniteAmmoConn      = nil end
+            if _G._InfiniteAmmoAddedConn then _G._InfiniteAmmoAddedConn:Disconnect(); _G._InfiniteAmmoAddedConn = nil end
             if not v then return end
             local function fillAmmo(parent)
                 if not parent then return end
@@ -4615,15 +4616,15 @@ if MapaAtual then
                     end
                 end
             end
-            getgenv()._InfiniteAmmoConn = RunService.Heartbeat:Connect(function() fillAmmo(LocalPlayer:FindFirstChild("Backpack")); fillAmmo(LocalPlayer.Character) end)
-            getgenv()._InfiniteAmmoAddedConn = LocalPlayer.Backpack.ChildAdded:Connect(function(tool)
+            _G._InfiniteAmmoConn = RunService.Heartbeat:Connect(function() fillAmmo(LocalPlayer:FindFirstChild("Backpack")); fillAmmo(LocalPlayer.Character) end)
+            _G._InfiniteAmmoAddedConn = LocalPlayer.Backpack.ChildAdded:Connect(function(tool)
                 task.wait(0.1)
                 if tool:IsA("Tool") and #tool:GetDescendants() > 5 then local ammo = tool:FindFirstChild("Ammo"); if ammo then ammo.Value = ammo.MaxValue end end
             end)
         end })
 
         TrS:Toggle({ Title = "Spammar sons", Desc = cor({ "Precisa", "#FF0000" }, { " de uma arma." }, { " Esses sons tocam para todos.", "#03F916" }), Icon = "lucide:audio-lines", Value = false, Callback = function(v)
-            if getgenv().ApexLogic and getgenv().ApexLogic.ToggleSound then getgenv().ApexLogic.ToggleSound(v) end
+            if _G.ApexLogic and _G.ApexLogic.ToggleSound then _G.ApexLogic.ToggleSound(v) end
         end })
     end
 end
