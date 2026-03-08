@@ -1190,12 +1190,23 @@ elseif MapaAtual == "Apex" then
             end
 
             local function findSessionToken()
+                -- Não usa debug.getinfo().name pois ofuscação renomeia as funções.
+                -- Varre todas as funções do GC e testa cada upvalue buscando
+                -- uma string com formato de token (UUID / hash longo).
+                local function looksLikeToken(v)
+                    return type(v) == "string" and #v >= 20
+                end
                 for _, obj in ipairs(_G._getgc(true)) do
                     if type(obj) == "function" then
-                        local ok, info = pcall(debug.getinfo, obj)
-                        if ok and info and info.name == "PlaySound" then
-                            local ok2, val = pcall(debug.getupvalue, obj, 2)
-                            if ok2 and val then return val end
+                        local ok, nups = pcall(debug.getinfo, obj)
+                        if ok and nups then
+                            local count = (type(nups) == "table" and nups.nups) or 0
+                            for i = 1, count do
+                                local ok2, val = pcall(debug.getupvalue, obj, i)
+                                if ok2 and looksLikeToken(val) then
+                                    return val
+                                end
+                            end
                         end
                     end
                 end
