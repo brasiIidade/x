@@ -54,14 +54,13 @@ if MapaAtual == "Tevez" then
 
     local gs  = rep:WaitForChild("GunSystem", 3)
     local ast = rep:WaitForChild("Assets", 3)
-    local gc, fireEvent, reloadFunc, deviceRemote, LocalFunctions
+    local gc, fireEvent, reloadFunc, deviceRemote
 
     if gs then
-        gc             = gs:WaitForChild("GunsConfigurations")
-        local rem      = gs:WaitForChild("Remotes")
-        fireEvent      = rem:WaitForChild("Events"):WaitForChild("Fire")
-        reloadFunc     = rem:WaitForChild("Functions"):WaitForChild("Reload")
-        LocalFunctions = require(gs.Modules.LocalFunctions)
+        gc         = gs:WaitForChild("GunsConfigurations")
+        local rem  = gs:WaitForChild("Remotes")
+        fireEvent  = rem:WaitForChild("Events"):WaitForChild("Fire")
+        reloadFunc = rem:WaitForChild("Functions"):WaitForChild("Reload")
     end
     if ast then
         deviceRemote = ast:WaitForChild("Remotes"):WaitForChild("Device")
@@ -178,6 +177,10 @@ if MapaAtual == "Tevez" then
         end
     end
 
+    local rp = RaycastParams.new()
+    rp.FilterType = Enum.RaycastFilterType.Exclude
+    local _hitInfo = {}
+
     task.spawn(function()
         while task.wait(0.05) do
             if not TL.Active then break end
@@ -192,20 +195,39 @@ if MapaAtual == "Tevez" then
                 if tool then pcall(reloadFunc.InvokeServer, reloadFunc, tool) end
             end
 
-            if TL.Aura and HasGun() and LocalFunctions then
+            if TL.Aura and HasGun() and fireEvent then
                 local c    = getChar()
                 local tool = c and c:FindFirstChildWhichIsA("Tool")
-                if tool then
-                    for _, plr in ipairs(plrs:GetPlayers()) do
-                        if plr ~= lp and (plr.Team == nil or plr.Team ~= lp.Team) and plr.Character then
-                            local h = plr.Character:FindFirstChildOfClass(S_HUM)
-                            if h and h.Health > 0 then
-                                local head = plr.Character:FindFirstChild("Head") or plr.Character:FindFirstChild(S_HRP)
-                                if head then
-                                    for i = 1, 15 do
-                                        pcall(function()
-                                            LocalFunctions:Shoot(tool, head.Position)
-                                        end)
+                if tool and gc then
+                    local cfgI = gc:FindFirstChild(tool.Name)
+                    if cfgI then
+                        local firePart = tool:FindFirstChild("FirePart") or tool:FindFirstChild("Handle") or tool.PrimaryPart
+                        if firePart then
+                            rp.FilterDescendantsInstances = {c}
+                            for _, plr in ipairs(plrs:GetPlayers()) do
+                                if plr ~= lp and (plr.Team == nil or plr.Team ~= lp.Team) and plr.Character then
+                                    local h = plr.Character:FindFirstChildOfClass(S_HUM)
+                                    if h and h.Health > 0 then
+                                        local head = plr.Character:FindFirstChild("Head") or plr.Character:FindFirstChild(S_HRP)
+                                        if head then
+                                            local dir    = head.Position - firePart.Position
+                                            local dist   = dir.Magnitude
+                                            if dist > 0 then
+                                                local result = ws:Raycast(firePart.Position, dir.Unit * dist, rp)
+                                                local hitPos = result and result.Position or head.Position
+                                                _hitInfo[head] = {
+                                                    Normal   = result and result.Normal   or Vector3.new(0,1,0),
+                                                    Position = hitPos,
+                                                    Instance = head,
+                                                    Distance = dist,
+                                                    Material = result and result.Material or Enum.Material.ForceField,
+                                                }
+                                                for i = 1, 15 do
+                                                    pcall(fireEvent.FireServer, fireEvent, tool, _hitInfo, hitPos)
+                                                end
+                                                table.clear(_hitInfo)
+                                            end
+                                        end
                                     end
                                 end
                             end
