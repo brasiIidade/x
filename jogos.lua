@@ -1,3 +1,16 @@
+do
+    local e = _G
+    e._fireprox    = fireproximityprompt  or function() end
+    e._setfpscap   = setfpscap            or function() end
+    e._sethidden   = sethiddenproperty    or function() end
+    e._getgc       = getgc                or function() return {} end
+    e._setreadonly = setreadonly          or function() end
+    e._newcc       = newcclosure          or function(f) return f end
+    e._hookmeta    = hookmetamethod
+    e._checkcall   = checkcaller          or function() return false end
+    e._getnamecall = getnamecallmethod    or function() return "" end
+end
+
 local cr = cloneref or function(o) return o end
 
 local plrs = cr(game:GetService("Players"))
@@ -9,7 +22,6 @@ local uis  = cr(game:GetService("UserInputService"))
 local ts   = cr(game:GetService("TweenService"))
 
 local lp  = plrs.LocalPlayer
-local env = getgenv()
 
 local Mapas = {
     [13132367906]     = "Tevez",
@@ -19,24 +31,24 @@ local Mapas = {
     [134858056613772] = "NovaEra",
     [2069320852]      = "Apex",
 }
-env.MAPA_IDS  = Mapas
-env.MapaAtual = Mapas[game.PlaceId]
+_G.MAPA_IDS  = Mapas
+_G.MapaAtual = Mapas[game.PlaceId]
 
-local MapaAtual = env.MapaAtual
+local MapaAtual = _G.MapaAtual
 if not MapaAtual then return end
 
 local function Notify(msg)
-    local fn = env.notificar or _G.notificar
+    local fn = _G.notificar
     if fn then fn(msg, 3, "lucide:info") end
 end
 
-local S_HRP  = "HumanoidRootPart"
-local S_HUM  = "Humanoid"
-local S_BP   = "Backpack"
+local S_HRP = "HumanoidRootPart"
+local S_HUM = "Humanoid"
+local S_BP  = "Backpack"
 
-local function getChar()  return lp.Character end
-local function getHRP()   local c = getChar(); return c and c:FindFirstChild(S_HRP) end
-local function getHum()   local c = getChar(); return c and c:FindFirstChildOfClass(S_HUM) end
+local function getChar() return lp.Character end
+local function getHRP()  local c = getChar(); return c and c:FindFirstChild(S_HRP) end
+local function getHum()  local c = getChar(); return c and c:FindFirstChildOfClass(S_HUM) end
 
 if MapaAtual == "Tevez" then
 
@@ -66,8 +78,8 @@ if MapaAtual == "Tevez" then
     }
 
     local tevezOldNc
-    tevezOldNc = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
-        if self == deviceRemote and getnamecallmethod() == "FireServer" and TL.SpoofEnabled then
+    tevezOldNc = _G._hookmeta(game, "__namecall", _G._newcc(function(self, ...)
+        if self == deviceRemote and _G._getnamecall() == "FireServer" and TL.SpoofEnabled then
             local a = {...}; a[1] = TL.SelectedDevice; return tevezOldNc(self, unpack(a))
         end
         return tevezOldNc(self, ...)
@@ -123,9 +135,9 @@ if MapaAtual == "Tevez" then
 
     local function ModifyGunProp(prop, val)
         local count = 0
-        for _, v in pairs(getgc(true)) do
+        for _, v in pairs(_G._getgc(true)) do
             if type(v) == "table" and (rawget(v, "Spread") or rawget(v, "Bullets") or rawget(v, "FireRate")) then
-                if setreadonly then setreadonly(v, false) end
+                _G._setreadonly(v, false)
                 if rawget(v, prop) ~= nil then rawset(v, prop, val); count += 1 end
             end
         end
@@ -148,9 +160,9 @@ if MapaAtual == "Tevez" then
                 if toggleUI then toggleUI:Set(false) end
                 Notify("Precisa de uma arma"); return
             end
-            TL.Aura = true; Notify("Kill-aura Ativado")
+            TL.Aura = true; Notify("Kill-aura ativado")
         else
-            TL.Aura = false; Notify("Kill-aura Desativado")
+            TL.Aura = false; Notify("Kill-aura desativado")
         end
     end
 
@@ -163,13 +175,13 @@ if MapaAtual == "Tevez" then
             if not TL.Active then break end
 
             if reloadFunc and TL.Aura and HasGun() then
-                local c = getChar()
+                local c    = getChar()
                 local tool = c and c:FindFirstChildWhichIsA("Tool")
                 if tool then pcall(reloadFunc.InvokeServer, reloadFunc, tool) end
             end
 
             if TL.Aura and HasGun() and fireEvent then
-                local c = getChar()
+                local c    = getChar()
                 local tool = c and c:FindFirstChildWhichIsA("Tool")
                 if tool and gc then
                     local cfgI = gc:FindFirstChild(tool.Name)
@@ -183,8 +195,8 @@ if MapaAtual == "Tevez" then
                                     if h and h.Health > 0 then
                                         local head = plr.Character:FindFirstChild("Head") or plr.Character:FindFirstChild(S_HRP)
                                         if head then
-                                            local dir  = head.Position - firePart.Position
-                                            local dist = dir.Magnitude
+                                            local dir    = head.Position - firePart.Position
+                                            local dist   = dir.Magnitude
                                             if dist > 0 then
                                                 local result = ws:Raycast(firePart.Position, dir.Unit * dist, rp)
                                                 local hitPos = result and result.Position or head.Position
@@ -280,8 +292,8 @@ if MapaAtual == "Tevez" then
         local start = tick()
         while FL.Enabled and IsOpen() and (tick() - start < seconds) do
             if CheckSafe() then task.wait(0.5); continue end
-            Tp(afkLUp);  task.wait(0.04)
-            Tp(afkRUp);  task.wait(0.04)
+            Tp(afkLUp); task.wait(0.04)
+            Tp(afkRUp); task.wait(0.04)
         end
         return not IsOpen() or not FL.Enabled
     end
@@ -302,10 +314,9 @@ if MapaAtual == "Tevez" then
     local function GetMoneyBag()
         local char = getChar()
         if not char then return 0 end
-
         for _, v in ipairs(char:GetDescendants()) do
             if v.Name == "Money Bag" then
-                local h = v:IsA("BasePart") and v or v:FindFirstChildWhichIsA("BasePart")
+                local h   = v:IsA("BasePart") and v or v:FindFirstChildWhichIsA("BasePart")
                 if h then
                     local att = h:FindFirstChild("DataAttachment")
                     local gui = att and att:FindFirstChild("BillboardGui")
@@ -315,7 +326,6 @@ if MapaAtual == "Tevez" then
                 end
             end
         end
-
         local hrp = char:FindFirstChild(S_HRP)
         if not hrp then return 0 end
         local pos = hrp.Position
@@ -373,12 +383,12 @@ if MapaAtual == "Tevez" then
             if not BuyC4() or not FL.Enabled or IsClosed() then
                 FarmUpdate("Falha ao comprar C4"); farmRunning = false; return
             end
-            local c4 = GetItem("C4")
+            local c4  = GetItem("C4")
             if c4 then
                 local hum = getHum()
                 if hum then hum:EquipTool(c4) end
             end
-            local vault = bank and bank:FindFirstChild("BankVault")
+            local vault  = bank and bank:FindFirstChild("BankVault")
             local prompt = vault and vault:FindFirstChild("C4") and vault.C4:FindFirstChild("Handle") and vault.C4.Handle:FindFirstChildOfClass("ProximityPrompt")
             if vault and vault:FindFirstChild("Vault") then Tp(vault.Vault.Front.Position) end
             task.wait(0.5)
@@ -386,7 +396,7 @@ if MapaAtual == "Tevez" then
             while FL.Enabled and IsOpen() do
                 if CheckSafe() then task.wait(0.1); continue end
                 if not GetItem("C4") then break end
-                if prompt then fireproximityprompt(prompt) end
+                if prompt then _G._fireprox(prompt) end
                 task.wait(0.15)
             end
             if not FL.Enabled or IsClosed() then farmRunning = false; return end
@@ -441,13 +451,13 @@ if MapaAtual == "Tevez" then
         end)
     end)
 
-    env.TevezMods     = TL
-    env.TevezAutoFarm = FL
+    _G.TevezMods     = TL
+    _G.TevezAutoFarm = FL
 
 elseif MapaAtual == "Delta" then
 
     local DL = { JJValue = 0, GetRichValue = 1000000, KillAuraAtiva = false }
-    env.DeltaLogic = DL
+    _G.DeltaLogic = DL
 
     local dRem  = rep:WaitForChild("Remotes", 3)
     local dPoli, dDecM
@@ -533,7 +543,7 @@ elseif MapaAtual == "NovaEra" then
         InitialMoney   = 0,
         UpdateCallback = nil,
     }
-    env.NovaEraLogic = NL
+    _G.NovaEraLogic = NL
 
     local neOff  = CFrame.new(0, -20, 0)
     local neZero = Vector3.zero
@@ -556,16 +566,16 @@ elseif MapaAtual == "NovaEra" then
         if not hrp then return end
         local ag = hrp:FindFirstChild("Antigravity")
         if not ag then
-            ag = Instance.new("BodyVelocity")
+            ag          = Instance.new("BodyVelocity")
             ag.Name     = "Antigravity"
             ag.Velocity = neZero
             ag.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
             ag.P        = 9000
             ag.Parent   = hrp
         end
-        hrp.CFrame                   = targetCF
-        hrp.AssemblyLinearVelocity   = neZero
-        hrp.AssemblyAngularVelocity  = neZero
+        hrp.CFrame                  = targetCF
+        hrp.AssemblyLinearVelocity  = neZero
+        hrp.AssemblyAngularVelocity = neZero
     end
 
     local function neGetPrompt(parent)
@@ -613,10 +623,10 @@ elseif MapaAtual == "NovaEra" then
             if not (char and hum and hrp and hum.Health > 0) then neStopFloat(); task.wait(0.5); continue end
 
             if NL.Mode == "Lixeiro" then
-                local trab = ws:FindFirstChild("Trabalhos / SWATntj")
-                local col  = trab and trab:FindFirstChild("Coleta")
+                local trab         = ws:FindFirstChild("Trabalhos / SWATntj")
+                local col          = trab and trab:FindFirstChild("Coleta")
                 if col then
-                    local hasBag      = char:FindFirstChild("Lixo_model") ~= nil
+                    local hasBag       = char:FindFirstChild("Lixo_model") ~= nil
                     local targetFolder = hasBag and col:FindFirstChild("Lixeira") or col:FindFirstChild("Lixo")
                     local prompt       = neGetPrompt(targetFolder)
                     if prompt and prompt.Parent then
@@ -625,7 +635,7 @@ elseif MapaAtual == "NovaEra" then
                             if not NL.Enabled or hum.Health <= 0 then break end
                             if (char:FindFirstChild("Lixo_model") ~= nil) ~= hasBag then break end
                             neFloatAt(prompt.Parent.CFrame * neOff)
-                            fireproximityprompt(prompt)
+                            _G._fireprox(prompt)
                             task.wait(0.3)
                         until not prompt.Parent or not prompt.Enabled
                     else
@@ -652,7 +662,7 @@ elseif MapaAtual == "NovaEra" then
                                 hum.Sit = false
                                 neFloatAt(prompt.Parent.CFrame * neOff)
                                 local now = tick()
-                                if now >= nextFire then fireproximityprompt(prompt); nextFire = now + 0.3 end
+                                if now >= nextFire then _G._fireprox(prompt); nextFire = now + 0.3 end
                                 rs.Heartbeat:Wait()
                             until not prompt.Parent or not prompt.Enabled or not npc.Parent
                         end
@@ -671,7 +681,7 @@ elseif MapaAtual == "NovaEra" then
 elseif MapaAtual == "Soucre" then
 
     local SL = { Enabled = false, TotalProfit = 0, SessionStart = 0, UpdateCallback = nil }
-    env.SoucreLogic = SL
+    _G.SoucreLogic = SL
 
     local srcOff = CFrame.new(0, -9, 0)
     local srcV0  = Vector3.zero
@@ -701,9 +711,9 @@ elseif MapaAtual == "Soucre" then
             local bv = Instance.new("BodyVelocity")
             bv.Name, bv.Velocity, bv.MaxForce, bv.P, bv.Parent = "AG", srcV0, Vector3.new(9e9,9e9,9e9), 9000, hrp
         end
-        hrp.CFrame                   = t.CFrame * srcOff
-        hrp.AssemblyLinearVelocity   = srcV0
-        hrp.AssemblyAngularVelocity  = srcV0
+        hrp.CFrame                  = t.CFrame * srcOff
+        hrp.AssemblyLinearVelocity  = srcV0
+        hrp.AssemblyAngularVelocity = srcV0
     end
 
     local function srcFDst()
@@ -754,22 +764,22 @@ elseif MapaAtual == "Soucre" then
         if not att then
             if srcCp then
                 local p = srcCp:FindFirstChildWhichIsA("ProximityPrompt", true)
-                if p then p.HoldDuration = 0; srcTp(srcCp); fireproximityprompt(p) end
+                if p then p.HoldDuration = 0; srcTp(srcCp); _G._fireprox(p) end
             end
         else
             local d = att.Parent
             if d then
                 local p = d:FindFirstChildWhichIsA("ProximityPrompt", true)
-                if p then p.HoldDuration = 0; srcTp(d); fireproximityprompt(p) end
+                if p then p.HoldDuration = 0; srcTp(d); _G._fireprox(p) end
             end
         end
     end)
 
 elseif MapaAtual == "Apex" then
 
-    env.ApexLogic            = env.ApexLogic or {}
-    env._ApexSpamMasterConns = env._ApexSpamMasterConns or {}
-    env._ApexSpamCharConns   = env._ApexSpamCharConns or {}
+    _G.ApexLogic            = _G.ApexLogic or {}
+    _G._ApexSpamMasterConns = _G._ApexSpamMasterConns or {}
+    _G._ApexSpamCharConns   = _G._ApexSpamCharConns or {}
 
     local function limparConns(t)
         for _, c in ipairs(t) do if typeof(c) == "RBXScriptConnection" and c.Connected then c:Disconnect() end end
@@ -802,7 +812,7 @@ elseif MapaAtual == "Apex" then
             },
         }
 
-        local function toggleNoclip(s) env.PlayerConfig.Noclip = s end
+        local function toggleNoclip(s) _G.PlayerConfig.Noclip = s end
 
         local function getPlayer()
             local c = lp.Character
@@ -898,7 +908,7 @@ elseif MapaAtual == "Apex" then
                 end
 
                 local sz = math.floor(32*(1+math.sin((tick()-tick0)*3.5)*0.06))
-                circle.Size       = UDim2.new(0,sz,0,sz)
+                circle.Size         = UDim2.new(0,sz,0,sz)
                 distText.TextColor3 = (meters<12 and tick()%0.5<0.25) and Color3.fromRGB(255,80,80) or Color3.fromRGB(220,180,180)
             end)
 
@@ -1049,29 +1059,29 @@ elseif MapaAtual == "Apex" then
                 ts:Create(dot,       fo2, {BackgroundTransparency=1}):Play()
                 task.wait(0.5)
                 screen:Destroy()
-                env._RouteAtivo = false
+                _G._RouteAtivo = false
             end
 
             return dismiss, markStep, waitUntilReady
         end
 
-        env.IniciarRota = function()
-            if env._RouteTriggerConn then pcall(function() env._RouteTriggerConn:Disconnect() end); env._RouteTriggerConn = nil end
-            if env._RouteRemoveMarker   then pcall(env._RouteRemoveMarker);   env._RouteRemoveMarker   = nil end
-            if env._RouteRemoveWaypoint then pcall(env._RouteRemoveWaypoint); env._RouteRemoveWaypoint = nil end
-            env._RouteAtivo = false
+        _G.IniciarRota = function()
+            if _G._RouteTriggerConn   then pcall(function() _G._RouteTriggerConn:Disconnect() end);   _G._RouteTriggerConn   = nil end
+            if _G._RouteRemoveMarker   then pcall(_G._RouteRemoveMarker);   _G._RouteRemoveMarker   = nil end
+            if _G._RouteRemoveWaypoint then pcall(_G._RouteRemoveWaypoint); _G._RouteRemoveWaypoint = nil end
+            _G._RouteAtivo = false
 
-            env._RouteAtivo        = true
+            _G._RouteAtivo         = true
             local removeMarker     = buildClone(routeConfig.startAt)
             local removeWaypoint   = buildWaypoint()
-            env._RouteRemoveMarker   = removeMarker
-            env._RouteRemoveWaypoint = removeWaypoint
+            _G._RouteRemoveMarker   = removeMarker
+            _G._RouteRemoveWaypoint = removeWaypoint
 
-            local ragChar    = ws:FindFirstChild(lp.Name)
-            local ragdoll    = ragChar and ragChar:FindFirstChild("Ragdoll")
+            local ragChar     = ws:FindFirstChild(lp.Name)
+            local ragdoll     = ragChar and ragChar:FindFirstChild("Ragdoll")
             local stopRagdoll = ragdoll and ragdoll.ChildAdded:Connect(function(c) c:Destroy() end)
 
-            local activated  = false
+            local activated = false
             local triggerConn
             triggerConn = rs.Heartbeat:Connect(function()
                 if activated then return end
@@ -1083,7 +1093,7 @@ elseif MapaAtual == "Apex" then
                 if math.abs(delta.Y) > routeConfig.triggerVert then return end
                 if hrp.CFrame.LookVector:Dot(routeConfig.startAt.LookVector) < math.cos(math.rad(routeConfig.triggerAngle)) then return end
 
-                activated = true; triggerConn:Disconnect(); env._RouteTriggerConn = nil
+                activated = true; triggerConn:Disconnect(); _G._RouteTriggerConn = nil
                 removeWaypoint(); removeMarker()
 
                 task.spawn(function()
@@ -1131,7 +1141,7 @@ elseif MapaAtual == "Apex" then
 
                     lp.CharacterRemoving:Connect(function() toggleNoclip(false) end)
 
-                    connMove = rs.Heartbeat:Connect(function() hum:MoveTo(routeConfig.walkTo.Position) end)
+                    connMove  = rs.Heartbeat:Connect(function() hum:MoveTo(routeConfig.walkTo.Position) end)
                     connCheck = rs.Heartbeat:Connect(function()
                         if uis:IsKeyDown(Enum.KeyCode.W) or uis:IsKeyDown(Enum.KeyCode.A) or
                            uis:IsKeyDown(Enum.KeyCode.S) or uis:IsKeyDown(Enum.KeyCode.D) or
@@ -1140,147 +1150,7 @@ elseif MapaAtual == "Apex" then
                     end)
                 end)
             end)
-            env._RouteTriggerConn = triggerConn
+            _G._RouteTriggerConn = triggerConn
         end
-    end
-
-    env.ApexLogic.ToggleSound = function(ativar)
-        env.SpamAtivo = ativar
-        if not ativar then
-            if env._SpamThread then pcall(task.cancel, env._SpamThread); env._SpamThread = nil end
-            limparConns(env._ApexSpamMasterConns)
-            limparConns(env._ApexSpamCharConns)
-            return
-        end
-        if env._SpamThread then pcall(task.cancel, env._SpamThread) end
-        limparConns(env._ApexSpamMasterConns)
-        limparConns(env._ApexSpamCharConns)
-
-        env._SpamThread = task.spawn(function()
-            local se    = rep:WaitForChild("ServerEvents", 5)
-            local fireClient = se and se:WaitForChild("FireClient", 5)
-            if not fireClient then
-                if env.notificar then env.notificar("Inválido", 3, "lucide:alert-triangle") end; return
-            end
-
-            local sessionToken, soundList, equippedTool = nil, {}, nil
-            local isReady = false
-            local rng     = Random.new()
-
-            local function refreshSounds()
-                local found, seen = {}, {}
-                for _, obj in ipairs(game:GetDescendants()) do
-                    if obj:IsA("Sound") and obj.SoundId ~= "" and not seen[obj.SoundId] then
-                        seen[obj.SoundId] = true
-                        found[#found+1] = obj
-                        if #found >= 200 then break end
-                    end
-                end
-                soundList = found
-            end
-
-            local function findSessionToken()
-                for _, obj in ipairs(getgc(true)) do
-                    if type(obj) == "function" and debug.getinfo(obj).name == "PlaySound" then
-                        local val = debug.getupvalue(obj, 2)
-                        if val then return val end
-                    end
-                end
-                return nil
-            end
-
-            local function isValidWeapon(tool)
-                if not tool then return false end
-                local n = 0
-                for _ in ipairs(tool:GetDescendants()) do n += 1; if n > 5 then return true end end
-                return false
-            end
-
-            local function findWeaponInBag()
-                local bag = lp:FindFirstChild(S_BP)
-                if not bag then return nil end
-                for _, item in ipairs(bag:GetChildren()) do
-                    if item:IsA("Tool") and isValidWeapon(item) then return item end
-                end
-                return nil
-            end
-
-            local function waitForWeapon(name)
-                local start = tick()
-                repeat
-                    task.wait(0.05)
-                    local char = getChar()
-                    local tool = char and char:FindFirstChild(name)
-                    if tool and tool:IsA("Tool") then return tool end
-                until (tick()-start) > 3
-                return nil
-            end
-
-            local function setupToken()
-                isReady = false
-                local char = getChar()
-                if not char then return false end
-                local hum = char:FindFirstChildOfClass(S_HUM)
-                if not hum then return false end
-                hum:UnequipTools(); task.wait(0.5)
-                local weapon = findWeaponInBag()
-                if not weapon then return false end
-                hum:EquipTool(weapon)
-                if not waitForWeapon(weapon.Name) then return false end
-                task.wait(1)
-                sessionToken = findSessionToken()
-                if not sessionToken then return false end
-                hum:UnequipTools(); task.wait(0.5)
-                hum:EquipTool(weapon)
-                if not waitForWeapon(weapon.Name) then return false end
-                equippedTool = weapon; task.wait(0.5)
-                isReady = true; return true
-            end
-
-            local function watchCharacter(char)
-                limparConns(env._ApexSpamCharConns)
-                isReady, sessionToken = false, nil
-                if not char then return end
-                local function checkEquipped()
-                    local tool = char:FindFirstChildOfClass("Tool")
-                    equippedTool = isValidWeapon(tool) and tool or nil
-                end
-                table.insert(env._ApexSpamCharConns, char.ChildAdded:Connect(function(c) if c:IsA("Tool") then checkEquipped() end end))
-                table.insert(env._ApexSpamCharConns, char.ChildRemoved:Connect(function(c) if c:IsA("Tool") then checkEquipped() end end))
-                checkEquipped()
-            end
-
-            table.insert(env._ApexSpamMasterConns, lp.CharacterAdded:Connect(watchCharacter))
-            if lp.Character then watchCharacter(lp.Character) end
-
-            task.spawn(function()
-                while env.SpamAtivo do task.wait(30); if env.SpamAtivo then refreshSounds() end end
-            end)
-
-            refreshSounds(); setupToken()
-
-            local t1 = TweenInfo.new(0.22)
-            while env.SpamAtivo do
-                if not equippedTool or not sessionToken or not isReady then
-                    task.wait(1)
-                    if not isReady and env.SpamAtivo then setupToken() end
-                    continue
-                end
-                local total = #soundList
-                if total > 0 then
-                    for i = 1, 50 do
-                        if not env.SpamAtivo or not equippedTool or not isReady then break end
-                        local s = soundList[rng:NextInteger(1, total)]
-                        if s and s.Parent then
-                            local vol = s.Volume; s.Volume = 10
-                            pcall(fireClient.FireServer, fireClient, sessionToken, "PlaySound", s, nil)
-                            s.Volume = vol
-                        end
-                        task.wait()
-                    end
-                end
-                task.wait()
-            end
-        end)
     end
 end
