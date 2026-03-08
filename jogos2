@@ -167,9 +167,24 @@ if MapaAtual == "Tevez" then
         end
     end
 
+    local function ZerarGunTables()
+        for _, v in pairs(_G._getgc(true)) do
+            if type(v) == "table" then
+                if rawget(v, "Spread")     ~= nil then _G._setreadonly(v, false); rawset(v, "Spread",     0)     end
+                if rawget(v, "ReloadTime") ~= nil then _G._setreadonly(v, false); rawset(v, "ReloadTime", 0)     end
+                if rawget(v, "Reloading")  ~= nil then _G._setreadonly(v, false); rawset(v, "Reloading",  false) end
+                if rawget(v, "CanShoot")   ~= nil then _G._setreadonly(v, false); rawset(v, "CanShoot",   true)  end
+            end
+        end
+    end
+
     task.spawn(function()
-        while task.wait(0.25) do
+        while task.wait(0.05) do
             if not TL.Active then break end
+
+            if TL.Aura and HasGun() then
+                ZerarGunTables()
+            end
 
             if reloadFunc and TL.Aura and HasGun() then
                 local c    = getChar()
