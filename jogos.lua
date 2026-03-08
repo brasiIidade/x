@@ -1153,4 +1153,153 @@ elseif MapaAtual == "Apex" then
             _G._RouteTriggerConn = triggerConn
         end
     end
+
+    _G.ApexLogic.ToggleSound = function(ativar)
+        _G.SpamAtivo = ativar
+        if not ativar then
+            if _G._SpamThread then pcall(task.cancel, _G._SpamThread); _G._SpamThread = nil end
+            limparConns(_G._ApexSpamMasterConns)
+            limparConns(_G._ApexSpamCharConns)
+            return
+        end
+        if _G._SpamThread then pcall(task.cancel, _G._SpamThread) end
+        limparConns(_G._ApexSpamMasterConns)
+        limparConns(_G._ApexSpamCharConns)
+
+        _G._SpamThread = task.spawn(function()
+            local se        = rep:WaitForChild("ServerEvents", 5)
+            local fireClient = se and se:WaitForChild("FireClient", 5)
+            if not fireClient then
+                Notify("Remote inválido"); return
+            end
+
+            local sessionToken, soundList, equippedTool = nil, {}, nil
+            local isReady = false
+            local rng     = Random.new()
+
+            local function refreshSounds()
+                local found, seen = {}, {}
+                for _, obj in ipairs(game:GetDescendants()) do
+                    if obj:IsA("Sound") and obj.SoundId ~= "" and not seen[obj.SoundId] then
+                        seen[obj.SoundId] = true
+                        found[#found+1] = obj
+                        if #found >= 200 then break end
+                    end
+                end
+                soundList = found
+            end
+
+            local function findSessionToken()
+                for _, obj in ipairs(_G._getgc(true)) do
+                    if type(obj) == "function" then
+                        local ok, info = pcall(debug.getinfo, obj)
+                        if ok and info and info.name == "PlaySound" then
+                            local ok2, val = pcall(debug.getupvalue, obj, 2)
+                            if ok2 and val then return val end
+                        end
+                    end
+                end
+                return nil
+            end
+
+            local function isValidWeapon(tool)
+                if not tool then return false end
+                local n = 0
+                for _ in ipairs(tool:GetDescendants()) do n += 1; if n > 5 then return true end end
+                return false
+            end
+
+            local function findWeaponInBag()
+                local bag = lp:FindFirstChild(S_BP)
+                if not bag then return nil end
+                for _, item in ipairs(bag:GetChildren()) do
+                    if item:IsA("Tool") and isValidWeapon(item) then return item end
+                end
+                return nil
+            end
+
+            local function waitForWeapon(name)
+                local start = tick()
+                repeat
+                    task.wait(0.05)
+                    local char = getChar()
+                    local tool = char and char:FindFirstChild(name)
+                    if tool and tool:IsA("Tool") then return tool end
+                until (tick() - start) > 3
+                return nil
+            end
+
+            local function setupToken()
+                isReady = false
+                local char = getChar()
+                if not char then return false end
+                local hum = char:FindFirstChildOfClass(S_HUM)
+                if not hum then return false end
+                hum:UnequipTools(); task.wait(0.5)
+                local weapon = findWeaponInBag()
+                if not weapon then return false end
+                hum:EquipTool(weapon)
+                if not waitForWeapon(weapon.Name) then return false end
+                task.wait(1)
+                sessionToken = findSessionToken()
+                if not sessionToken then return false end
+                hum:UnequipTools(); task.wait(0.5)
+                hum:EquipTool(weapon)
+                if not waitForWeapon(weapon.Name) then return false end
+                equippedTool = weapon; task.wait(0.5)
+                isReady = true; return true
+            end
+
+            local function watchCharacter(char)
+                limparConns(_G._ApexSpamCharConns)
+                isReady, sessionToken = false, nil
+                if not char then return end
+                local function checkEquipped()
+                    local tool = char:FindFirstChildOfClass("Tool")
+                    equippedTool = isValidWeapon(tool) and tool or nil
+                end
+                table.insert(_G._ApexSpamCharConns, char.ChildAdded:Connect(function(c)
+                    if c:IsA("Tool") then checkEquipped() end
+                end))
+                table.insert(_G._ApexSpamCharConns, char.ChildRemoved:Connect(function(c)
+                    if c:IsA("Tool") then checkEquipped() end
+                end))
+                checkEquipped()
+            end
+
+            table.insert(_G._ApexSpamMasterConns, lp.CharacterAdded:Connect(watchCharacter))
+            if lp.Character then watchCharacter(lp.Character) end
+
+            task.spawn(function()
+                while _G.SpamAtivo do
+                    task.wait(30)
+                    if _G.SpamAtivo then refreshSounds() end
+                end
+            end)
+
+            refreshSounds(); setupToken()
+
+            while _G.SpamAtivo do
+                if not equippedTool or not sessionToken or not isReady then
+                    task.wait(1)
+                    if not isReady and _G.SpamAtivo then setupToken() end
+                    continue
+                end
+                local total = #soundList
+                if total > 0 then
+                    for i = 1, 50 do
+                        if not _G.SpamAtivo or not equippedTool or not isReady then break end
+                        local s = soundList[rng:NextInteger(1, total)]
+                        if s and s.Parent then
+                            local vol = s.Volume; s.Volume = 10
+                            pcall(fireClient.FireServer, fireClient, sessionToken, "PlaySound", s, nil)
+                            s.Volume = vol
+                        end
+                        task.wait()
+                    end
+                end
+                task.wait()
+            end
+        end)
+    end
 end
